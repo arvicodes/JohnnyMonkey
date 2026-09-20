@@ -2,8 +2,7 @@ import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { IconButton, Tooltip, Typography } from '@mui/material';
-import { markTeacherWantsDashboard } from '../lib/teacherLiveLesson';
-import { exitPresentFullscreen } from '../lib/presentationPresentFullscreen';
+import { requestTeacherDashboard } from '../lib/teacherGoDashboard';
 import { useTeacherFabPortalHost } from '../lib/teacherFabPortalHost';
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -16,17 +15,13 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return false;
 }
 
-function goDashboard(navigate: ReturnType<typeof useNavigate>) {
-  exitPresentFullscreen();
-  markTeacherWantsDashboard();
-  navigate('/dashboard');
-}
-
 type Props = {
   /** Abstand von rechts. */
   buttonRight?: number;
   /** Abstand von unten (für Stapel mit dem N-Button). */
   buttonBottom?: number;
+  /** Lehrkräfte nutzen die Ecke N+D — nur Taste D, kein FAB. */
+  hideButton?: boolean;
 };
 
 /**
@@ -35,6 +30,7 @@ type Props = {
 export default function GlobalDashboardShortcut({
   buttonRight = 20,
   buttonBottom = 68,
+  hideButton = false,
 }: Props) {
   const navigate = useNavigate();
   const portalHost = useTeacherFabPortalHost();
@@ -46,16 +42,18 @@ export default function GlobalDashboardShortcut({
       if (isTypingTarget(e.target)) return;
       e.preventDefault();
       e.stopPropagation();
-      goDashboard(navigate);
+      requestTeacherDashboard(navigate);
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [navigate]);
 
+  if (hideButton) return null;
+
   const button = (
     <Tooltip title="Zum Dashboard (D)" placement="left">
       <IconButton
-        onClick={() => goDashboard(navigate)}
+        onClick={() => requestTeacherDashboard(navigate)}
         aria-label="Zum Dashboard (Taste D)"
         data-teacher-fab="dashboard"
         sx={{

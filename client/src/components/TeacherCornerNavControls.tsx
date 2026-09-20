@@ -1,14 +1,16 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Box, IconButton, Typography } from '@mui/material';
-import { Dashboard as DashboardIcon } from '@mui/icons-material';
 import { OPEN_TEACHER_NOTES_EVENT } from './TeacherQuickNotes';
+import { useTeacherFabPortalHost } from '../lib/teacherFabPortalHost';
 
-type TeacherLessonCornerControlsProps = {
+type TeacherCornerNavControlsProps = {
   onDashboard: () => void;
 };
 
-/** Kompakt oben rechts: Schnellnotizen + zurück zum Dashboard. */
-export default function TeacherLessonCornerControls({ onDashboard }: TeacherLessonCornerControlsProps) {
+/** Kompakt oben rechts: Schnellnotizen (N) + Dashboard (D) — auch im Vollbild portaliert. */
+export default function TeacherCornerNavControls({ onDashboard }: TeacherCornerNavControlsProps) {
+  const portalHost = useTeacherFabPortalHost();
   const openNotes = () => window.dispatchEvent(new Event(OPEN_TEACHER_NOTES_EVENT));
 
   const btnSx = {
@@ -22,13 +24,14 @@ export default function TeacherLessonCornerControls({ onDashboard }: TeacherLess
     '&:hover': { bgcolor: 'rgba(0,0,0,0.06)' },
   };
 
-  return (
+  const bar = (
     <Box
+      data-teacher-corner-nav="1"
       sx={{
         position: 'fixed',
         top: 'max(0px, env(safe-area-inset-top))',
         right: 'max(0px, env(safe-area-inset-right))',
-        zIndex: (t) => t.zIndex.modal + 28,
+        zIndex: 20000,
         display: 'flex',
         alignItems: 'stretch',
         overflow: 'hidden',
@@ -39,6 +42,7 @@ export default function TeacherLessonCornerControls({ onDashboard }: TeacherLess
         borderRight: 'none',
         borderBottomLeftRadius: 5,
         boxShadow: '0 1px 5px rgba(0,0,0,0.12)',
+        pointerEvents: 'auto',
       }}
     >
       <IconButton
@@ -46,6 +50,7 @@ export default function TeacherLessonCornerControls({ onDashboard }: TeacherLess
         onClick={openNotes}
         aria-label="Notizen (N)"
         title="Notizen (N)"
+        data-teacher-fab="notes"
         sx={btnSx}
       >
         <Typography
@@ -65,12 +70,27 @@ export default function TeacherLessonCornerControls({ onDashboard }: TeacherLess
       <IconButton
         size="small"
         onClick={onDashboard}
-        aria-label="Zum Dashboard"
-        title="Zum Dashboard"
+        aria-label="Zum Dashboard (D)"
+        title="Zum Dashboard (D)"
+        data-teacher-fab="dashboard"
         sx={btnSx}
       >
-        <DashboardIcon sx={{ fontSize: 13, color: '#455a64' }} />
+        <Typography
+          component="span"
+          sx={{
+            fontSize: '0.62rem',
+            fontWeight: 900,
+            lineHeight: 1,
+            color: '#4fc3f7',
+            textShadow: '0 0.5px 0 rgba(0,0,0,0.2)',
+          }}
+        >
+          D
+        </Typography>
       </IconButton>
     </Box>
   );
+
+  if (!portalHost) return bar;
+  return createPortal(bar, portalHost);
 }

@@ -813,8 +813,10 @@ function insertHtmlIntoNotesEditor(editor: HTMLElement, html: string): boolean {
 
 type TeacherQuickNotesProps = {
   userId: string;
-  /** N-Button fest am Bildschirm — für globale Nutzung außerhalb des Dashboards */
+  /** Legacy: Modal bleibt global; FAB wird durch Ecke N+D ersetzt. */
   floating?: boolean;
+  /** Kein eigener N-FAB (Ecke oben rechts). */
+  hideFab?: boolean;
 };
 
 export const OPEN_TEACHER_NOTES_EVENT = 'johnny:open-teacher-notes';
@@ -824,7 +826,11 @@ export const NOTES_FROM_GIT_EVENT = 'johnny:notes-from-git';
  * Gelbes N in der Lehrer-Leiste: persönliche Notizfläche (Tastatur + Stift + Formatierung).
  * Speichert in localStorage + Server-Datei; Sicherheitskopien unter Notizen-Sicherheitskopien/.
  */
-export default function TeacherQuickNotes({ userId, floating = false }: TeacherQuickNotesProps) {
+export default function TeacherQuickNotes({
+  userId,
+  floating = false,
+  hideFab = false,
+}: TeacherQuickNotesProps) {
   const portalHost = useTeacherFabPortalHost();
   const [open, setOpen] = useState(false);
   const openRef = useRef(false);
@@ -2351,7 +2357,7 @@ export default function TeacherQuickNotes({ userId, floating = false }: TeacherQ
 
   return (
     <>
-      {floating && portalHost ? createPortal(notesFab, portalHost) : notesFab}
+      {!hideFab && (floating && portalHost ? createPortal(notesFab, portalHost) : notesFab)}
       <Dialog
         open={open}
         onClose={closeModal}

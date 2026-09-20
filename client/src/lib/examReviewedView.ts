@@ -461,28 +461,43 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       background: #e8f5e9;
       font-family: Arial, sans-serif;
     }
+    .jm-review-head {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      box-sizing: border-box;
+    }
     .jm-grade-block {
       display: flex;
       flex-direction: row;
       flex-wrap: wrap;
       align-items: center;
       justify-content: flex-start;
-      column-gap: 10%;
+      column-gap: 5%;
       row-gap: 8px;
-      width: 100%;
-      max-width: 100%;
+      flex: 1 1 auto;
+      min-width: 0;
       min-height: 0;
-      margin-bottom: 6px;
       box-sizing: border-box;
+    }
+    .jm-grade-note-wrap {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
     }
     .jm-grade-signature {
       flex: 0 1 auto;
-      width: min(280px, 42vw);
-      max-height: 100px;
+      width: min(260px, 38vw);
+      max-height: 96px;
       height: auto;
       object-fit: contain;
       opacity: 0.92;
       pointer-events: none;
+      margin-left: -5%;
     }
     .jm-review-result .grade {
       flex: 0 0 auto;
@@ -491,39 +506,55 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       font-weight: 700;
       color: ${EXAM_TEACHER_GRADE_RED};
       text-align: left;
-      padding: 4px 0;
+      padding: 0 0 6px;
       line-height: 1.1;
+      border-bottom: 2px solid rgba(46, 125, 50, 0.55);
+    }
+    .jm-meta-col {
+      flex: 0 0 auto;
+      text-align: right;
+      align-self: flex-start;
+      padding-right: 0;
+      margin-left: 4px;
+      line-height: 1.35;
     }
     .jm-review-result .meta {
-      margin-top: 6px;
+      margin: 0;
       font-size: 14px;
       color: #2e7d32;
       font-weight: 600;
     }
     .jm-review-result .avg {
-      margin-top: 4px;
+      margin: 2px 0 0;
       font-size: 13px;
       color: #546e7a;
     }
     .jm-review-result .teacher-comment {
-      margin-top: 14px;
+      margin-top: 12px;
       padding-top: 0;
       border-top: none;
       font-size: 14px;
-      color: ${EXAM_TEACHER_RED};
+      color: #757575;
       font-weight: 500;
     }
     .jm-review-result .teacher-comment strong {
       display: none;
     }
+    .jm-comment-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #9e9e9e;
+      margin-right: 6px;
+    }
     .jm-review-result .teacher-comment .jm-teacher-handwriting {
       font-family: ${EXAM_TEACHER_COMMENT_FONT};
-      font-size: 2rem;
-      font-weight: 700;
-      color: ${EXAM_TEACHER_RED};
-      line-height: 1.35;
+      font-size: 1.35rem;
+      font-weight: 500;
+      color: #757575;
+      line-height: 1.4;
       white-space: pre-wrap;
       margin-top: 0;
+      display: inline;
     }
     .header-name {
       margin-top: 10px !important;
@@ -585,19 +616,25 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   const box = doc.createElement('div');
   box.className = 'jm-review-result';
   box.innerHTML = `
-    <div class="jm-grade-block">
-      <div class="grade">Note ${opts.gradeLabel || '–'}</div>
-      <img class="jm-grade-signature" src="${sigUrl}" alt="" />
+    <div class="jm-review-head">
+      <div class="jm-grade-block">
+        <div class="jm-grade-note-wrap">
+          <div class="grade">Note ${opts.gradeLabel || '–'}</div>
+        </div>
+        <img class="jm-grade-signature" src="${sigUrl}" alt="" />
+      </div>
+      <div class="jm-meta-col">
+        <div class="meta">${pointsText}</div>
+        ${
+          opts.classAverageText
+            ? `<div class="avg">⌀ Klassenschnitt Note ${opts.classAverageText}</div>`
+            : ''
+        }
+      </div>
     </div>
-    <div class="meta">${pointsText}</div>
-    ${
-      opts.classAverageText
-        ? `<div class="avg">⌀ Klassenschnitt Note ${opts.classAverageText}</div>`
-        : ''
-    }
     ${
       generalComment
-        ? `<div class="teacher-comment"><div class="jm-teacher-handwriting">${escapeHtmlText(generalComment)}</div></div>`
+        ? `<div class="teacher-comment"><span class="jm-comment-label">Kommentar</span><span class="jm-teacher-handwriting">${escapeHtmlText(generalComment)}</span></div>`
         : ''
     }
   `;

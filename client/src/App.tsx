@@ -49,6 +49,7 @@ import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
 import FlutterElf from './components/FlutterElf';
 import GlobalMarkdownListShortcut from './components/GlobalMarkdownListShortcut';
 import GlobalDashboardShortcut from './components/GlobalDashboardShortcut';
+import GlobalTeacherCornerNav from './components/GlobalTeacherCornerNav';
 import TeacherQuickNotes from './components/TeacherQuickNotes';
 
 interface User {
@@ -358,15 +359,17 @@ function AppContent() {
       </Routes>
 
       <GlobalMarkdownListShortcut />
-      {authReady && user && (
-        <GlobalDashboardShortcut
-          buttonRight={20}
-          buttonBottom={String(user.role).toUpperCase() === 'TEACHER' ? 68 : 20}
-        />
-      )}
+      {authReady &&
+        user &&
+        String(user.role).toUpperCase() !== 'TEACHER' && (
+          <GlobalDashboardShortcut buttonRight={20} buttonBottom={20} />
+        )}
 
       {authReady && user && String(user.role).toUpperCase() === 'TEACHER' && (
-        <TeacherQuickNotes userId={user.id} floating />
+        <>
+          <GlobalTeacherCornerNav />
+          <TeacherQuickNotes userId={user.id} floating hideFab />
+        </>
       )}
 
       {authReady && user && String(user.role).toUpperCase() === 'STUDENT' && (

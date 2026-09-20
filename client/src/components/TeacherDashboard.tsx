@@ -49,8 +49,7 @@ import KACorrectionMode from './KACorrectionMode';
 import { DEFAULT_PROFILE_COLOR } from '../lib/profileColor';
 import TeacherSettingsMenu from './teacher-profile/TeacherSettingsMenu';
 import TeacherFullArchiveModal from './teacher-profile/TeacherFullArchiveModal';
-import { OPEN_TEACHER_NOTES_EVENT } from './TeacherQuickNotes';
-import TeacherLessonCornerControls from './TeacherLessonCornerControls';
+import { TEACHER_GO_DASHBOARD_EVENT } from '../lib/teacherGoDashboard';
 import TeacherProfileDialog from './teacher-profile/TeacherProfileDialog';
 import TeacherScheduleDialog from './teacher-schedule/TeacherScheduleDialog';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
@@ -15531,6 +15530,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     }
   };
 
+  useEffect(() => {
+    const onGoDashboard = () => {
+      setLessonModalData(null);
+      lessonBoxDraftRef.current = null;
+      setLessonBoxEdit(null);
+      setLessonPlanViewMode('create');
+      setParticipationModalOpen(false);
+    };
+    window.addEventListener(TEACHER_GO_DASHBOARD_EVENT, onGoDashboard);
+    return () => window.removeEventListener(TEACHER_GO_DASHBOARD_EVENT, onGoDashboard);
+  }, []);
+
   // Esc auf der Stunden-Seite → zurück zum Dashboard (nicht während Laptop-Präsentation)
   useEffect(() => {
     if (!isLessonStundeRoute) return;
@@ -15875,36 +15886,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   }),
                 }}
               >
-                {!isLessonStundeRoute && (
-                <IconButton
-                  onClick={() => window.dispatchEvent(new Event(OPEN_TEACHER_NOTES_EVENT))}
-                  sx={{
-                    p: 0.5,
-                    minWidth: 32,
-                    width: 32,
-                    height: 32,
-                    color: '#f9a825',
-                    bgcolor: '#9e9e9e',
-                    borderRadius: 1.4,
-                    '&:hover': { bgcolor: '#757575' },
-                  }}
-                  title="Notizen (Taste N)"
-                  aria-label="Notizen"
-                >
-                  <Typography
-                    component="span"
-                    sx={{
-                      fontSize: '1.05rem',
-                      fontWeight: 900,
-                      lineHeight: 1,
-                      color: '#fbc02d',
-                      textShadow: '0 1px 0 rgba(0,0,0,0.25)',
-                    }}
-                  >
-                    N
-                  </Typography>
-                </IconButton>
-                )}
                 <IconButton
                   onClick={() => setShowTeacherMessageBox(true)}
                   sx={{
@@ -20647,8 +20628,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
       {/* Unterrichtsstunde: nur als eigene Seite /teacher/stunde (kein Modal) */}
       {isLessonStundeRoute && lessonModalData && (
-        <>
-        <TeacherLessonCornerControls onDashboard={handleCloseLessonPage} />
         <Box
           sx={{
             // In Laptop-Ansicht ist rechts ein (Dialog-)Dock; MUI lockt dann body-scroll.
@@ -24929,7 +24908,6 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               })()}
           </Box>
         </Box>
-        </>
       )}
 
       {lessonSplitLeft && (
