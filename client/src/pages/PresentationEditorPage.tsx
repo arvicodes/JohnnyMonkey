@@ -5674,8 +5674,9 @@ const PresentationEditorPage: React.FC = () => {
         <PresentationDownloadDialog
           open={downloadOpen}
           onClose={() => setDownloadOpen(false)}
-          deck={deck}
-          annotations={annotations}
+          getDeck={() => deckRef.current ?? deck!}
+          getAnnotations={() => annotationsRef.current ?? annotations!}
+          getPlayVariants={() => playVariantsRef.current}
           currentSlideId={activeId ?? undefined}
           prefillSlideIds={selectedSlideIds.length > 0 ? selectedSlideIds : undefined}
         />

@@ -1,9 +1,11 @@
 import JSZip from 'jszip';
 
-/** Browser-taugliches PPTX: eine PNG pro Folie (inkl. erweiterter Höhe). */
+/** Browser-PPTX (PNG-Folien), kompatibel mit PowerPoint / Keynote. */
 
 const EMU = 914400;
-const BASE_CX = Math.round(13.333 * EMU); // 16:9 Breite (Zoll)
+/** 16:9 Breite in Zoll (13,333″). */
+const SLIDE_CX = 12192000;
+const SLIDE_CY_16_9 = 6858000;
 
 function xmlEscape(text: string): string {
   return String(text || '')
@@ -13,24 +15,30 @@ function xmlEscape(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function notesParagraphs(text: string): string {
-  const lines = String(text || '').split('\n').slice(0, 120);
-  if (!lines.length) return paragraph(' ', 14, false);
-  return lines.map((line, i) => paragraph(line || ' ', 14, false, i > 0)).join('');
-}
+const THEME_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Office Theme">
+<a:themeElements>
+<a:clrScheme name="Office"><a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="44546A"/></a:dk2><a:lt2><a:srgbClr val="E7E6E6"/></a:lt2><a:accent1><a:srgbClr val="4472C4"/></a:accent1><a:accent2><a:srgbClr val="ED7D31"/></a:accent2><a:accent3><a:srgbClr val="A5A5A5"/></a:accent3><a:accent4><a:srgbClr val="FFC000"/></a:accent4><a:accent5><a:srgbClr val="5B9BD5"/></a:accent5><a:accent6><a:srgbClr val="70AD47"/></a:accent6><a:hlink><a:srgbClr val="0563C1"/></a:hlink><a:folHlink><a:srgbClr val="954F72"/></a:folHlink></a:clrScheme>
+<a:fontScheme name="Office"><a:majorFont><a:latin typeface="Calibri Light"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme>
+<a:fmtScheme name="Office"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst><a:lnStyleLst><a:ln w="9525"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle/></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme>
+</a:themeElements>
+<a:objectDefaults/><a:extraClrSchemeLst/>
+</a:theme>`;
 
-function paragraph(text: string, sizePt: number, bold: boolean, extraP = false): string {
-  const sz = Math.round(sizePt * 100);
-  const b = bold ? ' b="1"' : '';
-  const t = xmlEscape(text);
-  return (
-    `<a:p>${extraP ? '<a:pPr/>' : ''}` +
-    `<a:r><a:rPr lang="de-DE" sz="${sz}"${b} dirty="0"/>` +
-    `<a:t>${t}</a:t></a:r></a:p>`
-  );
-}
+const SLIDE_MASTER_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+<p:cSld><p:bg><p:bgRef idx="1001"><a:schemeClr val="bg1"/></p:bgRef></p:bg><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld>
+<p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
+<p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst>
+</p:sldMaster>`;
 
-function slidePictureXml(cx: number, cy: number, picId: number, imageRelId: number): string {
+const SLIDE_LAYOUT_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank" preserve="1">
+<p:cSld name="Blank"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld>
+<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
+</p:sldLayout>`;
+
+function slidePictureXml(cx: number, cy: number, picId: number): string {
   return (
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ` +
@@ -41,9 +49,9 @@ function slidePictureXml(cx: number, cy: number, picId: number, imageRelId: numb
     `<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/>` +
     `<a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>` +
     `<p:pic>` +
-    `<p:nvPicPr><p:cNvPr id="${picId}" name="Folie"/>` +
+    `<p:nvPicPr><p:cNvPr id="${picId}" name="Bild"/>` +
     `<p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>` +
-    `<p:blipFill><a:blip r:embed="rId${imageRelId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>` +
+    `<p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>` +
     `<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>` +
     `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>` +
     `</p:pic>` +
@@ -52,7 +60,13 @@ function slidePictureXml(cx: number, cy: number, picId: number, imageRelId: numb
 }
 
 function notesSlideXml(body: string): string {
-  const inner = notesParagraphs(body.slice(0, 8000));
+  const lines = String(body || '').split('\n').slice(0, 80);
+  const paras = (lines.length ? lines : [' '])
+    .map((line, i) => {
+      const t = xmlEscape(line || ' ');
+      return `<a:p>${i > 0 ? '<a:pPr/>' : ''}<a:r><a:rPr lang="de-DE" sz="1400"/><a:t>${t}</a:t></a:r></a:p>`;
+    })
+    .join('');
   return (
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<p:notes xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ` +
@@ -60,14 +74,11 @@ function notesSlideXml(body: string): string {
     `xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">` +
     `<p:cSld><p:spTree>` +
     `<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>` +
-    `<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/>` +
-    `<a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>` +
-    `<p:sp>` +
-    `<p:nvSpPr><p:cNvPr id="2" name="Notizen"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>` +
+    `<p:grpSpPr/>` +
+    `<p:sp><p:nvSpPr><p:cNvPr id="2" name="Notizen"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>` +
     `<p:spPr><a:xfrm><a:off x="360000" y="360000"/><a:ext cx="6400800" cy="7808400"/></a:xfrm>` +
     `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>` +
-    `<p:txBody><a:bodyPr wrap="square"/><a:lstStyle/>${inner}</p:txBody>` +
-    `</p:sp>` +
+    `<p:txBody><a:bodyPr wrap="square"/><a:lstStyle/>${paras}</p:txBody></p:sp>` +
     `</p:spTree></p:cSld></p:notes>`
   );
 }
@@ -80,28 +91,28 @@ export type ImagePptxSlideInput = {
 };
 
 export async function buildImagePptxBlob(slides: ImagePptxSlideInput[]): Promise<Blob> {
-  const list = slides.length ? slides : [];
-  if (!list.length) throw new Error('Keine Folien für PPTX');
+  if (!slides.length) throw new Error('Keine Folien für PPTX');
 
-  let maxCy = Math.round((7.5 * EMU) as number);
-  for (const s of list) {
+  let slideCy = SLIDE_CY_16_9;
+  for (const s of slides) {
     const aspect = s.heightPx / Math.max(1, s.widthPx);
-    const cy = Math.round(BASE_CX * aspect);
-    if (cy > maxCy) maxCy = cy;
+    slideCy = Math.max(slideCy, Math.round(SLIDE_CX * aspect));
   }
 
   const zip = new JSZip();
-  const slideCount = list.length;
-  const hasNotes = list.some((s) => (s.notes || '').trim());
+  const n = slides.length;
 
-  const overrides: string[] = [
+  const overrides = [
     `<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>`,
+    `<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>`,
+    `<Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>`,
+    `<Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>`,
   ];
-  for (let i = 0; i < slideCount; i++) {
+  for (let i = 0; i < n; i++) {
     overrides.push(
       `<Override PartName="/ppt/slides/slide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`,
     );
-    if (hasNotes) {
+    if ((slides[i].notes || '').trim()) {
       overrides.push(
         `<Override PartName="/ppt/notesSlides/notesSlide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml"/>`,
       );
@@ -127,57 +138,82 @@ export async function buildImagePptxBlob(slides: ImagePptxSlideInput[]): Promise
       `</Relationships>`,
   );
 
-  const sldIdLst = list.map((_, i) => `<p:sldId id="${256 + i}" r:id="rId${i + 1}"/>`).join('');
+  zip.file('ppt/theme/theme1.xml', THEME_XML);
+  zip.file('ppt/slideMasters/slideMaster1.xml', SLIDE_MASTER_XML);
+  zip.file(
+    'ppt/slideMasters/_rels/slideMaster1.xml.rels',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+      `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+      `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>` +
+      `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>` +
+      `</Relationships>`,
+  );
+  zip.file('ppt/slideLayouts/slideLayout1.xml', SLIDE_LAYOUT_XML);
+  zip.file(
+    'ppt/slideLayouts/_rels/slideLayout1.xml.rels',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+      `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+      `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>` +
+      `</Relationships>`,
+  );
+
+  const presSlideRels = Array.from(
+    { length: n },
+    (_, i) =>
+      `<Relationship Id="rId${i + 2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i + 1}.xml"/>`,
+  ).join('');
+  zip.file(
+    'ppt/_rels/presentation.xml.rels',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+      `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+      `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>` +
+      presSlideRels +
+      `</Relationships>`,
+  );
+
+  const sldIdLst = slides
+    .map((_, i) => `<p:sldId id="${256 + i}" r:id="rId${i + 2}"/>`)
+    .join('');
   zip.file(
     'ppt/presentation.xml',
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
       `<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ` +
       `xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ` +
       `xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">` +
+      `<p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>` +
       `<p:sldIdLst>${sldIdLst}</p:sldIdLst>` +
-      `<p:sldSz cx="${BASE_CX}" cy="${maxCy}"/>` +
+      `<p:sldSz cx="${SLIDE_CX}" cy="${slideCy}"/>` +
       `<p:notesSz cx="6858000" cy="9144000"/>` +
       `</p:presentation>`,
   );
 
-  const presRels = list
-    .map(
-      (_, i) =>
-        `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i + 1}.xml"/>`,
-    )
-    .join('');
-  zip.file(
-    'ppt/_rels/presentation.xml.rels',
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-      `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${presRels}</Relationships>`,
-  );
-
-  for (let i = 0; i < list.length; i++) {
-    const slide = list[i];
+  for (let i = 0; i < n; i++) {
+    const slide = slides[i];
     const imageName = `image${i + 1}.png`;
     const aspect = slide.heightPx / Math.max(1, slide.widthPx);
-    const imgCy = Math.round(BASE_CX * aspect);
+    const imgCy = Math.round(SLIDE_CX * aspect);
 
     zip.file(`ppt/media/${imageName}`, slide.png);
 
-    const slideRels: string[] = [
-      `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${imageName}"/>`,
+    const rels = [
+      `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>`,
+      `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${imageName}"/>`,
     ];
-    if (hasNotes && (slide.notes || '').trim()) {
-      slideRels.push(
-        `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide${i + 1}.xml"/>`,
+    const notesText = (slide.notes || '').trim();
+    if (notesText) {
+      rels.push(
+        `<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide${i + 1}.xml"/>`,
       );
     }
     zip.file(
       `ppt/slides/_rels/slide${i + 1}.xml.rels`,
       `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-        `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${slideRels.join('')}</Relationships>`,
+        `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels.join('')}</Relationships>`,
     );
+    zip.file(`ppt/slides/slide${i + 1}.xml`, slidePictureXml(SLIDE_CX, imgCy, 4));
 
-    zip.file(`ppt/slides/slide${i + 1}.xml`, slidePictureXml(BASE_CX, imgCy, 4, 1));
-
-    if (hasNotes && (slide.notes || '').trim()) {
-      zip.file(`ppt/notesSlides/notesSlide${i + 1}.xml`, notesSlideXml(slide.notes || ''));
+    if (notesText) {
+      zip.file(`ppt/notesSlides/notesSlide${i + 1}.xml`, notesSlideXml(notesText));
       zip.file(
         `ppt/notesSlides/_rels/notesSlide${i + 1}.xml.rels`,
         `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
@@ -188,7 +224,10 @@ export async function buildImagePptxBlob(slides: ImagePptxSlideInput[]): Promise
     }
   }
 
-  return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+  return zip.generateAsync({
+    type: 'blob',
+    mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  });
 }
 
 export function canvasToPngBytes(canvas: HTMLCanvasElement): Promise<Uint8Array> {

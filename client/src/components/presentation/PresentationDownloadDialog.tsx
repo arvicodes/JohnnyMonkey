@@ -19,6 +19,7 @@ import {
   type PresentationAnnotations,
   type PresentationDeck,
 } from '../../lib/presentationDeck';
+import type { PresentationPlayVariants } from '../../lib/presentationPlayVariants';
 import {
   runPresentationDownload,
   type PresentationDownloadRequest,
@@ -28,8 +29,9 @@ import {
 export type PresentationDownloadDialogProps = {
   open: boolean;
   onClose: () => void;
-  deck: PresentationDeck;
-  annotations: PresentationAnnotations;
+  getDeck: () => PresentationDeck;
+  getAnnotations: () => PresentationAnnotations;
+  getPlayVariants?: () => PresentationPlayVariants | null;
   currentSlideId?: string;
   /** Vorauswahl aus Filmstreifen (Mehrfachauswahl). */
   prefillSlideIds?: string[];
@@ -54,12 +56,14 @@ function slideLabel(slide: { titleHtml?: string; title?: string }, index: number
 export default function PresentationDownloadDialog({
   open,
   onClose,
-  deck,
-  annotations,
+  getDeck,
+  getAnnotations,
+  getPlayVariants,
   currentSlideId,
   prefillSlideIds,
 }: PresentationDownloadDialogProps) {
-  const sortedSlides = useMemo(() => sortSlides(deck.slides || []), [deck.slides]);
+  const deck = getDeck();
+  const sortedSlides = useMemo(() => sortSlides(deck.slides || []), [deck.slides, open]);
   const allIds = useMemo(() => sortedSlides.map((s) => s.id), [sortedSlides]);
 
   const [pickedIds, setPickedIds] = useState<string[]>([]);
@@ -71,8 +75,16 @@ export default function PresentationDownloadDialog({
   const [error, setError] = useState<string | null>(null);
 
   const resetOnOpen = () => {
-    const validPrefill = (prefillSlideIds || []).filter((id) => allIds.includes(id));
-    setPickedIds(validPrefill.length > 0 ? validPrefill : [...allIds]);
+    const freshDeck = getDeck();
+    const ids = sortSlides(freshDeck.slides || []).map((s) => s.id);
+    const validPrefill = (prefillSlideIds || []).filter((id) => ids.includes(id));
+    if (validPrefill.length > 0) {
+      setPickedIds(validPrefill);
+    } else if (currentSlideId && ids.includes(currentSlideId)) {
+      setPickedIds([currentSlideId]);
+    } else {
+      setPickedIds([...ids]);
+    }
     setFormats({ pdf: true, pptx: true });
     setContent(defaultContent());
     setIncludeLessonStrokes(true);
@@ -95,12 +107,15 @@ export default function PresentationDownloadDialog({
     setBusy(true);
     setError(null);
     setProgress({ phase: 'Start…' });
-    const ordered = sortedSlides.filter((s) => pickedIds.includes(s.id)).map((s) => s.id);
+    const liveDeck = getDeck();
+    const ordered = sortSlides(liveDeck.slides || [])
+      .filter((s) => pickedIds.includes(s.id))
+      .map((s) => s.id);
     try {
       await new Promise<void>((r) => requestAnimationFrame(() => r()));
       await runPresentationDownload(
-        deck,
-        annotations,
+        liveDeck,
+        getAnnotations(),
         {
           slideIds: ordered,
           formats,
@@ -108,6 +123,7 @@ export default function PresentationDownloadDialog({
           includeLessonStrokes,
         },
         setProgress,
+        getPlayVariants?.() ?? null,
       );
       onClose();
     } catch (e) {
@@ -129,7 +145,8 @@ export default function PresentationDownloadDialog({
       <DialogTitle sx={{ pb: 0.5 }}>Download</DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-          Erweiterte Folien, Bilder und Notizen wie im Editor. Einblendungen im gewählten Zustand.
+          Exportiert genau die angehakten Folien aus dem Editor (nicht den SuS-Stand bis NOW).
+          Dateiname enthält die Foliennummern, z.&nbsp;B. <em>_Folie-5.pdf</em>.
         </Typography>
 
         <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>

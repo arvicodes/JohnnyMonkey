@@ -5,11 +5,13 @@ import {
   PresentationSlide,
   htmlToPlain,
   normalizeDeck,
+  normalizeSlide,
   slideLogicalHeight,
   sortSlides,
   SLIDE_REF_HEIGHT,
   SLIDE_REF_WIDTH,
 } from './presentationDeck';
+import type { PresentationPlayVariants } from './presentationPlayVariants';
 import { getSlideMaxRevealSteps } from './presentationReveal';
 import { captureSlideCanvas, triggerBlobDownload } from './presentationExport';
 import { buildImagePptxBlob, canvasToPngBytes } from './presentationImagePptx';
@@ -49,6 +51,38 @@ function safeFileBase(deck: PresentationDeck): string {
 function pickSlides(deck: PresentationDeck, slideIds: string[]) {
   const wanted = new Set(slideIds);
   return sortSlides(normalizeDeck(deck).slides).filter((s) => wanted.has(s.id));
+}
+
+/** Editor-Ansicht inkl. Play-Variante — nicht SuS/NOW-Stand. */
+export function resolveSlidesForExport(
+  deck: PresentationDeck,
+  slideIds: string[],
+  playVariants?: PresentationPlayVariants | null,
+): PresentationSlide[] {
+  return pickSlides(deck, slideIds).map((slide) => {
+    const overlay = playVariants?.bySlideId[slide.id]?.slide;
+    if (!overlay) return slide;
+    return normalizeSlide({ ...slide, ...overlay, id: slide.id });
+  });
+}
+
+function slideIndicesLabel(deck: PresentationDeck, slideIds: string[]): string {
+  const sorted = sortSlides(normalizeDeck(deck).slides);
+  const nums = slideIds
+    .map((id) => sorted.findIndex((s) => s.id === id) + 1)
+    .filter((n) => n > 0);
+  if (!nums.length) return 'Auswahl';
+  if (nums.length === 1) return `Folie-${nums[0]}`;
+  const min = Math.min(...nums);
+  const max = Math.max(...nums);
+  if (max - min + 1 === nums.length) return `Folien-${min}-${max}`;
+  return `${nums.length}-Folien`;
+}
+
+function buildExportFilename(deck: PresentationDeck, slideIds: string[], ext: string): string {
+  const base = safeFileBase(deck);
+  const part = slideIndicesLabel(deck, slideIds);
+  return `${base}_${part}.${ext}`;
 }
 
 function revealCaptureOptions(
@@ -168,16 +202,16 @@ export async function runPresentationDownload(
   annotations: PresentationAnnotations,
   request: PresentationDownloadRequest,
   onProgress?: (p: PresentationDownloadProgress) => void,
+  playVariants?: PresentationPlayVariants | null,
 ): Promise<void> {
   const { formats, content, slideIds } = request;
   if (!formats.pdf && !formats.pptx) {
     throw new Error('Bitte mindestens ein Format wählen (PDF oder PPTX).');
   }
   if (!slideIds.length) throw new Error('Bitte mindestens eine Folie auswählen.');
-  const slides = pickSlides(deck, slideIds);
+  const slides = resolveSlidesForExport(deck, slideIds, playVariants);
   if (!slides.length) throw new Error('Keine Folien zum Herunterladen.');
 
-  const baseName = safeFileBase(deck);
   const captures = await captureSlides(
     deck,
     slides,
@@ -189,13 +223,13 @@ export async function runPresentationDownload(
 
   if (formats.pdf) {
     onProgress?.({ phase: 'PDF erstellen…' });
-    const blob = await buildPdfDownload(captures, baseName);
-    triggerBlobDownload(blob, `${baseName}.pdf`);
+    const blob = await buildPdfDownload(captures, safeFileBase(deck));
+    triggerBlobDownload(blob, buildExportFilename(deck, slideIds, 'pdf'));
   }
   if (formats.pptx) {
     onProgress?.({ phase: 'PPTX erstellen…' });
     const blob = await buildPptxDownload(captures);
-    triggerBlobDownload(blob, `${baseName}.pptx`);
+    triggerBlobDownload(blob, buildExportFilename(deck, slideIds, 'pptx'));
   }
 }
 
