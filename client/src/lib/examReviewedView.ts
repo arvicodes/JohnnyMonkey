@@ -462,38 +462,37 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       font-family: Arial, sans-serif;
     }
     .jm-grade-block {
-      position: relative;
       display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
       align-items: center;
-      justify-content: center;
-      min-width: 280px;
-      min-height: 110px;
+      justify-content: flex-start;
+      column-gap: 10%;
+      row-gap: 8px;
+      width: 100%;
+      max-width: 100%;
+      min-height: 0;
       margin-bottom: 6px;
+      box-sizing: border-box;
     }
     .jm-grade-signature {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      width: min(380px, 110%);
-      max-height: 120px;
+      flex: 0 1 auto;
+      width: min(280px, 42vw);
+      max-height: 100px;
       height: auto;
       object-fit: contain;
       opacity: 0.92;
-      z-index: 0;
       pointer-events: none;
     }
     .jm-review-result .grade {
-      position: relative;
-      z-index: 1;
+      flex: 0 0 auto;
       font-family: ${EXAM_TEACHER_GRADE_FONT};
       font-size: 2.65rem;
       font-weight: 700;
       color: ${EXAM_TEACHER_GRADE_RED};
-      text-align: center;
-      padding: 4px 16px;
+      text-align: left;
+      padding: 4px 0;
       line-height: 1.1;
-      text-shadow: 0 0 12px rgba(255,255,255,0.85), 0 1px 2px rgba(255,255,255,0.6);
     }
     .jm-review-result .meta {
       margin-top: 6px;
@@ -587,8 +586,8 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   box.className = 'jm-review-result';
   box.innerHTML = `
     <div class="jm-grade-block">
-      <img class="jm-grade-signature" src="${sigUrl}" alt="" />
       <div class="grade">Note ${opts.gradeLabel || '–'}</div>
+      <img class="jm-grade-signature" src="${sigUrl}" alt="" />
     </div>
     <div class="meta">${pointsText}</div>
     ${
