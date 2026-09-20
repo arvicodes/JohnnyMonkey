@@ -14,8 +14,6 @@ import { getSlideMaxRevealSteps } from './presentationReveal';
 import { captureSlideCanvas, triggerBlobDownload } from './presentationExport';
 import { buildImagePptxBlob, canvasToPngBytes } from './presentationImagePptx';
 
-export type PresentationDownloadScope = 'all' | 'current';
-
 export type PresentationDownloadContentOptions = {
   /** Einblendungen im Endzustand (alle Schritte sichtbar). */
   fullReveal: boolean;
@@ -29,8 +27,8 @@ export type PresentationDownloadFormatOptions = {
 };
 
 export type PresentationDownloadRequest = {
-  scope: PresentationDownloadScope;
-  currentSlideId?: string;
+  /** Folien-IDs in Deck-Reihenfolge; mindestens eine. */
+  slideIds: string[];
   formats: PresentationDownloadFormatOptions;
   content: PresentationDownloadContentOptions;
   /** Live-Tinte aus dem Unterricht (Annotationen). */
@@ -48,13 +46,9 @@ function safeFileBase(deck: PresentationDeck): string {
   return raw.replace(/[<>:"/\\|?*]+/g, '_').slice(0, 80) || 'Praesentation';
 }
 
-function pickSlides(deck: PresentationDeck, scope: PresentationDownloadScope, currentSlideId?: string) {
-  const slides = sortSlides(normalizeDeck(deck).slides);
-  if (scope === 'current' && currentSlideId) {
-    const one = slides.find((s) => s.id === currentSlideId);
-    return one ? [one] : [];
-  }
-  return slides;
+function pickSlides(deck: PresentationDeck, slideIds: string[]) {
+  const wanted = new Set(slideIds);
+  return sortSlides(normalizeDeck(deck).slides).filter((s) => wanted.has(s.id));
 }
 
 function revealCaptureOptions(
@@ -174,11 +168,12 @@ export async function runPresentationDownload(
   request: PresentationDownloadRequest,
   onProgress?: (p: PresentationDownloadProgress) => void,
 ): Promise<void> {
-  const { formats, content, scope, currentSlideId } = request;
+  const { formats, content, slideIds } = request;
   if (!formats.pdf && !formats.pptx) {
     throw new Error('Bitte mindestens ein Format wählen (PDF oder PPTX).');
   }
-  const slides = pickSlides(deck, scope, currentSlideId);
+  if (!slideIds.length) throw new Error('Bitte mindestens eine Folie auswählen.');
+  const slides = pickSlides(deck, slideIds);
   if (!slides.length) throw new Error('Keine Folien zum Herunterladen.');
 
   const baseName = safeFileBase(deck);

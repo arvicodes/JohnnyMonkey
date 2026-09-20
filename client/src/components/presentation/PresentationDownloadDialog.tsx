@@ -10,11 +10,15 @@ import {
   FormControlLabel,
   FormGroup,
   LinearProgress,
-  Radio,
-  RadioGroup,
+  Link,
   Typography,
 } from '@mui/material';
-import type { PresentationAnnotations, PresentationDeck } from '../../lib/presentationDeck';
+import {
+  htmlToPlain,
+  sortSlides,
+  type PresentationAnnotations,
+  type PresentationDeck,
+} from '../../lib/presentationDeck';
 import {
   runPresentationDownload,
   type PresentationDownloadRequest,
@@ -27,18 +31,25 @@ export type PresentationDownloadDialogProps = {
   deck: PresentationDeck;
   annotations: PresentationAnnotations;
   currentSlideId?: string;
+  /** Vorauswahl aus Filmstreifen (Mehrfachauswahl). */
+  prefillSlideIds?: string[];
 };
 
-const defaultRequest = (): PresentationDownloadRequest => ({
-  scope: 'all',
-  formats: { pdf: true, pptx: true },
-  content: {
+function defaultContent(): PresentationDownloadRequest['content'] {
+  return {
     fullReveal: true,
     includeImages: true,
     includeSpeakerNotes: true,
-  },
-  includeLessonStrokes: true,
-});
+  };
+}
+
+function slideLabel(slide: { titleHtml?: string; title?: string }, index: number): string {
+  const t =
+    htmlToPlain(slide.titleHtml || '').trim() ||
+    (slide.title || '').trim() ||
+    `Folie ${index + 1}`;
+  return t.length > 56 ? `${t.slice(0, 55)}…` : t;
+}
 
 export default function PresentationDownloadDialog({
   open,
@@ -46,21 +57,33 @@ export default function PresentationDownloadDialog({
   deck,
   annotations,
   currentSlideId,
+  prefillSlideIds,
 }: PresentationDownloadDialogProps) {
-  const [request, setRequest] = useState<PresentationDownloadRequest>(defaultRequest);
+  const sortedSlides = useMemo(() => sortSlides(deck.slides || []), [deck.slides]);
+  const allIds = useMemo(() => sortedSlides.map((s) => s.id), [sortedSlides]);
+
+  const [pickedIds, setPickedIds] = useState<string[]>([]);
+  const [formats, setFormats] = useState({ pdf: true, pptx: true });
+  const [content, setContent] = useState(defaultContent);
+  const [includeLessonStrokes, setIncludeLessonStrokes] = useState(true);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<PresentationDownloadProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const slideCount = useMemo(() => {
-    if (request.scope === 'current' && currentSlideId) return 1;
-    return deck.slides?.length ?? 0;
-  }, [deck.slides, request.scope, currentSlideId]);
-
   const resetOnOpen = () => {
-    setRequest({ ...defaultRequest(), currentSlideId });
+    const validPrefill = (prefillSlideIds || []).filter((id) => allIds.includes(id));
+    setPickedIds(validPrefill.length > 0 ? validPrefill : [...allIds]);
+    setFormats({ pdf: true, pptx: true });
+    setContent(defaultContent());
+    setIncludeLessonStrokes(true);
     setError(null);
     setProgress(null);
+  };
+
+  const toggleSlide = (id: string) => {
+    setPickedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
   };
 
   const handleClose = () => {
@@ -72,11 +95,17 @@ export default function PresentationDownloadDialog({
     setBusy(true);
     setError(null);
     setProgress({ phase: 'Start…' });
+    const ordered = sortedSlides.filter((s) => pickedIds.includes(s.id)).map((s) => s.id);
     try {
       await runPresentationDownload(
         deck,
         annotations,
-        { ...request, currentSlideId },
+        {
+          slideIds: ordered,
+          formats,
+          content,
+          includeLessonStrokes,
+        },
         setProgress,
       );
       onClose();
@@ -96,33 +125,79 @@ export default function PresentationDownloadDialog({
       fullWidth
       TransitionProps={{ onEnter: resetOnOpen }}
     >
-      <DialogTitle sx={{ pb: 0.5 }}>Download …</DialogTitle>
+      <DialogTitle sx={{ pb: 0.5 }}>Download</DialogTitle>
       <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Vollständiger Export inkl. erweiterter Folien (Pfeil nach unten), Bilder und Notizen.
-          Einblendungen werden im gewählten Zustand exportiert.
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          Erweiterte Folien, Bilder und Notizen wie im Editor. Einblendungen im gewählten Zustand.
         </Typography>
 
-        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
-          Umfang
-        </Typography>
-        <RadioGroup
-          row
-          value={request.scope}
-          onChange={(e) =>
-            setRequest((r) => ({ ...r, scope: e.target.value as 'all' | 'current' }))
-          }
+        <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+            Folien ({pickedIds.length}/{sortedSlides.length})
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <Link
+              component="button"
+              type="button"
+              variant="caption"
+              underline="hover"
+              onClick={() => setPickedIds([...allIds])}
+            >
+              Alle
+            </Link>
+            {currentSlideId && allIds.includes(currentSlideId) ? (
+              <Link
+                component="button"
+                type="button"
+                variant="caption"
+                underline="hover"
+                onClick={() => setPickedIds([currentSlideId])}
+              >
+                Aktuelle
+              </Link>
+            ) : null}
+            <Link
+              component="button"
+              type="button"
+              variant="caption"
+              underline="hover"
+              onClick={() => setPickedIds([])}
+            >
+              Keine
+            </Link>
+          </Box>
+        </Box>
+        <Box
+          sx={{
+            maxHeight: 220,
+            overflow: 'auto',
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 1,
+            px: 0.5,
+            py: 0.25,
+            mb: 2,
+          }}
         >
-          <FormControlLabel value="all" control={<Radio size="small" />} label="Alle Folien" />
-          <FormControlLabel
-            value="current"
-            control={<Radio size="small" disabled={!currentSlideId} />}
-            label="Nur aktuelle Folie"
-          />
-        </RadioGroup>
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
-          {slideCount} Folie{slideCount === 1 ? '' : 'n'} ausgewählt
-        </Typography>
+          {sortedSlides.map((slide, idx) => (
+            <FormControlLabel
+              key={slide.id}
+              sx={{ display: 'flex', mx: 0, py: 0.1 }}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={pickedIds.includes(slide.id)}
+                  onChange={() => toggleSlide(slide.id)}
+                />
+              }
+              label={
+                <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                  {idx + 1}. {slideLabel(slide, idx)}
+                </Typography>
+              }
+            />
+          ))}
+        </Box>
 
         <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
           Formate
@@ -132,13 +207,8 @@ export default function PresentationDownloadDialog({
             control={
               <Checkbox
                 size="small"
-                checked={request.formats.pdf}
-                onChange={(e) =>
-                  setRequest((r) => ({
-                    ...r,
-                    formats: { ...r.formats, pdf: e.target.checked },
-                  }))
-                }
+                checked={formats.pdf}
+                onChange={(e) => setFormats((f) => ({ ...f, pdf: e.target.checked }))}
               />
             }
             label="PDF"
@@ -147,13 +217,8 @@ export default function PresentationDownloadDialog({
             control={
               <Checkbox
                 size="small"
-                checked={request.formats.pptx}
-                onChange={(e) =>
-                  setRequest((r) => ({
-                    ...r,
-                    formats: { ...r.formats, pptx: e.target.checked },
-                  }))
-                }
+                checked={formats.pptx}
+                onChange={(e) => setFormats((f) => ({ ...f, pptx: e.target.checked }))}
               />
             }
             label="PPTX"
@@ -168,13 +233,8 @@ export default function PresentationDownloadDialog({
             control={
               <Checkbox
                 size="small"
-                checked={request.content.fullReveal}
-                onChange={(e) =>
-                  setRequest((r) => ({
-                    ...r,
-                    content: { ...r.content, fullReveal: e.target.checked },
-                  }))
-                }
+                checked={content.fullReveal}
+                onChange={(e) => setContent((c) => ({ ...c, fullReveal: e.target.checked }))}
               />
             }
             label="Einblendungen vollständig (Endzustand)"
@@ -183,13 +243,8 @@ export default function PresentationDownloadDialog({
             control={
               <Checkbox
                 size="small"
-                checked={request.content.includeImages}
-                onChange={(e) =>
-                  setRequest((r) => ({
-                    ...r,
-                    content: { ...r.content, includeImages: e.target.checked },
-                  }))
-                }
+                checked={content.includeImages}
+                onChange={(e) => setContent((c) => ({ ...c, includeImages: e.target.checked }))}
               />
             }
             label="Bilder"
@@ -198,28 +253,23 @@ export default function PresentationDownloadDialog({
             control={
               <Checkbox
                 size="small"
-                checked={request.content.includeSpeakerNotes}
+                checked={content.includeSpeakerNotes}
                 onChange={(e) =>
-                  setRequest((r) => ({
-                    ...r,
-                    content: { ...r.content, includeSpeakerNotes: e.target.checked },
-                  }))
+                  setContent((c) => ({ ...c, includeSpeakerNotes: e.target.checked }))
                 }
               />
             }
-            label="Sprechernotizen (PDF: eigene Seite · PPTX: Notizen)"
+            label="Sprechernotizen"
           />
           <FormControlLabel
             control={
               <Checkbox
                 size="small"
-                checked={request.includeLessonStrokes !== false}
-                onChange={(e) =>
-                  setRequest((r) => ({ ...r, includeLessonStrokes: e.target.checked }))
-                }
+                checked={includeLessonStrokes}
+                onChange={(e) => setIncludeLessonStrokes(e.target.checked)}
               />
             }
-            label="Unterrichts-Tinte (Annotationen)"
+            label="Unterrichts-Tinte"
           />
         </FormGroup>
 
@@ -244,7 +294,11 @@ export default function PresentationDownloadDialog({
         <Button onClick={handleClose} disabled={busy}>
           Abbrechen
         </Button>
-        <Button variant="contained" onClick={() => void startDownload()} disabled={busy}>
+        <Button
+          variant="contained"
+          onClick={() => void startDownload()}
+          disabled={busy || pickedIds.length === 0}
+        >
           Herunterladen
         </Button>
       </DialogActions>

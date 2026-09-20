@@ -4389,33 +4389,6 @@ const PresentationEditorPage: React.FC = () => {
 
           <Box sx={{ flex: 1, minWidth: 8 }} />
 
-          <Tooltip title="Download … (PDF / PPTX, alle oder aktuelle Folie)">
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<DownloadIcon sx={{ fontSize: 17 }} />}
-              onClick={() => setDownloadOpen(true)}
-              disabled={!deck?.slides?.length}
-              sx={{
-                flexShrink: 0,
-                height: 30,
-                mr: 0.75,
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: 'none',
-                borderColor: PRES_EDITOR_UI.barBorder,
-                color: PRES_EDITOR_UI.textMuted,
-                '&:hover': {
-                  borderColor: PRES_EDITOR_UI.accent,
-                  color: PRES_EDITOR_UI.accent,
-                  bgcolor: PRES_EDITOR_UI.accentSoft,
-                },
-              }}
-            >
-              Download …
-            </Button>
-          </Tooltip>
-
           <Box
             sx={{
               display: 'flex',
@@ -4428,6 +4401,25 @@ const PresentationEditorPage: React.FC = () => {
               boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
             }}
           >
+            <Tooltip title="Download (PDF / PPTX, Folien wählen)">
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={() => setDownloadOpen(true)}
+                  disabled={!deck?.slides?.length}
+                  sx={{
+                    width: 38,
+                    height: 30,
+                    borderRadius: 0,
+                    color: PRES_EDITOR_UI.textMuted,
+                    '&:hover': { bgcolor: PRES_EDITOR_UI.accentSoft, color: PRES_EDITOR_UI.accent },
+                  }}
+                >
+                  <DownloadIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Divider orientation="vertical" flexItem sx={{ borderColor: PRES_EDITOR_UI.barBorder }} />
             <Tooltip title="Sichern (⌘S): Arbeitsdatei + Kopie nach Backup - Folien">
               <IconButton
                 size="small"
@@ -5685,6 +5677,7 @@ const PresentationEditorPage: React.FC = () => {
           deck={deck}
           annotations={annotations}
           currentSlideId={activeId ?? undefined}
+          prefillSlideIds={selectedSlideIds.length > 0 ? selectedSlideIds : undefined}
         />
       )}
 
