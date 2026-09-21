@@ -1,6 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Box, Button, Tab, Tabs, Typography } from '@mui/material';
+import { Alert, Box, Button, IconButton, Tab, Tabs, Tooltip, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+
+const compactIconBtn = {
+  p: 0,
+  minWidth: 28,
+  width: 28,
+  height: 28,
+};
 import {
   fetchExamVersionLetters,
   normalizeVersionLetter,
@@ -120,19 +127,23 @@ export default function ExamVersionTabsBar({
   if (letters.length <= 1 && !error) {
     if (compact) {
       return (
-        <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-          <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-            Version A
-          </Typography>
-          <Button
-            size="small"
-            variant="outlined"
-            disabled={disabled || busy}
-            onClick={() => void addVersion()}
-            sx={{ minHeight: 28, py: 0, px: 1, fontSize: '0.72rem', textTransform: 'none' }}
-          >
-            + B
-          </Button>
+        <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+          <Tabs value="A" sx={{ minHeight: 32, '& .MuiTab-root': { minHeight: 32, minWidth: 40, py: 0 } }}>
+            <Tab label="A" value="A" disabled={disabled || busy} sx={{ fontWeight: 700 }} />
+          </Tabs>
+          <Tooltip title={`Version ${nextVersionLetter(letters) || ''} hinzufügen`}>
+            <span>
+              <IconButton
+                size="small"
+                disabled={disabled || busy || !nextVersionLetter(letters)}
+                onClick={() => void addVersion()}
+                sx={{ ...compactIconBtn, border: '1px solid', borderColor: 'divider' }}
+                aria-label="Neue Prüfungsversion"
+              >
+                <AddIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
         </Box>
       );
     }
@@ -179,31 +190,56 @@ export default function ExamVersionTabsBar({
             />
           ))}
         </Tabs>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={compact ? undefined : <AddIcon />}
-          disabled={disabled || busy || !nextVersionLetter(letters)}
-          onClick={() => void addVersion()}
-          sx={
-            compact
-              ? { minHeight: 28, py: 0, px: 1, fontSize: '0.72rem', textTransform: 'none' }
-              : undefined
-          }
-        >
-          {compact ? '+' : 'Version'}
-        </Button>
-        {activeLetter !== 'A' && (
+        {compact ? (
+          <Tooltip title={`Version ${nextVersionLetter(letters) || ''} hinzufügen`}>
+            <span>
+              <IconButton
+                size="small"
+                disabled={disabled || busy || !nextVersionLetter(letters)}
+                onClick={() => void addVersion()}
+                sx={{ ...compactIconBtn, border: '1px solid', borderColor: 'divider' }}
+                aria-label="Neue Prüfungsversion"
+              >
+                <AddIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+        ) : (
           <Button
             size="small"
-            color="error"
-            variant={compact ? 'outlined' : 'text'}
-            disabled={disabled || busy}
-            onClick={() => void removeVersion(activeLetter)}
-            sx={compact ? { minHeight: 28, py: 0, px: 1, fontSize: '0.72rem' } : undefined}
+            variant="outlined"
+            startIcon={<AddIcon />}
+            disabled={disabled || busy || !nextVersionLetter(letters)}
+            onClick={() => void addVersion()}
           >
-            {compact ? `× ${activeLetter}` : `${activeLetter} löschen`}
+            Version
           </Button>
+        )}
+        {activeLetter !== 'A' && (
+          compact ? (
+            <Tooltip title={`Version ${activeLetter} entfernen`}>
+              <IconButton
+                size="small"
+                color="error"
+                disabled={disabled || busy}
+                onClick={() => void removeVersion(activeLetter)}
+                sx={compactIconBtn}
+                aria-label={`Version ${activeLetter} löschen`}
+              >
+                <Typography sx={{ fontSize: '0.85rem', fontWeight: 800, lineHeight: 1 }}>×</Typography>
+              </IconButton>
+            </Tooltip>
+          ) : (
+            <Button
+              size="small"
+              color="error"
+              variant="text"
+              disabled={disabled || busy}
+              onClick={() => void removeVersion(activeLetter)}
+            >
+              {activeLetter} löschen
+            </Button>
+          )
         )}
       </Box>
       {error ? (
