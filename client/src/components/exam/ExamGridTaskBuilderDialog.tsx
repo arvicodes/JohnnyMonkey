@@ -223,13 +223,16 @@ export default function ExamGridTaskBuilderDialog({
           disabled={loading || saving}
           onClick={applyDemoToFirst}
           sx={{
+            minWidth: 0,
+            width: 'auto',
             minHeight: 24,
             height: 24,
             py: 0,
-            px: 0.75,
-            fontSize: '0.65rem',
-            lineHeight: 1.2,
+            px: 0.5,
+            fontSize: '0.62rem',
+            lineHeight: 1,
             textTransform: 'none',
+            flexShrink: 0,
           }}
         >
           Beispiel
