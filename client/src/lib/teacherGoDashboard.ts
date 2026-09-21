@@ -4,7 +4,7 @@ import { exitPresentFullscreen } from './presentationPresentFullscreen';
 
 export const TEACHER_GO_DASHBOARD_EVENT = 'johnny:teacher-go-dashboard';
 
-/** Dashboard aus beliebiger Lehrer-Ansicht (Ecke, Taste D, …). */
+/** Lehrer-Übersicht: Route /dashboard, Tab „Reihen“ (Ecke D, Taste D, …). */
 export function requestTeacherDashboard(navigate: NavigateFunction): void {
   exitPresentFullscreen();
   markTeacherWantsDashboard();

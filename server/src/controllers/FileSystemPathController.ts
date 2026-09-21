@@ -3319,6 +3319,11 @@ ${optionsHTML}
         'i',
       );
       const trimmed = String(taskHtml).trim();
+      if (/class=["']exam-shell["']/i.test(trimmed) || /<aside\s+class=["']exam-chrome["']/i.test(trimmed)) {
+        return res.status(400).json({
+          error: 'Ungültiger Inhalt: Nur der Aufgaben-Block wird gespeichert (ohne Prüfungs-Rahmen).',
+        });
+      }
       if (blockRe.test(htmlContent)) {
         htmlContent = htmlContent.replace(blockRe, `${trimmed}\n\n`);
       } else {

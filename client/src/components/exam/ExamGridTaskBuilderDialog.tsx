@@ -15,7 +15,9 @@ import {
   Typography,
   Divider,
   Alert,
+  CircularProgress,
 } from '@mui/material';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import GridOnIcon from '@mui/icons-material/GridOn';
@@ -24,6 +26,8 @@ import {
   buildExamGridTaskHtml,
   createBlankExamGridTask,
   demoNatuerlicheZahlenTask1,
+  extractExamTaskHtml,
+  parseExamGridTaskFromExamHtml,
   type ExamGridTaskSpec,
   type GridQuadrant,
   type GridSubsection,
@@ -130,16 +134,48 @@ export default function ExamGridTaskBuilderDialog({
     taskNumber: initialTaskNumber,
   }));
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const wasOpenRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (open && !wasOpenRef.current) {
-      setSpec({ ...demoNatuerlicheZahlenTask1(), taskNumber: initialTaskNumber });
-      setError(null);
+    if (!open) {
+      wasOpenRef.current = false;
+      return;
     }
-    wasOpenRef.current = open;
-  }, [open, initialTaskNumber]);
+    if (wasOpenRef.current) return;
+    wasOpenRef.current = true;
+    setError(null);
+
+    if (!filePath) {
+      setSpec({ ...demoNatuerlicheZahlenTask1(), taskNumber: initialTaskNumber });
+      return;
+    }
+
+    void (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `/api/file-system-paths/read-html?filePath=${encodeURIComponent(filePath)}`,
+        );
+        if (!res.ok) throw new Error('Prüfungsdatei konnte nicht geladen werden');
+        const html = await res.text();
+        const parsed = parseExamGridTaskFromExamHtml(html, initialTaskNumber);
+        if (parsed) {
+          setSpec(parsed);
+        } else if (extractExamTaskHtml(html, initialTaskNumber)) {
+          setSpec(createBlankExamGridTask(initialTaskNumber));
+        } else {
+          setSpec({ ...demoNatuerlicheZahlenTask1(), taskNumber: initialTaskNumber });
+        }
+      } catch {
+        setSpec({ ...demoNatuerlicheZahlenTask1(), taskNumber: initialTaskNumber });
+        setError('Gespeicherte Aufgabe konnte nicht geladen werden — Demo-Vorlage angezeigt.');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [open, filePath, initialTaskNumber]);
 
   const built = useMemo(() => buildExamGridTaskHtml(spec), [spec]);
 
@@ -247,9 +283,27 @@ export default function ExamGridTaskBuilderDialog({
         },
       }}
     >
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0, flexWrap: 'wrap' }}>
         <GridOnIcon color="primary" />
-        Raster-Aufgabe (2×2) erstellen
+        <Typography component="span" variant="h6" sx={{ flex: 1, fontSize: '1.1rem' }}>
+          Raster-Aufgabe (2×2) bearbeiten
+        </Typography>
+        {filePath ? (
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<OpenInNewIcon />}
+            onClick={() =>
+              window.open(
+                `/api/file-system-paths/read-html?filePath=${encodeURIComponent(filePath)}`,
+                '_blank',
+                'noopener,noreferrer',
+              )
+            }
+          >
+            Prüfung öffnen (Header &amp; Leiste)
+          </Button>
+        ) : null}
       </DialogTitle>
       <DialogContent
         dividers

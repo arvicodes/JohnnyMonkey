@@ -354,8 +354,11 @@ export function buildExamGridTaskHtml(spec: ExamGridTaskSpec): {
     byQ[sub.quadrant].push(built.html);
     allFields.push(...built.fields);
     built.fields.forEach((f, i) => {
-      const label = `${sub.letter}${sub.kind === 'round-lines' || sub.kind === 'bullet-blanks' ? String.fromCharCode(97 + i) : ''})`;
-      solutionLines.push(`${label} ${f.solutionHtml}`);
+      const subLabel =
+        sub.kind === 'round-lines' || sub.kind === 'bullet-blanks'
+          ? `${sub.letter} ${String.fromCharCode(97 + i)})`
+          : `${sub.letter})`;
+      solutionLines.push(`${subLabel} ${f.solutionHtml}`);
     });
   }
 
@@ -397,4 +400,192 @@ ${solution}
   });
 
   return { taskHtml, correctAnswers, solutionLines };
+}
+
+const TASK_BLOCK_END =
+  '(?=<!-- Aufgabe \\d|<div class="submit-section">|<div class="footer">|$)';
+
+export function extractExamTaskHtml(fullHtml: string, taskNumber: number): string | null {
+  const re = new RegExp(
+    `<!-- Aufgabe ${taskNumber}\\s*(?::[^>]*)?\\s*-->[\\s\\S]*?${TASK_BLOCK_END}`,
+    'i',
+  );
+  const m = fullHtml.match(re);
+  return m ? m[0] : null;
+}
+
+export function extractCorrectAnswersMap(fullHtml: string): Record<string, string[]> {
+  const block = fullHtml.match(/const correctAnswers = \{([\s\S]*?)\};/);
+  if (!block) return {};
+  const out: Record<string, string[]> = {};
+  const entryRe = /([a-zA-Z]\w*)\s*:\s*\[([^\]]*)\]/g;
+  let em: RegExpExecArray | null;
+  while ((em = entryRe.exec(block[1])) !== null) {
+    const key = em[1];
+    const inner = em[2];
+    const vals = inner
+      .split(',')
+      .map((s) =>
+        s
+          .trim()
+          .replace(/^'/, '')
+          .replace(/'$/, '')
+          .replace(/\\'/g, "'")
+          .replace(/\\\\/g, '\\'),
+      )
+      .filter((v) => v.length > 0);
+    out[key] = vals;
+  }
+  return out;
+}
+
+function answersToSolutionField(answers: Record<string, string[]>, id: string): string {
+  const vals = answers[id] || [];
+  if (!vals.length) return '';
+  const seen = new Set<string>();
+  const manual: string[] = [];
+  for (const v of vals) {
+    const t = v.trim();
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    manual.push(t);
+  }
+  return manual.join(' / ');
+}
+
+function parseSubTitle(subEl: Element): { letter: string; title: string } {
+  const titleEl = subEl.querySelector('.exam-subsection-title');
+  if (!titleEl) return { letter: 'A', title: '' };
+  const labelEl = titleEl.querySelector('.item-label');
+  const labelText = (labelEl?.textContent || 'A)').trim();
+  const letter = labelText.replace(/\)\s*$/, '').trim() || 'A';
+  let title = (titleEl.textContent || '').trim();
+  if (labelText) title = title.replace(labelText, '').trim();
+  return { letter, title };
+}
+
+function parseSubsection(
+  subEl: Element,
+  quadrant: GridQuadrant,
+  answers: Record<string, string[]>,
+): GridSubsection {
+  const { letter, title } = parseSubTitle(subEl);
+  const id = `sub-${letter}-${quadrant}-${Math.random().toString(36).slice(2, 7)}`;
+
+  const roundLines = subEl.querySelectorAll('.exam-round-line');
+  if (roundLines.length > 0) {
+    const lines = Array.from(roundLines).map((line) => {
+      const input = line.querySelector('input');
+      const idAttr = input?.id || '';
+      const spans = line.querySelectorAll('span');
+      const text = spans[0]?.textContent?.trim() || '';
+      return { text, solution: answersToSolutionField(answers, idAttr) };
+    });
+    return { id, letter, title, quadrant, kind: 'round-lines', lines };
+  }
+
+  const compareRows = subEl.querySelectorAll('.item.input-group');
+  const hasCompare = Array.from(compareRows).some((r) => r.querySelector('.compare-choice'));
+  if (hasCompare) {
+    const rows = Array.from(compareRows)
+      .filter((r) => r.querySelector('.compare-choice'))
+      .map((row) => {
+        const spans = row.querySelectorAll(':scope > span:not(.compare-choice)');
+        const left = spans[0]?.textContent?.trim() || '';
+        const right = spans[1]?.textContent?.trim() || '';
+        const radio = row.querySelector('.compare-choice input[type="radio"]') as HTMLInputElement | null;
+        const name = radio?.name || '';
+        const raw = answers[name]?.[0] || radio?.value || '<';
+        const solution = (raw === '>' || raw === '=' ? raw : '<') as '<' | '>' | '=';
+        return { left, right, solution };
+      });
+    return { id, letter, title, quadrant, kind: 'compare', rows };
+  }
+
+  const bulletList = subEl.querySelector('.exam-grid-blank-list');
+  if (bulletList) {
+    const items = Array.from(bulletList.querySelectorAll('li')).map((li) => {
+      const input = li.querySelector('input');
+      const idAttr = input?.id || '';
+      const clone = li.cloneNode(true) as Element;
+      clone.querySelectorAll('input').forEach((inp) => inp.remove());
+      const text = (clone.textContent || '').trim();
+      return { text, solution: answersToSolutionField(answers, idAttr) };
+    });
+    return { id, letter, title, quadrant, kind: 'bullet-blanks', items };
+  }
+
+  const cloze = subEl.querySelector('.exam-cloze-line');
+  if (cloze) {
+    const solutions: string[] = [];
+    const parts: string[] = [];
+    cloze.childNodes.forEach((node) => {
+      if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName === 'INPUT') {
+        const inp = node as HTMLInputElement;
+        solutions.push(answersToSolutionField(answers, inp.id));
+        parts.push('___');
+      } else {
+        parts.push(node.textContent || '');
+      }
+    });
+    return {
+      id,
+      letter,
+      title,
+      quadrant,
+      kind: 'cloze',
+      template: parts.join('').trim(),
+      solutions,
+    };
+  }
+
+  const fullWidth = subEl.querySelector('.item.input-group.full-width');
+  if (fullWidth) {
+    const input = fullWidth.querySelector('input');
+    const idAttr = input?.id || '';
+    const p = fullWidth.querySelector('p');
+    const prompt = (p?.textContent || '').trim();
+    const solution = answersToSolutionField(answers, idAttr);
+    if (prompt && /[\d,;]/.test(prompt) && prompt.split(/[,;]/).length >= 2) {
+      return { id, letter, title, quadrant, kind: 'sort', given: prompt, solution };
+    }
+    return { id, letter, title, quadrant, kind: 'one-line', prompt, solution };
+  }
+
+  return { id, letter, title, quadrant, kind: 'one-line', prompt: '', solution: '' };
+}
+
+/** Liest eine gespeicherte Raster-Aufgabe aus der vollständigen Prüfungs-HTML. */
+export function parseExamGridTaskFromExamHtml(fullHtml: string, taskNumber: number): ExamGridTaskSpec | null {
+  const taskHtml = extractExamTaskHtml(fullHtml, taskNumber);
+  if (!taskHtml || !taskHtml.includes('exam-task-grid')) return null;
+
+  const answers = extractCorrectAnswersMap(fullHtml);
+  const doc = new DOMParser().parseFromString(taskHtml, 'text/html');
+
+  const pointsMatch = taskHtml.match(/\((\d+)\s*Punkte\)/i);
+  const points = pointsMatch ? parseInt(pointsMatch[1], 10) || 5 : 5;
+
+  let afbLevel: 1 | 2 | 3 = 1;
+  const afbEl = doc.querySelector('.afb-badge.afb-3, .afb-badge.afb-2, .afb-badge.afb-1');
+  if (afbEl?.classList.contains('afb-3')) afbLevel = 3;
+  else if (afbEl?.classList.contains('afb-2')) afbLevel = 2;
+
+  const grid = doc.querySelector('.exam-task-grid');
+  if (!grid) return null;
+
+  const cells = grid.querySelectorAll('.exam-task-grid-cell');
+  const quadrants: GridQuadrant[] = ['tl', 'tr', 'bl', 'br'];
+  const subsections: GridSubsection[] = [];
+
+  cells.forEach((cell, idx) => {
+    const q = quadrants[idx] || 'tl';
+    cell.querySelectorAll('.exam-subsection').forEach((subEl) => {
+      subsections.push(parseSubsection(subEl, q, answers));
+    });
+  });
+
+  if (!subsections.length) return null;
+
+  return { taskNumber, points, afbLevel, subsections };
 }

@@ -70,8 +70,8 @@ export default function TeacherCornerNavControls({ onDashboard }: TeacherCornerN
       <IconButton
         size="small"
         onClick={onDashboard}
-        aria-label="Zum Dashboard (D)"
-        title="Zum Dashboard (D)"
+        aria-label="Reihen (D)"
+        title="Reihen (D)"
         data-teacher-fab="dashboard"
         sx={btnSx}
       >

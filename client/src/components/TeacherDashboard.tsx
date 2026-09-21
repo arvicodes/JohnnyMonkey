@@ -15599,6 +15599,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     lessonBoxDraftRef.current = null;
     setLessonBoxEdit(null);
     setLessonPlanViewMode('create');
+    setMainTabValue(0); // Dashboard = Tab „Reihen“
   }, []);
 
   const handleCloseLessonPage = () => {
