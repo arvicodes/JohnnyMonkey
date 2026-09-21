@@ -1231,30 +1231,50 @@
     <!-- Aufgabe 1 -->
     <div class="task">
         <div class="task-header">
-            <div class="task-number">Aufgabe 1 <span style="font-size: 11px; color: #666; font-weight: normal;">(… Punkte)</span></div>
+            <div class="task-number">Aufgabe 1 <span style="font-size: 11px; color: #666; font-weight: normal;">(15 Punkte)</span></div>
             <div class="task-meta teacher-only">
                 <span class="afb-badge afb-1">AFB I</span>
-                <div class="points">… Punkte</div>
+                <div class="points">15 Punkte</div>
             </div>
         </div>
         <div class="task-content">
-            <p><strong>Hier</strong> die Aufgaben eintragen.</p>
-            <div class="item input-group full-width">
-                <label><span class="item-label">a)</span></label>
-                <input type="text" id="a1a" class="blank-wide" placeholder="Antwort" autocomplete="off">
+
+            <div class="exam-task-grid">
+                <div class="exam-task-grid-cell"><div class="exam-subsection"><div class="exam-subsection-title"><span class="item-label">A)</span> Runde die Zahlen:</div><div class="exam-round-line item input-group"><span>66666 auf Hunderter =</span><input type="text" id="a1a" class="blank-wide" autocomplete="off"></div><div class="exam-round-line item input-group"><span>66666 auf Tausender =</span><input type="text" id="a1b" class="blank-wide" autocomplete="off"></div><div class="exam-round-line item input-group"><span>66666 auf Zehntausender =</span><input type="text" id="a1c" class="blank-wide" autocomplete="off"></div></div></div>
+                <div class="exam-task-grid-cell"><div class="exam-subsection"><div class="exam-subsection-title"><span class="item-label">B)</span> Setze das richtige Vergleichszeichen ein:</div><div class="item input-group"><span>3 469</span><span class="compare-choice">
+<label><input type="radio" name="a1d" value="<"> &lt;</label>
+<label><input type="radio" name="a1d" value=">"> &gt;</label>
+<label><input type="radio" name="a1d" value="="> =</label>
+</span><span>34 911</span></div><div class="item input-group"><span>12 345</span><span class="compare-choice">
+<label><input type="radio" name="a1e" value="<"> &lt;</label>
+<label><input type="radio" name="a1e" value=">"> &gt;</label>
+<label><input type="radio" name="a1e" value="="> =</label>
+</span><span>12 345</span></div></div><div class="exam-subsection"><div class="exam-subsection-title"><span class="item-label">C)</span> Schreibe die Zahlen von der kleinsten zur größten auf:</div><div class="item input-group full-width"><p style="margin:0 0 6px;">391, 589, 389, 399</p><input type="text" id="a1f" class="blank-wide" autocomplete="off"></div></div></div>
+                <div class="exam-task-grid-cell"><div class="exam-subsection"><div class="exam-subsection-title"><span class="item-label">D)</span> Schreibe die Zahl in Worten:</div><div class="item input-group full-width"><p style="margin:0 0 6px;">13 007</p><input type="text" id="a1g" class="blank-wide" autocomplete="off"></div></div><div class="exam-subsection"><div class="exam-subsection-title"><span class="item-label">E)</span> Schreibe als Zahl:</div><div class="item input-group full-width"><p style="margin:0 0 6px;">vierhundertfünfundzwanzigtausenddrei</p><input type="text" id="a1h" class="blank-wide" autocomplete="off"></div></div></div>
+                <div class="exam-task-grid-cell"><div class="exam-subsection"><div class="exam-subsection-title"><span class="item-label">F)</span> Nenne:</div><ul class="exam-grid-blank-list"><li>Die kleinste natürliche Zahl: <input type="text" id="a1i" class="blank-tiny" autocomplete="off"></li><li>Die größte dreistellige Zahl: <input type="text" id="a1j" class="blank-tiny" autocomplete="off"></li></ul></div><div class="exam-subsection"><div class="exam-subsection-title"><span class="item-label">G)</span> Vervollständige die Lücken:</div><div class="exam-cloze-line">Die Zahl 13 ist zusammengesetzt aus den beiden <input type="text" id="a1k" class="blank-tiny" autocomplete="off"> 1 und 3. Die Zahl 17 ist eine <input type="text" id="a1l" class="blank-tiny" autocomplete="off"> Zahl.</div></div></div>
             </div>
+
             <div class="solution">
                 <h4>Musterlösung:</h4>
-                <p>a) …</p>
+                <p>Aa) 66666 auf Hunderter = <strong>66700 / 66 700</strong></p>
+                <p>Ab) 66666 auf Tausender = <strong>67000 / 67 000</strong></p>
+                <p>Ac) 66666 auf Zehntausender = <strong>70000 / 70 000</strong></p>
+                <p>B) 3 469 <strong><</strong> 34 911</p>
+                <p>B) 12 345 <strong>=</strong> 12 345</p>
+                <p>C) <strong>389, 391, 399, 589 / 389,391,399,589 / 389; 391; 399; 589 / 389 391 399 589</strong></p>
+                <p>D) <strong>dreizehntausendsieben</strong></p>
+                <p>E) <strong>425003 / 425 003</strong></p>
+                <p>Fa) Die kleinste natürliche Zahl: <strong>1</strong></p>
+                <p>Fb) Die größte dreistellige Zahl: <strong>999</strong></p>
+                <p>G) <strong>Ziffern / Ziffer</strong></p>
+                <p>G) <strong>Primzahl / primzahl / Prim</strong></p>
             </div>
         </div>
     </div>
 
-
-
-        <div class="footer">
+<div class="footer">
         <div class="footer-note">
-            <div class="footer-points" id="pointsDisplay">Du hast <span id="achievedPoints">___</span> von <span id="totalPoints">…</span> Punkten erreicht.</div>
+            <div class="footer-points" id="pointsDisplay">Du hast <span id="achievedPoints">___</span> von <span id="totalPoints">15</span> Punkten erreicht.</div>
             <div class="footer-note-line"><strong>Note:</strong> <span id="noteText">___</span> / <span id="noteNumber">___</span></div>
             <div class="footer-points teacher-only" id="averageDisplay" style="margin-top: 10px; font-size: 13px; color: #666; display: none;">Notenschnitt: <span id="averageNote">-</span></div>
         </div>
@@ -1964,7 +1984,18 @@
         }
 
         const correctAnswers = {
-            a1a: [''],
+            a1a: ['66700', '66 700'],
+            a1b: ['67000', '67 000'],
+            a1c: ['70000', '70 000'],
+            a1d: ['<'],
+            a1e: ['='],
+            a1f: ['389, 391, 399, 589', '389,391,399,589', '389; 391; 399; 589', '389 391 399 589'],
+            a1g: ['dreizehntausendsieben'],
+            a1h: ['425003', '425 003'],
+            a1i: ['1'],
+            a1j: ['999'],
+            a1k: ['Ziffern', 'Ziffer'],
+            a1l: ['Primzahl', 'primzahl', 'Prim']
         };
 
         function getAnswerValue(id) {
@@ -2024,7 +2055,7 @@
                     achievedPoints += 1;
                 }
             });
-            return { achieved: achievedPoints, total: 14 };
+            return { achieved: achievedPoints, total: 15 };
         }
 
         // Funktion zur Aktualisierung der Anzeige

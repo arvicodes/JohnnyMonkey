@@ -15531,12 +15531,78 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     }
   };
 
-  const handleCloseLessonPage = () => {
+  const dismissAllTeacherDashboardModals = useCallback(() => {
+    setScheduleDialogOpen(false);
+    setProfileDialogOpen(false);
+    setOpenNewGroupDialog(false);
+    setOpenAddStudentsDialog(false);
+    setPassiveStudentsDialogOpen(false);
+    setDeleteDialogOpen(false);
+    setConfirmDelete1(false);
+    setConfirmDelete2(false);
+    setEditDialogOpen(false);
+    setGradingModalOpen(false);
+    setGradesModalOpen(false);
+    setOpenNewDeckDialog(false);
+    setDeleteModalOpen(false);
+    setRemoveStudentDialogOpen(false);
+    setConfirmRemoveStudent1(false);
+    setConfirmRemoveStudent2(false);
+    setShowFlashcardModal(false);
+    setShowSubmissionViewer(false);
+    setShowKACorrectionMode(false);
+    setShowTeacherMessageBox(false);
+    setShowRiddleOverview(false);
+    setShowCarnivalGames(false);
+    setShowMovementGames(false);
+    setShowMovementStory(false);
+    setShowMovementRandomCards(false);
+    setShowMovementNumberBody(false);
+    setShowMovementShoulderTaxi(false);
+    setShowMovementLetterFactory(false);
+    setShowMovementIslandParkour(false);
+    setShowMovementMarionette(false);
+    setShowMovementOutdoorHumanCompiler(false);
+    setShowMovementOutdoorStations(false);
+    setShowMovementOutdoorZones(false);
+    setShowMovementOutdoorLauf(false);
+    setGeheimtexteOpen(false);
+    setMateriallisteBrowseOpen(false);
+    setShowConfettiGame(false);
+    setShowMaskMemory(false);
+    setShowFoolQuiz(false);
+    setShowCarnivalDice(false);
+    setShowSongGuess(false);
+    setShowGroupConfetti(false);
+    setShowGroupMemory(false);
+    setShowGroupQuiz(false);
+    setShowGroupDice(false);
+    setShowCarnivalParade(false);
+    setShowStreamerGame(false);
+    setShowBalloonGame(false);
+    setShowMinigame(false);
+    setShowSendMessageDialog(false);
+    setParticipationModalOpen(false);
+    setCreateExaminationModalOpen(false);
+    setCreateLessonModalOpen(false);
+    setCreateExerciseModalOpen(false);
+    setSingleQuestionModalOpen(false);
+    setExamGridBuilderOpen(false);
+    setStatisticsModalOpen(false);
+    setResetDialogOpen(false);
+    setCommentModalOpen(false);
+    setPeriodConfigModalOpen(false);
+    setFolderAssignmentModalOpen(false);
+    setQuizDialogOpen(false);
+    setFlashcardModalOpen(false);
     setLessonModalData(null);
     lessonBoxDraftRef.current = null;
     setLessonBoxEdit(null);
     setLessonPlanViewMode('create');
-    setParticipationModalOpen(false);
+  }, []);
+
+  const handleCloseLessonPage = () => {
+    dismissAllTeacherDashboardModals();
     if (isLessonStundeRoute) {
       markTeacherWantsDashboard();
       navigate('/dashboard');
@@ -15544,16 +15610,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   };
 
   useEffect(() => {
-    const onGoDashboard = () => {
-      setLessonModalData(null);
-      lessonBoxDraftRef.current = null;
-      setLessonBoxEdit(null);
-      setLessonPlanViewMode('create');
-      setParticipationModalOpen(false);
-    };
+    const onGoDashboard = () => dismissAllTeacherDashboardModals();
     window.addEventListener(TEACHER_GO_DASHBOARD_EVENT, onGoDashboard);
     return () => window.removeEventListener(TEACHER_GO_DASHBOARD_EVENT, onGoDashboard);
-  }, []);
+  }, [dismissAllTeacherDashboardModals]);
 
   // Esc auf der Stunden-Seite → zurück zum Dashboard (nicht während Laptop-Präsentation)
   useEffect(() => {

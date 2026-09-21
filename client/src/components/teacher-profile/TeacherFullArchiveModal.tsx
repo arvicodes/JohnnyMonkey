@@ -45,6 +45,15 @@ export default function TeacherFullArchiveModal() {
     return () => window.removeEventListener(OPEN_TEACHER_FULL_ARCHIVE_EVENT, openIt);
   }, []);
 
+  useEffect(() => {
+    const onGoDashboard = () => {
+      setOpen(false);
+      setPhase('idle');
+    };
+    window.addEventListener(TEACHER_GO_DASHBOARD_EVENT, onGoDashboard);
+    return () => window.removeEventListener(TEACHER_GO_DASHBOARD_EVENT, onGoDashboard);
+  }, []);
+
   return (
     <Dialog open={open} onClose={() => phase !== 'run' && setOpen(false)} maxWidth="sm" fullWidth>
       <DialogTitle sx={dialogCloseTitleSx}>
