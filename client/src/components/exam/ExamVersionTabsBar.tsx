@@ -5,6 +5,7 @@ import {
   fetchExamVersionLetters,
   normalizeVersionLetter,
   resolveVersionFilePath,
+  versionLetterFromKaPath,
 } from '../../lib/examVersionPaths';
 
 const compactIconBtn = {
@@ -43,35 +44,36 @@ export default function ExamVersionTabsBar({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const reloadMeta = useCallback(async () => {
-    if (!filePath) return;
+  /** Nur Metadaten — kein onActiveFilePathChange (sonst springt man z. B. von B zurück auf A). */
+  const refreshMeta = useCallback(async () => {
+    if (!filePath) return null;
     const meta = await fetchExamVersionLetters(filePath);
     setLetters(meta.letters);
     setPaths(meta.paths);
     setBasePath(meta.baseFilePath);
-    const letter = normalizeVersionLetter(activeLetter) || 'A';
-    const safeLetter = meta.letters.includes(letter) ? letter : 'A';
-    setActiveLetter(safeLetter);
-    onActiveFilePathChange(
-      resolveVersionFilePath(meta.paths, meta.baseFilePath, safeLetter),
-      safeLetter,
-    );
-  }, [filePath, activeLetter, onActiveFilePathChange]);
-
-  useEffect(() => {
-    void reloadMeta().catch(() => {
-      setLetters(['A']);
-      onActiveFilePathChange(filePath, 'A');
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when opened file changes
+    return meta;
   }, [filePath]);
 
+  useEffect(() => {
+    void (async () => {
+      try {
+        const meta = await refreshMeta();
+        if (!meta) return;
+        const fromPath = versionLetterFromKaPath(filePath);
+        const safe = meta.letters.includes(fromPath) ? fromPath : 'A';
+        setActiveLetter(safe);
+      } catch {
+        setLetters(['A']);
+        setActiveLetter('A');
+      }
+    })();
+  }, [filePath, refreshMeta]);
+
   const switchLetter = (letter: string) => {
-    setActiveLetter(letter);
-    onActiveFilePathChange(
-      resolveVersionFilePath(paths, basePath, letter),
-      letter,
-    );
+    const L = normalizeVersionLetter(letter) || 'A';
+    setActiveLetter(L);
+    const resolved = resolveVersionFilePath(paths, basePath, L);
+    onActiveFilePathChange(resolved, L);
   };
 
   const addVersion = async () => {
@@ -92,8 +94,12 @@ export default function ExamVersionTabsBar({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Version konnte nicht angelegt werden');
       }
-      await reloadMeta();
-      switchLetter(next);
+      const meta = await refreshMeta();
+      if (meta) {
+        const p = resolveVersionFilePath(meta.paths, meta.baseFilePath, next);
+        setActiveLetter(next);
+        onActiveFilePathChange(p, next);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
     } finally {
@@ -115,8 +121,12 @@ export default function ExamVersionTabsBar({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Version konnte nicht entfernt werden');
       }
-      await reloadMeta();
-      switchLetter('A');
+      const meta = await refreshMeta();
+      if (meta) {
+        const p = resolveVersionFilePath(meta.paths, meta.baseFilePath, 'A');
+        setActiveLetter('A');
+        onActiveFilePathChange(p, 'A');
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
     } finally {
@@ -215,8 +225,8 @@ export default function ExamVersionTabsBar({
             Version
           </Button>
         )}
-        {activeLetter !== 'A' && (
-          compact ? (
+        {activeLetter !== 'A' &&
+          (compact ? (
             <Tooltip title={`Version ${activeLetter} entfernen`}>
               <IconButton
                 size="small"
@@ -239,8 +249,7 @@ export default function ExamVersionTabsBar({
             >
               {activeLetter} löschen
             </Button>
-          )
-        )}
+          ))}
       </Box>
       {error ? (
         <Alert severity="error" sx={{ mt: 1 }}>

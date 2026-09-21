@@ -77,10 +77,27 @@ export default function ExamGridTaskBuilderDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loadedKeyRef = React.useRef('');
+  const specsDraftByPathRef = React.useRef<Record<string, ExamGridTaskSpec[]>>({});
+  const specsRef = React.useRef(specs);
+  specsRef.current = specs;
 
   React.useEffect(() => {
-    if (open) setActiveFilePath(filePath);
+    if (open) {
+      setActiveFilePath(filePath);
+      specsDraftByPathRef.current = {};
+      loadedKeyRef.current = '';
+    }
   }, [open, filePath]);
+
+  const handleVersionPathChange = React.useCallback((path: string, _letter: string) => {
+    setActiveFilePath((prevPath) => {
+      if (prevPath && prevPath !== path) {
+        specsDraftByPathRef.current[prevPath] = specsRef.current;
+      }
+      loadedKeyRef.current = '';
+      return path;
+    });
+  }, []);
 
   React.useEffect(() => {
     if (!open) {
@@ -90,6 +107,15 @@ export default function ExamGridTaskBuilderDialog({
 
     const loadKey = `${activeFilePath}|${initialTaskNumber}`;
     if (loadedKeyRef.current === loadKey) return;
+
+    const cached = specsDraftByPathRef.current[activeFilePath];
+    if (cached?.length) {
+      loadedKeyRef.current = loadKey;
+      setSpecs(cached);
+      setPreviewOpenByTask({});
+      return;
+    }
+
     loadedKeyRef.current = loadKey;
     setError(null);
     setPreviewOpenByTask({});
@@ -107,15 +133,24 @@ export default function ExamGridTaskBuilderDialog({
         );
         if (!res.ok) throw new Error('Prüfungsdatei konnte nicht geladen werden');
         const html = await res.text();
-        setSpecs(loadGridTaskSpecsFromExamHtml(html, initialTaskNumber));
+        const loaded = loadGridTaskSpecsFromExamHtml(html, initialTaskNumber);
+        setSpecs(loaded);
+        specsDraftByPathRef.current[activeFilePath] = loaded;
       } catch {
-        setSpecs([{ ...demoNatuerlicheZahlenTask1(), taskNumber: initialTaskNumber }]);
+        const fallback = [{ ...demoNatuerlicheZahlenTask1(), taskNumber: initialTaskNumber }];
+        setSpecs(fallback);
         setError('Gespeicherte Aufgabe konnte nicht geladen werden.');
       } finally {
         setLoading(false);
       }
     })();
   }, [open, activeFilePath, initialTaskNumber]);
+
+  React.useEffect(() => {
+    if (activeFilePath && specs.length) {
+      specsDraftByPathRef.current[activeFilePath] = specs;
+    }
+  }, [specs, activeFilePath]);
 
   const persistSpec = async (
     specToSave: ExamGridTaskSpec,
@@ -162,6 +197,7 @@ export default function ExamGridTaskBuilderDialog({
         'success',
       );
       onSaved();
+      delete specsDraftByPathRef.current[activeFilePath];
       loadedKeyRef.current = '';
       onClose();
     } catch (e) {
@@ -292,10 +328,7 @@ export default function ExamGridTaskBuilderDialog({
               compact
               filePath={activeFilePath}
               disabled={loading || saving}
-              onActiveFilePathChange={(path) => {
-                setActiveFilePath(path);
-                loadedKeyRef.current = '';
-              }}
+              onActiveFilePathChange={handleVersionPathChange}
             />
           ) : null}
 

@@ -9,7 +9,7 @@
         // KRITISCH: Status-Check IM HEAD - wird SOFORT ausgeführt, bevor irgendetwas gerendert wird
         (function() {
             try {
-                const KA_KEY = 'KA_Klassenarbeit 1: Natürliche Zahlen';
+                const KA_KEY = 'KA_Klassenarbeit 1: Natürliche Zahlen__B';
         const EXAM_VERSION_LETTERS = ['A', 'B'];
                 const isTeacher = localStorage.getItem('teacherId') !== null;
                 
@@ -1148,7 +1148,7 @@
         // Status-Check: Nur Debug-Log, keine Blockierung
         // Die echte Prüfung erfolgt in initializeTimer() mit Datenbank-Abfrage
         (function() {
-            const KA_KEY = 'KA_Klassenarbeit 1: Natürliche Zahlen';
+            const KA_KEY = 'KA_Klassenarbeit 1: Natürliche Zahlen__B';
             const isTeacher = localStorage.getItem('teacherId') !== null;
             
             // Wenn Lehrer, keine Prüfung
@@ -1200,7 +1200,7 @@
         </div>
     </aside>
     <div class="exam-paper exam-multi-version">
-    <div class="exam-version-letter" id="examVersionLetter" aria-hidden="true">A</div>
+    <div class="exam-version-letter" id="examVersionLetter" aria-hidden="true">B</div>
     <div class="header">
         <div class="header-brand-row">
             <img class="header-logo" id="jmExamLogo" alt="JohnnyMonkey" src="/johnny-logo.png">
@@ -1355,7 +1355,7 @@
 
     <script>
         // Eindeutiger Key für diese Hausaufgabenüberprüfung (HÜ)
-        const KA_KEY = 'KA_Klassenarbeit 1: Natürliche Zahlen';
+        const KA_KEY = 'KA_Klassenarbeit 1: Natürliche Zahlen__B';
         const isTeacher = localStorage.getItem('teacherId') !== null;
         const studentId = localStorage.getItem('studentId') || 'unknown';
 
