@@ -11,6 +11,8 @@ type Props = {
   filePath: string;
   onActiveFilePathChange: (path: string, letter: string) => void;
   disabled?: boolean;
+  /** Weniger Text, kompakte Buttons (Raster-Editor). */
+  compact?: boolean;
 };
 
 function nextVersionLetter(letters: string[]): string | null {
@@ -25,6 +27,7 @@ export default function ExamVersionTabsBar({
   filePath,
   onActiveFilePathChange,
   disabled,
+  compact,
 }: Props) {
   const [letters, setLetters] = useState<string[]>(['A']);
   const [paths, setPaths] = useState<Record<string, string>>({});
@@ -115,6 +118,24 @@ export default function ExamVersionTabsBar({
   };
 
   if (letters.length <= 1 && !error) {
+    if (compact) {
+      return (
+        <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+            Version A
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            disabled={disabled || busy}
+            onClick={() => void addVersion()}
+            sx={{ minHeight: 28, py: 0, px: 1, fontSize: '0.72rem', textTransform: 'none' }}
+          >
+            + B
+          </Button>
+        </Box>
+      );
+    }
     return (
       <Box sx={{ mb: 2 }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -134,10 +155,12 @@ export default function ExamVersionTabsBar({
   }
 
   return (
-    <Box sx={{ mb: 2 }}>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-        Versionen bearbeiten — B, C … starten als Kopie von A.
-      </Typography>
+    <Box sx={{ mb: compact ? 1.5 : 2 }}>
+      {!compact ? (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+          Versionen bearbeiten — B, C … starten als Kopie von A.
+        </Typography>
+      ) : null}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <Tabs
           value={activeLetter}
@@ -159,21 +182,27 @@ export default function ExamVersionTabsBar({
         <Button
           size="small"
           variant="outlined"
-          startIcon={<AddIcon />}
+          startIcon={compact ? undefined : <AddIcon />}
           disabled={disabled || busy || !nextVersionLetter(letters)}
           onClick={() => void addVersion()}
+          sx={
+            compact
+              ? { minHeight: 28, py: 0, px: 1, fontSize: '0.72rem', textTransform: 'none' }
+              : undefined
+          }
         >
-          Version
+          {compact ? '+' : 'Version'}
         </Button>
         {activeLetter !== 'A' && (
           <Button
             size="small"
             color="error"
-            variant="text"
+            variant={compact ? 'outlined' : 'text'}
             disabled={disabled || busy}
             onClick={() => void removeVersion(activeLetter)}
+            sx={compact ? { minHeight: 28, py: 0, px: 1, fontSize: '0.72rem' } : undefined}
           >
-            {activeLetter} löschen
+            {compact ? `× ${activeLetter}` : `${activeLetter} löschen`}
           </Button>
         )}
       </Box>

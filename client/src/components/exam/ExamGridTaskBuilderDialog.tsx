@@ -13,15 +13,16 @@ import {
   Select,
   TextField,
   Typography,
-  Divider,
   Alert,
   CircularProgress,
+  Tooltip,
 } from '@mui/material';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import GridOnIcon from '@mui/icons-material/GridOn';
 import PostAddIcon from '@mui/icons-material/PostAdd';
+import ExamVersionTabsBar from './ExamVersionTabsBar';
 import {
   buildExamGridTaskHtml,
   createBlankExamGridTask,
@@ -51,7 +52,34 @@ const QUADRANT_LABEL: Record<GridQuadrant, string> = {
   br: 'Unten rechts',
 };
 
-const SOLUTION_HELPER = 'Mehrere Lösungen mit / trennen (z. B. 66700 / 66 700)';
+/** Nur im Raster-Editor — Teile & Zeilen farblich unterscheiden. */
+const EDITOR_SUBSECTION_FILLS = [
+  { main: '#dbeafe', rowA: '#eff6ff', rowB: '#bfdbfe', border: '#2563eb' },
+  { main: '#ede9fe', rowA: '#f5f3ff', rowB: '#ddd6fe', border: '#7c3aed' },
+  { main: '#d1fae5', rowA: '#ecfdf5', rowB: '#a7f3d0', border: '#059669' },
+  { main: '#ffedd5', rowA: '#fff7ed', rowB: '#fed7aa', border: '#ea580c' },
+  { main: '#fce7f3', rowA: '#fdf2f8', rowB: '#fbcfe8', border: '#db2777' },
+  { main: '#cffafe', rowA: '#ecfeff', rowB: '#a5f3fc', border: '#0891b2' },
+  { main: '#fef9c3', rowA: '#fefce8', rowB: '#fde047', border: '#ca8a04' },
+];
+
+function editorSubsectionShell(subIndex: number) {
+  const c = EDITOR_SUBSECTION_FILLS[subIndex % EDITOR_SUBSECTION_FILLS.length];
+  return {
+    bgcolor: c.main,
+    border: `2px solid ${c.border}`,
+  };
+}
+
+function editorRowFill(subIndex: number, rowIndex: number) {
+  const c = EDITOR_SUBSECTION_FILLS[subIndex % EDITOR_SUBSECTION_FILLS.length];
+  return {
+    bgcolor: rowIndex % 2 === 0 ? c.rowA : c.rowB,
+    borderRadius: 1,
+    px: 0.5,
+    py: 0.35,
+  };
+}
 
 const rowTrashSx = {
   p: 0.2,
@@ -133,10 +161,15 @@ export default function ExamGridTaskBuilderDialog({
     ...demoNatuerlicheZahlenTask1(),
     taskNumber: initialTaskNumber,
   }));
+  const [activeFilePath, setActiveFilePath] = useState(filePath);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loadedKeyRef = React.useRef('');
+
+  React.useEffect(() => {
+    if (open) setActiveFilePath(filePath);
+  }, [open, filePath]);
 
   React.useEffect(() => {
     if (!open) {
@@ -144,12 +177,12 @@ export default function ExamGridTaskBuilderDialog({
       return;
     }
 
-    const loadKey = `${filePath}|${initialTaskNumber}`;
+    const loadKey = `${activeFilePath}|${initialTaskNumber}`;
     if (loadedKeyRef.current === loadKey) return;
     loadedKeyRef.current = loadKey;
     setError(null);
 
-    if (!filePath) {
+    if (!activeFilePath) {
       setSpec({ ...demoNatuerlicheZahlenTask1(), taskNumber: initialTaskNumber });
       return;
     }
@@ -158,7 +191,7 @@ export default function ExamGridTaskBuilderDialog({
       setLoading(true);
       try {
         const res = await fetch(
-          `/api/file-system-paths/read-html?filePath=${encodeURIComponent(filePath)}`,
+          `/api/file-system-paths/read-html?filePath=${encodeURIComponent(activeFilePath)}`,
         );
         if (!res.ok) throw new Error('Prüfungsdatei konnte nicht geladen werden');
         const html = await res.text();
@@ -182,7 +215,7 @@ export default function ExamGridTaskBuilderDialog({
         setLoading(false);
       }
     })();
-  }, [open, filePath, initialTaskNumber]);
+  }, [open, activeFilePath, initialTaskNumber]);
 
   const built = useMemo(() => buildExamGridTaskHtml(spec), [spec]);
 
@@ -198,13 +231,13 @@ export default function ExamGridTaskBuilderDialog({
   };
 
   const persistSpec = async (specToSave: ExamGridTaskSpec, builtPayload: ReturnType<typeof buildExamGridTaskHtml>) => {
-    if (!filePath) return false;
+    if (!activeFilePath) return false;
     const fieldCount = Object.keys(builtPayload.correctAnswers).length;
     const res = await fetch('/api/file-system-paths/upsert-examination-grid-task', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        filePath,
+        filePath: activeFilePath,
         taskNumber: specToSave.taskNumber,
         taskHtml: builtPayload.taskHtml,
         correctAnswers: builtPayload.correctAnswers,
@@ -220,7 +253,7 @@ export default function ExamGridTaskBuilderDialog({
   };
 
   const save = async () => {
-    if (!filePath) {
+    if (!activeFilePath) {
       const msg = 'Keine Prüfungsdatei gewählt — bitte zuerst eine KA-Datei öffnen.';
       setError(msg);
       onNotify?.(msg, 'error');
@@ -247,13 +280,9 @@ export default function ExamGridTaskBuilderDialog({
     () => [...(existingTaskNumbers || []), spec.taskNumber],
     [existingTaskNumbers, spec.taskNumber],
   );
-  const nextAufgabeNumber = useMemo(
-    () => nextTaskNumber(spec.taskNumber, taskNumbersForNext),
-    [spec.taskNumber, taskNumbersForNext],
-  );
 
   const saveAndAddAufgabe = async () => {
-    if (!filePath) {
+    if (!activeFilePath) {
       const msg = 'Keine Prüfungsdatei gewählt — bitte zuerst eine KA-Datei öffnen.';
       setError(msg);
       onNotify?.(msg, 'error');
@@ -266,7 +295,7 @@ export default function ExamGridTaskBuilderDialog({
       const next = nextTaskNumber(spec.taskNumber, taskNumbersForNext);
       onNotify?.(`Aufgabe ${spec.taskNumber} gespeichert — weiter mit Aufgabe ${next}.`, 'success');
       onSaved();
-      loadedKeyRef.current = `${filePath}|${next}`;
+      loadedKeyRef.current = `${activeFilePath}|${next}`;
       setSpec(createBlankExamGridTask(next));
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Speichern fehlgeschlagen';
@@ -292,26 +321,63 @@ export default function ExamGridTaskBuilderDialog({
         },
       }}
     >
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0, flexWrap: 'wrap' }}>
-        <GridOnIcon color="primary" />
-        <Typography component="span" variant="h6" sx={{ flex: 1, fontSize: '1.1rem' }}>
-          Raster-Aufgabe (2×2) bearbeiten
+      <DialogTitle
+        sx={{
+          position: 'relative',
+          pr: 5,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          flexShrink: 0,
+          flexWrap: 'wrap',
+          pb: 1.25,
+        }}
+      >
+        <GridOnIcon color="primary" sx={{ fontSize: 22 }} />
+        <Typography component="span" variant="h6" sx={{ fontSize: '1.05rem', fontWeight: 700 }}>
+          2×2 Raster
         </Typography>
-        {filePath ? (
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<OpenInNewIcon />}
-            onClick={() =>
-              window.open(
-                `/api/file-system-paths/read-html?filePath=${encodeURIComponent(filePath)}`,
-                '_blank',
-                'noopener,noreferrer',
-              )
-            }
-          >
-            Prüfung öffnen (Header &amp; Leiste)
-          </Button>
+        <Button
+          size="small"
+          variant="text"
+          disabled={loading || saving}
+          onClick={() => setSpec({ ...demoNatuerlicheZahlenTask1(), taskNumber: spec.taskNumber })}
+          sx={{
+            minHeight: 28,
+            py: 0,
+            px: 1,
+            fontSize: '0.72rem',
+            textTransform: 'none',
+            color: 'text.secondary',
+          }}
+        >
+          Beispiel Natürliche Zahlen
+        </Button>
+        {activeFilePath ? (
+          <Tooltip title="Prüfung öffnen">
+            <IconButton
+              size="small"
+              onClick={() =>
+                window.open(
+                  `/api/file-system-paths/read-html?filePath=${encodeURIComponent(activeFilePath)}`,
+                  '_blank',
+                  'noopener,noreferrer',
+                )
+              }
+              aria-label="Prüfung öffnen"
+              sx={{
+                position: 'absolute',
+                top: 4,
+                right: 4,
+                p: 0,
+                minWidth: 28,
+                width: 28,
+                height: 28,
+              }}
+            >
+              <OpenInNewIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Tooltip>
         ) : null}
       </DialogTitle>
       <DialogContent
@@ -346,6 +412,17 @@ export default function ExamGridTaskBuilderDialog({
           </Box>
         ) : null}
         {error ? <Alert severity="error">{error}</Alert> : null}
+        {activeFilePath ? (
+          <ExamVersionTabsBar
+            compact
+            filePath={activeFilePath}
+            disabled={loading || saving}
+            onActiveFilePathChange={(path) => {
+              setActiveFilePath(path);
+              loadedKeyRef.current = '';
+            }}
+          />
+        ) : null}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
           <TextField
             label="Aufgaben-Nr."
@@ -375,31 +452,17 @@ export default function ExamGridTaskBuilderDialog({
               <MenuItem value={3}>III</MenuItem>
             </Select>
           </FormControl>
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={() => setSpec({ ...demoNatuerlicheZahlenTask1(), taskNumber: spec.taskNumber })}
-          >
-            Beispiel „Natürliche Zahlen“ laden
-          </Button>
         </Box>
 
-        <Typography variant="subtitle2" color="text.secondary">
-          Nur der <strong>Inhalt von Aufgabe {spec.taskNumber}</strong> liegt im 2×2-Raster. Beim Speichern bleiben
-          Prüfungskopf, linke Leiste (Timer, Druck, Abgeben) und Fußzeile der Datei unverändert. Teile A–G in die
-          vier Kästchen legen. <code>___</code> = Lücke. {SOLUTION_HELPER}
-        </Typography>
-
-        {spec.subsections.map((sub) => (
+        {spec.subsections.map((sub, subIndex) => (
           <Box
             key={sub.id}
             sx={{
               position: 'relative',
-              border: '1px solid #e0e0e0',
               borderRadius: 2,
               p: 2,
               pr: 4.5,
-              bgcolor: '#fafafa',
+              ...editorSubsectionShell(subIndex),
             }}
           >
             <IconButton
@@ -467,7 +530,10 @@ export default function ExamGridTaskBuilderDialog({
             {sub.kind === 'round-lines' && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {sub.lines.map((line, i) => (
-                  <Box key={i} sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', alignItems: 'flex-start' }}>
+                  <Box
+                    key={i}
+                    sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', alignItems: 'flex-start', ...editorRowFill(subIndex, i) }}
+                  >
                     <TextField
                       size="small"
                       label="Zeile"
@@ -488,8 +554,6 @@ export default function ExamGridTaskBuilderDialog({
                         lines[i] = { ...lines[i], solution: e.target.value };
                         updateSub(sub.id, { lines });
                       }}
-                      helperText={i === 0 ? SOLUTION_HELPER : undefined}
-                      FormHelperTextProps={{ sx: { m: 0, fontSize: '0.65rem' } }}
                       sx={{ flex: 1, minWidth: 0 }}
                     />
                     <RowDeleteButton
@@ -511,7 +575,10 @@ export default function ExamGridTaskBuilderDialog({
             {sub.kind === 'compare' && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {sub.rows.map((row, i) => (
-                  <Box key={i} sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', alignItems: 'center' }}>
+                  <Box
+                    key={i}
+                    sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', alignItems: 'center', ...editorRowFill(subIndex, i) }}
+                  >
                     <TextField
                       size="small"
                       label="Links"
@@ -567,7 +634,7 @@ export default function ExamGridTaskBuilderDialog({
             )}
 
             {sub.kind === 'sort' && (
-              <>
+              <Box sx={{ ...editorRowFill(subIndex, 0) }}>
                 <TextField fullWidth size="small" label="Gegeben (Zahlen)" value={sub.given} onChange={(e) => updateSub(sub.id, { given: e.target.value })} sx={{ mb: 1 }} />
                 <TextField
                   fullWidth
@@ -575,13 +642,12 @@ export default function ExamGridTaskBuilderDialog({
                   label="Lösung (sortiert)"
                   value={sub.solution}
                   onChange={(e) => updateSub(sub.id, { solution: e.target.value })}
-                  helperText={SOLUTION_HELPER}
                 />
-              </>
+              </Box>
             )}
 
             {sub.kind === 'one-line' && (
-              <>
+              <Box sx={{ ...editorRowFill(subIndex, 0) }}>
                 <TextField fullWidth size="small" label="Aufgabentext / Zahl" value={sub.prompt} onChange={(e) => updateSub(sub.id, { prompt: e.target.value })} sx={{ mb: 1 }} />
                 <TextField
                   fullWidth
@@ -589,15 +655,14 @@ export default function ExamGridTaskBuilderDialog({
                   label="Lösung"
                   value={sub.solution}
                   onChange={(e) => updateSub(sub.id, { solution: e.target.value })}
-                  helperText={SOLUTION_HELPER}
                 />
-              </>
+              </Box>
             )}
 
             {sub.kind === 'bullet-blanks' && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {sub.items.map((item, i) => (
-                  <Box key={i} sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start' }}>
+                  <Box key={i} sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start', ...editorRowFill(subIndex, i) }}>
                     <TextField
                       size="small"
                       label="Text vor Lücke"
@@ -618,8 +683,6 @@ export default function ExamGridTaskBuilderDialog({
                         items[i] = { ...items[i], solution: e.target.value };
                         updateSub(sub.id, { items });
                       }}
-                      helperText={i === 0 ? SOLUTION_HELPER : undefined}
-                      FormHelperTextProps={{ sx: { m: 0, fontSize: '0.65rem' } }}
                       sx={{ flex: 1, minWidth: 0 }}
                     />
                     <RowDeleteButton
@@ -639,7 +702,7 @@ export default function ExamGridTaskBuilderDialog({
             )}
 
             {sub.kind === 'cloze' && (
-              <>
+              <Box sx={{ ...editorRowFill(subIndex, 0) }}>
                 <TextField
                   fullWidth
                   multiline
@@ -658,22 +721,21 @@ export default function ExamGridTaskBuilderDialog({
                   sx={{ mb: 1 }}
                 />
                 {sub.solutions.map((sol, i) => (
-                  <TextField
-                    key={i}
-                    fullWidth
-                    size="small"
-                    label={`Lösung Lücke ${i + 1}`}
-                    value={sol}
-                    onChange={(e) => {
-                      const solutions = [...sub.solutions];
-                      solutions[i] = e.target.value;
-                      updateSub(sub.id, { solutions });
-                    }}
-                    helperText={SOLUTION_HELPER}
-                    sx={{ mb: 1 }}
-                  />
+                  <Box key={i} sx={{ mb: 1, ...editorRowFill(subIndex, i + 1) }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label={`Lösung Lücke ${i + 1}`}
+                      value={sol}
+                      onChange={(e) => {
+                        const solutions = [...sub.solutions];
+                        solutions[i] = e.target.value;
+                        updateSub(sub.id, { solutions });
+                      }}
+                    />
+                  </Box>
                 ))}
-              </>
+              </Box>
             )}
           </Box>
         ))}
@@ -695,16 +757,12 @@ export default function ExamGridTaskBuilderDialog({
             startIcon={<PostAddIcon />}
             variant="outlined"
             color="secondary"
-            disabled={saving || !filePath}
+            disabled={saving || !activeFilePath}
             onClick={() => void saveAndAddAufgabe()}
           >
-            Aufgabe hinzufügen (nächste Nr.)
+            Aufgabe hinzufügen
           </Button>
         </Box>
-        <Typography variant="caption" color="text.secondary" sx={{ mt: -0.5 }}>
-          „Aufgabe hinzufügen“ speichert die aktuelle Aufgabe {spec.taskNumber} und öffnet Aufgabe{' '}
-          {nextAufgabeNumber} (leer).
-        </Typography>
 
         </Box>
 
@@ -721,7 +779,7 @@ export default function ExamGridTaskBuilderDialog({
           }}
         >
           <Typography variant="subtitle2" sx={{ px: 3, pt: 1.5, pb: 0.5, flexShrink: 0 }}>
-            Vorschau (nur Aufgaben-Inhalt — ohne Prüfungs-Rahmen)
+            Vorschau
           </Typography>
           <Box
             sx={{
@@ -745,7 +803,7 @@ export default function ExamGridTaskBuilderDialog({
       </DialogContent>
       <DialogActions sx={{ flexShrink: 0 }}>
         <Button onClick={onClose} disabled={saving}>Abbrechen</Button>
-        <Button variant="contained" onClick={() => void save()} disabled={saving || loading || !filePath}>
+        <Button variant="contained" onClick={() => void save()} disabled={saving || loading || !activeFilePath}>
           {saving ? 'Speichern…' : 'In Prüfung speichern'}
         </Button>
       </DialogActions>

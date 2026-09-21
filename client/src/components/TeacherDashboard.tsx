@@ -30394,6 +30394,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
           {singleQuestionFilePath ? (
             <ExamVersionTabsBar
               filePath={singleQuestionFilePath}
+              compact
               onActiveFilePathChange={handleExamVersionActivePath}
               disabled={loadingQuestions || savingQuestion}
             />
