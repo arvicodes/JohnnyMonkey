@@ -438,6 +438,7 @@ import DatabaseViewer from './DatabaseViewer';
 import SubjectManager from './SubjectManager';
 import { fetchAssignments } from './SubjectManager';
 import MaterialCreator from './MaterialCreator';
+import ExamGridTaskBuilderDialog from './exam/ExamGridTaskBuilderDialog';
 import GradingSchemaModal from './GradingSchemaModal';
 import GradesModal from './GradesModal';
 import FileSystemPathManager from './FileSystemPathManager';
@@ -6792,6 +6793,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   // Einzelfragen-Bearbeitung
   const [singleQuestionModalOpen, setSingleQuestionModalOpen] = useState(false);
   const [singleQuestionFilePath, setSingleQuestionFilePath] = useState<string>('');
+  const [examGridBuilderOpen, setExamGridBuilderOpen] = useState(false);
   const [examinationQuestions, setExaminationQuestions] = useState<any[]>([]);
   const [examinationTitle, setExaminationTitle] = useState<string>('');
   const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
@@ -30280,11 +30282,24 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           borderBottom: '2px solid #e3f2fd',
           bgcolor: '#f5f9ff'
         }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <EditIcon sx={{ color: colors.primary, fontSize: 30 }} />
-            <Typography variant="h6" sx={{ fontSize: '1.2rem', fontWeight: 600, color: '#1976d2' }}>
-              Fragen bearbeiten
-            </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <EditIcon sx={{ color: colors.primary, fontSize: 30 }} />
+              <Typography variant="h6" sx={{ fontSize: '1.2rem', fontWeight: 600, color: '#1976d2' }}>
+                Fragen bearbeiten
+              </Typography>
+            </Box>
+            {singleQuestionFilePath ? (
+              <Button
+                size="small"
+                variant="contained"
+                color="secondary"
+                onClick={() => setExamGridBuilderOpen(true)}
+                sx={{ textTransform: 'none', fontWeight: 600 }}
+              >
+                Raster-Aufgabe (2×2)
+              </Button>
+            ) : null}
           </Box>
         </DialogTitle>
         <DialogContent sx={{ p: 3 }}>
@@ -30338,12 +30353,18 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             </Box>
           ) : examinationQuestions.length === 0 ? (
             <Alert severity="info" sx={{ borderRadius: 2 }}>
-              <Typography variant="body2">
-                Keine Aufgaben in der HTML-Datei erkannt. Jede Aufgabe braucht einen Kommentar{' '}
-                <code>{'<!-- Aufgabe 1 -->'}</code> direkt vor <code>{'<div class="task">'}</code>.
-                Inhalt am einfachsten in der HTML-Datei ergänzen (oder weitere Aufgaben kopieren) und
-                danach hier bearbeiten.
+              <Typography variant="body2" sx={{ mb: 1.5 }}>
+                Keine einfachen Text-Aufgaben erkannt — oder die Datei ist noch leer. Für ein Layout wie
+                auf deinem Arbeitsblatt (Kästchen A–G) nutze den Raster-Editor.
               </Typography>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => setExamGridBuilderOpen(true)}
+                disabled={!singleQuestionFilePath}
+              >
+                Raster-Aufgabe (2×2) erstellen
+              </Button>
             </Alert>
           ) : editingQuestion ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
@@ -30567,6 +30588,22 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       </Dialog>
 
       <TeacherFullArchiveModal />
+
+      <ExamGridTaskBuilderDialog
+        open={examGridBuilderOpen}
+        filePath={singleQuestionFilePath}
+        initialTaskNumber={
+          examinationQuestions.length > 0
+            ? Math.max(...examinationQuestions.map((q) => Number(q.taskNumber) || 0), 1)
+            : 1
+        }
+        onClose={() => setExamGridBuilderOpen(false)}
+        onSaved={() => {
+          if (singleQuestionFilePath) {
+            void handleEditSingleQuestion({ path: singleQuestionFilePath, name: '' });
+          }
+        }}
+      />
 
       <TeacherProfileDialog
         open={profileDialogOpen}

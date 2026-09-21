@@ -3162,6 +3162,113 @@ ${optionsHTML}
     }
   }
 
+  private static resolveExaminationHtmlPath(filePath: string): string {
+    if (filePath.startsWith('git-intern/')) {
+      const relativePath = filePath.replace('git-intern/', '');
+      if (process.env.NODE_ENV === 'production') {
+        return path.join(process.cwd(), 'J-M-Reihen', relativePath);
+      }
+      const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+      return path.join(projectRoot, 'J-M-Reihen', relativePath);
+    }
+    return path.resolve(filePath);
+  }
+
+  private static mergeCorrectAnswersInHtml(
+    html: string,
+    taskNumber: number,
+    incoming: Record<string, string[]>,
+  ): string {
+    const blockRe = /const correctAnswers = \{([\s\S]*?)\};/;
+    const m = html.match(blockRe);
+    if (!m) return html;
+    const prefix = `a${taskNumber}`;
+    const kept: string[] = [];
+    const entryRe = /([a-zA-Z]\w*)\s*:\s*(\[[^\]]*\])/g;
+    let em: RegExpExecArray | null;
+    while ((em = entryRe.exec(m[1])) !== null) {
+      const key = em[1];
+      if (key.startsWith(prefix) && /^a\d+[a-z]$/.test(key) && key.length === prefix.length + 1) {
+        continue;
+      }
+      kept.push(`${key}: ${em[2]}`);
+    }
+    for (const [k, vals] of Object.entries(incoming)) {
+      const inner = vals
+        .map((x) => `'${String(x).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`)
+        .join(', ');
+      kept.push(`${k}: [${inner}]`);
+    }
+    const newBody = kept.map((line) => `            ${line}`).join(',\n');
+    return html.replace(blockRe, `const correctAnswers = {\n${newBody}\n        };`);
+  }
+
+  /** Raster-Aufgabe (2×2) in die Prüfungs-HTML einfügen oder ersetzen. */
+  static async upsertExaminationGridTask(req: Request, res: Response) {
+    try {
+      const { filePath, taskNumber, taskHtml, correctAnswers, totalPoints } = req.body as {
+        filePath?: string;
+        taskNumber?: number;
+        taskHtml?: string;
+        correctAnswers?: Record<string, string[]>;
+        totalPoints?: number;
+      };
+
+      if (!filePath || !taskNumber || !taskHtml) {
+        return res.status(400).json({ error: 'filePath, taskNumber und taskHtml sind erforderlich' });
+      }
+
+      const fullFilePath = FileSystemPathController.resolveExaminationHtmlPath(filePath);
+      if (!fs.existsSync(fullFilePath)) {
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      }
+
+      let htmlContent = fs.readFileSync(fullFilePath, 'utf-8');
+      const tn = Number(taskNumber);
+      const blockRe = new RegExp(
+        `<!-- Aufgabe ${tn}\\s*(?::[^>]*)?\\s*-->[\\s\\S]*?(?=<!-- Aufgabe \\d|<div class="footer">|$)`,
+        'i',
+      );
+      const trimmed = String(taskHtml).trim();
+      if (blockRe.test(htmlContent)) {
+        htmlContent = htmlContent.replace(blockRe, `${trimmed}\n\n`);
+      } else {
+        const footerIdx = htmlContent.indexOf('<div class="footer">');
+        if (footerIdx < 0) {
+          return res.status(400).json({ error: 'Keine Einfügestelle (footer) in der HTML-Datei gefunden' });
+        }
+        htmlContent = `${htmlContent.slice(0, footerIdx)}${trimmed}\n\n${htmlContent.slice(footerIdx)}`;
+      }
+
+      if (correctAnswers && typeof correctAnswers === 'object') {
+        htmlContent = FileSystemPathController.mergeCorrectAnswersInHtml(htmlContent, tn, correctAnswers);
+      }
+
+      if (typeof totalPoints === 'number' && totalPoints > 0) {
+        htmlContent = htmlContent.replace(
+          /return \{ achieved: achievedPoints, total: \d+ \};/,
+          `return { achieved: achievedPoints, total: ${totalPoints} };`,
+        );
+        const totalSpan = htmlContent.match(/<span id="totalPoints">[^<]*<\/span>/);
+        if (totalSpan) {
+          htmlContent = htmlContent.replace(
+            /<span id="totalPoints">[^<]*<\/span>/,
+            `<span id="totalPoints">${totalPoints}</span>`,
+          );
+        }
+      }
+
+      fs.writeFileSync(fullFilePath, htmlContent, 'utf-8');
+      res.json({ success: true, taskNumber: tn });
+    } catch (error) {
+      console.error('❌ Raster-Aufgabe speichern:', error);
+      res.status(500).json({
+        error: 'Fehler beim Speichern der Raster-Aufgabe',
+        details: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   /**
    * Aktualisiert den Titel einer Prüfung
    */

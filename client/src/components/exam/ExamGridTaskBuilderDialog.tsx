@@ -1,0 +1,408 @@
+import React, { useMemo, useState } from 'react';
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Typography,
+  Divider,
+  Alert,
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import GridOnIcon from '@mui/icons-material/GridOn';
+import {
+  buildExamGridTaskHtml,
+  demoNatuerlicheZahlenTask1,
+  type ExamGridTaskSpec,
+  type GridQuadrant,
+  type GridSubsection,
+} from '../../lib/examGridTaskBuilder';
+
+type Props = {
+  open: boolean;
+  filePath: string;
+  initialTaskNumber?: number;
+  onClose: () => void;
+  onSaved: () => void;
+};
+
+const QUADRANT_LABEL: Record<GridQuadrant, string> = {
+  tl: 'Oben links',
+  tr: 'Oben rechts',
+  bl: 'Unten links',
+  br: 'Unten rechts',
+};
+
+const KIND_LABEL: Record<GridSubsection['kind'], string> = {
+  'round-lines': 'Zeilen mit Lücke (runden …)',
+  compare: 'Vergleichszeichen',
+  sort: 'Sortieren (Zahlenliste)',
+  'one-line': 'Eine Zeile Antwort',
+  'bullet-blanks': 'Aufzählung mit Lücken',
+  cloze: 'Lückentext (___)',
+};
+
+function newSubsection(kind: GridSubsection['kind']): GridSubsection {
+  const id = `sub-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const base = { id, letter: 'X', title: 'Titel', quadrant: 'tl' as GridQuadrant };
+  switch (kind) {
+    case 'round-lines':
+      return { ...base, kind, lines: [{ text: 'Zahl … =', solution: '' }] };
+    case 'compare':
+      return { ...base, kind, rows: [{ left: '1', right: '2', solution: '<' }] };
+    case 'sort':
+      return { ...base, kind, given: '1, 2, 3', solution: '1, 2, 3' };
+    case 'one-line':
+      return { ...base, kind, prompt: '…', solution: '' };
+    case 'bullet-blanks':
+      return { ...base, kind, items: [{ text: '…:', solution: '' }] };
+    case 'cloze':
+      return { ...base, kind, template: 'Text mit ___ Lücke.', solutions: [''] };
+    default:
+      return { ...base, kind: 'one-line', prompt: '', solution: '' };
+  }
+}
+
+export default function ExamGridTaskBuilderDialog({
+  open,
+  filePath,
+  initialTaskNumber = 1,
+  onClose,
+  onSaved,
+}: Props) {
+  const [spec, setSpec] = useState<ExamGridTaskSpec>(() => ({
+    ...demoNatuerlicheZahlenTask1(),
+    taskNumber: initialTaskNumber,
+  }));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (open) {
+      setSpec({ ...demoNatuerlicheZahlenTask1(), taskNumber: initialTaskNumber });
+      setError(null);
+    }
+  }, [open, initialTaskNumber]);
+
+  const built = useMemo(() => buildExamGridTaskHtml(spec), [spec]);
+
+  const updateSub = (id: string, patch: Partial<GridSubsection>) => {
+    setSpec((prev) => ({
+      ...prev,
+      subsections: prev.subsections.map((s) => (s.id === id ? { ...s, ...patch } as GridSubsection : s)),
+    }));
+  };
+
+  const removeSub = (id: string) => {
+    setSpec((prev) => ({ ...prev, subsections: prev.subsections.filter((s) => s.id !== id) }));
+  };
+
+  const save = async () => {
+    if (!filePath) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const fieldCount = Object.keys(built.correctAnswers).length;
+      const res = await fetch('/api/file-system-paths/upsert-examination-grid-task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filePath,
+          taskNumber: spec.taskNumber,
+          taskHtml: built.taskHtml,
+          correctAnswers: built.correctAnswers,
+          totalPoints: Math.max(spec.points, fieldCount),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Speichern fehlgeschlagen');
+      }
+      onSaved();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <GridOnIcon color="primary" />
+        Raster-Aufgabe (2×2) erstellen
+      </DialogTitle>
+      <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {error ? <Alert severity="error">{error}</Alert> : null}
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+          <TextField
+            label="Aufgaben-Nr."
+            type="number"
+            size="small"
+            value={spec.taskNumber}
+            onChange={(e) => setSpec((p) => ({ ...p, taskNumber: Math.max(1, Number(e.target.value) || 1) }))}
+            sx={{ width: 110 }}
+          />
+          <TextField
+            label="Punkte (Anzeige)"
+            type="number"
+            size="small"
+            value={spec.points}
+            onChange={(e) => setSpec((p) => ({ ...p, points: Math.max(1, Number(e.target.value) || 1) }))}
+            sx={{ width: 130 }}
+          />
+          <FormControl size="small" sx={{ minWidth: 100 }}>
+            <InputLabel>AFB</InputLabel>
+            <Select
+              label="AFB"
+              value={spec.afbLevel}
+              onChange={(e) => setSpec((p) => ({ ...p, afbLevel: Number(e.target.value) as 1 | 2 | 3 }))}
+            >
+              <MenuItem value={1}>I</MenuItem>
+              <MenuItem value={2}>II</MenuItem>
+              <MenuItem value={3}>III</MenuItem>
+            </Select>
+          </FormControl>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => setSpec({ ...demoNatuerlicheZahlenTask1(), taskNumber: spec.taskNumber })}
+          >
+            Beispiel „Natürliche Zahlen“ laden
+          </Button>
+        </Box>
+
+        <Typography variant="subtitle2" color="text.secondary">
+          Teile A–G in die vier Kästchen legen. Unter <code>___</code> im Lückentext = eine Lücke. HTML:{' '}
+          <code>&lt;sub&gt;10&lt;/sub&gt;</code> in Texten erlaubt.
+        </Typography>
+
+        {spec.subsections.map((sub) => (
+          <Box
+            key={sub.id}
+            sx={{ border: '1px solid #e0e0e0', borderRadius: 2, p: 2, bgcolor: '#fafafa' }}
+          >
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5, alignItems: 'center' }}>
+              <TextField
+                label="Buchstabe"
+                size="small"
+                value={sub.letter}
+                onChange={(e) => updateSub(sub.id, { letter: e.target.value })}
+                sx={{ width: 72 }}
+              />
+              <TextField
+                label="Titel"
+                size="small"
+                fullWidth
+                sx={{ flex: '1 1 200px' }}
+                value={sub.title}
+                onChange={(e) => updateSub(sub.id, { title: e.target.value })}
+              />
+              <FormControl size="small" sx={{ minWidth: 130 }}>
+                <InputLabel>Kästchen</InputLabel>
+                <Select
+                  label="Kästchen"
+                  value={sub.quadrant}
+                  onChange={(e) => updateSub(sub.id, { quadrant: e.target.value as GridQuadrant })}
+                >
+                  {(Object.keys(QUADRANT_LABEL) as GridQuadrant[]).map((q) => (
+                    <MenuItem key={q} value={q}>{QUADRANT_LABEL[q]}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 180 }}>
+                <InputLabel>Typ</InputLabel>
+                <Select
+                  label="Typ"
+                  value={sub.kind}
+                  onChange={(e) => {
+                    const kind = e.target.value as GridSubsection['kind'];
+                    const fresh = newSubsection(kind);
+                    updateSub(sub.id, { ...fresh, id: sub.id, letter: sub.letter, title: sub.title, quadrant: sub.quadrant });
+                  }}
+                >
+                  {(Object.keys(KIND_LABEL) as GridSubsection['kind'][]).map((k) => (
+                    <MenuItem key={k} value={k}>{KIND_LABEL[k]}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <IconButton size="small" color="error" onClick={() => removeSub(sub.id)} aria-label="Teil löschen">
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Box>
+
+            {sub.kind === 'round-lines' && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {sub.lines.map((line, i) => (
+                  <Box key={i} sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <TextField
+                      size="small"
+                      label="Zeile"
+                      value={line.text}
+                      onChange={(e) => {
+                        const lines = [...sub.lines];
+                        lines[i] = { ...lines[i], text: e.target.value };
+                        updateSub(sub.id, { lines });
+                      }}
+                      sx={{ flex: 2, minWidth: 200 }}
+                    />
+                    <TextField
+                      size="small"
+                      label="Lösung"
+                      value={line.solution}
+                      onChange={(e) => {
+                        const lines = [...sub.lines];
+                        lines[i] = { ...lines[i], solution: e.target.value };
+                        updateSub(sub.id, { lines });
+                      }}
+                      sx={{ flex: 1, minWidth: 120 }}
+                    />
+                  </Box>
+                ))}
+                <Button
+                  size="small"
+                  startIcon={<AddIcon />}
+                  onClick={() => updateSub(sub.id, { lines: [...sub.lines, { text: '', solution: '' }] })}
+                >
+                  Zeile
+                </Button>
+              </Box>
+            )}
+
+            {sub.kind === 'compare' &&
+              sub.rows.map((row, i) => (
+                <Box key={i} sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                  <TextField size="small" label="Links" value={row.left} onChange={(e) => {
+                    const rows = [...sub.rows];
+                    rows[i] = { ...rows[i], left: e.target.value };
+                    updateSub(sub.id, { rows });
+                  }} />
+                  <FormControl size="small" sx={{ width: 90 }}>
+                    <InputLabel>Lösung</InputLabel>
+                    <Select label="Lösung" value={row.solution} onChange={(e) => {
+                      const rows = [...sub.rows];
+                      rows[i] = { ...rows[i], solution: e.target.value as '<' | '>' | '=' };
+                      updateSub(sub.id, { rows });
+                    }}>
+                      <MenuItem value="<">&lt;</MenuItem>
+                      <MenuItem value=">">&gt;</MenuItem>
+                      <MenuItem value="=">=</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <TextField size="small" label="Rechts" value={row.right} onChange={(e) => {
+                    const rows = [...sub.rows];
+                    rows[i] = { ...rows[i], right: e.target.value };
+                    updateSub(sub.id, { rows });
+                  }} />
+                </Box>
+              ))}
+
+            {sub.kind === 'sort' && (
+              <>
+                <TextField fullWidth size="small" label="Gegeben (Zahlen)" value={sub.given} onChange={(e) => updateSub(sub.id, { given: e.target.value })} sx={{ mb: 1 }} />
+                <TextField fullWidth size="small" label="Lösung (sortiert)" value={sub.solution} onChange={(e) => updateSub(sub.id, { solution: e.target.value })} />
+              </>
+            )}
+
+            {sub.kind === 'one-line' && (
+              <>
+                <TextField fullWidth size="small" label="Aufgabentext / Zahl" value={sub.prompt} onChange={(e) => updateSub(sub.id, { prompt: e.target.value })} sx={{ mb: 1 }} />
+                <TextField fullWidth size="small" label="Lösung" value={sub.solution} onChange={(e) => updateSub(sub.id, { solution: e.target.value })} />
+              </>
+            )}
+
+            {sub.kind === 'bullet-blanks' &&
+              sub.items.map((item, i) => (
+                <Box key={i} sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                  <TextField size="small" label="Text vor Lücke" value={item.text} onChange={(e) => {
+                    const items = [...sub.items];
+                    items[i] = { ...items[i], text: e.target.value };
+                    updateSub(sub.id, { items });
+                  }} sx={{ flex: 2 }} />
+                  <TextField size="small" label="Lösung" value={item.solution} onChange={(e) => {
+                    const items = [...sub.items];
+                    items[i] = { ...items[i], solution: e.target.value };
+                    updateSub(sub.id, { items });
+                  }} sx={{ flex: 1 }} />
+                </Box>
+              ))}
+
+            {sub.kind === 'cloze' && (
+              <>
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  size="small"
+                  label="Lückentext (___ = Lücke)"
+                  value={sub.template}
+                  onChange={(e) => updateSub(sub.id, { template: e.target.value })}
+                  sx={{ mb: 1 }}
+                />
+                {sub.solutions.map((sol, i) => (
+                  <TextField
+                    key={i}
+                    fullWidth
+                    size="small"
+                    label={`Lösung Lücke ${i + 1}`}
+                    value={sol}
+                    onChange={(e) => {
+                      const solutions = [...sub.solutions];
+                      solutions[i] = e.target.value;
+                      updateSub(sub.id, { solutions });
+                    }}
+                    sx={{ mb: 1 }}
+                  />
+                ))}
+              </>
+            )}
+          </Box>
+        ))}
+
+        <Button
+          startIcon={<AddIcon />}
+          variant="outlined"
+          onClick={() =>
+            setSpec((p) => ({
+              ...p,
+              subsections: [...p.subsections, newSubsection('round-lines')],
+            }))
+          }
+        >
+          Teil hinzufügen (A, B, C …)
+        </Button>
+
+        <Divider />
+        <Typography variant="subtitle2">Vorschau</Typography>
+        <Box
+          sx={{
+            border: '1px solid #ccc',
+            borderRadius: 1,
+            p: 1,
+            bgcolor: '#fff',
+            maxHeight: 280,
+            overflow: 'auto',
+            fontSize: 13,
+          }}
+          dangerouslySetInnerHTML={{ __html: built.taskHtml }}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={saving}>Abbrechen</Button>
+        <Button variant="contained" onClick={() => void save()} disabled={saving || !filePath}>
+          {saving ? 'Speichern…' : 'In Prüfung speichern'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}

@@ -106,6 +106,9 @@ router.get('/get-examination-questions', FileSystemPathController.getExamination
 // Einzelfrage aktualisieren
 router.post('/update-single-question', FileSystemPathController.updateSingleQuestion);
 
+// Raster-Aufgabe (2×2) speichern
+router.post('/upsert-examination-grid-task', FileSystemPathController.upsertExaminationGridTask);
+
 // Titel einer Prüfung aktualisieren
 router.post('/update-examination-title', FileSystemPathController.updateExaminationTitle);
 
