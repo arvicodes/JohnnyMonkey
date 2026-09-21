@@ -6795,6 +6795,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [singleQuestionModalOpen, setSingleQuestionModalOpen] = useState(false);
   const [singleQuestionFilePath, setSingleQuestionFilePath] = useState<string>('');
   const [examGridBuilderOpen, setExamGridBuilderOpen] = useState(false);
+  const [examGridTaskNumbers, setExamGridTaskNumbers] = useState<number[]>([]);
+  const [examGridEditTaskNumber, setExamGridEditTaskNumber] = useState(1);
   const [examinationQuestions, setExaminationQuestions] = useState<any[]>([]);
   const [examinationTitle, setExaminationTitle] = useState<string>('');
   const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
@@ -11850,7 +11852,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
   
   // Funktion zum Öffnen des Einzelfragen-Modals
-  const loadExamQuestionsForPath = async (path: string) => {
+  const loadExamQuestionsForPath = async (path: string, options?: { openGridIfSaved?: boolean }) => {
     setLoadingQuestions(true);
     try {
       const response = await fetch(
@@ -11860,6 +11862,19 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         const data = await response.json();
         setExaminationQuestions(data.questions || []);
         setExaminationTitle(data.title || '');
+        const gridNums: number[] = Array.isArray(data.gridTaskNumbers)
+          ? data.gridTaskNumbers.map((n: unknown) => Number(n)).filter((n: number) => n > 0)
+          : [];
+        setExamGridTaskNumbers(gridNums);
+        const textMax =
+          data.questions?.length > 0
+            ? Math.max(...data.questions.map((q: { taskNumber?: number }) => Number(q.taskNumber) || 0))
+            : 0;
+        const defaultTask = gridNums.length > 0 ? gridNums[0] : Math.max(textMax, 1);
+        setExamGridEditTaskNumber(defaultTask);
+        if (options?.openGridIfSaved !== false && gridNums.length > 0) {
+          setExamGridBuilderOpen(true);
+        }
       } else {
         showSnackbar('Fehler beim Laden der Fragen', 'error');
       }
@@ -11880,8 +11895,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     setSingleQuestionFilePath(item.path);
     setExaminationQuestions([]);
     setEditingQuestion(null);
+    setExamGridBuilderOpen(false);
     setSingleQuestionModalOpen(true);
-    await loadExamQuestionsForPath(item.path);
+    await loadExamQuestionsForPath(item.path, { openGridIfSaved: true });
   };
   
   // Funktion zum Speichern einer Frage
@@ -30433,8 +30449,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           ) : examinationQuestions.length === 0 ? (
             <Alert severity="info" sx={{ borderRadius: 2 }}>
               <Typography variant="body2" sx={{ mb: 1.5 }}>
-                Keine einfachen Text-Aufgaben erkannt — oder die Datei ist noch leer. Für ein Layout wie
-                auf deinem Arbeitsblatt (Kästchen A–G) nutze den Raster-Editor.
+                {examGridTaskNumbers.length > 0
+                  ? `Diese Prüfung nutzt das 2×2-Raster (Aufgabe${examGridTaskNumbers.length > 1 ? 'n' : ''} ${examGridTaskNumbers.join(', ')}). Der Raster-Editor ist geöffnet — Änderungen mit „In Prüfung speichern“ übernehmen.`
+                  : 'Keine einfachen Text-Aufgaben erkannt — oder die Datei ist noch leer. Für ein Layout wie auf deinem Arbeitsblatt (Kästchen A–G) nutze den Raster-Editor.'}
               </Typography>
               <Button
                 variant="contained"
@@ -30442,7 +30459,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 onClick={() => setExamGridBuilderOpen(true)}
                 disabled={!singleQuestionFilePath}
               >
-                Raster-Aufgabe (2×2) erstellen
+                {examGridTaskNumbers.length > 0 ? 'Raster-Editor anzeigen' : 'Raster-Aufgabe (2×2) erstellen'}
               </Button>
             </Alert>
           ) : editingQuestion ? (
@@ -30671,17 +30688,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       <ExamGridTaskBuilderDialog
         open={examGridBuilderOpen}
         filePath={singleQuestionFilePath}
-        initialTaskNumber={
-          examinationQuestions.length > 0
-            ? Math.max(...examinationQuestions.map((q) => Number(q.taskNumber) || 0), 1)
-            : 1
-        }
-        existingTaskNumbers={examinationQuestions.map((q) => Number(q.taskNumber) || 0)}
+        initialTaskNumber={examGridEditTaskNumber}
+        existingTaskNumbers={[
+          ...examinationQuestions.map((q) => Number(q.taskNumber) || 0),
+          ...examGridTaskNumbers,
+        ]}
         onClose={() => setExamGridBuilderOpen(false)}
         onNotify={(message, severity) => showSnackbar(message, severity)}
         onSaved={() => {
           if (singleQuestionFilePath) {
-            void loadExamQuestionsForPath(singleQuestionFilePath);
+            void loadExamQuestionsForPath(singleQuestionFilePath, { openGridIfSaved: true });
           }
         }}
       />

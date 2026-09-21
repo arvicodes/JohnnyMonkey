@@ -555,6 +555,18 @@ function parseSubsection(
   return { id, letter, title, quadrant, kind: 'one-line', prompt: '', solution: '' };
 }
 
+export function listGridTaskNumbersInExamHtml(fullHtml: string): number[] {
+  const nums: number[] = [];
+  const re =
+    /<!-- Aufgabe (\d+)\s*(?::[^>]*)?\s*-->([\s\S]*?)(?=<!-- Aufgabe \d|<div class="submit-section">|<div class="footer">|$)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(fullHtml)) !== null) {
+    const n = parseInt(m[1], 10);
+    if (!Number.isNaN(n) && m[2].includes('exam-task-grid')) nums.push(n);
+  }
+  return [...new Set(nums)].sort((a, b) => a - b);
+}
+
 /** Liest eine gespeicherte Raster-Aufgabe aus der vollständigen Prüfungs-HTML. */
 export function parseExamGridTaskFromExamHtml(fullHtml: string, taskNumber: number): ExamGridTaskSpec | null {
   const taskHtml = extractExamTaskHtml(fullHtml, taskNumber);

@@ -2955,6 +2955,10 @@ KRITISCH WICHTIG:
         const taskMeta = (match[2] || '').trim();
         const taskHTML = (match[3] || '').trim();
 
+        if (taskHTML.includes('exam-task-grid')) {
+          continue;
+        }
+
         // Bestimme den Fragentyp
         const isMultipleChoice = taskHTML.includes('type="radio"');
         const questionType = isMultipleChoice ? 'multiple-choice' : 'text';
@@ -3021,6 +3025,18 @@ KRITISCH WICHTIG:
         });
       }
 
+      const gridTaskNumbers: number[] = [];
+      const gridTaskRe =
+        /<!-- Aufgabe (\d+)\s*(?::[^>]*)?\s*-->([\s\S]*?)(?=<!-- Aufgabe \d|<div class="submit-section">|<div class="footer">|$)/gi;
+      let gridMatch: RegExpExecArray | null;
+      while ((gridMatch = gridTaskRe.exec(htmlContent)) !== null) {
+        const n = parseInt(gridMatch[1], 10);
+        if (gridMatch[2].includes('exam-task-grid') && !Number.isNaN(n)) {
+          gridTaskNumbers.push(n);
+        }
+      }
+      gridTaskNumbers.sort((a, b) => a - b);
+
       const versionMeta = parseExamVersionsMeta(htmlContent);
       const fileName = path.basename(fullFilePath);
       const currentLetter = versionLetterFromStem(fileStemFromName(fileName));
@@ -3033,6 +3049,7 @@ KRITISCH WICHTIG:
         success: true,
         title: title,
         questions: questions.sort((a, b) => a.taskNumber - b.taskNumber),
+        gridTaskNumbers,
         versionLetters: versionMeta.letters,
         currentVersionLetter: currentLetter,
         baseFilePath: baseGitPath.startsWith('git-intern/') ? baseGitPath : filePath,

@@ -136,15 +136,17 @@ export default function ExamGridTaskBuilderDialog({
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const wasOpenRef = React.useRef(false);
+  const loadedKeyRef = React.useRef('');
 
   React.useEffect(() => {
     if (!open) {
-      wasOpenRef.current = false;
+      loadedKeyRef.current = '';
       return;
     }
-    if (wasOpenRef.current) return;
-    wasOpenRef.current = true;
+
+    const loadKey = `${filePath}|${initialTaskNumber}`;
+    if (loadedKeyRef.current === loadKey) return;
+    loadedKeyRef.current = loadKey;
     setError(null);
 
     if (!filePath) {
@@ -163,6 +165,11 @@ export default function ExamGridTaskBuilderDialog({
         const parsed = parseExamGridTaskFromExamHtml(html, initialTaskNumber);
         if (parsed) {
           setSpec(parsed);
+        } else if (extractExamTaskHtml(html, initialTaskNumber)?.includes('exam-task-grid')) {
+          setSpec(createBlankExamGridTask(initialTaskNumber));
+          setError(
+            'Die gespeicherte Raster-Aufgabe konnte nicht vollständig gelesen werden — Struktur prüfen oder neu speichern.',
+          );
         } else if (extractExamTaskHtml(html, initialTaskNumber)) {
           setSpec(createBlankExamGridTask(initialTaskNumber));
         } else {
@@ -225,6 +232,7 @@ export default function ExamGridTaskBuilderDialog({
       await persistSpec(spec, built);
       onNotify?.(`Aufgabe ${spec.taskNumber} in der Prüfung gespeichert.`, 'success');
       onSaved();
+      loadedKeyRef.current = '';
       onClose();
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Speichern fehlgeschlagen';
@@ -258,6 +266,7 @@ export default function ExamGridTaskBuilderDialog({
       const next = nextTaskNumber(spec.taskNumber, taskNumbersForNext);
       onNotify?.(`Aufgabe ${spec.taskNumber} gespeichert — weiter mit Aufgabe ${next}.`, 'success');
       onSaved();
+      loadedKeyRef.current = `${filePath}|${next}`;
       setSpec(createBlankExamGridTask(next));
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Speichern fehlgeschlagen';
