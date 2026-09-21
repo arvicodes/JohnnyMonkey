@@ -19,8 +19,10 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import GridOnIcon from '@mui/icons-material/GridOn';
+import PostAddIcon from '@mui/icons-material/PostAdd';
 import {
   buildExamGridTaskHtml,
+  createBlankExamGridTask,
   demoNatuerlicheZahlenTask1,
   type ExamGridTaskSpec,
   type GridQuadrant,
@@ -31,6 +33,8 @@ type Props = {
   open: boolean;
   filePath: string;
   initialTaskNumber?: number;
+  /** Bereits in der Prüfung vorhandene Aufgaben-Nrn. (für „Aufgabe hinzufügen“). */
+  existingTaskNumbers?: number[];
   onClose: () => void;
   onSaved: () => void;
 };
@@ -106,10 +110,16 @@ function newSubsection(kind: GridSubsection['kind']): GridSubsection {
   }
 }
 
+function nextTaskNumber(current: number, existing: number[] | undefined): number {
+  const nums = new Set([...(existing || []).map((n) => Number(n) || 0), current]);
+  return Math.max(0, ...nums) + 1;
+}
+
 export default function ExamGridTaskBuilderDialog({
   open,
   filePath,
   initialTaskNumber = 1,
+  existingTaskNumbers,
   onClose,
   onSaved,
 }: Props) {
@@ -140,29 +150,58 @@ export default function ExamGridTaskBuilderDialog({
     setSpec((prev) => ({ ...prev, subsections: prev.subsections.filter((s) => s.id !== id) }));
   };
 
+  const persistSpec = async (specToSave: ExamGridTaskSpec, builtPayload: ReturnType<typeof buildExamGridTaskHtml>) => {
+    if (!filePath) return false;
+    const fieldCount = Object.keys(builtPayload.correctAnswers).length;
+    const res = await fetch('/api/file-system-paths/upsert-examination-grid-task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filePath,
+        taskNumber: specToSave.taskNumber,
+        taskHtml: builtPayload.taskHtml,
+        correctAnswers: builtPayload.correctAnswers,
+        totalPoints: Math.max(specToSave.points, fieldCount),
+      }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Speichern fehlgeschlagen');
+    }
+    return true;
+  };
+
   const save = async () => {
-    if (!filePath) return;
     setSaving(true);
     setError(null);
     try {
-      const fieldCount = Object.keys(built.correctAnswers).length;
-      const res = await fetch('/api/file-system-paths/upsert-examination-grid-task', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filePath,
-          taskNumber: spec.taskNumber,
-          taskHtml: built.taskHtml,
-          correctAnswers: built.correctAnswers,
-          totalPoints: Math.max(spec.points, fieldCount),
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Speichern fehlgeschlagen');
-      }
+      await persistSpec(spec, built);
       onSaved();
       onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const taskNumbersForNext = useMemo(
+    () => [...(existingTaskNumbers || []), spec.taskNumber],
+    [existingTaskNumbers, spec.taskNumber],
+  );
+  const nextAufgabeNumber = useMemo(
+    () => nextTaskNumber(spec.taskNumber, taskNumbersForNext),
+    [spec.taskNumber, taskNumbersForNext],
+  );
+
+  const saveAndAddAufgabe = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await persistSpec(spec, built);
+      const next = nextTaskNumber(spec.taskNumber, taskNumbersForNext);
+      onSaved();
+      setSpec(createBlankExamGridTask(next));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
     } finally {
@@ -546,18 +585,33 @@ export default function ExamGridTaskBuilderDialog({
           </Box>
         ))}
 
-        <Button
-          startIcon={<AddIcon />}
-          variant="outlined"
-          onClick={() =>
-            setSpec((p) => ({
-              ...p,
-              subsections: [...p.subsections, newSubsection('round-lines')],
-            }))
-          }
-        >
-          Teil hinzufügen (A, B, C …)
-        </Button>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+          <Button
+            startIcon={<AddIcon />}
+            variant="outlined"
+            onClick={() =>
+              setSpec((p) => ({
+                ...p,
+                subsections: [...p.subsections, newSubsection('round-lines')],
+              }))
+            }
+          >
+            Teil hinzufügen (A, B, C …)
+          </Button>
+          <Button
+            startIcon={<PostAddIcon />}
+            variant="outlined"
+            color="secondary"
+            disabled={saving || !filePath}
+            onClick={() => void saveAndAddAufgabe()}
+          >
+            Aufgabe hinzufügen (nächste Nr.)
+          </Button>
+        </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: -0.5 }}>
+          „Aufgabe hinzufügen“ speichert die aktuelle Aufgabe {spec.taskNumber} und öffnet Aufgabe{' '}
+          {nextAufgabeNumber} (leer).
+        </Typography>
 
         </Box>
 

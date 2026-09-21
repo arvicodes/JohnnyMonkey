@@ -161,6 +161,25 @@ const GRID_STYLE = `
 .exam-cloze-line input{min-width:72px;margin:0 4px;}
 `;
 
+/** Leere Raster-Aufgabe (eine Teil-Box) für eine neue Aufgaben-Nr. */
+export function createBlankExamGridTask(taskNumber: number): ExamGridTaskSpec {
+  return {
+    taskNumber,
+    points: 5,
+    afbLevel: 1,
+    subsections: [
+      {
+        id: `sub-blank-${Date.now()}`,
+        letter: 'A',
+        title: '',
+        quadrant: 'tl',
+        kind: 'round-lines',
+        lines: [{ text: '', solution: '' }],
+      },
+    ],
+  };
+}
+
 export function demoNatuerlicheZahlenTask1(): ExamGridTaskSpec {
   return {
     taskNumber: 1,

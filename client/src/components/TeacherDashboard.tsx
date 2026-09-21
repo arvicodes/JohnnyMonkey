@@ -30615,6 +30615,7 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
             ? Math.max(...examinationQuestions.map((q) => Number(q.taskNumber) || 0), 1)
             : 1
         }
+        existingTaskNumbers={examinationQuestions.map((q) => Number(q.taskNumber) || 0)}
         onClose={() => setExamGridBuilderOpen(false)}
         onSaved={() => {
           if (singleQuestionFilePath) {
