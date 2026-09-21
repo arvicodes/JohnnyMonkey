@@ -2921,7 +2921,9 @@ KRITISCH WICHTIG:
       }
 
       // Extrahiere alle Aufgaben (`<!-- Aufgabe 1 -->` oder `<!-- Aufgabe 1: AFB … -->`)
-      const taskPattern = /<!-- Aufgabe (\d+)\s*(?::([^>]*))?\s*-->([\s\S]*?)(?=<!-- Aufgabe |<div class="submit-section">)/g;
+      // Ende: nächste Aufgabe, Abgabe-Block, Fußzeile (Sidebar-Vorlagen) oder Dateiende
+      const taskPattern =
+        /<!-- Aufgabe (\d+)\s*(?::([^>]*))?\s*-->([\s\S]*?)(?=<!-- Aufgabe \d|<div class="submit-section">|<div class="footer">|$)/g;
       const questions: any[] = [];
       let match;
 

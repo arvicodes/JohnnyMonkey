@@ -30339,7 +30339,10 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           ) : examinationQuestions.length === 0 ? (
             <Alert severity="info" sx={{ borderRadius: 2 }}>
               <Typography variant="body2">
-                Keine Fragen gefunden. Bitte generieren Sie zuerst Inhalte für diese Prüfung.
+                Keine Aufgaben in der HTML-Datei erkannt. Jede Aufgabe braucht einen Kommentar{' '}
+                <code>{'<!-- Aufgabe 1 -->'}</code> direkt vor <code>{'<div class="task">'}</code>.
+                Inhalt am einfachsten in der HTML-Datei ergänzen (oder weitere Aufgaben kopieren) und
+                danach hier bearbeiten.
               </Typography>
             </Alert>
           ) : editingQuestion ? (
