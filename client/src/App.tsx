@@ -48,7 +48,6 @@ import { ensurePresentationSoundHotkey } from './lib/presentationSound';
 import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
 import FlutterElf from './components/FlutterElf';
 import GlobalMarkdownListShortcut from './components/GlobalMarkdownListShortcut';
-import GlobalDashboardShortcut from './components/GlobalDashboardShortcut';
 import GlobalTeacherCornerNav from './components/GlobalTeacherCornerNav';
 import TeacherQuickNotes from './components/TeacherQuickNotes';
 
@@ -359,11 +358,6 @@ function AppContent() {
       </Routes>
 
       <GlobalMarkdownListShortcut />
-      {authReady &&
-        user &&
-        String(user.role).toUpperCase() !== 'TEACHER' && (
-          <GlobalDashboardShortcut buttonRight={20} buttonBottom={20} />
-        )}
 
       {authReady && user && String(user.role).toUpperCase() === 'TEACHER' && (
         <>
