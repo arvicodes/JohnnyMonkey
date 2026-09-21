@@ -330,6 +330,12 @@ export default function ExamGridTaskBuilderDialog({
             py: 2,
           }}
         >
+        {loading ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 2 }}>
+            <CircularProgress size={22} />
+            <Typography variant="body2">Gespeicherte Aufgabe wird geladen…</Typography>
+          </Box>
+        ) : null}
         {error ? <Alert severity="error">{error}</Alert> : null}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
           <TextField
@@ -370,8 +376,9 @@ export default function ExamGridTaskBuilderDialog({
         </Box>
 
         <Typography variant="subtitle2" color="text.secondary">
-          Teile A–G in die vier Kästchen legen. Unter <code>___</code> im Lückentext = eine Lücke. HTML:{' '}
-          <code>&lt;sub&gt;10&lt;/sub&gt;</code> in Texten erlaubt. {SOLUTION_HELPER}
+          Nur der <strong>Inhalt von Aufgabe {spec.taskNumber}</strong> liegt im 2×2-Raster. Beim Speichern bleiben
+          Prüfungskopf, linke Leiste (Timer, Druck, Abgeben) und Fußzeile der Datei unverändert. Teile A–G in die
+          vier Kästchen legen. <code>___</code> = Lücke. {SOLUTION_HELPER}
         </Typography>
 
         {spec.subsections.map((sub) => (
@@ -705,7 +712,7 @@ export default function ExamGridTaskBuilderDialog({
           }}
         >
           <Typography variant="subtitle2" sx={{ px: 3, pt: 1.5, pb: 0.5, flexShrink: 0 }}>
-            Vorschau
+            Vorschau (nur Aufgaben-Inhalt — ohne Prüfungs-Rahmen)
           </Typography>
           <Box
             sx={{
@@ -729,7 +736,7 @@ export default function ExamGridTaskBuilderDialog({
       </DialogContent>
       <DialogActions sx={{ flexShrink: 0 }}>
         <Button onClick={onClose} disabled={saving}>Abbrechen</Button>
-        <Button variant="contained" onClick={() => void save()} disabled={saving || !filePath}>
+        <Button variant="contained" onClick={() => void save()} disabled={saving || loading || !filePath}>
           {saving ? 'Speichern…' : 'In Prüfung speichern'}
         </Button>
       </DialogActions>
