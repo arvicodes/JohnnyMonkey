@@ -194,13 +194,26 @@ export default function ExamGridTaskBuilderDialog({
         sx={{
           flex: 1,
           minHeight: 0,
-          overflowY: 'auto',
-          WebkitOverflowScrolling: 'touch',
+          overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          gap: 2,
+          gap: 0,
+          p: 0,
         }}
       >
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            px: 3,
+            py: 2,
+          }}
+        >
         {error ? <Alert severity="error">{error}</Alert> : null}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
           <TextField
@@ -546,24 +559,42 @@ export default function ExamGridTaskBuilderDialog({
           Teil hinzufügen (A, B, C …)
         </Button>
 
-        <Divider sx={{ flexShrink: 0 }} />
-        <Typography variant="subtitle2" sx={{ flexShrink: 0 }}>Vorschau</Typography>
+        </Box>
+
         <Box
           sx={{
-            border: '1px solid #ccc',
-            borderRadius: 1,
-            p: 1,
-            bgcolor: '#fff',
-            minHeight: 160,
-            maxHeight: 360,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            WebkitOverflowScrolling: 'touch',
-            fontSize: 13,
             flexShrink: 0,
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            maxHeight: '42%',
+            bgcolor: '#f5f5f5',
           }}
-          dangerouslySetInnerHTML={{ __html: built.taskHtml }}
-        />
+        >
+          <Typography variant="subtitle2" sx={{ px: 3, pt: 1.5, pb: 0.5, flexShrink: 0 }}>
+            Vorschau
+          </Typography>
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 120,
+              mx: 3,
+              mb: 2,
+              border: '1px solid #ccc',
+              borderRadius: 1,
+              p: 1,
+              bgcolor: '#fff',
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              WebkitOverflowScrolling: 'touch',
+              fontSize: 13,
+              overscrollBehavior: 'contain',
+            }}
+            dangerouslySetInnerHTML={{ __html: built.taskHtml }}
+          />
+        </Box>
       </DialogContent>
       <DialogActions sx={{ flexShrink: 0 }}>
         <Button onClick={onClose} disabled={saving}>Abbrechen</Button>

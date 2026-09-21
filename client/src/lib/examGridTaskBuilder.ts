@@ -76,7 +76,7 @@ function allowBasicHtml(s: string): string {
   return escapeHtml(s)
     .replace(/&lt;(\/?)(sub|strong|sup)&gt;/gi, '<$1$2>')
     .replace(/&lt;sub&gt;([\s\S]*?)&lt;\/sub&gt;/gi, '<sub>$1</sub>')
-    .replace(/&lt;strong&gt;([\s\S]*?)&lt;/strong&gt;/gi, '<strong>$1</strong>');
+    .replace(/&lt;strong&gt;([\s\S]*?)&lt;\/strong&gt;/gi, "<strong>$1</strong>");
 }
 
 export type SolutionExpandKind = 'text' | 'sort' | 'number';
