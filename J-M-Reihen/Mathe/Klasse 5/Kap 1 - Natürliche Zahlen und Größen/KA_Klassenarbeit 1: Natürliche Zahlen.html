@@ -1271,9 +1271,34 @@
         </div>
     </div>
 
+<!-- Aufgabe 2 -->
+    <div class="task">
+        <div class="task-header">
+            <div class="task-number">Aufgabe 2 <span style="font-size: 11px; color: #666; font-weight: normal;">(5 Punkte)</span></div>
+            <div class="task-meta teacher-only">
+                <span class="afb-badge afb-1">AFB I</span>
+                <div class="points">5 Punkte</div>
+            </div>
+        </div>
+        <div class="task-content">
+
+            <div class="exam-task-grid">
+                <div class="exam-task-grid-cell"><div class="exam-subsection"><div class="exam-subsection-title"><span class="item-label">A)</span> Test</div><div class="exam-round-line item input-group"><span>Test</span><input type="text" id="a2a" class="blank-wide" autocomplete="off"></div></div></div>
+                <div class="exam-task-grid-cell">&nbsp;</div>
+                <div class="exam-task-grid-cell">&nbsp;</div>
+                <div class="exam-task-grid-cell">&nbsp;</div>
+            </div>
+
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                <p>A a) Test <strong>Test</strong></p>
+            </div>
+        </div>
+    </div>
+
 <div class="footer">
         <div class="footer-note">
-            <div class="footer-points" id="pointsDisplay">Du hast <span id="achievedPoints">___</span> von <span id="totalPoints">15</span> Punkten erreicht.</div>
+            <div class="footer-points" id="pointsDisplay">Du hast <span id="achievedPoints">___</span> von <span id="totalPoints">20</span> Punkten erreicht.</div>
             <div class="footer-note-line"><strong>Note:</strong> <span id="noteText">___</span> / <span id="noteNumber">___</span></div>
             <div class="footer-points teacher-only" id="averageDisplay" style="margin-top: 10px; font-size: 13px; color: #666; display: none;">Notenschnitt: <span id="averageNote">-</span></div>
         </div>
@@ -1994,7 +2019,8 @@
             a1i: ['1'],
             a1j: ['999'],
             a1k: ['Ziffern', 'Ziffer'],
-            a1l: ['Primzahl', 'primzahl', 'Prim']
+            a1l: ['Primzahl', 'primzahl', 'Prim'],
+            a2a: ['Test']
         };
 
         function getAnswerValue(id) {
@@ -2054,7 +2080,7 @@
                     achievedPoints += 1;
                 }
             });
-            return { achieved: achievedPoints, total: 15 };
+            return { achieved: achievedPoints, total: 20 };
         }
 
         // Funktion zur Aktualisierung der Anzeige

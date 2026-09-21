@@ -178,13 +178,10 @@ export default function ExamGridTaskBuilderDialog({
     setSpecs((prev) => [...prev, createBlankExamGridTask(next)]);
   };
 
-  const applyDemoToFirst = () => {
-    setSpecs((prev) => {
-      if (!prev.length) return [{ ...demoNatuerlicheZahlenTask1(), taskNumber: initialTaskNumber }];
-      return prev.map((s, i) =>
-        i === 0 ? { ...demoNatuerlicheZahlenTask1(), taskNumber: s.taskNumber } : s,
-      );
-    });
+  const insertDemoExample = () => {
+    const next = nextTaskNumberFromSpecs(specs, existingTaskNumbers);
+    setSpecs((prev) => [...prev, { ...demoNatuerlicheZahlenTask1(), taskNumber: next }]);
+    onNotify?.(`Beispiel als Aufgabe ${next} eingefügt — deine bisherigen Aufgaben bleiben unverändert.`, 'success');
   };
 
   return (
@@ -217,11 +214,12 @@ export default function ExamGridTaskBuilderDialog({
         <Typography component="span" variant="h6" sx={{ fontSize: '1.05rem', fontWeight: 700 }}>
           2×2 Raster
         </Typography>
-        <Button
-          size="small"
-          variant="outlined"
-          disabled={loading || saving}
-          onClick={applyDemoToFirst}
+        <Tooltip title="Beispiel als neue Aufgabe einfügen (bestehende bleiben)">
+          <Button
+            size="small"
+            variant="outlined"
+            disabled={loading || saving}
+            onClick={insertDemoExample}
           sx={{
             minWidth: 0,
             width: 'auto',
@@ -237,6 +235,7 @@ export default function ExamGridTaskBuilderDialog({
         >
           Beispiel
         </Button>
+        </Tooltip>
         {activeFilePath ? (
           <Tooltip title="Prüfung öffnen">
             <IconButton
