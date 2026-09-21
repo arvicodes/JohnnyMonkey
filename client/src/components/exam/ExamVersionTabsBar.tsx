@@ -1,6 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Box, Button, IconButton, Tab, Tabs, Tooltip, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import {
+  fetchExamVersionLetters,
+  normalizeVersionLetter,
+  resolveVersionFilePath,
+} from '../../lib/examVersionPaths';
 
 const compactIconBtn = {
   p: 0,
@@ -8,11 +13,6 @@ const compactIconBtn = {
   width: 28,
   height: 28,
 };
-import {
-  fetchExamVersionLetters,
-  normalizeVersionLetter,
-  resolveVersionFilePath,
-} from '../../lib/examVersionPaths';
 
 type Props = {
   filePath: string;
