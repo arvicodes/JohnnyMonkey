@@ -112,4 +112,8 @@ router.post('/upsert-examination-grid-task', FileSystemPathController.upsertExam
 // Titel einer Prüfung aktualisieren
 router.post('/update-examination-title', FileSystemPathController.updateExaminationTitle);
 
+router.get('/get-examination-versions', FileSystemPathController.getExaminationVersions);
+router.post('/add-examination-version', FileSystemPathController.addExaminationVersion);
+router.post('/remove-examination-version', FileSystemPathController.removeExaminationVersion);
+
 export default router;

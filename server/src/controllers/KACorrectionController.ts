@@ -11,6 +11,14 @@ import {
 import { examGradeNumericFromPoints } from '../utils/examGradeNumeric';
 import fs from 'fs';
 import path from 'path';
+import {
+  baseStemFromStem,
+  fileStemFromName,
+  kaPathsMatchFamily,
+  normalizeVersionLetter,
+  variantStem,
+  versionLetterFromKaPath,
+} from '../lib/examVersionPaths';
 
 const prisma = new PrismaClient();
 
@@ -91,6 +99,14 @@ function getPossiblePaths(filePath: string): string[] {
   add(normalized);
   add(base);
   add(withoutExt);
+  const familyStem = baseStemFromStem(withoutExt);
+  for (const letter of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
+    const variantFileStem = variantStem(familyStem, letter);
+    add(variantFileStem);
+    for (const pref of ['KA_', 'KU_', 'HÜ_', 'HU_', 'QZ_', '']) {
+      add(`${pref}${variantFileStem.replace(/^(KA_|KU_|HÜ_|HU_|QZ_)/i, '')}`);
+    }
+  }
   for (const pref of ['KA_', 'KU_', 'HÜ_', 'HU_', 'QZ_', '']) {
     add(`${pref}${stem}`);
   }
@@ -311,7 +327,8 @@ export class KACorrectionController {
           base === fileNameLower ||
           stem === stemLower ||
           n.toLowerCase() === fileNameLower ||
-          n.toLowerCase().endsWith('/' + fileNameLower)
+          n.toLowerCase().endsWith('/' + fileNameLower) ||
+          kaPathsMatchFamily(kaFilePath, stored)
         );
       };
       
@@ -1434,6 +1451,76 @@ export class KACorrectionController {
     } catch (error) {
       console.error('Error recalculating exam:', error);
       res.status(500).json({ error: 'Fehler bei der Neubewertung' });
+    }
+  }
+
+  /** Lehrer: Prüfungsversion (Buchstabe) nachträglich korrigieren — Masterpasswort „vertippt“. */
+  static async updateSubmissionExamVersion(req: Request, res: Response) {
+    try {
+      const teacher = await requireTeacher(req);
+      if (!teacher) return res.status(403).json({ error: 'Nur Lehrer' });
+
+      const { id } = req.params;
+      const { versionLetter: letterRaw, masterPassword } = req.body as {
+        versionLetter?: string;
+        masterPassword?: string;
+      };
+
+      if (String(masterPassword || '') !== 'vertippt') {
+        return res.status(403).json({ error: 'Masterpasswort falsch' });
+      }
+
+      const letter = normalizeVersionLetter(letterRaw || '');
+      if (!letter) {
+        return res.status(400).json({ error: 'Ungültiger Buchstabe' });
+      }
+
+      const submission = await prisma.kASubmission.findUnique({
+        where: { id },
+        include: { student: { select: { id: true, name: true, loginCode: true } } },
+      });
+      if (!submission) return res.status(404).json({ error: 'Abgabe nicht gefunden' });
+
+      const stored = submission.kaFilePath.replace(/\\/g, '/');
+      const slash = stored.lastIndexOf('/');
+      const dir = slash >= 0 ? stored.slice(0, slash + 1) : '';
+      const file = slash >= 0 ? stored.slice(slash + 1) : stored;
+      const familyStem = baseStemFromStem(fileStemFromName(file));
+      const nextFile = `${variantStem(familyStem, letter)}.html`;
+      const nextKaPath = `${dir}${nextFile}`;
+
+      if (nextKaPath === stored) {
+        return res.json({
+          success: true,
+          submission: {
+            ...submission,
+            versionLetter: versionLetterFromKaPath(stored),
+          },
+        });
+      }
+
+      try {
+        readExamHtml(nextKaPath);
+      } catch {
+        return res.status(404).json({ error: `Prüfungsdatei für Version ${letter} nicht gefunden` });
+      }
+
+      await prisma.kASubmission.update({
+        where: { id },
+        data: { kaFilePath: nextKaPath },
+      });
+
+      const updated = await KACorrectionController.recomputeSubmissionById(id, teacher.id);
+      const payload = updated
+        ? {
+            ...updated,
+            versionLetter: versionLetterFromKaPath(updated.kaFilePath),
+          }
+        : null;
+      res.json({ success: true, submission: payload });
+    } catch (error) {
+      console.error('Error updating submission exam version:', error);
+      res.status(500).json({ error: 'Fehler beim Ändern der Version' });
     }
   }
 }

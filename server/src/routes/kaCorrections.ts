@@ -48,5 +48,7 @@ router.post('/release-all', KACorrectionController.releaseAllGrades);
 // Freigabestatus für eine Klassenarbeit prüfen (nur für Lehrer)
 router.get('/release-status', KACorrectionController.getReleaseStatus);
 
+router.patch('/submissions/:id/exam-version', KACorrectionController.updateSubmissionExamVersion);
+
 export default router;
 

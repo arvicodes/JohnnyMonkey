@@ -13,8 +13,25 @@ import path from 'path';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import { convert } from 'libreoffice-convert';
+import {
+  applyVersionsToExamHtml,
+  baseStemFromStem,
+  defaultExamVersionLetters,
+  fileStemFromName,
+  gitPathVariant,
+  normalizeVersionLetter,
+  parseExamVersionsMeta,
+  patchKaKeyInHtml,
+  readExamHtmlFullPath,
+  resolveFullPathFromGitIntern,
+  variantStem,
+  versionLetterFromStem,
+  writeExamHtmlFullPath,
+  writeExamVersionsMeta,
+} from '../lib/examVersionPaths';
 
 const prisma = new PrismaClient();
+const DEV_PROJECT_ROOT = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
 
 export interface FileSystemPath {
   id: string;
@@ -2038,6 +2055,12 @@ export class FileSystemPathController {
         fs.mkdirSync(fullFolderPath, { recursive: true });
       }
 
+      templateContent = writeExamVersionsMeta(templateContent, defaultExamVersionLetters());
+      templateContent = templateContent.replace(
+        /const KA_KEY = ['"](.*?)['"]/,
+        `const KA_KEY = '${kaKey}'\n        const EXAM_VERSION_LETTERS = ['A'];`,
+      );
+
       // Schreibe die neue Datei
       fs.writeFileSync(filePath, templateContent, 'utf-8');
 
@@ -2998,10 +3021,21 @@ KRITISCH WICHTIG:
         });
       }
 
+      const versionMeta = parseExamVersionsMeta(htmlContent);
+      const fileName = path.basename(fullFilePath);
+      const currentLetter = versionLetterFromStem(fileStemFromName(fileName));
+      const baseGitPath = gitPathVariant(
+        filePath.startsWith('git-intern/') ? filePath : filePath.replace(/\\/g, '/'),
+        'A',
+      );
+
       res.json({
         success: true,
         title: title,
-        questions: questions.sort((a, b) => a.taskNumber - b.taskNumber)
+        questions: questions.sort((a, b) => a.taskNumber - b.taskNumber),
+        versionLetters: versionMeta.letters,
+        currentVersionLetter: currentLetter,
+        baseFilePath: baseGitPath.startsWith('git-intern/') ? baseGitPath : filePath,
       });
     } catch (error) {
       console.error('❌ Fehler beim Lesen der Fragen:', error);
@@ -3460,6 +3494,142 @@ ${aiContent.optionsHTML}
         error: 'Fehler beim Generieren der Einzelfrage',
         details: errorMessage
       });
+    }
+  }
+
+  private static resolveExamGitBasePath(filePath: string): string {
+    const p = filePath.replace(/\\/g, '/');
+    return gitPathVariant(p, 'A');
+  }
+
+  private static fullPathForGitExam(filePath: string): string {
+    return resolveFullPathFromGitIntern(filePath, DEV_PROJECT_ROOT);
+  }
+
+  /** Versionen einer Prüfung (A = Basisdatei, B/C = Kopien __B / __C). */
+  static async getExaminationVersions(req: Request, res: Response) {
+    try {
+      const { filePath } = req.query;
+      if (!filePath || typeof filePath !== 'string') {
+        return res.status(400).json({ error: 'filePath ist erforderlich' });
+      }
+      const baseGit = FileSystemPathController.resolveExamGitBasePath(filePath);
+      const baseFull = FileSystemPathController.fullPathForGitExam(baseGit);
+      if (!fs.existsSync(baseFull)) {
+        return res.status(404).json({ error: 'Prüfungsdatei nicht gefunden' });
+      }
+      const html = readExamHtmlFullPath(baseFull);
+      const meta = parseExamVersionsMeta(html);
+      const paths: Record<string, string> = {};
+      for (const letter of meta.letters) {
+        paths[letter] = gitPathVariant(baseGit, letter);
+      }
+      res.json({
+        success: true,
+        baseFilePath: baseGit,
+        letters: meta.letters,
+        paths,
+      });
+    } catch (error) {
+      console.error('getExaminationVersions:', error);
+      res.status(500).json({ error: 'Fehler beim Lesen der Versionen' });
+    }
+  }
+
+  static async addExaminationVersion(req: Request, res: Response) {
+    try {
+      const { filePath, letter: letterRaw } = req.body as { filePath?: string; letter?: string };
+      if (!filePath) {
+        return res.status(400).json({ error: 'filePath ist erforderlich' });
+      }
+      const letter = normalizeVersionLetter(letterRaw || '');
+      if (!letter || letter === 'A') {
+        return res.status(400).json({ error: 'Ungültiger Buchstabe (B, C, …)' });
+      }
+      const baseGit = FileSystemPathController.resolveExamGitBasePath(filePath);
+      const baseFull = FileSystemPathController.fullPathForGitExam(baseGit);
+      if (!fs.existsSync(baseFull)) {
+        return res.status(404).json({ error: 'Basis-Prüfung (A) nicht gefunden' });
+      }
+      const baseHtml = readExamHtmlFullPath(baseFull);
+      const meta = parseExamVersionsMeta(baseHtml);
+      if (meta.letters.includes(letter)) {
+        return res.status(400).json({ error: `Version ${letter} existiert bereits` });
+      }
+      const nextLetters = [...meta.letters, letter].sort();
+      const baseStem = baseStemFromStem(fileStemFromName(path.basename(baseFull)));
+      const variantFull = path.join(
+        path.dirname(baseFull),
+        `${variantStem(baseStem, letter)}.html`,
+      );
+      if (fs.existsSync(variantFull)) {
+        return res.status(409).json({ error: 'Variantendatei existiert bereits' });
+      }
+      const variantKey = variantStem(baseStem, letter);
+      let variantHtml = patchKaKeyInHtml(baseHtml, variantKey);
+      variantHtml = applyVersionsToExamHtml(variantHtml, nextLetters, letter);
+      writeExamHtmlFullPath(variantFull, variantHtml);
+
+      const updatedBase = applyVersionsToExamHtml(baseHtml, nextLetters, 'A');
+      writeExamHtmlFullPath(baseFull, updatedBase);
+
+      for (const L of meta.letters) {
+        if (L === 'A' || L === letter) continue;
+        const vGit = gitPathVariant(baseGit, L);
+        const vFull = FileSystemPathController.fullPathForGitExam(vGit);
+        if (!fs.existsSync(vFull)) continue;
+        const vHtml = readExamHtmlFullPath(vFull);
+        writeExamHtmlFullPath(vFull, applyVersionsToExamHtml(vHtml, nextLetters, L));
+      }
+
+      res.json({
+        success: true,
+        letters: nextLetters,
+        addedPath: gitPathVariant(baseGit, letter),
+      });
+    } catch (error) {
+      console.error('addExaminationVersion:', error);
+      res.status(500).json({ error: 'Fehler beim Anlegen der Version' });
+    }
+  }
+
+  static async removeExaminationVersion(req: Request, res: Response) {
+    try {
+      const { filePath, letter: letterRaw } = req.body as { filePath?: string; letter?: string };
+      if (!filePath) {
+        return res.status(400).json({ error: 'filePath ist erforderlich' });
+      }
+      const letter = normalizeVersionLetter(letterRaw || '');
+      if (!letter || letter === 'A') {
+        return res.status(400).json({ error: 'Version A kann nicht entfernt werden' });
+      }
+      const baseGit = FileSystemPathController.resolveExamGitBasePath(filePath);
+      const baseFull = FileSystemPathController.fullPathForGitExam(baseGit);
+      if (!fs.existsSync(baseFull)) {
+        return res.status(404).json({ error: 'Basis-Prüfung nicht gefunden' });
+      }
+      const baseHtml = readExamHtmlFullPath(baseFull);
+      const meta = parseExamVersionsMeta(baseHtml);
+      if (!meta.letters.includes(letter)) {
+        return res.status(404).json({ error: `Version ${letter} ist nicht aktiv` });
+      }
+      const nextLetters = meta.letters.filter((l) => l !== letter);
+      const variantFull = FileSystemPathController.fullPathForGitExam(gitPathVariant(baseGit, letter));
+      if (fs.existsSync(variantFull)) {
+        fs.unlinkSync(variantFull);
+      }
+      writeExamHtmlFullPath(baseFull, applyVersionsToExamHtml(baseHtml, nextLetters, 'A'));
+      for (const L of nextLetters) {
+        if (L === 'A') continue;
+        const vFull = FileSystemPathController.fullPathForGitExam(gitPathVariant(baseGit, L));
+        if (!fs.existsSync(vFull)) continue;
+        const vHtml = readExamHtmlFullPath(vFull);
+        writeExamHtmlFullPath(vFull, applyVersionsToExamHtml(vHtml, nextLetters, L));
+      }
+      res.json({ success: true, letters: nextLetters });
+    } catch (error) {
+      console.error('removeExaminationVersion:', error);
+      res.status(500).json({ error: 'Fehler beim Entfernen der Version' });
     }
   }
 }

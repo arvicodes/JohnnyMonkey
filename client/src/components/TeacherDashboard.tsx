@@ -439,6 +439,7 @@ import SubjectManager from './SubjectManager';
 import { fetchAssignments } from './SubjectManager';
 import MaterialCreator from './MaterialCreator';
 import ExamGridTaskBuilderDialog from './exam/ExamGridTaskBuilderDialog';
+import ExamVersionTabsBar from './exam/ExamVersionTabsBar';
 import GradingSchemaModal from './GradingSchemaModal';
 import GradesModal from './GradesModal';
 import FileSystemPathManager from './FileSystemPathManager';
@@ -11849,15 +11850,12 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
 
   
   // Funktion zum √ñffnen des Einzelfragen-Modals
-  const handleEditSingleQuestion = async (item: any) => {
-    setSingleQuestionFilePath(item.path);
-    setExaminationQuestions([]);
-    setEditingQuestion(null);
-    setSingleQuestionModalOpen(true);
+  const loadExamQuestionsForPath = async (path: string) => {
     setLoadingQuestions(true);
-    
     try {
-      const response = await fetch(`/api/file-system-paths/get-examination-questions?filePath=${encodeURIComponent(item.path)}`);
+      const response = await fetch(
+        `/api/file-system-paths/get-examination-questions?filePath=${encodeURIComponent(path)}`,
+      );
       if (response.ok) {
         const data = await response.json();
         setExaminationQuestions(data.questions || []);
@@ -11871,6 +11869,19 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
     } finally {
       setLoadingQuestions(false);
     }
+  };
+
+  const handleExamVersionActivePath = (path: string, _letter: string) => {
+    setSingleQuestionFilePath(path);
+    void loadExamQuestionsForPath(path);
+  };
+
+  const handleEditSingleQuestion = async (item: any) => {
+    setSingleQuestionFilePath(item.path);
+    setExaminationQuestions([]);
+    setEditingQuestion(null);
+    setSingleQuestionModalOpen(true);
+    await loadExamQuestionsForPath(item.path);
   };
   
   // Funktion zum Speichern einer Frage
@@ -30303,6 +30314,13 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
           </Box>
         </DialogTitle>
         <DialogContent sx={{ p: 3 }}>
+          {singleQuestionFilePath ? (
+            <ExamVersionTabsBar
+              filePath={singleQuestionFilePath}
+              onActiveFilePathChange={handleExamVersionActivePath}
+              disabled={loadingQuestions || savingQuestion}
+            />
+          ) : null}
           {!loadingQuestions && examinationQuestions.length > 0 && (
             <Box sx={{ mb: 3, pb: 2, borderBottom: '2px solid #e3f2fd' }}>
               <TextField

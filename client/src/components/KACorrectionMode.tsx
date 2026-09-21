@@ -66,9 +66,12 @@ import {
   examGradeNumericForCorrection,
   formatExamClassAverageDecimal,
 } from '../lib/examGradeLabel';
+import { normalizeVersionLetter, versionLetterFromKaPath } from '../lib/examVersionPaths';
 
 interface KASubmission {
   id: string;
+  kaFilePath?: string;
+  versionLetter?: string;
   student: {
     id: string;
     name: string;
@@ -101,6 +104,12 @@ type CorrectionMode = 'by-student' | 'by-task';
 
 const submissionStudentName = (submission: KASubmission | null | undefined): string =>
   submission?.student?.name ?? 'Schüler/in';
+
+const submissionVersionLetter = (submission: KASubmission | null | undefined, fallbackPath: string): string => {
+  if (!submission) return 'A';
+  if (submission.versionLetter) return submission.versionLetter;
+  return versionLetterFromKaPath(submission.kaFilePath || fallbackPath);
+};
 
 const correctionStorageKey = (submissionId: string, fieldKey: string): string =>
   `${submissionId}_${fieldKey}`;
@@ -236,6 +245,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       return false;
     }
   });
+  const [versionDialogOpen, setVersionDialogOpen] = useState(false);
+  const [versionDraft, setVersionDraft] = useState('');
+  const [versionPassword, setVersionPassword] = useState('');
+  const [versionChangeError, setVersionChangeError] = useState<string | null>(null);
+  const [versionChangeBusy, setVersionChangeBusy] = useState(false);
 
   useEffect(() => {
     try {
@@ -1149,8 +1163,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     const maxPts = calculateMaxTotalPoints();
     const totalForPreview = liveAchievedTotal(submission);
     return buildExamReviewedHtml({
-      filePath: kaFilePath,
-      title: kaFilePath.split('/').pop() || 'Prüfung',
+      filePath: submission.kaFilePath || kaFilePath,
+      title: (submission.kaFilePath || kaFilePath).split('/').pop() || 'Prüfung',
       answers,
       corrections: previewCorrections,
       gradeLabel: calculateGrade(totalForPreview, maxPts),
@@ -1334,6 +1348,56 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       alert(e instanceof Error ? e.message : 'Krank-Status konnte nicht gespeichert werden');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openVersionDialog = () => {
+    if (!selectedSubmission) return;
+    setVersionDraft(submissionVersionLetter(selectedSubmission, kaFilePath));
+    setVersionPassword('');
+    setVersionChangeError(null);
+    setVersionDialogOpen(true);
+  };
+
+  const saveSubmissionVersion = async () => {
+    if (!selectedSubmission) return;
+    const letter = normalizeVersionLetter(versionDraft);
+    if (!letter) {
+      setVersionChangeError('Bitte einen Buchstaben A–Z eingeben.');
+      return;
+    }
+    const loginCode = localStorage.getItem('loginCode') || '';
+    if (!loginCode) return;
+    setVersionChangeBusy(true);
+    setVersionChangeError(null);
+    try {
+      const res = await fetch(
+        `/api/ka-corrections/submissions/${selectedSubmission.id}/exam-version`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-login-code': loginCode,
+          },
+          body: JSON.stringify({
+            versionLetter: letter,
+            masterPassword: versionPassword,
+          }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Version konnte nicht geändert werden');
+      }
+      const updated = data.submission as KASubmission;
+      setSubmissions((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
+      setSelectedSubmission(updated);
+      setVersionDialogOpen(false);
+      void loadCorrections(updated.id);
+    } catch (e) {
+      setVersionChangeError(e instanceof Error ? e.message : 'Fehler');
+    } finally {
+      setVersionChangeBusy(false);
     }
   };
 
@@ -2755,6 +2819,24 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1a1a1a', fontSize: '0.85rem' }}>
                       {submissionStudentName(selectedSubmission)}
                     </Typography>
+                    <Tooltip title="Prüfungsversion — Klick zum Korrigieren (Masterpasswort)">
+                      <Chip
+                        label={submissionVersionLetter(selectedSubmission, kaFilePath)}
+                        size="small"
+                        onClick={openVersionDialog}
+                        sx={{
+                          fontWeight: 900,
+                          fontSize: '0.95rem',
+                          height: 28,
+                          minWidth: 32,
+                          bgcolor: '#e3f2fd',
+                          color: '#1565c0',
+                          border: '2px solid #1565c0',
+                          cursor: 'pointer',
+                          '&:hover': { bgcolor: '#bbdefb' },
+                        }}
+                      />
+                    </Tooltip>
                   </Box>
                   <FormControlLabel
                     control={
@@ -4582,6 +4664,40 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             />
           ) : null}
         </DialogContent>
+      </Dialog>
+
+      <Dialog open={versionDialogOpen} onClose={() => setVersionDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Prüfungsversion ändern</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Wenn sich ein Schüler vertippt hat: richtigen Buchstaben eintragen. Masterpasswort erforderlich.
+          </Typography>
+          <TextField
+            fullWidth
+            label="Buchstabe"
+            value={versionDraft}
+            onChange={(e) => setVersionDraft(e.target.value)}
+            sx={{ mb: 2 }}
+            inputProps={{ maxLength: 2 }}
+          />
+          <TextField
+            fullWidth
+            type="password"
+            label="Masterpasswort"
+            value={versionPassword}
+            onChange={(e) => setVersionPassword(e.target.value)}
+            error={Boolean(versionChangeError)}
+            helperText={versionChangeError || ' '}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setVersionDialogOpen(false)} disabled={versionChangeBusy}>
+            Abbrechen
+          </Button>
+          <Button variant="contained" onClick={() => void saveSubmissionVersion()} disabled={versionChangeBusy}>
+            {versionChangeBusy ? 'Speichern…' : 'Version speichern'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Dreierprobe Modal */}

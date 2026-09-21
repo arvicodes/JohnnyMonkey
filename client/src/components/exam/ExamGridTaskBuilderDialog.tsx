@@ -42,6 +42,40 @@ const QUADRANT_LABEL: Record<GridQuadrant, string> = {
   br: 'Unten rechts',
 };
 
+const SOLUTION_HELPER = 'Mehrere Lösungen mit / trennen (z. B. 66700 / 66 700)';
+
+const rowTrashSx = {
+  p: 0.2,
+  minWidth: 24,
+  width: 24,
+  height: 24,
+  flexShrink: 0,
+  alignSelf: 'center',
+  color: 'error.main',
+};
+
+function RowDeleteButton({
+  onClick,
+  disabled,
+  label = 'Zeile löschen',
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  label?: string;
+}) {
+  return (
+    <IconButton
+      size="small"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      sx={rowTrashSx}
+    >
+      <DeleteIcon sx={{ fontSize: 16 }} />
+    </IconButton>
+  );
+}
+
 const KIND_LABEL: Record<GridSubsection['kind'], string> = {
   'round-lines': 'Zeilen mit Lücke (runden …)',
   compare: 'Vergleichszeichen',
@@ -137,12 +171,36 @@ export default function ExamGridTaskBuilderDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="lg"
+      fullWidth
+      PaperProps={{
+        sx: {
+          height: { xs: '96vh', sm: '90vh' },
+          maxHeight: '96vh',
+          display: 'flex',
+          flexDirection: 'column',
+        },
+      }}
+    >
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
         <GridOnIcon color="primary" />
         Raster-Aufgabe (2×2) erstellen
       </DialogTitle>
-      <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <DialogContent
+        dividers
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+        }}
+      >
         {error ? <Alert severity="error">{error}</Alert> : null}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
           <TextField
@@ -184,15 +242,38 @@ export default function ExamGridTaskBuilderDialog({
 
         <Typography variant="subtitle2" color="text.secondary">
           Teile A–G in die vier Kästchen legen. Unter <code>___</code> im Lückentext = eine Lücke. HTML:{' '}
-          <code>&lt;sub&gt;10&lt;/sub&gt;</code> in Texten erlaubt.
+          <code>&lt;sub&gt;10&lt;/sub&gt;</code> in Texten erlaubt. {SOLUTION_HELPER}
         </Typography>
 
         {spec.subsections.map((sub) => (
           <Box
             key={sub.id}
-            sx={{ border: '1px solid #e0e0e0', borderRadius: 2, p: 2, bgcolor: '#fafafa' }}
+            sx={{
+              position: 'relative',
+              border: '1px solid #e0e0e0',
+              borderRadius: 2,
+              p: 2,
+              pr: 4.5,
+              bgcolor: '#fafafa',
+            }}
           >
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5, alignItems: 'center' }}>
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() => removeSub(sub.id)}
+              aria-label="Teil löschen"
+              sx={{
+                position: 'absolute',
+                top: 4,
+                right: 4,
+                p: 0.2,
+                width: 24,
+                height: 24,
+              }}
+            >
+              <DeleteIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5, alignItems: 'center', pr: 1 }}>
               <TextField
                 label="Buchstabe"
                 size="small"
@@ -236,15 +317,12 @@ export default function ExamGridTaskBuilderDialog({
                   ))}
                 </Select>
               </FormControl>
-              <IconButton size="small" color="error" onClick={() => removeSub(sub.id)} aria-label="Teil löschen">
-                <DeleteIcon fontSize="small" />
-              </IconButton>
             </Box>
 
             {sub.kind === 'round-lines' && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {sub.lines.map((line, i) => (
-                  <Box key={i} sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  <Box key={i} sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', alignItems: 'flex-start' }}>
                     <TextField
                       size="small"
                       label="Zeile"
@@ -254,7 +332,7 @@ export default function ExamGridTaskBuilderDialog({
                         lines[i] = { ...lines[i], text: e.target.value };
                         updateSub(sub.id, { lines });
                       }}
-                      sx={{ flex: 2, minWidth: 200 }}
+                      sx={{ flex: 2, minWidth: 0 }}
                     />
                     <TextField
                       size="small"
@@ -265,7 +343,13 @@ export default function ExamGridTaskBuilderDialog({
                         lines[i] = { ...lines[i], solution: e.target.value };
                         updateSub(sub.id, { lines });
                       }}
-                      sx={{ flex: 1, minWidth: 120 }}
+                      helperText={i === 0 ? SOLUTION_HELPER : undefined}
+                      FormHelperTextProps={{ sx: { m: 0, fontSize: '0.65rem' } }}
+                      sx={{ flex: 1, minWidth: 0 }}
+                    />
+                    <RowDeleteButton
+                      disabled={sub.lines.length <= 1}
+                      onClick={() => updateSub(sub.id, { lines: sub.lines.filter((_, j) => j !== i) })}
                     />
                   </Box>
                 ))}
@@ -279,63 +363,135 @@ export default function ExamGridTaskBuilderDialog({
               </Box>
             )}
 
-            {sub.kind === 'compare' &&
-              sub.rows.map((row, i) => (
-                <Box key={i} sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                  <TextField size="small" label="Links" value={row.left} onChange={(e) => {
-                    const rows = [...sub.rows];
-                    rows[i] = { ...rows[i], left: e.target.value };
-                    updateSub(sub.id, { rows });
-                  }} />
-                  <FormControl size="small" sx={{ width: 90 }}>
-                    <InputLabel>Lösung</InputLabel>
-                    <Select label="Lösung" value={row.solution} onChange={(e) => {
-                      const rows = [...sub.rows];
-                      rows[i] = { ...rows[i], solution: e.target.value as '<' | '>' | '=' };
-                      updateSub(sub.id, { rows });
-                    }}>
-                      <MenuItem value="<">&lt;</MenuItem>
-                      <MenuItem value=">">&gt;</MenuItem>
-                      <MenuItem value="=">=</MenuItem>
-                    </Select>
-                  </FormControl>
-                  <TextField size="small" label="Rechts" value={row.right} onChange={(e) => {
-                    const rows = [...sub.rows];
-                    rows[i] = { ...rows[i], right: e.target.value };
-                    updateSub(sub.id, { rows });
-                  }} />
-                </Box>
-              ))}
+            {sub.kind === 'compare' && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {sub.rows.map((row, i) => (
+                  <Box key={i} sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', alignItems: 'center' }}>
+                    <TextField
+                      size="small"
+                      label="Links"
+                      value={row.left}
+                      onChange={(e) => {
+                        const rows = [...sub.rows];
+                        rows[i] = { ...rows[i], left: e.target.value };
+                        updateSub(sub.id, { rows });
+                      }}
+                      sx={{ flex: 1, minWidth: 0 }}
+                    />
+                    <FormControl size="small" sx={{ width: 84, flexShrink: 0 }}>
+                      <InputLabel>Lösung</InputLabel>
+                      <Select
+                        label="Lösung"
+                        value={row.solution}
+                        onChange={(e) => {
+                          const rows = [...sub.rows];
+                          rows[i] = { ...rows[i], solution: e.target.value as '<' | '>' | '=' };
+                          updateSub(sub.id, { rows });
+                        }}
+                      >
+                        <MenuItem value="<">&lt;</MenuItem>
+                        <MenuItem value=">">&gt;</MenuItem>
+                        <MenuItem value="=">=</MenuItem>
+                      </Select>
+                    </FormControl>
+                    <TextField
+                      size="small"
+                      label="Rechts"
+                      value={row.right}
+                      onChange={(e) => {
+                        const rows = [...sub.rows];
+                        rows[i] = { ...rows[i], right: e.target.value };
+                        updateSub(sub.id, { rows });
+                      }}
+                      sx={{ flex: 1, minWidth: 0 }}
+                    />
+                    <RowDeleteButton
+                      disabled={sub.rows.length <= 1}
+                      onClick={() => updateSub(sub.id, { rows: sub.rows.filter((_, j) => j !== i) })}
+                    />
+                  </Box>
+                ))}
+                <Button
+                  size="small"
+                  startIcon={<AddIcon />}
+                  onClick={() => updateSub(sub.id, { rows: [...sub.rows, { left: '', right: '', solution: '<' }] })}
+                >
+                  Vergleichszeile
+                </Button>
+              </Box>
+            )}
 
             {sub.kind === 'sort' && (
               <>
                 <TextField fullWidth size="small" label="Gegeben (Zahlen)" value={sub.given} onChange={(e) => updateSub(sub.id, { given: e.target.value })} sx={{ mb: 1 }} />
-                <TextField fullWidth size="small" label="Lösung (sortiert)" value={sub.solution} onChange={(e) => updateSub(sub.id, { solution: e.target.value })} />
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Lösung (sortiert)"
+                  value={sub.solution}
+                  onChange={(e) => updateSub(sub.id, { solution: e.target.value })}
+                  helperText={SOLUTION_HELPER}
+                />
               </>
             )}
 
             {sub.kind === 'one-line' && (
               <>
                 <TextField fullWidth size="small" label="Aufgabentext / Zahl" value={sub.prompt} onChange={(e) => updateSub(sub.id, { prompt: e.target.value })} sx={{ mb: 1 }} />
-                <TextField fullWidth size="small" label="Lösung" value={sub.solution} onChange={(e) => updateSub(sub.id, { solution: e.target.value })} />
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Lösung"
+                  value={sub.solution}
+                  onChange={(e) => updateSub(sub.id, { solution: e.target.value })}
+                  helperText={SOLUTION_HELPER}
+                />
               </>
             )}
 
-            {sub.kind === 'bullet-blanks' &&
-              sub.items.map((item, i) => (
-                <Box key={i} sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                  <TextField size="small" label="Text vor Lücke" value={item.text} onChange={(e) => {
-                    const items = [...sub.items];
-                    items[i] = { ...items[i], text: e.target.value };
-                    updateSub(sub.id, { items });
-                  }} sx={{ flex: 2 }} />
-                  <TextField size="small" label="Lösung" value={item.solution} onChange={(e) => {
-                    const items = [...sub.items];
-                    items[i] = { ...items[i], solution: e.target.value };
-                    updateSub(sub.id, { items });
-                  }} sx={{ flex: 1 }} />
-                </Box>
-              ))}
+            {sub.kind === 'bullet-blanks' && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {sub.items.map((item, i) => (
+                  <Box key={i} sx={{ display: 'flex', gap: 0.5, alignItems: 'flex-start' }}>
+                    <TextField
+                      size="small"
+                      label="Text vor Lücke"
+                      value={item.text}
+                      onChange={(e) => {
+                        const items = [...sub.items];
+                        items[i] = { ...items[i], text: e.target.value };
+                        updateSub(sub.id, { items });
+                      }}
+                      sx={{ flex: 2, minWidth: 0 }}
+                    />
+                    <TextField
+                      size="small"
+                      label="Lösung"
+                      value={item.solution}
+                      onChange={(e) => {
+                        const items = [...sub.items];
+                        items[i] = { ...items[i], solution: e.target.value };
+                        updateSub(sub.id, { items });
+                      }}
+                      helperText={i === 0 ? SOLUTION_HELPER : undefined}
+                      FormHelperTextProps={{ sx: { m: 0, fontSize: '0.65rem' } }}
+                      sx={{ flex: 1, minWidth: 0 }}
+                    />
+                    <RowDeleteButton
+                      disabled={sub.items.length <= 1}
+                      onClick={() => updateSub(sub.id, { items: sub.items.filter((_, j) => j !== i) })}
+                    />
+                  </Box>
+                ))}
+                <Button
+                  size="small"
+                  startIcon={<AddIcon />}
+                  onClick={() => updateSub(sub.id, { items: [...sub.items, { text: '', solution: '' }] })}
+                >
+                  Punkt
+                </Button>
+              </Box>
+            )}
 
             {sub.kind === 'cloze' && (
               <>
@@ -346,7 +502,14 @@ export default function ExamGridTaskBuilderDialog({
                   size="small"
                   label="Lückentext (___ = Lücke)"
                   value={sub.template}
-                  onChange={(e) => updateSub(sub.id, { template: e.target.value })}
+                  onChange={(e) => {
+                    const template = e.target.value;
+                    const gapCount = (template.match(/___/g) || []).length;
+                    const solutions = [...sub.solutions];
+                    while (solutions.length < gapCount) solutions.push('');
+                    while (solutions.length > gapCount) solutions.pop();
+                    updateSub(sub.id, { template, solutions });
+                  }}
                   sx={{ mb: 1 }}
                 />
                 {sub.solutions.map((sol, i) => (
@@ -361,6 +524,7 @@ export default function ExamGridTaskBuilderDialog({
                       solutions[i] = e.target.value;
                       updateSub(sub.id, { solutions });
                     }}
+                    helperText={SOLUTION_HELPER}
                     sx={{ mb: 1 }}
                   />
                 ))}
@@ -382,22 +546,26 @@ export default function ExamGridTaskBuilderDialog({
           Teil hinzufügen (A, B, C …)
         </Button>
 
-        <Divider />
-        <Typography variant="subtitle2">Vorschau</Typography>
+        <Divider sx={{ flexShrink: 0 }} />
+        <Typography variant="subtitle2" sx={{ flexShrink: 0 }}>Vorschau</Typography>
         <Box
           sx={{
             border: '1px solid #ccc',
             borderRadius: 1,
             p: 1,
             bgcolor: '#fff',
-            maxHeight: 280,
-            overflow: 'auto',
+            minHeight: 160,
+            maxHeight: 360,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            WebkitOverflowScrolling: 'touch',
             fontSize: 13,
+            flexShrink: 0,
           }}
           dangerouslySetInnerHTML={{ __html: built.taskHtml }}
         />
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={{ flexShrink: 0 }}>
         <Button onClick={onClose} disabled={saving}>Abbrechen</Button>
         <Button variant="contained" onClick={() => void save()} disabled={saving || !filePath}>
           {saving ? 'Speichern…' : 'In Prüfung speichern'}

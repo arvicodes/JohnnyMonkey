@@ -1,5 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Box, CircularProgress, Dialog, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  TextField,
+  Typography,
+} from '@mui/material';
+import {
+  examVersionStorageKey,
+  fetchExamVersionLetters,
+  normalizeVersionLetter,
+  resolveVersionFilePath,
+} from '../lib/examVersionPaths';
 
 type ExamBeacon = {
   groupId: string;
@@ -15,12 +28,19 @@ const POLL_MS = 1500;
 /**
  * Lehrer startet Prüfung → SuS bekommen ein nicht schließbares Vollbild-Overlay
  * mit der Prüfungs-HTML (überdeckt alles andere).
+ * Bei mehreren Versionen: zuerst Buchstaben eingeben.
  */
 export default function StudentLiveExamAlert({ userId }: { userId: string }) {
   const [beacon, setBeacon] = useState<ExamBeacon | null>(null);
   const [htmlUrl, setHtmlUrl] = useState<string | null>(null);
-  const [loadingHtml, setLoadingHtml] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [versionLetters, setVersionLetters] = useState<string[]>(['A']);
+  const [versionPaths, setVersionPaths] = useState<Record<string, string>>({});
+  const [baseFilePath, setBaseFilePath] = useState<string | null>(null);
+  const [chosenLetter, setChosenLetter] = useState<string | null>(null);
+  const [letterInput, setLetterInput] = useState('');
+  const [letterError, setLetterError] = useState<string | null>(null);
+  const [versionsLoading, setVersionsLoading] = useState(false);
 
   const poll = useCallback(async () => {
     if (!userId) return;
@@ -58,24 +78,91 @@ export default function StudentLiveExamAlert({ userId }: { userId: string }) {
   }, [userId, poll]);
 
   useEffect(() => {
-    if (!beacon?.filePath) {
+    if (!beacon?.filePath || !beacon.beaconId) {
       setHtmlUrl(null);
       setLoadError(null);
-      setLoadingHtml(false);
+      setChosenLetter(null);
+      setLetterInput('');
+      setLetterError(null);
+      setVersionLetters(['A']);
+      setVersionPaths({});
+      setBaseFilePath(null);
       return;
     }
-    setLoadingHtml(false);
+
+    let cancelled = false;
+    setVersionsLoading(true);
+    void (async () => {
+      try {
+        const meta = await fetchExamVersionLetters(beacon.filePath);
+        if (cancelled) return;
+        setVersionLetters(meta.letters);
+        setVersionPaths(meta.paths);
+        setBaseFilePath(meta.baseFilePath);
+
+        const storageKey = examVersionStorageKey(beacon.beaconId, userId);
+        const saved = localStorage.getItem(storageKey);
+        const savedNorm = saved ? normalizeVersionLetter(saved) : null;
+        if (savedNorm && meta.letters.includes(savedNorm)) {
+          setChosenLetter(savedNorm);
+        } else if (meta.letters.length <= 1) {
+          setChosenLetter('A');
+        } else {
+          setChosenLetter(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setVersionLetters(['A']);
+          setChosenLetter('A');
+        }
+      } finally {
+        if (!cancelled) setVersionsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [beacon?.filePath, beacon?.beaconId, userId]);
+
+  useEffect(() => {
+    if (!beacon?.filePath || !chosenLetter) {
+      setHtmlUrl(null);
+      return;
+    }
     setLoadError(null);
-    setHtmlUrl(
-      `/api/file-system-paths/read-html?filePath=${encodeURIComponent(beacon.filePath)}`,
+    const path = resolveVersionFilePath(
+      versionPaths,
+      baseFilePath || beacon.filePath,
+      chosenLetter,
     );
-  }, [beacon?.filePath, beacon?.beaconId]);
+    setHtmlUrl(
+      `/api/file-system-paths/read-html?filePath=${encodeURIComponent(path)}`,
+    );
+  }, [beacon?.filePath, chosenLetter, versionPaths, baseFilePath]);
 
   const open = Boolean(beacon);
+  const needsLetterPrompt = Boolean(
+    beacon && versionLetters.length > 1 && !chosenLetter && !versionsLoading,
+  );
+
   const title = useMemo(() => {
     const name = beacon?.filePath?.split('/').pop()?.replace(/\.(html|htm)$/i, '') || 'Prüfung';
     return name;
   }, [beacon?.filePath]);
+
+  const confirmLetter = () => {
+    const L = normalizeVersionLetter(letterInput);
+    if (!L || !versionLetters.includes(L)) {
+      setLetterError('Dieser Buchstabe ist für diese Prüfung nicht gültig.');
+      return;
+    }
+    setLetterError(null);
+    if (beacon?.beaconId) {
+      localStorage.setItem(examVersionStorageKey(beacon.beaconId, userId), L);
+    }
+    setChosenLetter(L);
+  };
 
   return (
     <Dialog
@@ -132,6 +219,7 @@ export default function StudentLiveExamAlert({ userId }: { userId: string }) {
           <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', flex: 1, minWidth: 0 }} noWrap>
             {title}
             {beacon?.groupName ? ` · ${beacon.groupName}` : ''}
+            {chosenLetter && versionLetters.length > 1 ? ` · Version ${chosenLetter}` : ''}
           </Typography>
           <Typography sx={{ fontSize: '0.7rem', opacity: 0.9, fontWeight: 600 }}>
             Gestartet — bitte bearbeiten und abgeben
@@ -139,7 +227,7 @@ export default function StudentLiveExamAlert({ userId }: { userId: string }) {
         </Box>
 
         <Box sx={{ flex: 1, minHeight: 0, position: 'relative', bgcolor: '#fff' }}>
-          {loadingHtml && (
+          {(versionsLoading || (open && !needsLetterPrompt && !htmlUrl && !loadError)) && (
             <Box
               sx={{
                 position: 'absolute',
@@ -153,15 +241,71 @@ export default function StudentLiveExamAlert({ userId }: { userId: string }) {
               }}
             >
               <CircularProgress size={28} />
-              <Typography color="text.secondary">Prüfung wird geladen…</Typography>
+              <Typography color="text.secondary">Prüfung wird vorbereitet…</Typography>
             </Box>
           )}
+
+          {needsLetterPrompt && (
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: '#f5f9ff',
+                zIndex: 3,
+                p: 2,
+              }}
+            >
+              <Box
+                sx={{
+                  maxWidth: 420,
+                  width: '100%',
+                  bgcolor: '#fff',
+                  borderRadius: 2,
+                  boxShadow: '0 8px 32px rgba(21,101,192,0.15)',
+                  p: 3,
+                  border: '2px solid #bbdefb',
+                }}
+              >
+                <Typography variant="h6" sx={{ fontWeight: 800, color: '#1565c0', mb: 1 }}>
+                  Prüfungsversion
+                </Typography>
+                <Typography sx={{ mb: 2, color: '#444', lineHeight: 1.5 }}>
+                  Gib den <strong style={{ color: '#1565c0' }}>blauen Buchstaben</strong> oben rechts auf
+                  deiner Arbeit ein.
+                </Typography>
+                <TextField
+                  fullWidth
+                  autoFocus
+                  label="Buchstabe"
+                  value={letterInput}
+                  onChange={(e) => {
+                    setLetterInput(e.target.value);
+                    setLetterError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') confirmLetter();
+                  }}
+                  inputProps={{ maxLength: 2, 'aria-label': 'Prüfungsversion Buchstabe' }}
+                  error={Boolean(letterError)}
+                  helperText={letterError || `Gültig: ${versionLetters.join(', ')}`}
+                  sx={{ mb: 2 }}
+                />
+                <Button variant="contained" fullWidth onClick={confirmLetter} sx={{ fontWeight: 700 }}>
+                  Weiter zur Prüfung
+                </Button>
+              </Box>
+            </Box>
+          )}
+
           {loadError && (
             <Box sx={{ p: 3 }}>
               <Typography color="error">{loadError}</Typography>
             </Box>
           )}
-          {htmlUrl && !loadError && (
+          {htmlUrl && !loadError && !needsLetterPrompt && chosenLetter && (
             <Box
               component="iframe"
               title={title}

@@ -76,7 +76,77 @@ function allowBasicHtml(s: string): string {
   return escapeHtml(s)
     .replace(/&lt;(\/?)(sub|strong|sup)&gt;/gi, '<$1$2>')
     .replace(/&lt;sub&gt;([\s\S]*?)&lt;\/sub&gt;/gi, '<sub>$1</sub>')
-    .replace(/&lt;strong&gt;([\s\S]*?)&lt;\/strong&gt;/gi, '<strong>$1</strong>');
+    .replace(/&lt;strong&gt;([\s\S]*?)&lt;/strong&gt;/gi, '<strong>$1</strong>');
+}
+
+export type SolutionExpandKind = 'text' | 'sort' | 'number';
+
+/** Mehrere Lösungen mit „/“ — plus sinnvolle Varianten (Leerzeichen, Komma, Umlaute). */
+export function parseSolutionAlternatives(raw: string, expand: SolutionExpandKind = 'text'): string[] {
+  const manual = String(raw || '')
+    .split('/')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const out = new Set<string>();
+
+  const add = (v: string) => {
+    const t = v.trim();
+    if (t) out.add(t);
+  };
+
+  for (const base of manual) {
+    add(base);
+    const collapsed = base.replace(/\s+/g, ' ').trim();
+    if (collapsed !== base) add(collapsed);
+
+    const noSpaces = base.replace(/\s+/g, '');
+    if (noSpaces && noSpaces !== base) add(noSpaces);
+
+    const withSpacesThousands = noSpaces.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1 ');
+    if (withSpacesThousands !== base && withSpacesThousands !== noSpaces) {
+      add(withSpacesThousands);
+    }
+
+    if (expand === 'sort' || (expand === 'text' && /[,;]/.test(base))) {
+      const tokens = base.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+      if (tokens.length > 1) {
+        add(tokens.join(', '));
+        add(tokens.join('; '));
+        add(tokens.join(' '));
+        add(tokens.join(','));
+      }
+    }
+
+    const lower = base.toLowerCase();
+    if (/ae|oe|ue/.test(lower) && !/[äöü]/.test(base)) {
+      add(base.replace(/ae/gi, 'ä').replace(/oe/gi, 'ö').replace(/ue/gi, 'ü'));
+    }
+    if (/[äöüß]/i.test(base)) {
+      add(
+        base
+          .replace(/ä/gi, 'ae')
+          .replace(/ö/gi, 'oe')
+          .replace(/ü/gi, 'ue')
+          .replace(/ß/g, 'ss'),
+      );
+    }
+
+    if (/^prim/i.test(base)) {
+      add('Primzahl');
+      add('primzahl');
+      add('Prim');
+    }
+    if (lower === 'ziffern' || lower === 'ziffer') {
+      add('Ziffern');
+      add('Ziffer');
+    }
+  }
+
+  return [...out];
+}
+
+function solutionDisplayHtml(answers: string[]): string {
+  return answers.map((a) => escapeHtml(a)).join(' / ');
 }
 
 const GRID_STYLE = `
@@ -166,7 +236,7 @@ export function demoNatuerlicheZahlenTask1(): ExamGridTaskSpec {
         kind: 'cloze',
         template:
           'Die Zahl 13 ist zusammengesetzt aus den beiden ___ 1 und 3. Die Zahl 17 ist eine ___ Zahl.',
-        solutions: ['Ziffern', 'Prim'],
+        solutions: ['Ziffern / Ziffer', 'Primzahl / Prim'],
       },
     ],
   };
@@ -191,7 +261,12 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
     body = sub.lines
       .map((line) => {
         const id = allocId(taskNumber, fieldIndex.n++);
-        fields.push({ id, answers: [line.solution], solutionHtml: `${allowBasicHtml(line.text)} <strong>${escapeHtml(line.solution)}</strong>` });
+        const answers = parseSolutionAlternatives(line.solution, 'number');
+        fields.push({
+          id,
+          answers,
+          solutionHtml: `${allowBasicHtml(line.text)} <strong>${solutionDisplayHtml(answers)}</strong>`,
+        });
         return `<div class="exam-round-line"><span>${allowBasicHtml(line.text)}</span><input type="text" id="${id}" class="blank-wide" autocomplete="off"></div>`;
       })
       .join('');
@@ -213,17 +288,24 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       .join('');
   } else if (sub.kind === 'sort') {
     const id = allocId(taskNumber, fieldIndex.n++);
-    fields.push({ id, answers: [sub.solution], solutionHtml: `<strong>${escapeHtml(sub.solution)}</strong>` });
+    const answers = parseSolutionAlternatives(sub.solution, 'sort');
+    fields.push({ id, answers, solutionHtml: `<strong>${solutionDisplayHtml(answers)}</strong>` });
     body = `<p style="margin:0 0 6px;">${escapeHtml(sub.given)}</p><input type="text" id="${id}" class="blank-wide" style="width:100%;max-width:100%;" autocomplete="off">`;
   } else if (sub.kind === 'one-line') {
     const id = allocId(taskNumber, fieldIndex.n++);
-    fields.push({ id, answers: [sub.solution], solutionHtml: `<strong>${escapeHtml(sub.solution)}</strong>` });
+    const answers = parseSolutionAlternatives(sub.solution, 'text');
+    fields.push({ id, answers, solutionHtml: `<strong>${solutionDisplayHtml(answers)}</strong>` });
     body = `<p style="margin:0 0 6px;">${allowBasicHtml(sub.prompt)}</p><input type="text" id="${id}" class="blank-wide" style="width:100%;max-width:100%;" autocomplete="off">`;
   } else if (sub.kind === 'bullet-blanks') {
     body = `<ul style="margin:4px 0 0 18px;padding:0;">${sub.items
       .map((item) => {
         const id = allocId(taskNumber, fieldIndex.n++);
-        fields.push({ id, answers: [item.solution], solutionHtml: `${escapeHtml(item.text)} <strong>${escapeHtml(item.solution)}</strong>` });
+        const answers = parseSolutionAlternatives(item.solution, 'number');
+        fields.push({
+          id,
+          answers,
+          solutionHtml: `${escapeHtml(item.text)} <strong>${solutionDisplayHtml(answers)}</strong>`,
+        });
         return `<li style="margin:4px 0;">${escapeHtml(item.text)} <input type="text" id="${id}" autocomplete="off"></li>`;
       })
       .join('')}</ul>`;
@@ -235,7 +317,12 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       if (i < parts.length - 1) {
         const id = allocId(taskNumber, fieldIndex.n++);
         const sol = sub.solutions[i] || '';
-        fields.push({ id, answers: [sol], solutionHtml: sol ? `<strong>${escapeHtml(sol)}</strong>` : '…' });
+        const answers = parseSolutionAlternatives(sol, 'text');
+        fields.push({
+          id,
+          answers,
+          solutionHtml: answers.length ? `<strong>${solutionDisplayHtml(answers)}</strong>` : '…',
+        });
         clozeHtml += `<input type="text" id="${id}" autocomplete="off">`;
       }
     });

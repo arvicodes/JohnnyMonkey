@@ -228,6 +228,26 @@
             margin-bottom: 12px;
         }
 
+        .exam-paper {
+            position: relative;
+        }
+        .exam-version-letter {
+            display: none;
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            font-size: 42px;
+            font-weight: 900;
+            color: #1565c0;
+            line-height: 1;
+            z-index: 5;
+            pointer-events: none;
+            user-select: none;
+        }
+        .exam-paper.exam-multi-version .exam-version-letter {
+            display: block;
+        }
+
         
         .header-brand-row {
             display: grid;
@@ -1151,6 +1171,7 @@
         </div>
     </aside>
     <div class="exam-paper">
+    <div class="exam-version-letter" id="examVersionLetter" aria-hidden="true">A</div>
     <div class="header">
         <div class="header-brand-row">
             <img class="header-logo" id="jmExamLogo" alt="JohnnyMonkey" src="/johnny-logo.png">
@@ -1261,6 +1282,7 @@
     <script>
         // Eindeutiger Key für diese Hausaufgabenüberprüfung (HÜ)
         const KA_KEY = 'HU_NEUER_TITEL';
+        const EXAM_VERSION_LETTERS = ['A'];
         const isTeacher = localStorage.getItem('teacherId') !== null;
         const studentId = localStorage.getItem('studentId') || 'unknown';
 
@@ -1271,6 +1293,19 @@
                 if (el) el.setAttribute('contenteditable', 'true');
             });
         }
+
+        (function setupExamVersionLetter() {
+            const letters = Array.isArray(EXAM_VERSION_LETTERS) ? EXAM_VERSION_LETTERS : ['A'];
+            const paper = document.querySelector('.exam-paper');
+            const badge = document.getElementById('examVersionLetter');
+            if (!paper || !badge) return;
+            const m = (KA_KEY || '').match(/__([A-Z])$/i);
+            const letter = m ? m[1].toUpperCase() : 'A';
+            badge.textContent = letter;
+            if (letters.length > 1) {
+                paper.classList.add('exam-multi-version');
+            }
+        })();
 
         (function setupSchemaModal() {
             const modal = document.getElementById('schemaModal');
