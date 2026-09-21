@@ -37,6 +37,7 @@ type Props = {
   existingTaskNumbers?: number[];
   onClose: () => void;
   onSaved: () => void;
+  onNotify?: (message: string, severity: 'success' | 'error') => void;
 };
 
 const QUADRANT_LABEL: Record<GridQuadrant, string> = {
@@ -122,6 +123,7 @@ export default function ExamGridTaskBuilderDialog({
   existingTaskNumbers,
   onClose,
   onSaved,
+  onNotify,
 }: Props) {
   const [spec, setSpec] = useState<ExamGridTaskSpec>(() => ({
     ...demoNatuerlicheZahlenTask1(),
@@ -129,12 +131,14 @@ export default function ExamGridTaskBuilderDialog({
   }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const wasOpenRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (open) {
+    if (open && !wasOpenRef.current) {
       setSpec({ ...demoNatuerlicheZahlenTask1(), taskNumber: initialTaskNumber });
       setError(null);
     }
+    wasOpenRef.current = open;
   }, [open, initialTaskNumber]);
 
   const built = useMemo(() => buildExamGridTaskHtml(spec), [spec]);
@@ -166,20 +170,30 @@ export default function ExamGridTaskBuilderDialog({
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || 'Speichern fehlgeschlagen');
+      const detail = data.details ? `: ${data.details}` : '';
+      throw new Error((data.error || 'Speichern fehlgeschlagen') + detail);
     }
     return true;
   };
 
   const save = async () => {
+    if (!filePath) {
+      const msg = 'Keine Prüfungsdatei gewählt — bitte zuerst eine KA-Datei öffnen.';
+      setError(msg);
+      onNotify?.(msg, 'error');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
       await persistSpec(spec, built);
+      onNotify?.(`Aufgabe ${spec.taskNumber} in der Prüfung gespeichert.`, 'success');
       onSaved();
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+      const msg = e instanceof Error ? e.message : 'Speichern fehlgeschlagen';
+      setError(msg);
+      onNotify?.(msg, 'error');
     } finally {
       setSaving(false);
     }
@@ -195,15 +209,24 @@ export default function ExamGridTaskBuilderDialog({
   );
 
   const saveAndAddAufgabe = async () => {
+    if (!filePath) {
+      const msg = 'Keine Prüfungsdatei gewählt — bitte zuerst eine KA-Datei öffnen.';
+      setError(msg);
+      onNotify?.(msg, 'error');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
       await persistSpec(spec, built);
       const next = nextTaskNumber(spec.taskNumber, taskNumbersForNext);
+      onNotify?.(`Aufgabe ${spec.taskNumber} gespeichert — weiter mit Aufgabe ${next}.`, 'success');
       onSaved();
       setSpec(createBlankExamGridTask(next));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+      const msg = e instanceof Error ? e.message : 'Speichern fehlgeschlagen';
+      setError(msg);
+      onNotify?.(msg, 'error');
     } finally {
       setSaving(false);
     }

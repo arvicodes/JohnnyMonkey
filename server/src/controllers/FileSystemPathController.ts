@@ -3200,12 +3200,67 @@ ${optionsHTML}
     if (filePath.startsWith('git-intern/')) {
       const relativePath = filePath.replace('git-intern/', '');
       if (process.env.NODE_ENV === 'production') {
-        return path.join(process.cwd(), 'J-M-Reihen', relativePath);
+        const serverPath = path.join(process.cwd(), 'J-M-Reihen');
+        const projectPath = path.join(process.cwd(), '..', 'J-M-Reihen');
+        const jmReihenPath = fs.existsSync(serverPath) ? serverPath : projectPath;
+        return path.join(jmReihenPath, relativePath);
       }
       const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
       return path.join(projectRoot, 'J-M-Reihen', relativePath);
     }
     return path.resolve(filePath);
+  }
+
+  private static readonly EXAM_TASK_GRID_STYLE_SNIPPET = `
+        .exam-task-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin: 12px 0 16px;
+            overflow: hidden;
+            background: #fff;
+        }
+        .exam-task-grid-cell {
+            padding: 10px 12px;
+            border: 1px solid #e8e8e8;
+            min-height: 72px;
+            font-size: 14px;
+            line-height: 1.65;
+            vertical-align: top;
+        }
+        .exam-subsection { margin-bottom: 12px; }
+        .exam-subsection:last-child { margin-bottom: 0; }
+        .exam-subsection-title { font-weight: 700; margin-bottom: 6px; line-height: 1.4; }
+        .exam-round-line { margin: 6px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .exam-cloze-line { margin: 6px 0; line-height: 1.8; }
+        .exam-cloze-line input { min-width: 72px; margin: 0 4px; }
+        .exam-grid-blank-list { margin: 4px 0 0 18px; padding: 0; }
+        .exam-grid-blank-list li { margin: 6px 0; }
+`;
+
+  private static ensureExamTaskGridStyles(html: string): string {
+    if (html.includes('.exam-task-grid')) return html;
+    const closeStyle = html.lastIndexOf('</style>');
+    if (closeStyle < 0) return html;
+    return `${html.slice(0, closeStyle)}${FileSystemPathController.EXAM_TASK_GRID_STYLE_SNIPPET}${html.slice(closeStyle)}`;
+  }
+
+  private static sumExamTaskPoints(html: string): number | null {
+    const re = /<div class="task-number">[\s\S]*?\((\d+)\s*Punkte\)/g;
+    let sum = 0;
+    let found = false;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) !== null) {
+      sum += parseInt(m[1], 10) || 0;
+      found = true;
+    }
+    return found ? sum : null;
+  }
+
+  private static taskBlockEndLookahead(): string {
+    return '(?=<!-- Aufgabe \\d|<div class="submit-section">|<div class="footer">|$)';
   }
 
   private static mergeCorrectAnswersInHtml(
@@ -3216,13 +3271,13 @@ ${optionsHTML}
     const blockRe = /const correctAnswers = \{([\s\S]*?)\};/;
     const m = html.match(blockRe);
     if (!m) return html;
-    const prefix = `a${taskNumber}`;
+    const taskKeyRe = new RegExp(`^a${taskNumber}([a-z]|z\\d+)$`);
     const kept: string[] = [];
     const entryRe = /([a-zA-Z]\w*)\s*:\s*(\[[^\]]*\])/g;
     let em: RegExpExecArray | null;
     while ((em = entryRe.exec(m[1])) !== null) {
       const key = em[1];
-      if (key.startsWith(prefix) && /^a\d+[a-z]$/.test(key) && key.length === prefix.length + 1) {
+      if (taskKeyRe.test(key)) {
         continue;
       }
       kept.push(`${key}: ${em[2]}`);
@@ -3260,7 +3315,7 @@ ${optionsHTML}
       let htmlContent = fs.readFileSync(fullFilePath, 'utf-8');
       const tn = Number(taskNumber);
       const blockRe = new RegExp(
-        `<!-- Aufgabe ${tn}\\s*(?::[^>]*)?\\s*-->[\\s\\S]*?(?=<!-- Aufgabe \\d|<div class="footer">|$)`,
+        `<!-- Aufgabe ${tn}\\s*(?::[^>]*)?\\s*-->[\\s\\S]*?${FileSystemPathController.taskBlockEndLookahead()}`,
         'i',
       );
       const trimmed = String(taskHtml).trim();
@@ -3268,28 +3323,37 @@ ${optionsHTML}
         htmlContent = htmlContent.replace(blockRe, `${trimmed}\n\n`);
       } else {
         const footerIdx = htmlContent.indexOf('<div class="footer">');
-        if (footerIdx < 0) {
+        const submitIdx = htmlContent.indexOf('<div class="submit-section">');
+        const insertIdx = footerIdx >= 0 ? footerIdx : submitIdx;
+        if (insertIdx < 0) {
           return res.status(400).json({ error: 'Keine Einfügestelle (footer) in der HTML-Datei gefunden' });
         }
-        htmlContent = `${htmlContent.slice(0, footerIdx)}${trimmed}\n\n${htmlContent.slice(footerIdx)}`;
+        htmlContent = `${htmlContent.slice(0, insertIdx)}${trimmed}\n\n${htmlContent.slice(insertIdx)}`;
       }
+
+      htmlContent = FileSystemPathController.ensureExamTaskGridStyles(htmlContent);
 
       if (correctAnswers && typeof correctAnswers === 'object') {
         htmlContent = FileSystemPathController.mergeCorrectAnswersInHtml(htmlContent, tn, correctAnswers);
       }
 
-      if (typeof totalPoints === 'number' && totalPoints > 0) {
+      const summedPoints = FileSystemPathController.sumExamTaskPoints(htmlContent);
+      const resolvedTotal =
+        summedPoints && summedPoints > 0
+          ? summedPoints
+          : typeof totalPoints === 'number' && totalPoints > 0
+            ? totalPoints
+            : null;
+
+      if (resolvedTotal !== null) {
         htmlContent = htmlContent.replace(
           /return \{ achieved: achievedPoints, total: \d+ \};/,
-          `return { achieved: achievedPoints, total: ${totalPoints} };`,
+          `return { achieved: achievedPoints, total: ${resolvedTotal} };`,
         );
-        const totalSpan = htmlContent.match(/<span id="totalPoints">[^<]*<\/span>/);
-        if (totalSpan) {
-          htmlContent = htmlContent.replace(
-            /<span id="totalPoints">[^<]*<\/span>/,
-            `<span id="totalPoints">${totalPoints}</span>`,
-          );
-        }
+        htmlContent = htmlContent.replace(
+          /<span id="totalPoints">[^<]*<\/span>/,
+          `<span id="totalPoints">${resolvedTotal}</span>`,
+        );
       }
 
       fs.writeFileSync(fullFilePath, htmlContent, 'utf-8');

@@ -149,18 +149,6 @@ function solutionDisplayHtml(answers: string[]): string {
   return answers.map((a) => escapeHtml(a)).join(' / ');
 }
 
-const GRID_STYLE = `
-.exam-task-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto;border:1.5px solid #111;margin:12px 0 14px;}
-.exam-task-grid-cell{padding:10px 12px;border:1px solid #111;min-height:72px;font-size:13px;line-height:1.55;vertical-align:top;}
-.exam-subsection{margin-bottom:12px;}
-.exam-subsection:last-child{margin-bottom:0;}
-.exam-subsection-title{font-weight:700;margin-bottom:6px;}
-.exam-round-line{margin:4px 0;display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
-.exam-round-line input{min-width:120px;}
-.exam-cloze-line{margin:6px 0;line-height:1.8;}
-.exam-cloze-line input{min-width:72px;margin:0 4px;}
-`;
-
 /** Leere Raster-Aufgabe (eine Teil-Box) für eine neue Aufgaben-Nr. */
 export function createBlankExamGridTask(taskNumber: number): ExamGridTaskSpec {
   return {
@@ -273,7 +261,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
   fields: BuiltField[];
 } {
   const fields: BuiltField[] = [];
-  const title = `<div class="exam-subsection-title">${escapeHtml(sub.letter)}) ${escapeHtml(sub.title)}</div>`;
+  const title = `<div class="exam-subsection-title"><span class="item-label">${escapeHtml(sub.letter)})</span> ${escapeHtml(sub.title)}</div>`;
   let body = '';
 
   if (sub.kind === 'round-lines') {
@@ -286,7 +274,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
           answers,
           solutionHtml: `${allowBasicHtml(line.text)} <strong>${solutionDisplayHtml(answers)}</strong>`,
         });
-        return `<div class="exam-round-line"><span>${allowBasicHtml(line.text)}</span><input type="text" id="${id}" class="blank-wide" autocomplete="off"></div>`;
+        return `<div class="exam-round-line item input-group"><span>${allowBasicHtml(line.text)}</span><input type="text" id="${id}" class="blank-wide" autocomplete="off"></div>`;
       })
       .join('');
   } else if (sub.kind === 'compare') {
@@ -299,8 +287,8 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
           solutionHtml: `${escapeHtml(row.left)} <strong>${row.solution}</strong> ${escapeHtml(row.right)}`,
         });
         return `<div class="item input-group"><span>${escapeHtml(row.left)}</span><span class="compare-choice">
-<label><input type="radio" name="${id}" value="&lt;"> &lt;</label>
-<label><input type="radio" name="${id}" value="&gt;"> &gt;</label>
+<label><input type="radio" name="${id}" value="<"> &lt;</label>
+<label><input type="radio" name="${id}" value=">"> &gt;</label>
 <label><input type="radio" name="${id}" value="="> =</label>
 </span><span>${escapeHtml(row.right)}</span></div>`;
       })
@@ -309,14 +297,14 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
     const id = allocId(taskNumber, fieldIndex.n++);
     const answers = parseSolutionAlternatives(sub.solution, 'sort');
     fields.push({ id, answers, solutionHtml: `<strong>${solutionDisplayHtml(answers)}</strong>` });
-    body = `<p style="margin:0 0 6px;">${escapeHtml(sub.given)}</p><input type="text" id="${id}" class="blank-wide" style="width:100%;max-width:100%;" autocomplete="off">`;
+    body = `<div class="item input-group full-width"><p style="margin:0 0 6px;">${escapeHtml(sub.given)}</p><input type="text" id="${id}" class="blank-wide" autocomplete="off"></div>`;
   } else if (sub.kind === 'one-line') {
     const id = allocId(taskNumber, fieldIndex.n++);
     const answers = parseSolutionAlternatives(sub.solution, 'text');
     fields.push({ id, answers, solutionHtml: `<strong>${solutionDisplayHtml(answers)}</strong>` });
-    body = `<p style="margin:0 0 6px;">${allowBasicHtml(sub.prompt)}</p><input type="text" id="${id}" class="blank-wide" style="width:100%;max-width:100%;" autocomplete="off">`;
+    body = `<div class="item input-group full-width"><p style="margin:0 0 6px;">${allowBasicHtml(sub.prompt)}</p><input type="text" id="${id}" class="blank-wide" autocomplete="off"></div>`;
   } else if (sub.kind === 'bullet-blanks') {
-    body = `<ul style="margin:4px 0 0 18px;padding:0;">${sub.items
+    body = `<ul class="exam-grid-blank-list">${sub.items
       .map((item) => {
         const id = allocId(taskNumber, fieldIndex.n++);
         const answers = parseSolutionAlternatives(item.solution, 'number');
@@ -325,7 +313,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
           answers,
           solutionHtml: `${escapeHtml(item.text)} <strong>${solutionDisplayHtml(answers)}</strong>`,
         });
-        return `<li style="margin:4px 0;">${escapeHtml(item.text)} <input type="text" id="${id}" autocomplete="off"></li>`;
+        return `<li>${escapeHtml(item.text)} <input type="text" id="${id}" class="blank-tiny" autocomplete="off"></li>`;
       })
       .join('')}</ul>`;
   } else if (sub.kind === 'cloze') {
@@ -342,7 +330,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
           answers,
           solutionHtml: answers.length ? `<strong>${solutionDisplayHtml(answers)}</strong>` : '…',
         });
-        clozeHtml += `<input type="text" id="${id}" autocomplete="off">`;
+        clozeHtml += `<input type="text" id="${id}" class="blank-tiny" autocomplete="off">`;
       }
     });
     body = `<div class="exam-cloze-line">${clozeHtml}</div>`;
@@ -375,13 +363,12 @@ export function buildExamGridTaskHtml(spec: ExamGridTaskSpec): {
   const afbRoman = spec.afbLevel === 1 ? 'I' : spec.afbLevel === 2 ? 'II' : 'III';
 
   const grid = `
-<style>${GRID_STYLE}</style>
-<div class="exam-task-grid">
-  <div class="exam-task-grid-cell">${cell('tl')}</div>
-  <div class="exam-task-grid-cell">${cell('tr')}</div>
-  <div class="exam-task-grid-cell">${cell('bl')}</div>
-  <div class="exam-task-grid-cell">${cell('br')}</div>
-</div>`;
+            <div class="exam-task-grid">
+                <div class="exam-task-grid-cell">${cell('tl')}</div>
+                <div class="exam-task-grid-cell">${cell('tr')}</div>
+                <div class="exam-task-grid-cell">${cell('bl')}</div>
+                <div class="exam-task-grid-cell">${cell('br')}</div>
+            </div>`;
 
   const solution = `
             <div class="solution">
@@ -389,7 +376,7 @@ export function buildExamGridTaskHtml(spec: ExamGridTaskSpec): {
                 ${solutionLines.map((l) => `<p>${l}</p>`).join('\n                ')}
             </div>`;
 
-  const taskHtml = `    <!-- Aufgabe ${spec.taskNumber}: Raster 2×2 -->
+  const taskHtml = `    <!-- Aufgabe ${spec.taskNumber} -->
     <div class="task">
         <div class="task-header">
             <div class="task-number">Aufgabe ${spec.taskNumber} <span style="font-size: 11px; color: #666; font-weight: normal;">(${spec.points} Punkte)</span></div>

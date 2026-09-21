@@ -30617,9 +30617,10 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
         }
         existingTaskNumbers={examinationQuestions.map((q) => Number(q.taskNumber) || 0)}
         onClose={() => setExamGridBuilderOpen(false)}
+        onNotify={(message, severity) => showSnackbar(message, severity)}
         onSaved={() => {
           if (singleQuestionFilePath) {
-            void handleEditSingleQuestion({ path: singleQuestionFilePath, name: '' });
+            void loadExamQuestionsForPath(singleQuestionFilePath);
           }
         }}
       />

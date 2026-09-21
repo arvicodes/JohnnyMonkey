@@ -11,7 +11,7 @@ type TeacherCornerNavControlsProps = {
 /** Kompakt oben rechts: Schnellnotizen (N) + Dashboard (D) — auch im Vollbild portaliert. */
 export default function TeacherCornerNavControls({ onDashboard }: TeacherCornerNavControlsProps) {
   const portalHost = useTeacherFabPortalHost();
-  const openNotes = () => window.dispatchEvent(new Event(OPEN_TEACHER_NOTES_EVENT));
+  const toggleNotes = () => window.dispatchEvent(new Event(OPEN_TEACHER_NOTES_EVENT));
 
   const btnSx = {
     width: 22,
@@ -47,9 +47,9 @@ export default function TeacherCornerNavControls({ onDashboard }: TeacherCornerN
     >
       <IconButton
         size="small"
-        onClick={openNotes}
-        aria-label="Notizen (N)"
-        title="Notizen (N)"
+        onClick={toggleNotes}
+        aria-label="Notizen ein/aus (N)"
+        title="Notizen ein/aus (N)"
         data-teacher-fab="notes"
         sx={btnSx}
       >

@@ -1112,6 +1112,59 @@
             color: #666;
             font-weight: normal;
         }
+
+        /* 2×2-Raster innerhalb einer Aufgabe (Raster-Editor) */
+        .exam-task-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin: 12px 0 16px;
+            overflow: hidden;
+            background: #fff;
+        }
+        .exam-task-grid-cell {
+            padding: 10px 12px;
+            border: 1px solid #e8e8e8;
+            min-height: 72px;
+            font-size: 14px;
+            line-height: 1.65;
+            vertical-align: top;
+        }
+        .exam-subsection {
+            margin-bottom: 12px;
+        }
+        .exam-subsection:last-child {
+            margin-bottom: 0;
+        }
+        .exam-subsection-title {
+            font-weight: 700;
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+        .exam-round-line {
+            margin: 6px 0;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+        .exam-cloze-line {
+            margin: 6px 0;
+            line-height: 1.8;
+        }
+        .exam-cloze-line input {
+            min-width: 72px;
+            margin: 0 4px;
+        }
+        .exam-grid-blank-list {
+            margin: 4px 0 0 18px;
+            padding: 0;
+        }
+        .exam-grid-blank-list li {
+            margin: 6px 0;
+        }
     </style>
 </head>
 <body>

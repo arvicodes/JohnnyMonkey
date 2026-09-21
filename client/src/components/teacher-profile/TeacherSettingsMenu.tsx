@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Avatar,
@@ -29,6 +29,7 @@ import {
   profileSoftBg,
 } from '../../lib/profileColor';
 import { markTeacherWantsDashboard } from '../../lib/teacherLiveLesson';
+import { TEACHER_GO_DASHBOARD_EVENT } from '../../lib/teacherGoDashboard';
 
 interface TeacherSettingsMenuProps {
   teacherName: string;
@@ -71,6 +72,15 @@ export default function TeacherSettingsMenu({
   const displayEmoji = avatarEmoji?.trim() || null;
 
   const close = () => setAnchorEl(null);
+
+  useEffect(() => {
+    const onGoDashboard = () => {
+      setAnchorEl(null);
+      setStandOpen(false);
+    };
+    window.addEventListener(TEACHER_GO_DASHBOARD_EVENT, onGoDashboard);
+    return () => window.removeEventListener(TEACHER_GO_DASHBOARD_EVENT, onGoDashboard);
+  }, []);
 
   return (
     <>

@@ -5,6 +5,7 @@ import {
   downloadTeacherFullArchive,
   OPEN_TEACHER_FULL_ARCHIVE_EVENT,
 } from '../../lib/teacherFullArchive';
+import { TEACHER_GO_DASHBOARD_EVENT } from '../../lib/teacherGoDashboard';
 
 type Phase = 'idle' | 'run' | 'done' | 'error';
 

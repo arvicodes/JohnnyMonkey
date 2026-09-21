@@ -54,6 +54,7 @@ import {
   tableAddRow,
 } from '../lib/presentationSlideTables';
 import { presentationNotesTableSx } from '../lib/presentationListStyles';
+import { TEACHER_GO_DASHBOARD_EVENT } from '../lib/teacherGoDashboard';
 import {
   tryStartTableResizeFromPointer,
   updateTableResizeHoverCursor,
@@ -1198,9 +1199,13 @@ export default function TeacherQuickNotes({
     };
   }, [open, userId]);
 
-  /** Tastenkürzel „n“ öffnet die Notizen (nicht während Texteingabe). */
+  const toggleNotesModal = useCallback(() => {
+    if (openRef.current) closeModal();
+    else openModal();
+  }, [closeModal, openModal]);
+
+  /** Tastenkürzel „n“ schaltet Notizen ein/aus (nicht während Texteingabe). */
   useEffect(() => {
-    if (open) return;
     const isTypingTarget = (target: EventTarget | null) => {
       if (!(target instanceof HTMLElement)) return false;
       const tag = target.tagName;
@@ -1215,18 +1220,27 @@ export default function TeacherQuickNotes({
       if (e.key !== 'n' && e.key !== 'N') return;
       if (isTypingTarget(e.target)) return;
       e.preventDefault();
-      openModal();
+      toggleNotesModal();
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [open, openModal]);
+  }, [toggleNotesModal]);
 
-  /** Dashboard-Header & Co. können dieselbe Instanz öffnen. */
+  /** Ecke N und Dashboard-Header: Notizen ein-/ausblenden. */
   useEffect(() => {
-    const onOpen = () => openModal();
-    window.addEventListener(OPEN_TEACHER_NOTES_EVENT, onOpen);
-    return () => window.removeEventListener(OPEN_TEACHER_NOTES_EVENT, onOpen);
-  }, [openModal]);
+    const onToggle = () => toggleNotesModal();
+    window.addEventListener(OPEN_TEACHER_NOTES_EVENT, onToggle);
+    return () => window.removeEventListener(OPEN_TEACHER_NOTES_EVENT, onToggle);
+  }, [toggleNotesModal]);
+
+  /** Taste D / Dashboard: Notizen schließen. */
+  useEffect(() => {
+    const onGoDashboard = () => {
+      if (openRef.current) closeModal();
+    };
+    window.addEventListener(TEACHER_GO_DASHBOARD_EVENT, onGoDashboard);
+    return () => window.removeEventListener(TEACHER_GO_DASHBOARD_EVENT, onGoDashboard);
+  }, [closeModal]);
 
   /** Nach „Stand von GitHub holen“: alten Browser-Stand weg, Server-Stand nehmen. */
   useEffect(() => {
