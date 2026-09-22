@@ -66,7 +66,9 @@ import {
   examGradeNumericForCorrection,
   formatExamClassAverageDecimal,
 } from '../lib/examGradeLabel';
-import { normalizeVersionLetter, versionLetterFromKaPath } from '../lib/examVersionPaths';
+import { examBaseGitPath, normalizeVersionLetter, versionLetterFromKaPath } from '../lib/examVersionPaths';
+import { resetExamSession } from '../lib/examSessionReset';
+import ExamFullResetConfirmDialog from './exam/ExamFullResetConfirmDialog';
 
 interface KASubmission {
   id: string;
@@ -218,6 +220,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const [corrections, setCorrections] = useState<Record<string, { points?: number; comment?: string; constructionPoints?: number }>>({});
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [fullResetOpen, setFullResetOpen] = useState(false);
   const [showDreierprobe, setShowDreierprobe] = useState(false);
   const [dreierprobeEmailTab, setDreierprobeEmailTab] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -800,55 +803,13 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     }
   };
 
-  const handleResetAllSubmissions = async () => {
-    if (!window.confirm(
-      `⚠️ ACHTUNG: Möchten Sie wirklich ALLE Abgaben für "${kaFilePath}" zurücksetzen?\n\n` +
-      `Dies löscht ${submissions.length} Abgabe(n) und alle zugehörigen Korrekturen.\n\n` +
-      `Die Schüler können die ${getFileTypeName()} dann erneut bearbeiten.\n\n` +
-      `Diese Aktion kann nicht rückgängig gemacht werden!`
-    )) {
-      return;
-    }
-
+  const handleFullResetConfirm = async () => {
     try {
       setResetting(true);
-      const loginCode = localStorage.getItem('loginCode') || '';
-      // API Base URL ermitteln (ähnlich wie in der HTML-Datei)
-      const getApiBaseUrl = () => {
-        try {
-          if (window.opener && window.opener.location && window.opener.location.origin) {
-            return window.opener.location.origin;
-          }
-          if (window.location.origin && !window.location.origin.startsWith('blob:')) {
-            return window.location.origin;
-          }
-        } catch (e) {
-          // Cross-origin, ignoriere
-        }
-        return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-          ? 'http://localhost:3000'
-          : 'https://johnnymonkey.onrender.com';
-      };
-
-      const apiBaseUrl = getApiBaseUrl();
-      const response = await fetch(`${apiBaseUrl}/api/ka-corrections/reset-all`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-login-code': loginCode
-        },
-        body: JSON.stringify({ kaFilePath })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unbekannter Fehler' }));
-        throw new Error(errorData.error || 'Fehler beim Zurücksetzen');
-      }
-
-      const data = await response.json();
-      alert(`✅ ${data.message || `${data.deletedCount} Abgabe(n) wurden zurückgesetzt`}`);
-      
-      // Lade die Liste neu (sollte jetzt leer sein)
+      const pathForReset = examBaseGitPath(kaFilePath);
+      const result = await resetExamSession(pathForReset, { restartTimer: true });
+      alert(`✅ ${result.message}`);
+      setFullResetOpen(false);
       await loadSubmissions();
     } catch (error) {
       console.error('Fehler beim Zurücksetzen:', error);
@@ -2345,7 +2306,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     </Button>
                   )}
                 <Button 
-                  onClick={handleResetAllSubmissions}
+                  onClick={() => setFullResetOpen(true)}
                   variant="outlined"
                   color="error"
                   size="small"
@@ -2359,7 +2320,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     whiteSpace: 'nowrap'
                   }}
                   >
-                    {resetting ? 'Zurücksetzen...' : '🗑️ Zurücksetzen'}
+                    Alles zurücksetzen
                 </Button>
                 </>
               )}
@@ -4699,6 +4660,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ExamFullResetConfirmDialog
+        open={fullResetOpen}
+        onClose={() => setFullResetOpen(false)}
+        onConfirm={handleFullResetConfirm}
+        busy={resetting}
+        examLabel={kaFilePath.split('/').pop() || kaFilePath}
+      />
 
       {/* Dreierprobe Modal */}
       <DreierprobeModal
