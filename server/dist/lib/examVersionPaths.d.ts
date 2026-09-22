@@ -5,6 +5,9 @@ export type ExamVersionsMeta = {
 };
 export declare function normalizeVersionLetter(raw: string): string | null;
 export declare function defaultExamVersionLetters(): string[];
+/** Varianten-Dateien im gleichen Ordner (…__B.html) neben der Basis-Datei A. */
+export declare function discoverExamVersionLettersNextToBase(baseFullPath: string): string[];
+export declare function mergeExamVersionLetters(metaLetters: string[], baseFullPath: string): string[];
 export declare function parseExamVersionsMeta(html: string): ExamVersionsMeta;
 export declare function writeExamVersionsMeta(html: string, letters: string[]): string;
 export declare function syncExamVersionLettersJs(html: string, letters: string[]): string;

@@ -11,6 +11,7 @@ const clientLib = path.join(__dirname, '../client/src/lib/examGridTaskBuilder.ts
 const flowLib = path.join(__dirname, '../client/src/lib/examDruckmaterialFlowTasks.ts');
 const tasks234Lib = path.join(__dirname, '../client/src/lib/druckmaterialKaTasks234.ts');
 const normalizeLib = path.join(__dirname, '../client/src/lib/examAnswerNormalize.ts');
+const examVerLib = path.join(__dirname, '../server/src/lib/examVersionPaths.ts');
 
 const { buildExamGridTaskHtml, druckmaterialKlassenarbeit1 } = await import(
   pathToFileURL(clientLib).href
@@ -24,6 +25,10 @@ const {
 
 const { EXAM_NUMBER_LINE_CSS, EXAM_NUMBER_LINE_JS } = await import(pathToFileURL(flowLib).href);
 const { normalizeAnswerJsSource } = await import(pathToFileURL(normalizeLib).href);
+const { applyVersionsToExamHtml, patchKaKeyInHtml, variantStem, baseStemFromStem, fileStemFromName } =
+  await import(pathToFileURL(examVerLib).href);
+
+const KA_VERSION_LETTERS = ['A', 'B'];
 
 const kaDir = path.join(
   __dirname,
@@ -169,6 +174,10 @@ for (const { version, path: kaPath, letter } of [
   const built = buildTasksForVersion(version);
   let html = readFileSync(kaPath, 'utf8');
   html = applyKaPatches(html, built, letter);
+  const baseStem = baseStemFromStem(fileStemFromName(path.basename(kaPathA)));
+  const kaKey = letter === 'A' ? baseStem : variantStem(baseStem, letter);
+  html = patchKaKeyInHtml(html, kaKey);
+  html = applyVersionsToExamHtml(html, KA_VERSION_LETTERS, letter);
   writeFileSync(kaPath, html, 'utf8');
   console.log(`KA updated (${version}):`, kaPath);
   console.log(`  Task1 fields:`, Object.keys(built.task1.correctAnswers).length);

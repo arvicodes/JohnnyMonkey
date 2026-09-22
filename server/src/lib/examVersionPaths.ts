@@ -22,6 +22,33 @@ export function defaultExamVersionLetters(): string[] {
   return ['A'];
 }
 
+/** Varianten-Dateien im gleichen Ordner (…__B.html) neben der Basis-Datei A. */
+export function discoverExamVersionLettersNextToBase(baseFullPath: string): string[] {
+  const dir = path.dirname(baseFullPath);
+  const baseStem = baseStemFromStem(fileStemFromName(path.basename(baseFullPath)));
+  const found = new Set<string>(['A']);
+  if (!fs.existsSync(dir)) return ['A'];
+  for (const name of fs.readdirSync(dir)) {
+    if (!/\.html?$/i.test(name)) continue;
+    const stem = fileStemFromName(name);
+    if (stem === baseStem) continue;
+    const suffix = stem.slice(baseStem.length);
+    const m = suffix.match(/^__([A-Z])$/i);
+    if (m) {
+      const L = normalizeVersionLetter(m[1]);
+      if (L) found.add(L);
+    }
+  }
+  return [...found].sort();
+}
+
+export function mergeExamVersionLetters(metaLetters: string[], baseFullPath: string): string[] {
+  const discovered = discoverExamVersionLettersNextToBase(baseFullPath);
+  const merged = [...new Set([...metaLetters, ...discovered])];
+  if (!merged.includes('A')) merged.unshift('A');
+  return merged.sort();
+}
+
 export function parseExamVersionsMeta(html: string): ExamVersionsMeta {
   const m = html.match(EXAM_VERSIONS_META_RE);
   if (!m) return { letters: defaultExamVersionLetters() };

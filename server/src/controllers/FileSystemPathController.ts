@@ -19,6 +19,7 @@ import {
   defaultExamVersionLetters,
   fileStemFromName,
   gitPathVariant,
+  mergeExamVersionLetters,
   normalizeVersionLetter,
   parseExamVersionsMeta,
   patchKaKeyInHtml,
@@ -3733,14 +3734,15 @@ ${aiContent.optionsHTML}
       }
       const html = readExamHtmlFullPath(baseFull);
       const meta = parseExamVersionsMeta(html);
+      const letters = mergeExamVersionLetters(meta.letters, baseFull);
       const paths: Record<string, string> = {};
-      for (const letter of meta.letters) {
+      for (const letter of letters) {
         paths[letter] = gitPathVariant(baseGit, letter);
       }
       res.json({
         success: true,
         baseFilePath: baseGit,
-        letters: meta.letters,
+        letters,
         paths,
       });
     } catch (error) {

@@ -1505,7 +1505,7 @@ class FileSystemPathController {
                     error: 'Nur Prüfungsdateien (KA_, KU_, HU_, QZ_) können gelöscht werden.',
                 });
             }
-            const fullPath = storageManager_1.StorageManager.resolveFilePath(fp);
+            const fullPath = storageManager_1.StorageManager.resolveFilePath(normalizedFp);
             if (!fullPath) {
                 return res.status(404).json({ error: 'Datei nicht gefunden' });
             }
@@ -1523,11 +1523,11 @@ class FileSystemPathController {
                 }
                 const { letters } = (0, examVersionPaths_1.parseExamVersionsMeta)(html);
                 for (const L of letters) {
-                    gitPathsToDelete.push((0, examVersionPaths_1.gitPathVariant)(fp, L));
+                    gitPathsToDelete.push((0, examVersionPaths_1.gitPathVariant)(normalizedFp, L));
                 }
             }
             else {
-                gitPathsToDelete.push(fp);
+                gitPathsToDelete.push(normalizedFp);
             }
             const deleted = [];
             for (const gp of [...new Set(gitPathsToDelete)]) {
@@ -2719,7 +2719,13 @@ KRITISCH WICHTIG:
             let gridMatch;
             while ((gridMatch = gridTaskRe.exec(htmlContent)) !== null) {
                 const n = parseInt(gridMatch[1], 10);
-                if (gridMatch[2].includes('exam-task-grid') && !Number.isNaN(n)) {
+                const body = gridMatch[2];
+                const editorTask = body.includes('exam-task-grid') ||
+                    body.includes('exam-task-stack') ||
+                    body.includes('exam-task-flow') ||
+                    body.includes('data-exam-flow=') ||
+                    body.includes('data-exam-spec=');
+                if (editorTask && !Number.isNaN(n)) {
                     gridTaskNumbers.push(n);
                 }
             }
@@ -2897,7 +2903,7 @@ ${optionsHTML}
         return path_1.default.resolve(filePath);
     }
     static ensureExamTaskGridStyles(html) {
-        if (html.includes('.exam-task-grid'))
+        if (html.includes('.exam-subsection-media'))
             return html;
         const closeStyle = html.lastIndexOf('</style>');
         if (closeStyle < 0)
@@ -3191,14 +3197,15 @@ ${aiContent.optionsHTML}
             }
             const html = (0, examVersionPaths_1.readExamHtmlFullPath)(baseFull);
             const meta = (0, examVersionPaths_1.parseExamVersionsMeta)(html);
+            const letters = (0, examVersionPaths_1.mergeExamVersionLetters)(meta.letters, baseFull);
             const paths = {};
-            for (const letter of meta.letters) {
+            for (const letter of letters) {
                 paths[letter] = (0, examVersionPaths_1.gitPathVariant)(baseGit, letter);
             }
             res.json({
                 success: true,
                 baseFilePath: baseGit,
-                letters: meta.letters,
+                letters,
                 paths,
             });
         }
@@ -3331,5 +3338,15 @@ FileSystemPathController.EXAM_TASK_GRID_STYLE_SNIPPET = `
         .exam-cloze-line input { min-width: 72px; margin: 0 4px; }
         .exam-grid-blank-list { margin: 4px 0 0 18px; padding: 0; }
         .exam-grid-blank-list li { margin: 6px 0; }
+        .exam-subsection-media { display: flex; gap: 10px; align-items: flex-start; }
+        .exam-subsection-media-right { flex-direction: row-reverse; }
+        .exam-subsection-image { width: 88px; max-width: 32%; height: auto; object-fit: contain; border-radius: 4px; border: 1px solid #e0e0e0; flex-shrink: 0; }
+        .exam-subsection-media-body { flex: 1; min-width: 0; }
+        .exam-sort-drag { margin-top: 6px; }
+        .exam-sort-pool { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; min-height: 36px; padding: 6px; border: 1px dashed #bdbdbd; border-radius: 6px; background: #fafafa; }
+        .exam-sort-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; padding: 6px 10px; border: 1px solid #90caf9; border-radius: 6px; background: #e3f2fd; font-weight: 700; font-size: 14px; cursor: grab; user-select: none; touch-action: none; }
+        .exam-sort-slot { min-width: 56px; min-height: 38px; padding: 4px; border: 2px dashed #9e9e9e; border-radius: 6px; background: #fff; display: flex; align-items: center; justify-content: center; }
+        .exam-sort-slots-row { display: flex; flex-wrap: wrap; gap: 8px; }
+        .exam-sort-slot.exam-sort-slot-over { border-color: #1976d2; background: #e3f2fd; }
 `;
 //# sourceMappingURL=FileSystemPathController.js.map

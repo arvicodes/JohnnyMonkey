@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <!-- EXAM_VERSIONS {"letters":["A"]} -->
+    <!-- EXAM_VERSIONS {"letters":["A","B"]} -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Klassenarbeit 1: Natürliche Zahlen</title>
@@ -9,8 +9,8 @@
         // KRITISCH: Status-Check IM HEAD - wird SOFORT ausgeführt, bevor irgendetwas gerendert wird
         (function() {
             try {
-                const KA_KEY = 'KA_Klassenarbeit 1: Natürliche Zahlen';
-        const EXAM_VERSION_LETTERS = ['A'];
+                const KA_KEY = 'KA_Klassenarbeit 1: Natürliche Zahlen__B';
+        const EXAM_VERSION_LETTERS = ['A', 'B'];
                 const isTeacher = localStorage.getItem('teacherId') !== null;
                 
                 // Wenn Lehrer, keine Sperre
@@ -1324,7 +1324,7 @@
         // Status-Check: Nur Debug-Log, keine Blockierung
         // Die echte Prüfung erfolgt in initializeTimer() mit Datenbank-Abfrage
         (function() {
-            const KA_KEY = 'KA_Klassenarbeit 1: Natürliche Zahlen';
+            const KA_KEY = 'KA_Klassenarbeit 1: Natürliche Zahlen__B';
             const isTeacher = localStorage.getItem('teacherId') !== null;
             
             // Wenn Lehrer, keine Prüfung
@@ -1375,7 +1375,7 @@
             <button type="button" class="submit-button-large" id="submitBtnBottom">Fertig.<br>Jetzt abgeben!</button>
         </div>
     </aside>
-    <div class="exam-paper">
+    <div class="exam-paper exam-multi-version">
     <div class="exam-version-letter" id="examVersionLetter" aria-hidden="true">B</div>
     <div class="header">
         <div class="header-brand-row">
@@ -1649,7 +1649,7 @@
 
     <script>
         // Eindeutiger Key für diese Hausaufgabenüberprüfung (HÜ)
-        const KA_KEY = 'KA_Klassenarbeit 1: Natürliche Zahlen';
+        const KA_KEY = 'KA_Klassenarbeit 1: Natürliche Zahlen__B';
         const isTeacher = localStorage.getItem('teacherId') !== null;
         const studentId = localStorage.getItem('studentId') || 'unknown';
 
@@ -2489,6 +2489,7 @@
 
 
 
+
         function setupExamNumberLines() {
             document.querySelectorAll('.exam-number-line-interactive').forEach(function (root) {
                 if (root.getAttribute('data-nl-init') === '1') return;
@@ -2740,6 +2741,7 @@
                 });
             });
         }
+
 
 
 

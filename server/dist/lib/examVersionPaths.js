@@ -6,6 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EXAM_VERSION_LETTERS_JS_RE = exports.EXAM_VERSIONS_META_RE = void 0;
 exports.normalizeVersionLetter = normalizeVersionLetter;
 exports.defaultExamVersionLetters = defaultExamVersionLetters;
+exports.discoverExamVersionLettersNextToBase = discoverExamVersionLettersNextToBase;
+exports.mergeExamVersionLetters = mergeExamVersionLetters;
 exports.parseExamVersionsMeta = parseExamVersionsMeta;
 exports.writeExamVersionsMeta = writeExamVersionsMeta;
 exports.syncExamVersionLettersJs = syncExamVersionLettersJs;
@@ -39,6 +41,36 @@ function normalizeVersionLetter(raw) {
 }
 function defaultExamVersionLetters() {
     return ['A'];
+}
+/** Varianten-Dateien im gleichen Ordner (…__B.html) neben der Basis-Datei A. */
+function discoverExamVersionLettersNextToBase(baseFullPath) {
+    const dir = path_1.default.dirname(baseFullPath);
+    const baseStem = baseStemFromStem(fileStemFromName(path_1.default.basename(baseFullPath)));
+    const found = new Set(['A']);
+    if (!fs_1.default.existsSync(dir))
+        return ['A'];
+    for (const name of fs_1.default.readdirSync(dir)) {
+        if (!/\.html?$/i.test(name))
+            continue;
+        const stem = fileStemFromName(name);
+        if (stem === baseStem)
+            continue;
+        const suffix = stem.slice(baseStem.length);
+        const m = suffix.match(/^__([A-Z])$/i);
+        if (m) {
+            const L = normalizeVersionLetter(m[1]);
+            if (L)
+                found.add(L);
+        }
+    }
+    return [...found].sort();
+}
+function mergeExamVersionLetters(metaLetters, baseFullPath) {
+    const discovered = discoverExamVersionLettersNextToBase(baseFullPath);
+    const merged = [...new Set([...metaLetters, ...discovered])];
+    if (!merged.includes('A'))
+        merged.unshift('A');
+    return merged.sort();
 }
 function parseExamVersionsMeta(html) {
     const m = html.match(exports.EXAM_VERSIONS_META_RE);
