@@ -134,6 +134,7 @@ import {
   exerciseEditorUrl,
   exercisePresentUrl,
 } from '../lib/dashboardMaterialLibrary';
+import { examBaseGitPath } from '../lib/examVersionPaths';
 import {
   Box,
   Typography,
@@ -11916,7 +11917,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
 
   const handleExamVersionActivePath = (path: string, _letter: string) => {
     setSingleQuestionFilePath(path);
-    void loadExamQuestionsForPath(path);
+    void loadExamQuestionsForPath(path, { openGridIfSaved: false });
   };
 
   const handleEditSingleQuestion = async (item: any) => {
@@ -30598,7 +30599,8 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
         <DialogContent sx={{ p: 3 }}>
           {singleQuestionFilePath ? (
             <ExamVersionTabsBar
-              filePath={singleQuestionFilePath}
+              filePath={examBaseGitPath(singleQuestionFilePath)}
+              activeVariantPath={singleQuestionFilePath}
               compact
               onActiveFilePathChange={handleExamVersionActivePath}
               disabled={loadingQuestions || savingQuestion}
@@ -30901,6 +30903,9 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
         ]}
         onClose={() => setExamGridBuilderOpen(false)}
         onNotify={(message, severity) => showSnackbar(message, severity)}
+        onActiveFilePathChange={(path, _letter) => {
+          setSingleQuestionFilePath(path);
+        }}
         onSaved={() => {
           if (singleQuestionFilePath) {
             void loadExamQuestionsForPath(singleQuestionFilePath, { openGridIfSaved: true });

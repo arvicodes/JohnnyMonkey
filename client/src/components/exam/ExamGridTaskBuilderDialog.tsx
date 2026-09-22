@@ -24,6 +24,7 @@ import {
   type ExamGridTaskSpec,
 } from '../../lib/examGridTaskBuilder';
 import { loadGridTaskSpecsFromExamHtml } from '../../lib/loadGridTaskSpecsFromExamHtml';
+import { examBaseGitPath, examFamilyKey } from '../../lib/examVersionPaths';
 
 type Props = {
   open: boolean;
@@ -33,6 +34,8 @@ type Props = {
   onClose: () => void;
   onSaved: () => void;
   onNotify?: (message: string, severity: 'success' | 'error') => void;
+  /** Gleicher Pfad wie im Fragen-Dialog — bleibt beim Versionswechsel synchron. */
+  onActiveFilePathChange?: (path: string, letter: string) => void;
 };
 
 function nextTaskNumberFromSpecs(specs: ExamGridTaskSpec[], extra: number[] | undefined): number {
@@ -67,6 +70,7 @@ export default function ExamGridTaskBuilderDialog({
   onClose,
   onSaved,
   onNotify,
+  onActiveFilePathChange,
 }: Props) {
   const [specs, setSpecs] = useState<ExamGridTaskSpec[]>(() => [
     createBlankExamGridTask(initialTaskNumber),
@@ -77,27 +81,43 @@ export default function ExamGridTaskBuilderDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loadedKeyRef = React.useRef('');
+  const loadGenerationRef = React.useRef(0);
   const specsDraftByPathRef = React.useRef<Record<string, ExamGridTaskSpec[]>>({});
   const specsRef = React.useRef(specs);
   specsRef.current = specs;
 
+  const versionMetaPath = React.useMemo(() => examBaseGitPath(filePath), [filePath]);
+  const openFamilyRef = React.useRef('');
+
   React.useEffect(() => {
-    if (open) {
-      setActiveFilePath(filePath);
+    if (!open) {
+      openFamilyRef.current = '';
+      return;
+    }
+    const family = examFamilyKey(filePath);
+    if (openFamilyRef.current !== family) {
+      openFamilyRef.current = family;
       specsDraftByPathRef.current = {};
       loadedKeyRef.current = '';
+      loadGenerationRef.current += 1;
     }
+    setActiveFilePath(filePath);
   }, [open, filePath]);
 
-  const handleVersionPathChange = React.useCallback((path: string, _letter: string) => {
-    setActiveFilePath((prevPath) => {
-      if (prevPath && prevPath !== path) {
-        specsDraftByPathRef.current[prevPath] = specsRef.current;
-      }
-      loadedKeyRef.current = '';
-      return path;
-    });
-  }, []);
+  const handleVersionPathChange = React.useCallback(
+    (path: string, letter: string) => {
+      setActiveFilePath((prevPath) => {
+        if (prevPath && prevPath !== path) {
+          specsDraftByPathRef.current[prevPath] = specsRef.current;
+        }
+        loadedKeyRef.current = '';
+        loadGenerationRef.current += 1;
+        return path;
+      });
+      onActiveFilePathChange?.(path, letter);
+    },
+    [onActiveFilePathChange],
+  );
 
   React.useEffect(() => {
     if (!open) {
@@ -116,32 +136,36 @@ export default function ExamGridTaskBuilderDialog({
       return;
     }
 
-    loadedKeyRef.current = loadKey;
-    setError(null);
-    setPreviewOpenByTask({});
-
     if (!activeFilePath) {
       setSpecs([createBlankExamGridTask(initialTaskNumber)]);
       return;
     }
 
+    const generation = ++loadGenerationRef.current;
+    setError(null);
+    setPreviewOpenByTask({});
+    setLoading(true);
+
     void (async () => {
-      setLoading(true);
       try {
         const res = await fetch(
           `/api/file-system-paths/read-html?filePath=${encodeURIComponent(activeFilePath)}`,
         );
         if (!res.ok) throw new Error('Prüfungsdatei konnte nicht geladen werden');
         const html = await res.text();
+        if (generation !== loadGenerationRef.current) return;
         const loaded = loadGridTaskSpecsFromExamHtml(html, initialTaskNumber);
+        loadedKeyRef.current = loadKey;
         setSpecs(loaded);
         specsDraftByPathRef.current[activeFilePath] = loaded;
       } catch {
+        if (generation !== loadGenerationRef.current) return;
         const fallback = [{ ...demoNatuerlicheZahlenTask1(), taskNumber: initialTaskNumber }];
+        loadedKeyRef.current = loadKey;
         setSpecs(fallback);
         setError('Gespeicherte Aufgabe konnte nicht geladen werden.');
       } finally {
-        setLoading(false);
+        if (generation === loadGenerationRef.current) setLoading(false);
       }
     })();
   }, [open, activeFilePath, initialTaskNumber]);
@@ -326,7 +350,8 @@ export default function ExamGridTaskBuilderDialog({
           {activeFilePath ? (
             <ExamVersionTabsBar
               compact
-              filePath={activeFilePath}
+              filePath={versionMetaPath}
+              activeVariantPath={activeFilePath}
               disabled={loading || saving}
               onActiveFilePathChange={handleVersionPathChange}
             />

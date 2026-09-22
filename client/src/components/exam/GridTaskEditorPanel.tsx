@@ -257,6 +257,7 @@ export default function GridTaskEditorPanel({
                     letter: sub.letter,
                     title: sub.title,
                     quadrant: sub.quadrant,
+                    image: sub.image,
                   });
                 }}
               >
@@ -265,6 +266,39 @@ export default function GridTaskEditorPanel({
                     {KIND_LABEL[k]}
                   </MenuItem>
                 ))}
+              </Select>
+            </FormControl>
+          </Box>
+
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5, alignItems: 'center' }}>
+            <TextField
+              label="Bild (URL / material-Pfad, optional)"
+              size="small"
+              fullWidth
+              sx={{ flex: '1 1 220px' }}
+              value={sub.image?.src || ''}
+              onChange={(e) => {
+                const src = e.target.value.trim();
+                updateSub(sub.id, {
+                  image: src ? { src, align: sub.image?.align || 'left' } : undefined,
+                });
+              }}
+              placeholder="z. B. /material/…/bild.png"
+            />
+            <FormControl size="small" sx={{ minWidth: 120 }} disabled={!sub.image?.src}>
+              <InputLabel>Bild</InputLabel>
+              <Select
+                label="Bild"
+                value={sub.image?.align || 'left'}
+                onChange={(e) => {
+                  if (!sub.image?.src) return;
+                  updateSub(sub.id, {
+                    image: { src: sub.image.src, align: e.target.value as 'left' | 'right' },
+                  });
+                }}
+              >
+                <MenuItem value="left">links</MenuItem>
+                <MenuItem value="right">rechts</MenuItem>
               </Select>
             </FormControl>
           </Box>
@@ -391,12 +425,30 @@ export default function GridTaskEditorPanel({
 
           {sub.kind === 'sort' && (
             <Box sx={{ ...editorRowFill(subIndex, 0) }}>
+              <FormControl size="small" fullWidth sx={{ mb: 1 }}>
+                <InputLabel>Bearbeitung</InputLabel>
+                <Select
+                  label="Bearbeitung"
+                  value={sub.interaction || 'text'}
+                  onChange={(e) =>
+                    updateSub(sub.id, { interaction: e.target.value as 'text' | 'drag' })
+                  }
+                >
+                  <MenuItem value="text">Freitext (Komma-getrennt)</MenuItem>
+                  <MenuItem value="drag">Zahlen greifen &amp; in Slots ziehen</MenuItem>
+                </Select>
+              </FormControl>
               <TextField
                 fullWidth
                 size="small"
-                label="Gegeben (Zahlen)"
+                label="Gegeben (Zahlen, kommagetrennt)"
                 value={sub.given}
                 onChange={(e) => updateSub(sub.id, { given: e.target.value })}
+                helperText={
+                  sub.interaction === 'drag'
+                    ? 'Diese Kärtchen erscheinen zum Ziehen; Slots = Anzahl der Lösungswerte.'
+                    : undefined
+                }
                 sx={{ mb: 1 }}
               />
               <TextField
@@ -405,6 +457,7 @@ export default function GridTaskEditorPanel({
                 label="Lösung (sortiert)"
                 value={sub.solution}
                 onChange={(e) => updateSub(sub.id, { solution: e.target.value })}
+                helperText="Mehrere Varianten mit / trennen"
               />
             </Box>
           )}

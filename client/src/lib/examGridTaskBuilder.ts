@@ -2,6 +2,13 @@
 
 export type GridQuadrant = 'tl' | 'tr' | 'bl' | 'br';
 
+export type GridSubsectionImage = {
+  src: string;
+  align: 'left' | 'right';
+};
+
+type SubImage = { image?: GridSubsectionImage };
+
 export type GridSubsection =
   | {
       id: string;
@@ -10,7 +17,7 @@ export type GridSubsection =
       quadrant: GridQuadrant;
       kind: 'round-lines';
       lines: { text: string; solution: string }[];
-    }
+    } & SubImage
   | {
       id: string;
       letter: string;
@@ -18,7 +25,7 @@ export type GridSubsection =
       quadrant: GridQuadrant;
       kind: 'compare';
       rows: { left: string; right: string; solution: '<' | '>' | '=' }[];
-    }
+    } & SubImage
   | {
       id: string;
       letter: string;
@@ -27,7 +34,9 @@ export type GridSubsection =
       kind: 'sort';
       given: string;
       solution: string;
-    }
+      /** text = freies Feld; drag = Zahlen in Slots ziehen */
+      interaction?: 'text' | 'drag';
+    } & SubImage
   | {
       id: string;
       letter: string;
@@ -36,7 +45,7 @@ export type GridSubsection =
       kind: 'one-line';
       prompt: string;
       solution: string;
-    }
+    } & SubImage
   | {
       id: string;
       letter: string;
@@ -44,7 +53,7 @@ export type GridSubsection =
       quadrant: GridQuadrant;
       kind: 'bullet-blanks';
       items: { text: string; solution: string }[];
-    }
+    } & SubImage
   | {
       id: string;
       letter: string;
@@ -54,7 +63,7 @@ export type GridSubsection =
       /** Text mit ___ für Lücken */
       template: string;
       solutions: string[];
-    };
+    } & SubImage;
 
 export type ExamGridTaskSpec = {
   taskNumber: number;
@@ -205,6 +214,7 @@ export function demoNatuerlicheZahlenTask1(): ExamGridTaskSpec {
         kind: 'sort',
         given: '391, 589, 389, 399',
         solution: '389, 391, 399, 589',
+        interaction: 'drag',
       },
       {
         id: 's-d',
@@ -256,6 +266,27 @@ function allocId(taskNumber: number, index: number): string {
   return `a${taskNumber}${suffix}`;
 }
 
+function splitListTokens(raw: string): string[] {
+  return String(raw || '')
+    .split(/[,;]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function buildSubsectionShell(sub: GridSubsection, titleHtml: string, bodyHtml: string): string {
+  const core = `${titleHtml}${bodyHtml}`;
+  const img = sub.image?.src?.trim();
+  if (!img) {
+    return `<div class="exam-subsection">${core}</div>`;
+  }
+  const align = sub.image?.align === 'right' ? 'right' : 'left';
+  const imgTag = `<img class="exam-subsection-image" src="${escapeHtml(img)}" alt="" loading="lazy">`;
+  const bodyWrap = `<div class="exam-subsection-media-body">${core}</div>`;
+  const mediaInner =
+    align === 'left' ? `${imgTag}${bodyWrap}` : `${bodyWrap}${imgTag}`;
+  return `<div class="exam-subsection exam-subsection-has-image"><div class="exam-subsection-media exam-subsection-media-${align}">${mediaInner}</div></div>`;
+}
+
 function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: { n: number }): {
   html: string;
   fields: BuiltField[];
@@ -297,7 +328,29 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
     const id = allocId(taskNumber, fieldIndex.n++);
     const answers = parseSolutionAlternatives(sub.solution, 'sort');
     fields.push({ id, answers, solutionHtml: `<strong>${solutionDisplayHtml(answers)}</strong>` });
-    body = `<div class="item input-group full-width"><p style="margin:0 0 6px;">${escapeHtml(sub.given)}</p><input type="text" id="${id}" class="blank-wide" autocomplete="off"></div>`;
+    const tokens = splitListTokens(sub.given);
+    if (sub.interaction === 'drag' && tokens.length > 0) {
+      const solTokens = splitListTokens(sub.solution.split('/')[0] || sub.solution);
+      const slotCount = Math.max(solTokens.length, tokens.length);
+      const chips = tokens
+        .map(
+          (t) =>
+            `<span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="${escapeHtml(t)}">${escapeHtml(t)}</span>`,
+        )
+        .join('');
+      const slots = Array.from(
+        { length: slotCount },
+        (_, i) =>
+          `<div class="exam-sort-slot" data-slot="${i}" aria-label="Position ${i + 1}"></div>`,
+      ).join('');
+      body = `<div class="exam-sort-drag" data-answer-id="${id}">
+<div class="exam-sort-pool" aria-label="Zahlen zum Ziehen">${chips}</div>
+<div class="exam-sort-slots-row" aria-label="Reihenfolge von klein nach groß">${slots}</div>
+<input type="hidden" id="${id}" value="">
+</div>`;
+    } else {
+      body = `<div class="item input-group full-width"><p style="margin:0 0 6px;">${escapeHtml(sub.given)}</p><input type="text" id="${id}" class="blank-wide" autocomplete="off"></div>`;
+    }
   } else if (sub.kind === 'one-line') {
     const id = allocId(taskNumber, fieldIndex.n++);
     const answers = parseSolutionAlternatives(sub.solution, 'text');
@@ -336,7 +389,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
     body = `<div class="exam-cloze-line">${clozeHtml}</div>`;
   }
 
-  return { html: `<div class="exam-subsection">${title}${body}</div>`, fields };
+  return { html: buildSubsectionShell(sub, title, body), fields };
 }
 
 export function buildExamGridTaskHtml(spec: ExamGridTaskSpec): {
@@ -453,6 +506,21 @@ function answersToSolutionField(answers: Record<string, string[]>, id: string): 
   return manual.join(' / ');
 }
 
+function parseSubImage(subEl: Element): GridSubsectionImage | undefined {
+  const img = subEl.querySelector('.exam-subsection-image');
+  if (!img) return undefined;
+  const src = img.getAttribute('src')?.trim();
+  if (!src) return undefined;
+  const media = subEl.querySelector('.exam-subsection-media');
+  const align = media?.classList.contains('exam-subsection-media-right') ? 'right' : 'left';
+  return { src, align };
+}
+
+function attachImage<T extends GridSubsection>(subEl: Element, sub: T): T {
+  const image = parseSubImage(subEl);
+  return image ? { ...sub, image } : sub;
+}
+
 function parseSubTitle(subEl: Element): { letter: string; title: string } {
   const titleEl = subEl.querySelector('.exam-subsection-title');
   if (!titleEl) return { letter: 'A', title: '' };
@@ -472,6 +540,27 @@ function parseSubsection(
   const { letter, title } = parseSubTitle(subEl);
   const id = `sub-${letter}-${quadrant}-${Math.random().toString(36).slice(2, 7)}`;
 
+  const dragSort = subEl.querySelector('.exam-sort-drag');
+  if (dragSort) {
+    const answerId = dragSort.getAttribute('data-answer-id') || '';
+    const chips = dragSort.querySelectorAll('.exam-sort-chip');
+    const given = Array.from(chips)
+      .map((c) => c.getAttribute('data-value') || c.textContent?.trim() || '')
+      .filter(Boolean)
+      .join(', ');
+    const solution = answersToSolutionField(answers, answerId);
+    return attachImage(subEl, {
+      id,
+      letter,
+      title,
+      quadrant,
+      kind: 'sort',
+      given,
+      solution,
+      interaction: 'drag',
+    });
+  }
+
   const roundLines = subEl.querySelectorAll('.exam-round-line');
   if (roundLines.length > 0) {
     const lines = Array.from(roundLines).map((line) => {
@@ -481,7 +570,7 @@ function parseSubsection(
       const text = spans[0]?.textContent?.trim() || '';
       return { text, solution: answersToSolutionField(answers, idAttr) };
     });
-    return { id, letter, title, quadrant, kind: 'round-lines', lines };
+    return attachImage(subEl, { id, letter, title, quadrant, kind: 'round-lines', lines });
   }
 
   const compareRows = subEl.querySelectorAll('.item.input-group');
@@ -499,7 +588,7 @@ function parseSubsection(
         const solution = (raw === '>' || raw === '=' ? raw : '<') as '<' | '>' | '=';
         return { left, right, solution };
       });
-    return { id, letter, title, quadrant, kind: 'compare', rows };
+    return attachImage(subEl, { id, letter, title, quadrant, kind: 'compare', rows });
   }
 
   const bulletList = subEl.querySelector('.exam-grid-blank-list');
@@ -512,7 +601,7 @@ function parseSubsection(
       const text = (clone.textContent || '').trim();
       return { text, solution: answersToSolutionField(answers, idAttr) };
     });
-    return { id, letter, title, quadrant, kind: 'bullet-blanks', items };
+    return attachImage(subEl, { id, letter, title, quadrant, kind: 'bullet-blanks', items });
   }
 
   const cloze = subEl.querySelector('.exam-cloze-line');
@@ -528,7 +617,7 @@ function parseSubsection(
         parts.push(node.textContent || '');
       }
     });
-    return {
+    return attachImage(subEl, {
       id,
       letter,
       title,
@@ -536,7 +625,7 @@ function parseSubsection(
       kind: 'cloze',
       template: parts.join('').trim(),
       solutions,
-    };
+    });
   }
 
   const fullWidth = subEl.querySelector('.item.input-group.full-width');
@@ -547,12 +636,21 @@ function parseSubsection(
     const prompt = (p?.textContent || '').trim();
     const solution = answersToSolutionField(answers, idAttr);
     if (prompt && /[\d,;]/.test(prompt) && prompt.split(/[,;]/).length >= 2) {
-      return { id, letter, title, quadrant, kind: 'sort', given: prompt, solution };
+      return attachImage(subEl, {
+        id,
+        letter,
+        title,
+        quadrant,
+        kind: 'sort',
+        given: prompt,
+        solution,
+        interaction: 'text',
+      });
     }
-    return { id, letter, title, quadrant, kind: 'one-line', prompt, solution };
+    return attachImage(subEl, { id, letter, title, quadrant, kind: 'one-line', prompt, solution });
   }
 
-  return { id, letter, title, quadrant, kind: 'one-line', prompt: '', solution: '' };
+  return attachImage(subEl, { id, letter, title, quadrant, kind: 'one-line', prompt: '', solution: '' });
 }
 
 export function listGridTaskNumbersInExamHtml(fullHtml: string): number[] {

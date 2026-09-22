@@ -1,7 +1,9 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Box, Button, IconButton, Tab, Tabs, Tooltip, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import {
+  examBaseGitPath,
+  examFamilyKey,
   fetchExamVersionLetters,
   normalizeVersionLetter,
   resolveVersionFilePath,
@@ -16,10 +18,12 @@ const compactIconBtn = {
 };
 
 type Props = {
+  /** Beliebiger Pfad der Prüfungsfamilie (A oder Variante). */
   filePath: string;
+  /** Aktuell bearbeitete Datei (steuert Tab-Hervorhebung). */
+  activeVariantPath?: string;
   onActiveFilePathChange: (path: string, letter: string) => void;
   disabled?: boolean;
-  /** Weniger Text, kompakte Buttons (Raster-Editor). */
   compact?: boolean;
 };
 
@@ -33,33 +37,40 @@ function nextVersionLetter(letters: string[]): string | null {
 
 export default function ExamVersionTabsBar({
   filePath,
+  activeVariantPath,
   onActiveFilePathChange,
   disabled,
   compact,
 }: Props) {
   const [letters, setLetters] = useState<string[]>(['A']);
   const [paths, setPaths] = useState<Record<string, string>>({});
-  const [basePath, setBasePath] = useState(filePath);
+  const [basePath, setBasePath] = useState(() => examBaseGitPath(filePath));
   const [activeLetter, setActiveLetter] = useState('A');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const familyKeyRef = useRef('');
 
-  /** Nur Metadaten — kein onActiveFilePathChange (sonst springt man z. B. von B zurück auf A). */
-  const refreshMeta = useCallback(async () => {
-    if (!filePath) return null;
-    const meta = await fetchExamVersionLetters(filePath);
+  const refreshMeta = useCallback(async (anyPathInFamily: string) => {
+    const base = examBaseGitPath(anyPathInFamily);
+    if (!base) return null;
+    const meta = await fetchExamVersionLetters(base);
     setLetters(meta.letters);
     setPaths(meta.paths);
     setBasePath(meta.baseFilePath);
     return meta;
-  }, [filePath]);
+  }, []);
 
   useEffect(() => {
+    const family = examFamilyKey(filePath);
+    if (!family) return;
+    if (familyKeyRef.current === family) return;
+    familyKeyRef.current = family;
     void (async () => {
       try {
-        const meta = await refreshMeta();
+        const meta = await refreshMeta(filePath);
         if (!meta) return;
-        const fromPath = versionLetterFromKaPath(filePath);
+        const ext = activeVariantPath || filePath;
+        const fromPath = versionLetterFromKaPath(ext);
         const safe = meta.letters.includes(fromPath) ? fromPath : 'A';
         setActiveLetter(safe);
       } catch {
@@ -67,12 +78,18 @@ export default function ExamVersionTabsBar({
         setActiveLetter('A');
       }
     })();
-  }, [filePath, refreshMeta]);
+  }, [filePath, activeVariantPath, refreshMeta]);
+
+  useEffect(() => {
+    if (!activeVariantPath) return;
+    const letter = versionLetterFromKaPath(activeVariantPath);
+    if (letters.includes(letter)) setActiveLetter(letter);
+  }, [activeVariantPath, letters]);
 
   const switchLetter = (letter: string) => {
     const L = normalizeVersionLetter(letter) || 'A';
-    setActiveLetter(L);
     const resolved = resolveVersionFilePath(paths, basePath, L);
+    setActiveLetter(L);
     onActiveFilePathChange(resolved, L);
   };
 
@@ -94,7 +111,7 @@ export default function ExamVersionTabsBar({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Version konnte nicht angelegt werden');
       }
-      const meta = await refreshMeta();
+      const meta = await refreshMeta(basePath);
       if (meta) {
         const p = resolveVersionFilePath(meta.paths, meta.baseFilePath, next);
         setActiveLetter(next);
@@ -121,7 +138,7 @@ export default function ExamVersionTabsBar({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Version konnte nicht entfernt werden');
       }
-      const meta = await refreshMeta();
+      const meta = await refreshMeta(basePath);
       if (meta) {
         const p = resolveVersionFilePath(meta.paths, meta.baseFilePath, 'A');
         setActiveLetter('A');
@@ -179,7 +196,8 @@ export default function ExamVersionTabsBar({
     <Box sx={{ mb: compact ? 1.5 : 2 }}>
       {!compact ? (
         <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-          Versionen bearbeiten — B, C … starten als Kopie von A.
+          Versionen bearbeiten — B, C … sind eigene Dateien (Änderungen gelten nur für den gewählten
+          Tab).
         </Typography>
       ) : null}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>

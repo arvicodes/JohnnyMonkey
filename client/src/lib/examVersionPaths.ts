@@ -7,6 +7,49 @@ export function normalizeVersionLetter(raw: string): string | null {
   return l;
 }
 
+export function fileStemFromName(fileName: string): string {
+  return fileName.replace(/\.(html|htm)$/i, '');
+}
+
+export function baseStemFromStem(stem: string): string {
+  return stem.replace(/__([A-Z])$/i, '');
+}
+
+export function variantStem(baseStem: string, letter: string): string {
+  const L = normalizeVersionLetter(letter);
+  if (!L || L === 'A') return baseStem;
+  return `${baseStem}__${L}`;
+}
+
+/** Basis-HTML (Version A) aus beliebigem Varianten-Pfad. */
+export function gitPathVariant(baseGitPath: string, letter: string): string {
+  const p = (baseGitPath || '').replace(/\\/g, '/');
+  const slash = p.lastIndexOf('/');
+  const dir = slash >= 0 ? p.slice(0, slash + 1) : '';
+  const file = slash >= 0 ? p.slice(slash + 1) : p;
+  const stem = fileStemFromName(file);
+  const baseStem = baseStemFromStem(stem);
+  const nextStem = variantStem(baseStem, letter);
+  return `${dir}${nextStem}.html`;
+}
+
+export function examBaseGitPath(anyVariantPath: string): string {
+  const p = (anyVariantPath || '').replace(/\\/g, '/').trim();
+  if (!p) return p;
+  return gitPathVariant(p, 'A');
+}
+
+/** Gleiche Prüfungsfamilie (A/B/C teilen einen Stamm). */
+export function examFamilyKey(anyVariantPath: string): string {
+  const p = (anyVariantPath || '').replace(/\\/g, '/').trim().toLowerCase();
+  if (!p) return '';
+  const slash = p.lastIndexOf('/');
+  const dir = slash >= 0 ? p.slice(0, slash) : '';
+  const file = slash >= 0 ? p.slice(slash + 1) : p;
+  const stem = baseStemFromStem(fileStemFromName(file));
+  return `${dir}/${stem}`;
+}
+
 export function versionLetterFromKaPath(kaPath: string): string {
   const fileName = (kaPath || '').split(/[/\\]/).pop() || kaPath || '';
   const stem = fileName.replace(/\.(html|htm)$/i, '');
@@ -23,11 +66,12 @@ export async function fetchExamVersionLetters(baseFilePath: string): Promise<{
   paths: Record<string, string>;
   baseFilePath: string;
 }> {
+  const queryPath = examBaseGitPath(baseFilePath);
   const res = await fetch(
-    `/api/file-system-paths/get-examination-versions?filePath=${encodeURIComponent(baseFilePath)}`,
+    `/api/file-system-paths/get-examination-versions?filePath=${encodeURIComponent(queryPath)}`,
   );
   if (!res.ok) {
-    return { letters: ['A'], paths: { A: baseFilePath }, baseFilePath };
+    return { letters: ['A'], paths: { A: queryPath }, baseFilePath: queryPath };
   }
   const data = (await res.json()) as {
     letters?: string[];
@@ -35,10 +79,11 @@ export async function fetchExamVersionLetters(baseFilePath: string): Promise<{
     baseFilePath?: string;
   };
   const letters = data.letters?.length ? data.letters : ['A'];
+  const base = data.baseFilePath || queryPath;
   return {
     letters,
-    paths: data.paths || { A: baseFilePath },
-    baseFilePath: data.baseFilePath || baseFilePath,
+    paths: data.paths || { A: base },
+    baseFilePath: base,
   };
 }
 
@@ -48,5 +93,9 @@ export function resolveVersionFilePath(
   letter: string,
 ): string {
   const L = normalizeVersionLetter(letter) || 'A';
-  return paths[L] || paths.A || baseFilePath;
+  const fromMap = paths[L];
+  if (fromMap) return fromMap;
+  const computed = gitPathVariant(baseFilePath, L);
+  if (L === 'A') return paths.A || baseFilePath || computed;
+  return computed;
 }
