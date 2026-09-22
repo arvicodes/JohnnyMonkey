@@ -11,6 +11,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import QuizIcon from '@mui/icons-material/Quiz';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import GradingIcon from '@mui/icons-material/Grading';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -56,6 +57,8 @@ const BTN_OPEN = '#1976d2';
 const BTN_OPEN_HOVER = '#1565c0';
 const BTN_CORRECT = '#7b1fa2';
 const BTN_CORRECT_HOVER = '#6a1b9a';
+const BTN_DELETE = '#c62828';
+const BTN_DELETE_HOVER = '#b71c1c';
 
 type Colors = {
   cardBg: string;
@@ -541,17 +544,22 @@ export const DashboardExamsPanel: React.FC<{
   colors: Colors;
   onEditExam?: (item: LibraryExamItem) => void;
   onCorrectExam?: (item: LibraryExamItem) => void;
+  onDeleteExam?: (item: LibraryExamItem) => void;
   onCreateExam?: (folderPath?: string) => void;
   groups?: GroupLite[];
   assignedFolders?: Record<string, string[]>;
+  /** Nach Löschen im Dashboard erhöhen, damit die Liste neu lädt. */
+  refreshKey?: number;
 }> = ({
   rootPaths,
   colors,
   onEditExam,
   onCorrectExam,
+  onDeleteExam,
   onCreateExam,
   groups = [],
   assignedFolders = {},
+  refreshKey = 0,
 }) => {
   const [items, setItems] = useState<LibraryExamItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -570,7 +578,7 @@ export const DashboardExamsPanel: React.FC<{
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   const buckets = useMemo(() => groupByStufeReihe(items), [items]);
 
@@ -578,6 +586,8 @@ export const DashboardExamsPanel: React.FC<{
     rootPaths.length === 0
       ? 'Noch keine Arbeits-Reihe gewählt — im Tab „Reihen“ eine Reihe auswählen.'
       : 'Noch keine Prüfung unter den gewählten Reihen / Lerngruppen-Ordnern.';
+
+  const isExamVariantFile = (name: string) => /__[A-Z]\.html?$/i.test(name || '');
 
   return (
     <LibraryShell
@@ -628,6 +638,20 @@ export const DashboardExamsPanel: React.FC<{
                     onClick={() => onEditExam(item)}
                   >
                     <EditIcon sx={{ fontSize: 12 }} />
+                  </TinyAction>
+                ) : null}
+                {onDeleteExam ? (
+                  <TinyAction
+                    title={
+                      isExamVariantFile(item.name)
+                        ? 'Prüfungsversion löschen'
+                        : 'Prüfung löschen (inkl. aller Versionen)'
+                    }
+                    bgcolor={BTN_DELETE}
+                    hover={BTN_DELETE_HOVER}
+                    onClick={() => onDeleteExam(item)}
+                  >
+                    <DeleteIcon sx={{ fontSize: 12 }} />
                   </TinyAction>
                 ) : null}
                 <TinyAction

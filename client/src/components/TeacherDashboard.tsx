@@ -6799,6 +6799,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [examToDelete, setExamToDelete] = useState<{ path: string; name: string } | null>(null);
   const [confirmExamDeleteCheck, setConfirmExamDeleteCheck] = useState(false);
   const [confirmExamDeleteWord, setConfirmExamDeleteWord] = useState('');
+  const [examsPanelRefreshKey, setExamsPanelRefreshKey] = useState(0);
   const [examGridTaskNumbers, setExamGridTaskNumbers] = useState<number[]>([]);
   const [examGridEditTaskNumber, setExamGridEditTaskNumber] = useState(1);
   const [examinationQuestions, setExaminationQuestions] = useState<any[]>([]);
@@ -12148,6 +12149,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         setSingleQuestionFilePath('');
       }
       refreshAssignedFolderTrees();
+      setExamsPanelRefreshKey((k) => k + 1);
       showSnackbar(`Prüfung gelöscht (${deletedNames}).`, 'success');
     } catch (e) {
       showSnackbar(e instanceof Error ? e.message : 'Löschen fehlgeschlagen', 'error');
@@ -17995,11 +17997,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               colors={colors}
               groups={groups}
               assignedFolders={assignedFolders}
+              refreshKey={examsPanelRefreshKey}
               onCorrectExam={(item) => {
                 setSelectedKAFilePath(item.path);
                 setShowKACorrectionMode(true);
               }}
               onEditExam={(item) => void handleEditSingleQuestion({ path: item.path, name: item.name })}
+              onDeleteExam={(item) => handleExamDeleteDialogOpen({ path: item.path, name: item.name })}
               onCreateExam={(folderPath) => {
                 setFolderPickerMode('exam');
                 setExaminationType('QZ');
