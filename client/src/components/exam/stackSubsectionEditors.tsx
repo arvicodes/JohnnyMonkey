@@ -97,20 +97,48 @@ export function StackSubsectionFields({ sub, subIndex, updateSub, editorRowFill 
   }
 
   if (sub.kind === 'roman-table') {
+    const gapRows =
+      sub.layout === 'triple-grid' && sub.gridRows
+        ? sub.gridRows.flatMap((row) =>
+            row.cells.filter(
+              (c): c is { kind: 'input-roman' | 'input-decimal'; answerId: string; solution: string } =>
+                c.kind === 'input-roman' || c.kind === 'input-decimal',
+            ),
+          )
+        : sub.gaps ?? [];
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {sub.gaps.map((gap, i) => (
+        {gapRows.map((gap, i) => (
           <Box key={i} sx={{ display: 'flex', gap: 1, ...editorRowFill(subIndex, i) }}>
-            <TextField size="small" label="Römisch" value={gap.roman} disabled sx={{ width: 100 }} />
+            <TextField
+              size="small"
+              label="Feld"
+              value={'roman' in gap ? gap.roman : gap.kind === 'input-roman' ? 'Römisch' : 'Dezimal'}
+              disabled
+              sx={{ width: 100 }}
+            />
             <TextField
               fullWidth
               size="small"
-              label="Lösung (dezimal)"
+              label="Lösung"
               value={gap.solution}
               onChange={(e) => {
-                const gaps = [...sub.gaps];
-                gaps[i] = { ...gap, solution: e.target.value };
-                updateSub(sub.id, { gaps });
+                if (sub.layout === 'triple-grid' && sub.gridRows) {
+                  const gridRows = sub.gridRows.map((row) => ({
+                    cells: row.cells.map((c) =>
+                      (c.kind === 'input-roman' || c.kind === 'input-decimal') &&
+                      c.answerId === gap.answerId
+                        ? { ...c, solution: e.target.value }
+                        : c,
+                    ),
+                  }));
+                  updateSub(sub.id, { gridRows });
+                } else if (sub.gaps) {
+                  const gaps = [...sub.gaps];
+                  const g = gaps[i];
+                  if (g) gaps[i] = { ...g, solution: e.target.value };
+                  updateSub(sub.id, { gaps });
+                }
               }}
             />
           </Box>

@@ -45,7 +45,7 @@ let html = readFileSync(kaPath, 'utf8');
 
 const task1Block = task1.taskHtml.trim();
 html = html.replace(
-  /    <!-- Aufgabe 1 -->[\s\S]*?(?=<!-- Aufgabe 2 -->|<div class="footer">)/,
+  /<!-- Aufgabe 1 -->[\s\S]*?(?=<!-- Aufgabe 2 -->|<div class="footer">)/,
   `${task1Block}\n\n`,
 );
 
@@ -76,7 +76,10 @@ html = html.replace(
 );
 
 const needsStackCss =
-  !html.includes('.exam-life-dates-portrait') || !html.includes('.exam-nl-track');
+  !html.includes('.exam-life-dates-portrait') ||
+  !html.includes('.exam-nl-track') ||
+  !html.includes('.exam-cloze-line .exam-cloze-gap') ||
+  !html.includes('.exam-roman-triple-grid');
 if (needsStackCss) {
   html = html.replace(
     /\n        \.exam-roman-table[\s\S]*?\.exam-nl-place-chip\.exam-sort-chip-selected[\s\S]*?\n/,

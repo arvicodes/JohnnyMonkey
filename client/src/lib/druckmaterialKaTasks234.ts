@@ -21,13 +21,19 @@ function hydrateSubsections(
       };
     }
     if (sub.kind === 'roman-table') {
-      return {
-        ...sub,
-        gaps: sub.gaps.map((g) => ({
-          ...g,
-          solution: hydrateField(g.solution, answers, g.answerId),
-        })),
-      };
+      const hydratedGaps = sub.gaps?.map((g) => ({
+        ...g,
+        solution: hydrateField(g.solution, answers, g.answerId),
+      }));
+      const hydratedGridRows = sub.gridRows?.map((row) => ({
+        cells: row.cells.map((c) => {
+          if (c.kind === 'input-roman' || c.kind === 'input-decimal') {
+            return { ...c, solution: hydrateField(c.solution, answers, c.answerId) };
+          }
+          return c;
+        }),
+      }));
+      return { ...sub, gaps: hydratedGaps, gridRows: hydratedGridRows };
     }
     if (sub.kind === 'rich-part') {
       return {
@@ -107,14 +113,27 @@ export function druckmaterialKlassenarbeit2(): ExamGridTaskSpec {
         title: 'Fülle die Lücken wie im unten stehenden Beispiel aus.',
         quadrant: 'tl',
         kind: 'roman-table',
+        layout: 'triple-grid',
         examples: [
           { roman: 'XXIX', decimal: '29' },
           { roman: 'XXX', decimal: '30' },
           { roman: 'XXXI', decimal: '31' },
         ],
-        gaps: [
-          { roman: 'L', answerId: 'a2f', solution: '50' },
-          { roman: 'XCIV', answerId: 'a2g', solution: '94' },
+        gridRows: [
+          {
+            cells: [
+              { kind: 'input-roman', answerId: 'a2f', solution: 'L' },
+              { kind: 'empty' },
+              { kind: 'decimal', text: '50' },
+            ],
+          },
+          {
+            cells: [
+              { kind: 'roman', text: 'XCIV' },
+              { kind: 'input-decimal', answerId: 'a2g', solution: '94' },
+              { kind: 'empty' },
+            ],
+          },
         ],
       },
     ],

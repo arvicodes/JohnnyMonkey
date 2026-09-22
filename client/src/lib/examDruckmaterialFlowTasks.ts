@@ -311,7 +311,24 @@ export const EXAM_NUMBER_LINE_CSS = `
         .exam-answer-row-label { flex: 1 1 200px; font-size: 13px; margin: 0; }
         .exam-answer-row-input { flex: 1 1 160px; max-width: 100%; }
         .exam-subsection-media .exam-answer-row { margin-top: 4px; }
-        .exam-roman-table { max-width: 320px; margin: 8px 0; }
+        .exam-cloze-line .exam-cloze-gap { min-width: 8em; width: 8em; max-width: 100%; margin: 0 2px; }
+        .exam-roman-example-band { display: flex; flex-wrap: wrap; gap: 0; max-width: 420px; margin: 6px 0 0; border: 1px solid #d8d4cb; border-bottom: none; background: #f5f2eb; }
+        .exam-roman-example-pair { flex: 1 1 33%; display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-right: 1px solid #d8d4cb; font-weight: bold; }
+        .exam-roman-example-pair:last-child { border-right: none; }
+        .exam-roman-ex-rom { font-family: Georgia, 'Times New Roman', serif; }
+        .exam-roman-ex-dec { font-weight: normal; }
+        .exam-roman-table { max-width: 420px; margin: 0 0 10px; border-collapse: collapse; background: #f5f2eb; }
+        .exam-roman-table th, .exam-roman-table td { border: 1px solid #d8d4cb; padding: 8px 12px; text-align: center; }
+        .exam-roman-table thead th { background: #ebe6dc; font-weight: bold; font-size: 13px; }
+        .exam-roman-gap-rom { font-family: Georgia, 'Times New Roman', serif; font-weight: bold; }
+        .exam-roman-gap-input { width: 4.5em; }
+        .exam-roman-example-band--grid { max-width: 480px; margin: 8px 0 6px; background: #fff; border: 1px solid #222; }
+        .exam-roman-example-band--grid .exam-roman-example-pair { border-right-color: #222; font-weight: bold; padding: 10px 14px; }
+        .exam-roman-triple-grid { max-width: 480px; margin: 0 0 10px; border-collapse: collapse; background: #fff; }
+        .exam-roman-triple-grid td { border: 1px solid #222; padding: 12px 10px; text-align: center; vertical-align: middle; min-width: 72px; height: 44px; }
+        .exam-roman-grid-rom { font-family: Georgia, 'Times New Roman', serif; font-weight: normal; }
+        .exam-roman-grid-dec { font-weight: bold; }
+        .exam-roman-grid-input { width: 4.5em; margin: 0 auto; display: block; }
         .exam-table-input { width: 4em; text-align: center; }
         .exam-quote { font-style: italic; margin: 8px 0; }
         .exam-binary { font-family: ui-monospace, monospace; font-style: normal; }

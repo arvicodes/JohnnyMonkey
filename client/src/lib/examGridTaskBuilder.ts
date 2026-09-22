@@ -1,6 +1,6 @@
 /** 2×2-Raster-Aufgaben für KA-HTML (wie Klassenarbeit-Layout). */
 
-import { detectExamFlowKey } from './examDruckmaterialFlowTasks';
+import { detectExamFlowKey, druckKaImageUrl } from './examDruckmaterialFlowTasks';
 import { getDruckmaterialPreset, hydrateDruckmaterialSpec } from './druckmaterialKaTasks234';
 
 export type RichPartBlock =
@@ -113,8 +113,18 @@ export type GridSubsection =
       title: string;
       quadrant: GridQuadrant;
       kind: 'roman-table';
+      layout?: 'paired-rows' | 'triple-grid';
       examples: { roman: string; decimal: string }[];
-      gaps: { roman: string; answerId: string; solution: string }[];
+      gaps?: { roman: string; answerId: string; solution: string }[];
+      gridRows?: {
+        cells: (
+          | { kind: 'empty' }
+          | { kind: 'roman'; text: string }
+          | { kind: 'decimal'; text: string }
+          | { kind: 'input-roman'; answerId: string; solution: string }
+          | { kind: 'input-decimal'; answerId: string; solution: string }
+        )[];
+      }[];
     } & SubImage
   | {
       id: string;
@@ -338,6 +348,7 @@ export function druckmaterialKlassenarbeit1(): ExamGridTaskSpec {
         title: 'Nenne:',
         quadrant: 'br',
         kind: 'bullet-blanks',
+        image: { src: druckKaImageUrl('image-farbpinsel.jpeg'), align: 'right' },
         items: [
           { text: 'Die größte Zahl mit fünf Ziffern:', solution: '99999' },
           { text: 'Die kleinste natürliche Zahl:', solution: '1' },
@@ -349,6 +360,7 @@ export function druckmaterialKlassenarbeit1(): ExamGridTaskSpec {
         title: 'Vervollständige die Lücken:',
         quadrant: 'br',
         kind: 'cloze',
+        image: { src: druckKaImageUrl('image-n-menge.png'), align: 'left' },
         template:
           'Die Menge der natürlichen Zahlen ist nach oben ___ . Die Zahl 13 ist zusammengesetzt aus den beiden ___ 1 und 3. Sie ist ein ___ der Menge der natürlichen Zahlen.',
         solutions: [
@@ -485,18 +497,13 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
     const promptBlock = sub.prompt
       ? `<p style="margin:0 0 6px;">${allowBasicHtml(sub.prompt)}</p>`
       : '';
-    const labelBlock =
-      sub.letter && sub.title && !sub.prompt
-        ? `<label><strong>${escapeHtml(sub.letter)})</strong> ${escapeHtml(sub.title)}</label>`
-        : '';
-    body = `<div class="item input-group full-width" style="margin-top:8px;">${labelBlock}${promptBlock}<input type="text" id="${id}" class="blank-wide" autocomplete="off">${suffix}</div>`;
+    const titleInHeader = Boolean(sub.letter && sub.title && !sub.prompt);
+    body = `<div class="item input-group full-width" style="margin-top:${titleInHeader ? 4 : 8}px;">${promptBlock}<input type="text" id="${id}" class="blank-wide" autocomplete="off">${suffix}</div>`;
   } else if (sub.kind === 'paragraph') {
     if (sub.text.trim()) {
       body = sub.title && !sub.letter
         ? `<p><strong>${escapeHtml(sub.title)}</strong></p><p>${allowBasicHtml(sub.text)}</p>`
         : `<p>${allowBasicHtml(sub.text)}</p>`;
-    } else if (sub.title) {
-      body = `<p style="margin-top:12px;"><strong>${escapeHtml(sub.letter ? `${sub.letter}) ` : '')}${escapeHtml(sub.title)}</strong></p>`;
     }
   } else if (sub.kind === 'standalone-image') {
     const figClass = sub.size === 'compact' ? 'exam-chart-figure exam-chart-figure--compact' : 'exam-chart-figure';
@@ -532,25 +539,64 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
 </div>`
       : `<div class="exam-life-dates exam-life-dates-cards-only">${cards}</div>`;
   } else if (sub.kind === 'roman-table') {
-    const exampleRows = sub.examples
-      .map((r) => `<tr><td>${escapeHtml(r.roman)}</td><td>${escapeHtml(r.decimal)}</td></tr>`)
-      .join('');
-    const gapRows = sub.gaps
-      .map((g) => {
-        const id = fieldId(g, taskNumber, fieldIndex);
-        if (!g.answerId) fieldIndex.n++;
-        const answers = parseSolutionAlternatives(g.solution, 'number');
+    const gridLayout = sub.layout === 'triple-grid';
+    const bandClass = gridLayout
+      ? 'exam-roman-example-band exam-roman-example-band--grid'
+      : 'exam-roman-example-band';
+    const exampleBand = `<div class="${bandClass}" aria-label="Beispiel">${sub.examples
+      .map(
+        (r) =>
+          `<div class="exam-roman-example-pair"><span class="exam-roman-ex-rom">${escapeHtml(r.roman)}</span><span class="exam-roman-ex-dec">${escapeHtml(r.decimal)}</span></div>`,
+      )
+      .join('')}</div>`;
+
+    if (gridLayout && sub.gridRows?.length) {
+      const renderGridCell = (cell: (typeof sub.gridRows)[0]['cells'][0]): string => {
+        if (cell.kind === 'empty') return '';
+        if (cell.kind === 'roman') {
+          return `<span class="exam-roman-grid-rom">${escapeHtml(cell.text)}</span>`;
+        }
+        if (cell.kind === 'decimal') {
+          return `<span class="exam-roman-grid-dec">${escapeHtml(cell.text)}</span>`;
+        }
+        const id = fieldId(cell, taskNumber, fieldIndex);
+        if (!cell.answerId) fieldIndex.n++;
+        const answers = parseSolutionAlternatives(
+          cell.solution,
+          cell.kind === 'input-roman' ? 'text' : 'number',
+        );
         fields.push({
           id,
           answers,
-          solutionHtml: `${escapeHtml(g.roman)} <strong>${solutionDisplayHtml(answers)}</strong>`,
+          solutionHtml: `<strong>${solutionDisplayHtml(answers)}</strong>`,
         });
-        return `<tr><td>${escapeHtml(g.roman)}</td><td><input type="text" id="${id}" class="blank-tiny exam-table-input" autocomplete="off"></td></tr>`;
-      })
-      .join('');
-    body = `<table class="grade-table exam-roman-table" aria-label="Römische Zahlen">
+        return `<input type="text" id="${id}" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off">`;
+      };
+      const gridBody = sub.gridRows
+        .map(
+          (row) =>
+            `<tr>${row.cells.map((c) => `<td class="exam-roman-grid-cell">${renderGridCell(c)}</td>`).join('')}</tr>`,
+        )
+        .join('');
+      body = `${exampleBand}<table class="grade-table exam-roman-table exam-roman-triple-grid" aria-label="Römische Zahlen"><tbody>${gridBody}</tbody></table>`;
+    } else {
+      const gapRows = (sub.gaps ?? [])
+        .map((g) => {
+          const id = fieldId(g, taskNumber, fieldIndex);
+          if (!g.answerId) fieldIndex.n++;
+          const answers = parseSolutionAlternatives(g.solution, 'number');
+          fields.push({
+            id,
+            answers,
+            solutionHtml: `${escapeHtml(g.roman)} <strong>${solutionDisplayHtml(answers)}</strong>`,
+          });
+          return `<tr><td class="exam-roman-gap-rom">${escapeHtml(g.roman)}</td><td class="exam-roman-gap-dec"><input type="text" id="${id}" class="blank-tiny exam-table-input exam-roman-gap-input" autocomplete="off"></td></tr>`;
+        })
+        .join('');
+      body = `${exampleBand}<table class="grade-table exam-roman-table" aria-label="Römische Zahlen">
 <thead><tr><th>Römische Zahl</th><th>Dezimalzahl</th></tr></thead>
-<tbody>${exampleRows}${gapRows}</tbody></table>`;
+<tbody>${gapRows}</tbody></table>`;
+    }
   } else if (sub.kind === 'rich-part') {
     body = sub.blocks
       .map((b) => {
@@ -657,7 +703,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
           answers,
           solutionHtml: answers.length ? `<strong>${solutionDisplayHtml(answers)}</strong>` : '…',
         });
-        clozeHtml += `<input type="text" id="${id}" class="blank-tiny" autocomplete="off">`;
+        clozeHtml += `<input type="text" id="${id}" class="blank-wide exam-cloze-gap" autocomplete="off">`;
       }
     });
     body = `<div class="exam-cloze-line">${clozeHtml}</div>`;
