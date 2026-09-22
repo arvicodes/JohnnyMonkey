@@ -3365,10 +3365,20 @@ ${optionsHTML}
         .exam-cloze-line input { min-width: 72px; margin: 0 4px; }
         .exam-grid-blank-list { margin: 4px 0 0 18px; padding: 0; }
         .exam-grid-blank-list li { margin: 6px 0; }
+        .exam-subsection-media { display: flex; gap: 10px; align-items: flex-start; }
+        .exam-subsection-media-right { flex-direction: row-reverse; }
+        .exam-subsection-image { width: 88px; max-width: 32%; height: auto; object-fit: contain; border-radius: 4px; border: 1px solid #e0e0e0; flex-shrink: 0; }
+        .exam-subsection-media-body { flex: 1; min-width: 0; }
+        .exam-sort-drag { margin-top: 6px; }
+        .exam-sort-pool { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; min-height: 36px; padding: 6px; border: 1px dashed #bdbdbd; border-radius: 6px; background: #fafafa; }
+        .exam-sort-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; padding: 6px 10px; border: 1px solid #90caf9; border-radius: 6px; background: #e3f2fd; font-weight: 700; font-size: 14px; cursor: grab; user-select: none; touch-action: none; }
+        .exam-sort-slot { min-width: 56px; min-height: 38px; padding: 4px; border: 2px dashed #9e9e9e; border-radius: 6px; background: #fff; display: flex; align-items: center; justify-content: center; }
+        .exam-sort-slots-row { display: flex; flex-wrap: wrap; gap: 8px; }
+        .exam-sort-slot.exam-sort-slot-over { border-color: #1976d2; background: #e3f2fd; }
 `;
 
   private static ensureExamTaskGridStyles(html: string): string {
-    if (html.includes('.exam-task-grid')) return html;
+    if (html.includes('.exam-subsection-media')) return html;
     const closeStyle = html.lastIndexOf('</style>');
     if (closeStyle < 0) return html;
     return `${html.slice(0, closeStyle)}${FileSystemPathController.EXAM_TASK_GRID_STYLE_SNIPPET}${html.slice(closeStyle)}`;

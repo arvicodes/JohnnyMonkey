@@ -1121,6 +1121,18 @@
         .exam-cloze-line input { min-width: 72px; margin: 0 4px; }
         .exam-grid-blank-list { margin: 4px 0 0 18px; padding: 0; }
         .exam-grid-blank-list li { margin: 6px 0; }
+        .exam-subsection-media { display: flex; gap: 10px; align-items: flex-start; }
+        .exam-subsection-media-right { flex-direction: row-reverse; }
+        .exam-subsection-image { width: 88px; max-width: 32%; height: auto; object-fit: contain; border-radius: 4px; border: 1px solid #e0e0e0; flex-shrink: 0; }
+        .exam-subsection-media-body { flex: 1; min-width: 0; }
+        .exam-sort-drag { margin-top: 6px; }
+        .exam-sort-pool { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; min-height: 36px; padding: 6px; border: 1px dashed #bdbdbd; border-radius: 6px; background: #fafafa; }
+        .exam-sort-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; padding: 6px 10px; border: 1px solid #90caf9; border-radius: 6px; background: #e3f2fd; font-weight: 700; font-size: 14px; cursor: grab; user-select: none; touch-action: none; }
+        .exam-sort-chip:active { cursor: grabbing; }
+        .exam-sort-slots-row { display: flex; flex-wrap: wrap; gap: 8px; }
+        .exam-sort-slot { min-width: 56px; min-height: 38px; padding: 4px; border: 2px dashed #9e9e9e; border-radius: 6px; background: #fff; display: flex; align-items: center; justify-content: center; }
+        .exam-sort-slot.exam-sort-slot-over { border-color: #1976d2; background: #e3f2fd; }
+        .exam-sort-slot .exam-sort-chip { margin: 0; }
     
         .exam-version-letter {
             display: none;
@@ -2137,7 +2149,7 @@
         function attachInputListeners() {
             // Nur im Lehrer-Modus Event-Listener hinzufügen
             if (isTeacher) {
-                const allInputs = document.querySelectorAll('input[type="text"], textarea, input[type="number"]');
+                const allInputs = document.querySelectorAll('input[type="text"], textarea, input[type="number"], input[type="hidden"][id^="a"]');
                 allInputs.forEach(input => {
                     input.addEventListener('input', updatePointsDisplay);
                 });
@@ -2148,8 +2160,76 @@
             }
         }
 
+        function setupExamSortDrag() {
+            document.querySelectorAll('.exam-sort-drag').forEach(function (root) {
+                if (root.getAttribute('data-sort-init') === '1') return;
+                root.setAttribute('data-sort-init', '1');
+                var answerId = root.getAttribute('data-answer-id');
+                var hidden = answerId ? document.getElementById(answerId) : null;
+                if (!hidden) return;
+                var pool = root.querySelector('.exam-sort-pool');
+                var slots = root.querySelectorAll('.exam-sort-slot');
+                var dragChip = null;
+                function syncHidden() {
+                    var vals = Array.from(slots).map(function (slot) {
+                        var c = slot.querySelector('.exam-sort-chip');
+                        return c ? (c.getAttribute('data-value') || c.textContent.trim()) : '';
+                    }).filter(Boolean);
+                    hidden.value = vals.join(', ');
+                    hidden.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                function placeChip(slot, chip) {
+                    if (!chip || !slot) return;
+                    var existing = slot.querySelector('.exam-sort-chip');
+                    if (existing && existing !== chip && pool) pool.appendChild(existing);
+                    slot.appendChild(chip);
+                    syncHidden();
+                }
+                root.addEventListener('dragstart', function (e) {
+                    var chip = e.target.closest('.exam-sort-chip');
+                    if (!chip || !root.contains(chip)) return;
+                    dragChip = chip;
+                    if (e.dataTransfer) {
+                        e.dataTransfer.setData('text/plain', chip.getAttribute('data-value') || '');
+                        e.dataTransfer.effectAllowed = 'move';
+                    }
+                });
+                root.addEventListener('dragend', function () { dragChip = null; });
+                slots.forEach(function (slot) {
+                    slot.addEventListener('dragover', function (e) { e.preventDefault(); slot.classList.add('exam-sort-slot-over'); });
+                    slot.addEventListener('dragleave', function () { slot.classList.remove('exam-sort-slot-over'); });
+                    slot.addEventListener('drop', function (e) {
+                        e.preventDefault();
+                        slot.classList.remove('exam-sort-slot-over');
+                        if (dragChip) placeChip(slot, dragChip);
+                    });
+                });
+                if (pool) {
+                    pool.addEventListener('dragover', function (e) { e.preventDefault(); });
+                    pool.addEventListener('drop', function (e) {
+                        e.preventDefault();
+                        if (dragChip) { pool.appendChild(dragChip); syncHidden(); }
+                    });
+                }
+                var touchChip = null;
+                root.addEventListener('touchstart', function (e) {
+                    var chip = e.target.closest('.exam-sort-chip');
+                    if (!chip || !root.contains(chip)) return;
+                    touchChip = chip;
+                }, { passive: true });
+                root.addEventListener('touchend', function (e) {
+                    if (!touchChip) return;
+                    var slot = e.target.closest('.exam-sort-slot');
+                    if (slot && root.contains(slot)) placeChip(slot, touchChip);
+                    else if (pool && e.target.closest('.exam-sort-pool')) { pool.appendChild(touchChip); syncHidden(); }
+                    touchChip = null;
+                }, { passive: true });
+            });
+        }
+
         // Initialisierung
         attachInputListeners();
+        setupExamSortDrag();
         // Punkteanzeige nur im Lehrer-Modus aktualisieren
         if (isTeacher) {
             updatePointsDisplay();
