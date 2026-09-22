@@ -96,6 +96,8 @@ export type GridSubsection =
       kind: 'standalone-image';
       src: string;
       alt?: string;
+      /** Kleineres Diagramm (z. B. Aufgabe 4) */
+      size?: 'full' | 'compact';
     } & SubImage
   | {
       id: string;
@@ -497,9 +499,10 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       body = `<p style="margin-top:12px;"><strong>${escapeHtml(sub.letter ? `${sub.letter}) ` : '')}${escapeHtml(sub.title)}</strong></p>`;
     }
   } else if (sub.kind === 'standalone-image') {
-    body = `<img src="${escapeHtml(sub.src)}" alt="${escapeHtml(sub.alt || '')}" style="max-width:100%;height:auto;margin:8px 0;" loading="lazy">`;
+    const figClass = sub.size === 'compact' ? 'exam-chart-figure exam-chart-figure--compact' : 'exam-chart-figure';
+    body = `<figure class="${figClass}"><img src="${escapeHtml(sub.src)}" alt="${escapeHtml(sub.alt || '')}" loading="lazy"></figure>`;
   } else if (sub.kind === 'life-dates') {
-    body = `<div class="exam-life-dates">${sub.entries
+    const cards = sub.entries
       .map((e) => {
         const id = fieldId(e, taskNumber, fieldIndex);
         if (!e.answerId) fieldIndex.n++;
@@ -513,10 +516,21 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
           .split('\n')
           .map((ln) => escapeHtml(ln))
           .join('<br>');
-        return `<p><strong>${escapeHtml(e.heading)}</strong><br>${lines}</p>
-<div class="item input-group full-width" style="margin-top:6px;"><input type="text" id="${id}" class="blank-wide" autocomplete="off" aria-label="${escapeHtml(e.heading)}"></div>`;
+        return `<div class="exam-life-date-card">
+<p class="exam-life-date-name">${escapeHtml(e.heading)}</p>
+<p class="exam-life-date-roman">${lines}</p>
+<label class="exam-life-date-label" for="${id}">Deutsche Lebensdaten (TT.MM.JJJJ)</label>
+<input type="text" id="${id}" class="blank-wide exam-life-date-input" autocomplete="off" aria-label="${escapeHtml(e.heading)}">
+</div>`;
       })
-      .join('')}</div>`;
+      .join('');
+    const img = sub.image?.src?.trim();
+    body = img
+      ? `<div class="exam-life-dates exam-life-dates--with-portrait">
+<img class="exam-life-dates-portrait" src="${escapeHtml(img)}" alt="" loading="lazy">
+<div class="exam-life-dates-cards">${cards}</div>
+</div>`
+      : `<div class="exam-life-dates exam-life-dates-cards-only">${cards}</div>`;
   } else if (sub.kind === 'roman-table') {
     const exampleRows = sub.examples
       .map((r) => `<tr><td>${escapeHtml(r.roman)}</td><td>${escapeHtml(r.decimal)}</td></tr>`)
@@ -547,11 +561,11 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
           const answers = parseSolutionAlternatives(b.solution, 'text');
           fields.push({ id, answers, solutionHtml: `<strong>${solutionDisplayHtml(answers)}</strong>` });
           const cls = b.wide ? 'blank-wide' : 'blank-tiny';
-          const wrap = b.wide ? 'full-width' : '';
-          const label = b.label
-            ? `<label>${escapeHtml(b.label)}</label>`
-            : '';
-          return `<div class="item input-group ${wrap}">${label}<input type="text" id="${id}" class="${cls}" autocomplete="off"></div>`;
+          const label = b.label ? escapeHtml(b.label) : '';
+          return `<div class="exam-answer-row item input-group full-width">
+<label class="exam-answer-row-label" for="${id}">${label}</label>
+<input type="text" id="${id}" class="${cls} exam-answer-row-input" autocomplete="off">
+</div>`;
         }
         if (b.type === 'place-table') {
           const cells = b.cells
@@ -649,7 +663,9 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
     body = `<div class="exam-cloze-line">${clozeHtml}</div>`;
   }
 
-  return { html: buildSubsectionShell(sub, title, body), fields };
+  const shellSub =
+    sub.kind === 'life-dates' && sub.image ? ({ ...sub, image: undefined } as GridSubsection) : sub;
+  return { html: buildSubsectionShell(shellSub, title, body), fields };
 }
 
 function buildTaskShell(

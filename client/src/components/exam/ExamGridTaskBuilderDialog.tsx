@@ -377,13 +377,32 @@ export default function ExamGridTaskBuilderDialog({
               onChange={(_, v) => setActiveTaskTab(v)}
               variant="scrollable"
               scrollButtons="auto"
-              sx={{ mb: 1.5, minHeight: 40, borderBottom: 1, borderColor: 'divider' }}
+              sx={{
+                mb: 1,
+                minHeight: 26,
+                maxHeight: 26,
+                borderBottom: 1,
+                borderColor: 'divider',
+                '& .MuiTabs-indicator': { height: 2 },
+                '& .MuiTabs-flexContainer': { gap: 0 },
+              }}
             >
               {specs.map((s, i) => (
                 <Tab
                   key={`tab-${s.taskNumber}-${i}`}
-                  label={`Aufgabe ${s.taskNumber}`}
-                  sx={{ minHeight: 40, py: 0.5, textTransform: 'none', fontWeight: 600 }}
+                  label={String(s.taskNumber)}
+                  title={`Aufgabe ${s.taskNumber}`}
+                  sx={{
+                    minHeight: 26,
+                    maxHeight: 26,
+                    minWidth: 32,
+                    px: 0.75,
+                    py: 0,
+                    fontSize: '0.72rem',
+                    lineHeight: 1,
+                    textTransform: 'none',
+                    fontWeight: 700,
+                  }}
                 />
               ))}
             </Tabs>

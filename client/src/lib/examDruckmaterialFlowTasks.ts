@@ -293,6 +293,24 @@ export function buildTasks234(img: (file: string) => string) {
 }
 
 export const EXAM_NUMBER_LINE_CSS = `
+        .exam-life-dates { margin: 8px 0 12px; }
+        .exam-life-dates--with-portrait { display: grid; grid-template-columns: minmax(88px, 26%) 1fr; gap: 12px; align-items: start; }
+        .exam-life-dates-portrait { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; }
+        .exam-life-dates-cards { display: flex; flex-direction: column; gap: 10px; }
+        .exam-life-dates-cards-only { display: flex; flex-wrap: wrap; gap: 10px; }
+        .exam-life-dates-cards-only .exam-life-date-card { flex: 1 1 220px; }
+        .exam-life-date-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; background: #fafafa; }
+        .exam-life-date-name { font-weight: bold; margin: 0 0 4px; font-size: 14px; }
+        .exam-life-date-roman { font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px; line-height: 1.35; color: #333; }
+        .exam-life-date-label { display: block; font-size: 11px; color: #555; margin-bottom: 4px; }
+        .exam-life-date-input { max-width: 100%; }
+        .exam-chart-figure { margin: 6px 0 10px; }
+        .exam-chart-figure img { width: 100%; height: auto; display: block; }
+        .exam-chart-figure--compact { max-width: min(48%, 380px); }
+        .exam-answer-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; }
+        .exam-answer-row-label { flex: 1 1 200px; font-size: 13px; margin: 0; }
+        .exam-answer-row-input { flex: 1 1 160px; max-width: 100%; }
+        .exam-subsection-media .exam-answer-row { margin-top: 4px; }
         .exam-roman-table { max-width: 320px; margin: 8px 0; }
         .exam-table-input { width: 4em; text-align: center; }
         .exam-quote { font-style: italic; margin: 8px 0; }

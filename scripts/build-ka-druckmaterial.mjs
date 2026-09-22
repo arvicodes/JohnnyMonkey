@@ -75,7 +75,13 @@ html = html.replace(
   '<span id="totalPoints">44</span>',
 );
 
-if (!html.includes('.exam-nl-track')) {
+const needsStackCss =
+  !html.includes('.exam-life-dates-portrait') || !html.includes('.exam-nl-track');
+if (needsStackCss) {
+  html = html.replace(
+    /\n        \.exam-roman-table[\s\S]*?\.exam-nl-place-chip\.exam-sort-chip-selected[\s\S]*?\n/,
+    '\n',
+  );
   html = html.replace(/    <\/style>/, `${EXAM_NUMBER_LINE_CSS}\n    </style>`);
 }
 

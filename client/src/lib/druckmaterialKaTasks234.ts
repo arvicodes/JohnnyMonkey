@@ -85,6 +85,7 @@ export function druckmaterialKlassenarbeit2(): ExamGridTaskSpec {
         title: 'Übersetze die Lebensdaten.',
         quadrant: 'tl',
         kind: 'life-dates',
+        image: { src: druckKaImageUrl('image1.jpeg'), align: 'left' },
         entries: [
           {
             heading: 'Pablo Picasso',
@@ -253,6 +254,7 @@ export function druckmaterialKlassenarbeit4(): ExamGridTaskSpec {
         kind: 'standalone-image',
         src: druckKaImageUrl('image4.png'),
         alt: 'Säulendiagramm Höchstgeschwindigkeiten',
+        size: 'compact',
       },
       {
         id: 'k4-a',

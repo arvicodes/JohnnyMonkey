@@ -155,7 +155,15 @@ export default function ExamVersionTabsBar({
     if (compact) {
       return (
         <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-          <Tabs value="A" sx={{ minHeight: 32, '& .MuiTab-root': { minHeight: 32, minWidth: 40, py: 0 } }}>
+          <Tabs
+            value="A"
+            sx={{
+              minHeight: 24,
+              maxHeight: 24,
+              '& .MuiTabs-indicator': { height: 2 },
+              '& .MuiTab-root': { minHeight: 24, maxHeight: 24, minWidth: 28, px: 0.75, py: 0, fontSize: '0.72rem' },
+            }}
+          >
             <Tab label="A" value="A" disabled={disabled || busy} sx={{ fontWeight: 700 }} />
           </Tabs>
           <Tooltip title={`Version ${nextVersionLetter(letters) || ''} hinzufügen`}>
@@ -206,7 +214,15 @@ export default function ExamVersionTabsBar({
           onChange={(_, v) => switchLetter(v)}
           variant="scrollable"
           scrollButtons="auto"
-          sx={{ minHeight: 36, flex: 1 }}
+          sx={{
+            minHeight: compact ? 24 : 36,
+            maxHeight: compact ? 24 : undefined,
+            flex: 1,
+            '& .MuiTabs-indicator': { height: compact ? 2 : 3 },
+            '& .MuiTab-root': compact
+              ? { minHeight: 24, maxHeight: 24, minWidth: 28, px: 0.75, py: 0, fontSize: '0.72rem' }
+              : undefined,
+          }}
         >
           {letters.map((L) => (
             <Tab
@@ -214,7 +230,11 @@ export default function ExamVersionTabsBar({
               value={L}
               label={L}
               disabled={disabled || busy}
-              sx={{ minHeight: 36, minWidth: 48, fontWeight: 700 }}
+              sx={{
+                minHeight: compact ? 24 : 36,
+                minWidth: compact ? 28 : 48,
+                fontWeight: 700,
+              }}
             />
           ))}
         </Tabs>
