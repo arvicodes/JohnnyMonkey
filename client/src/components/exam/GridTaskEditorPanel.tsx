@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import {
-  Alert,
   Box,
   Button,
   Collapse,
@@ -21,6 +20,7 @@ import {
   type GridQuadrant,
   type GridSubsection,
 } from '../../lib/examGridTaskBuilder';
+import { StackSubsectionFields } from './stackSubsectionEditors';
 
 export type Props = {
   spec: ExamGridTaskSpec;
@@ -104,7 +104,22 @@ const KIND_LABEL: Record<GridSubsection['kind'], string> = {
   'one-line': 'Eine Zeile Antwort',
   'bullet-blanks': 'Aufzählung mit Lücken',
   cloze: 'Lückentext (___)',
+  paragraph: 'Absatz',
+  'standalone-image': 'Bild',
+  'life-dates': 'Lebensdaten',
+  'roman-table': 'Römische Zahlen (Tabelle)',
+  'rich-part': 'Text & Felder (mit Bild)',
+  'number-line': 'Zahlenstrahl (interaktiv)',
 };
+
+const STACK_KINDS: GridSubsection['kind'][] = [
+  'paragraph',
+  'standalone-image',
+  'life-dates',
+  'roman-table',
+  'rich-part',
+  'number-line',
+];
 
 function newSubsection(kind: GridSubsection['kind']): GridSubsection {
   const id = `sub-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -122,6 +137,39 @@ function newSubsection(kind: GridSubsection['kind']): GridSubsection {
       return { ...base, kind, items: [{ text: '…:', solution: '' }] };
     case 'cloze':
       return { ...base, kind, template: 'Text mit ___ Lücke.', solutions: [''] };
+    case 'paragraph':
+      return { ...base, letter: '', title: '', kind, text: '' };
+    case 'standalone-image':
+      return { ...base, letter: '', title: '', kind, src: '', alt: '' };
+    case 'life-dates':
+      return {
+        ...base,
+        kind,
+        entries: [{ heading: '', lines: '', answerId: 'a0a', solution: '' }],
+      };
+    case 'roman-table':
+      return {
+        ...base,
+        kind,
+        examples: [{ roman: 'I', decimal: '1' }],
+        gaps: [{ roman: 'V', answerId: 'a0b', solution: '' }],
+      };
+    case 'rich-part':
+      return { ...base, kind, blocks: [{ type: 'p', text: '' }] };
+    case 'number-line':
+      return {
+        ...base,
+        letter: '',
+        title: '',
+        kind,
+        hint: '',
+        min: 0,
+        max: 100,
+        step: 1,
+        bg: '',
+        fixed: [],
+        chips: [],
+      };
     default:
       return { ...base, kind: 'one-line', prompt: '', solution: '' };
   }
@@ -135,8 +183,6 @@ export default function GridTaskEditorPanel({
 }: Props) {
   const built = useMemo(() => buildExamGridTaskHtml(spec), [spec]);
 
-  const isFlowTask = spec.layout === 'flow' && spec.flowKey;
-
   const updateSub = (id: string, patch: Partial<GridSubsection>) => {
     onChange({
       ...spec,
@@ -149,15 +195,6 @@ export default function GridTaskEditorPanel({
   const removeSub = (id: string) => {
     onChange({ ...spec, subsections: spec.subsections.filter((s) => s.id !== id) });
   };
-
-  const flowTitle =
-    spec.flowKey === 'druck-ka-2'
-      ? 'Römische Zahlen & Lebensdaten (Druckvorlage)'
-      : spec.flowKey === 'druck-ka-3'
-        ? 'Binär & Oktal (Druckvorlage)'
-        : spec.flowKey === 'druck-ka-4'
-          ? 'Diagramm & Zahlenstrahl (Druckvorlage)'
-          : 'Druckaufgabe';
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -198,16 +235,7 @@ export default function GridTaskEditorPanel({
         </FormControl>
       </Box>
 
-      {isFlowTask ? (
-        <Alert severity="info" sx={{ fontSize: 13 }}>
-          <strong>{flowTitle}</strong> — Texte, Tabelle und Zahlenstrahle entsprechen der Word-Vorlage. Du kannst
-          Aufgaben-Nr., Punkte und AFB anpassen und mit „In Prüfung speichern“ die digitale KA aktualisieren. Die
-          Einzelfelder im Raster-Editor sind für diese Aufgabe nicht aufgeteilt.
-        </Alert>
-      ) : null}
-
-      {!isFlowTask &&
-        spec.subsections.map((sub, subIndex) => (
+      {spec.subsections.map((sub, subIndex) => (
         <Box
           key={sub.id}
           sx={{
@@ -250,20 +278,22 @@ export default function GridTaskEditorPanel({
               value={sub.title}
               onChange={(e) => updateSub(sub.id, { title: e.target.value })}
             />
-            <FormControl size="small" sx={{ minWidth: 130 }}>
-              <InputLabel>Kästchen</InputLabel>
-              <Select
-                label="Kästchen"
-                value={sub.quadrant}
-                onChange={(e) => updateSub(sub.id, { quadrant: e.target.value as GridQuadrant })}
-              >
-                {(Object.keys(QUADRANT_LABEL) as GridQuadrant[]).map((q) => (
-                  <MenuItem key={q} value={q}>
-                    {QUADRANT_LABEL[q]}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            {spec.layout !== 'stack' ? (
+              <FormControl size="small" sx={{ minWidth: 130 }}>
+                <InputLabel>Kästchen</InputLabel>
+                <Select
+                  label="Kästchen"
+                  value={sub.quadrant}
+                  onChange={(e) => updateSub(sub.id, { quadrant: e.target.value as GridQuadrant })}
+                >
+                  {(Object.keys(QUADRANT_LABEL) as GridQuadrant[]).map((q) => (
+                    <MenuItem key={q} value={q}>
+                      {QUADRANT_LABEL[q]}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : null}
             <FormControl size="small" sx={{ minWidth: 180 }}>
               <InputLabel>Typ</InputLabel>
               <Select
@@ -483,6 +513,15 @@ export default function GridTaskEditorPanel({
             </Box>
           )}
 
+          {STACK_KINDS.includes(sub.kind) && (
+            <StackSubsectionFields
+              sub={sub}
+              subIndex={subIndex}
+              updateSub={updateSub}
+              editorRowFill={editorRowFill}
+            />
+          )}
+
           {sub.kind === 'one-line' && (
             <Box sx={{ ...editorRowFill(subIndex, 0) }}>
               <TextField
@@ -499,7 +538,17 @@ export default function GridTaskEditorPanel({
                 label="Lösung"
                 value={sub.solution}
                 onChange={(e) => updateSub(sub.id, { solution: e.target.value })}
+                sx={{ mb: spec.layout === 'stack' ? 1 : 0 }}
               />
+              {spec.layout === 'stack' ? (
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Einheit (z. B. km/h)"
+                  value={sub.suffix || ''}
+                  onChange={(e) => updateSub(sub.id, { suffix: e.target.value })}
+                />
+              ) : null}
             </Box>
           )}
 
@@ -587,20 +636,21 @@ export default function GridTaskEditorPanel({
         </Box>
       ))}
 
-      {!isFlowTask ? (
-        <Button
-          startIcon={<AddIcon />}
-          variant="outlined"
-          onClick={() =>
-            onChange({
-              ...spec,
-              subsections: [...spec.subsections, newSubsection('round-lines')],
-            })
-          }
-        >
-          Teil hinzufügen (A, B, C …)
-        </Button>
-      ) : null}
+      <Button
+        startIcon={<AddIcon />}
+        variant="outlined"
+        onClick={() =>
+          onChange({
+            ...spec,
+            subsections: [
+              ...spec.subsections,
+              newSubsection(spec.layout === 'stack' ? 'paragraph' : 'round-lines'),
+            ],
+          })
+        }
+      >
+        Teil hinzufügen (A, B, C …)
+      </Button>
 
       <Box sx={{ pt: 1 }}>
         <Button

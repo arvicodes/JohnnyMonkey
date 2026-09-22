@@ -9,28 +9,29 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientLib = path.join(__dirname, '../client/src/lib/examGridTaskBuilder.ts');
 const flowLib = path.join(__dirname, '../client/src/lib/examDruckmaterialFlowTasks.ts');
+const tasks234Lib = path.join(__dirname, '../client/src/lib/druckmaterialKaTasks234.ts');
 
 const { buildExamGridTaskHtml, druckmaterialKlassenarbeit1 } = await import(
   pathToFileURL(clientLib).href
 );
 
 const {
-  buildTasks234,
-  druckKaImageUrl,
-  DRUCK_FLOW_ANSWERS_2,
-  DRUCK_FLOW_ANSWERS_3,
-  DRUCK_FLOW_ANSWERS_4,
-  EXAM_NUMBER_LINE_CSS,
-  EXAM_NUMBER_LINE_JS,
-} = await import(pathToFileURL(flowLib).href);
+  druckmaterialKlassenarbeit2,
+  druckmaterialKlassenarbeit3,
+  druckmaterialKlassenarbeit4,
+} = await import(pathToFileURL(tasks234Lib).href);
+
+const { EXAM_NUMBER_LINE_CSS, EXAM_NUMBER_LINE_JS } = await import(pathToFileURL(flowLib).href);
 
 const task1 = buildExamGridTaskHtml(druckmaterialKlassenarbeit1());
-const { task2, task3, task4 } = buildTasks234(druckKaImageUrl);
+const task2 = buildExamGridTaskHtml(druckmaterialKlassenarbeit2());
+const task3 = buildExamGridTaskHtml(druckmaterialKlassenarbeit3());
+const task4 = buildExamGridTaskHtml(druckmaterialKlassenarbeit4());
 
 const extraAnswers = {
-  ...DRUCK_FLOW_ANSWERS_2,
-  ...DRUCK_FLOW_ANSWERS_3,
-  ...DRUCK_FLOW_ANSWERS_4,
+  ...task2.correctAnswers,
+  ...task3.correctAnswers,
+  ...task4.correctAnswers,
 };
 
 const allAnswers = { ...task1.correctAnswers, ...extraAnswers };
@@ -50,7 +51,7 @@ html = html.replace(
 
 html = html.replace(
   /<!-- Aufgabe 2 -->[\s\S]*?(?=<div class="footer">)/,
-  `${task2}\n\n${task3}\n\n${task4}\n\n`,
+  `${task2.taskHtml}\n\n${task3.taskHtml}\n\n${task4.taskHtml}\n\n`,
 );
 
 const answerLines = Object.entries(allAnswers)

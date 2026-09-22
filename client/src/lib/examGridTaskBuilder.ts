@@ -1,11 +1,36 @@
 /** 2×2-Raster-Aufgaben für KA-HTML (wie Klassenarbeit-Layout). */
 
-import {
-  buildDruckFlowTaskHtml,
-  detectExamFlowKey,
-  druckFlowMeta,
-  type ExamFlowKey,
-} from './examDruckmaterialFlowTasks';
+import { detectExamFlowKey } from './examDruckmaterialFlowTasks';
+import { getDruckmaterialPreset, hydrateDruckmaterialSpec } from './druckmaterialKaTasks234';
+
+export type RichPartBlock =
+  | { type: 'p'; text: string }
+  | { type: 'quote'; text: string }
+  | {
+      type: 'field';
+      label: string;
+      answerId: string;
+      solution: string;
+      wide?: boolean;
+    }
+  | {
+      type: 'place-table';
+      headers: string[];
+      cells: { answerId: string; solution: string }[];
+    }
+  | {
+      type: 'inline-field';
+      before: string;
+      after: string;
+      answerId: string;
+      solution: string;
+    }
+  | {
+      type: 'help';
+      title: string;
+      paragraphs: string[];
+      tables: { headers: string[]; row: string[] }[];
+    };
 
 export type GridQuadrant = 'tl' | 'tr' | 'bl' | 'br';
 
@@ -52,6 +77,64 @@ export type GridSubsection =
       kind: 'one-line';
       prompt: string;
       solution: string;
+      answerId?: string;
+      suffix?: string;
+    } & SubImage
+  | {
+      id: string;
+      letter: string;
+      title: string;
+      quadrant: GridQuadrant;
+      kind: 'paragraph';
+      text: string;
+    } & SubImage
+  | {
+      id: string;
+      letter: string;
+      title: string;
+      quadrant: GridQuadrant;
+      kind: 'standalone-image';
+      src: string;
+      alt?: string;
+    } & SubImage
+  | {
+      id: string;
+      letter: string;
+      title: string;
+      quadrant: GridQuadrant;
+      kind: 'life-dates';
+      entries: { heading: string; lines: string; answerId: string; solution: string }[];
+    } & SubImage
+  | {
+      id: string;
+      letter: string;
+      title: string;
+      quadrant: GridQuadrant;
+      kind: 'roman-table';
+      examples: { roman: string; decimal: string }[];
+      gaps: { roman: string; answerId: string; solution: string }[];
+    } & SubImage
+  | {
+      id: string;
+      letter: string;
+      title: string;
+      quadrant: GridQuadrant;
+      kind: 'rich-part';
+      blocks: RichPartBlock[];
+    } & SubImage
+  | {
+      id: string;
+      letter: string;
+      title: string;
+      quadrant: GridQuadrant;
+      kind: 'number-line';
+      hint: string;
+      min: number;
+      max: number;
+      step: number;
+      bg: string;
+      fixed: { value: number; answerId: string; solution: string }[];
+      chips: { label: string; value: number; answerId: string; solution: string; display?: string }[];
     } & SubImage
   | {
       id: string;
@@ -77,26 +160,9 @@ export type ExamGridTaskSpec = {
   points: number;
   afbLevel: 1 | 2 | 3;
   subsections: GridSubsection[];
-  /** Standard: 2×2-Raster; flow = Druckvorlage (Tabelle, Zahlenstrahl, …) */
-  layout?: 'grid' | 'flow';
-  flowKey?: ExamFlowKey;
+  /** grid = 2×2; stack = untereinander (längere Aufgaben) */
+  layout?: 'grid' | 'stack';
 };
-
-export function createDruckFlowTaskSpec(
-  flowKey: ExamFlowKey,
-  taskNumber: number,
-  points?: number,
-): ExamGridTaskSpec {
-  const meta = druckFlowMeta(flowKey);
-  return {
-    taskNumber,
-    points: points ?? meta.defaultPoints,
-    afbLevel: meta.afb,
-    layout: 'flow',
-    flowKey,
-    subsections: [],
-  };
-}
 
 function escapeHtml(s: string): string {
   return String(s || '')
@@ -311,18 +377,37 @@ function splitListTokens(raw: string): string[] {
     .filter(Boolean);
 }
 
+function subsectionSpecAttr(sub: GridSubsection): string {
+  const payload = encodeURIComponent(JSON.stringify(sub));
+  return `data-sub-kind="${escapeHtml(sub.kind)}" data-sub-id="${escapeHtml(sub.id)}" data-exam-spec="${payload}"`;
+}
+
 function buildSubsectionShell(sub: GridSubsection, titleHtml: string, bodyHtml: string): string {
   const core = `${titleHtml}${bodyHtml}`;
+  const attrs = subsectionSpecAttr(sub);
   const img = sub.image?.src?.trim();
   if (!img) {
-    return `<div class="exam-subsection">${core}</div>`;
+    return `<div class="exam-subsection" ${attrs}>${core}</div>`;
   }
   const align = sub.image?.align === 'right' ? 'right' : 'left';
   const imgTag = `<img class="exam-subsection-image" src="${escapeHtml(img)}" alt="" loading="lazy">`;
   const bodyWrap = `<div class="exam-subsection-media-body">${core}</div>`;
   const mediaInner =
     align === 'left' ? `${imgTag}${bodyWrap}` : `${bodyWrap}${imgTag}`;
-  return `<div class="exam-subsection exam-subsection-has-image"><div class="exam-subsection-media exam-subsection-media-${align}">${mediaInner}</div></div>`;
+  return `<div class="exam-subsection exam-subsection-has-image" ${attrs}><div class="exam-subsection-media exam-subsection-media-${align}">${mediaInner}</div></div>`;
+}
+
+function subsectionTitleHtml(sub: GridSubsection): string {
+  if (!sub.letter && !sub.title) return '';
+  if (!sub.letter) {
+    return sub.title ? `<p style="margin-top:12px;"><strong>${escapeHtml(sub.title)}</strong></p>` : '';
+  }
+  return `<div class="exam-subsection-title"><span class="item-label">${escapeHtml(sub.letter)})</span> ${escapeHtml(sub.title)}</div>`;
+}
+
+function fieldId(sub: { answerId?: string }, taskNumber: number, fieldIndex: { n: number }): string {
+  if (sub.answerId?.trim()) return sub.answerId.trim();
+  return allocId(taskNumber, fieldIndex.n++);
 }
 
 function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: { n: number }): {
@@ -330,7 +415,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
   fields: BuiltField[];
 } {
   const fields: BuiltField[] = [];
-  const title = `<div class="exam-subsection-title"><span class="item-label">${escapeHtml(sub.letter)})</span> ${escapeHtml(sub.title)}</div>`;
+  const title = subsectionTitleHtml(sub);
   let body = '';
 
   if (sub.kind === 'round-lines') {
@@ -390,10 +475,147 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       body = `<div class="item input-group full-width"><p style="margin:0 0 6px;">${escapeHtml(sub.given)}</p><input type="text" id="${id}" class="blank-wide" autocomplete="off"></div>`;
     }
   } else if (sub.kind === 'one-line') {
-    const id = allocId(taskNumber, fieldIndex.n++);
+    const id = fieldId(sub, taskNumber, fieldIndex);
+    if (!sub.answerId) fieldIndex.n++;
     const answers = parseSolutionAlternatives(sub.solution, 'text');
     fields.push({ id, answers, solutionHtml: `<strong>${solutionDisplayHtml(answers)}</strong>` });
-    body = `<div class="item input-group full-width"><p style="margin:0 0 6px;">${allowBasicHtml(sub.prompt)}</p><input type="text" id="${id}" class="blank-wide" autocomplete="off"></div>`;
+    const suffix = sub.suffix ? ` <span>${escapeHtml(sub.suffix)}</span>` : '';
+    const promptBlock = sub.prompt
+      ? `<p style="margin:0 0 6px;">${allowBasicHtml(sub.prompt)}</p>`
+      : '';
+    const labelBlock =
+      sub.letter && sub.title && !sub.prompt
+        ? `<label><strong>${escapeHtml(sub.letter)})</strong> ${escapeHtml(sub.title)}</label>`
+        : '';
+    body = `<div class="item input-group full-width" style="margin-top:8px;">${labelBlock}${promptBlock}<input type="text" id="${id}" class="blank-wide" autocomplete="off">${suffix}</div>`;
+  } else if (sub.kind === 'paragraph') {
+    if (sub.text.trim()) {
+      body = sub.title && !sub.letter
+        ? `<p><strong>${escapeHtml(sub.title)}</strong></p><p>${allowBasicHtml(sub.text)}</p>`
+        : `<p>${allowBasicHtml(sub.text)}</p>`;
+    } else if (sub.title) {
+      body = `<p style="margin-top:12px;"><strong>${escapeHtml(sub.letter ? `${sub.letter}) ` : '')}${escapeHtml(sub.title)}</strong></p>`;
+    }
+  } else if (sub.kind === 'standalone-image') {
+    body = `<img src="${escapeHtml(sub.src)}" alt="${escapeHtml(sub.alt || '')}" style="max-width:100%;height:auto;margin:8px 0;" loading="lazy">`;
+  } else if (sub.kind === 'life-dates') {
+    body = `<div class="exam-life-dates">${sub.entries
+      .map((e) => {
+        const id = fieldId(e, taskNumber, fieldIndex);
+        if (!e.answerId) fieldIndex.n++;
+        const answers = parseSolutionAlternatives(e.solution, 'text');
+        fields.push({
+          id,
+          answers,
+          solutionHtml: `${escapeHtml(e.heading)} <strong>${solutionDisplayHtml(answers)}</strong>`,
+        });
+        const lines = e.lines
+          .split('\n')
+          .map((ln) => escapeHtml(ln))
+          .join('<br>');
+        return `<p><strong>${escapeHtml(e.heading)}</strong><br>${lines}</p>
+<div class="item input-group full-width" style="margin-top:6px;"><input type="text" id="${id}" class="blank-wide" autocomplete="off" aria-label="${escapeHtml(e.heading)}"></div>`;
+      })
+      .join('')}</div>`;
+  } else if (sub.kind === 'roman-table') {
+    const exampleRows = sub.examples
+      .map((r) => `<tr><td>${escapeHtml(r.roman)}</td><td>${escapeHtml(r.decimal)}</td></tr>`)
+      .join('');
+    const gapRows = sub.gaps
+      .map((g) => {
+        const id = fieldId(g, taskNumber, fieldIndex);
+        if (!g.answerId) fieldIndex.n++;
+        const answers = parseSolutionAlternatives(g.solution, 'number');
+        fields.push({
+          id,
+          answers,
+          solutionHtml: `${escapeHtml(g.roman)} <strong>${solutionDisplayHtml(answers)}</strong>`,
+        });
+        return `<tr><td>${escapeHtml(g.roman)}</td><td><input type="text" id="${id}" class="blank-tiny exam-table-input" autocomplete="off"></td></tr>`;
+      })
+      .join('');
+    body = `<table class="grade-table exam-roman-table" aria-label="Römische Zahlen">
+<thead><tr><th>Römische Zahl</th><th>Dezimalzahl</th></tr></thead>
+<tbody>${exampleRows}${gapRows}</tbody></table>`;
+  } else if (sub.kind === 'rich-part') {
+    body = sub.blocks
+      .map((b) => {
+        if (b.type === 'p') return `<p>${allowBasicHtml(b.text)}</p>`;
+        if (b.type === 'quote') return `<p class="exam-quote">${allowBasicHtml(b.text)}</p>`;
+        if (b.type === 'field') {
+          const id = fieldId(b, taskNumber, fieldIndex);
+          const answers = parseSolutionAlternatives(b.solution, 'text');
+          fields.push({ id, answers, solutionHtml: `<strong>${solutionDisplayHtml(answers)}</strong>` });
+          const cls = b.wide ? 'blank-wide' : 'blank-tiny';
+          const wrap = b.wide ? 'full-width' : '';
+          const label = b.label
+            ? `<label>${escapeHtml(b.label)}</label>`
+            : '';
+          return `<div class="item input-group ${wrap}">${label}<input type="text" id="${id}" class="${cls}" autocomplete="off"></div>`;
+        }
+        if (b.type === 'place-table') {
+          const cells = b.cells
+            .map((c) => {
+              const id = fieldId(c, taskNumber, fieldIndex);
+              const answers = parseSolutionAlternatives(c.solution, 'number');
+              fields.push({ id, answers, solutionHtml: `<strong>${solutionDisplayHtml(answers)}</strong>` });
+              return `<td><input type="text" id="${id}" class="blank-tiny exam-table-input" autocomplete="off" maxlength="2"></td>`;
+            })
+            .join('');
+          const heads = b.headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('');
+          return `<table class="grade-table exam-place-value-table" aria-label="Stellenwerttafel"><tr>${heads}</tr><tr>${cells}</tr></table>`;
+        }
+        if (b.type === 'inline-field') {
+          const id = fieldId(b, taskNumber, fieldIndex);
+          const answers = parseSolutionAlternatives(b.solution, 'number');
+          fields.push({ id, answers, solutionHtml: `<strong>${solutionDisplayHtml(answers)}</strong>` });
+          return `<p style="margin-top:10px;">${escapeHtml(b.before)}<input type="text" id="${id}" class="blank-tiny" autocomplete="off" style="min-width:4em;">${escapeHtml(b.after)}</p>`;
+        }
+        if (b.type === 'help') {
+          const tables = b.tables
+            .map(
+              (t) =>
+                `<table class="grade-table exam-place-value-table exam-place-value-example"><tr>${t.headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr><tr>${t.row.map((c) => `<td>${escapeHtml(c)}</td>`).join('')}</tr></table>`,
+            )
+            .join('');
+          const paras = b.paragraphs
+            .map((p, i) => `<p${i === 0 ? '' : ' style="margin-top:8px;"'}>${escapeHtml(p)}</p>`)
+            .join('');
+          return `<div class="exam-hilfestellung"><p><strong>${escapeHtml(b.title)}</strong></p>${paras}${tables}</div>`;
+        }
+        return '';
+      })
+      .join('');
+  } else if (sub.kind === 'number-line') {
+    const fixedAttr = sub.fixed.map((f) => `${f.value}:${f.answerId}`).join(',');
+    const chipsAttr = sub.chips.map((c) => `${c.label}:${c.value}:${c.answerId}`).join(',');
+    sub.fixed.forEach((f) => {
+      const answers = parseSolutionAlternatives(f.solution, 'number');
+      fields.push({ id: f.answerId, answers, solutionHtml: `Pfeil <strong>${solutionDisplayHtml(answers)}</strong>` });
+    });
+    sub.chips.forEach((c) => {
+      const answers = parseSolutionAlternatives(c.solution, 'number');
+      fields.push({ id: c.answerId, answers, solutionHtml: `${escapeHtml(c.label)} <strong>${solutionDisplayHtml(answers)}</strong>` });
+    });
+    const chipButtons = sub.chips
+      .map((c) => {
+        const label = c.display || c.label;
+        return `<button type="button" class="exam-sort-chip exam-nl-place-chip" data-label="${escapeHtml(c.label)}">${label}</button>`;
+      })
+      .join('');
+    const hidden = [...sub.fixed, ...sub.chips]
+      .map((x) => `<input type="hidden" id="${x.answerId}" value="">`)
+      .join('');
+    body = `<div class="exam-number-line-interactive"
+                 data-min="${sub.min}" data-max="${sub.max}" data-step="${sub.step}"
+                 data-bg="${escapeHtml(sub.bg)}"
+                 data-fixed="${escapeHtml(fixedAttr)}"
+                 data-chips="${escapeHtml(chipsAttr)}">
+                <p class="exam-sort-hint">${escapeHtml(sub.hint)}</p>
+                <div class="exam-nl-chip-bar">${chipButtons}</div>
+                <div class="exam-nl-stage"><div class="exam-nl-track" role="img" aria-label="Zahlenstrahl"></div></div>
+                ${hidden}
+            </div>`;
   } else if (sub.kind === 'bullet-blanks') {
     body = `<ul class="exam-grid-blank-list">${sub.items
       .map((item) => {
@@ -430,56 +652,13 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
   return { html: buildSubsectionShell(sub, title, body), fields };
 }
 
-export function buildExamGridTaskHtml(spec: ExamGridTaskSpec): {
-  taskHtml: string;
-  correctAnswers: Record<string, string[]>;
-  solutionLines: string[];
-} {
-  if (spec.layout === 'flow' && spec.flowKey) {
-    return buildDruckFlowTaskHtml({
-      taskNumber: spec.taskNumber,
-      points: spec.points,
-      afbLevel: spec.afbLevel,
-      flowKey: spec.flowKey,
-    });
-  }
-
-  const fieldIndex = { n: 0 };
-  const byQ: Record<GridQuadrant, string[]> = { tl: [], tr: [], bl: [], br: [] };
-  const allFields: BuiltField[] = [];
-  const solutionLines: string[] = [];
-
-  for (const sub of spec.subsections) {
-    const built = renderSubsection(sub, spec.taskNumber, fieldIndex);
-    byQ[sub.quadrant].push(built.html);
-    allFields.push(...built.fields);
-    built.fields.forEach((f, i) => {
-      const subLabel =
-        sub.kind === 'round-lines' || sub.kind === 'bullet-blanks'
-          ? `${sub.letter} ${String.fromCharCode(97 + i)})`
-          : `${sub.letter})`;
-      solutionLines.push(`${subLabel} ${f.solutionHtml}`);
-    });
-  }
-
-  const cell = (q: GridQuadrant) => byQ[q].join('') || '&nbsp;';
+function buildTaskShell(
+  spec: ExamGridTaskSpec,
+  innerContent: string,
+  extraClass = '',
+): string {
   const afbRoman = spec.afbLevel === 1 ? 'I' : spec.afbLevel === 2 ? 'II' : 'III';
-
-  const grid = `
-            <div class="exam-task-grid">
-                <div class="exam-task-grid-cell">${cell('tl')}</div>
-                <div class="exam-task-grid-cell">${cell('tr')}</div>
-                <div class="exam-task-grid-cell">${cell('bl')}</div>
-                <div class="exam-task-grid-cell">${cell('br')}</div>
-            </div>`;
-
-  const solution = `
-            <div class="solution">
-                <h4>Musterlösung:</h4>
-                ${solutionLines.map((l) => `<p>${l}</p>`).join('\n                ')}
-            </div>`;
-
-  const taskHtml = `    <!-- Aufgabe ${spec.taskNumber} -->
+  return `    <!-- Aufgabe ${spec.taskNumber} -->
     <div class="task">
         <div class="task-header">
             <div class="task-number">Aufgabe ${spec.taskNumber} <span style="font-size: 11px; color: #666; font-weight: normal;">(${spec.points} Punkte)</span></div>
@@ -488,11 +667,65 @@ export function buildExamGridTaskHtml(spec: ExamGridTaskSpec): {
                 <div class="points">${spec.points} Punkte</div>
             </div>
         </div>
-        <div class="task-content">
-${grid}
-${solution}
+        <div class="task-content${extraClass ? ` ${extraClass}` : ''}">
+${innerContent}
         </div>
     </div>`;
+}
+
+export function buildExamGridTaskHtml(spec: ExamGridTaskSpec): {
+  taskHtml: string;
+  correctAnswers: Record<string, string[]>;
+  solutionLines: string[];
+} {
+  const fieldIndex = { n: 0 };
+  const allFields: BuiltField[] = [];
+  const solutionLines: string[] = [];
+  const isStack = spec.layout === 'stack';
+
+  const rendered = spec.subsections.map((sub) => {
+    const built = renderSubsection(sub, spec.taskNumber, fieldIndex);
+    allFields.push(...built.fields);
+    built.fields.forEach((f, i) => {
+      const subLabel =
+        sub.kind === 'round-lines' || sub.kind === 'bullet-blanks'
+          ? `${sub.letter} ${String.fromCharCode(97 + i)})`
+          : sub.letter
+            ? `${sub.letter})`
+            : '—';
+      solutionLines.push(`${subLabel} ${f.solutionHtml}`);
+    });
+    return built.html;
+  });
+
+  let inner = '';
+  if (isStack) {
+    inner = `${rendered.join('\n')}
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                ${solutionLines.map((l) => `<p>${l}</p>`).join('\n                ')}
+            </div>`;
+  } else {
+    const byQ: Record<GridQuadrant, string[]> = { tl: [], tr: [], bl: [], br: [] };
+    spec.subsections.forEach((sub, idx) => {
+      byQ[sub.quadrant].push(rendered[idx]);
+    });
+    const cell = (q: GridQuadrant) => byQ[q].join('') || '&nbsp;';
+    const grid = `
+            <div class="exam-task-grid">
+                <div class="exam-task-grid-cell">${cell('tl')}</div>
+                <div class="exam-task-grid-cell">${cell('tr')}</div>
+                <div class="exam-task-grid-cell">${cell('bl')}</div>
+                <div class="exam-task-grid-cell">${cell('br')}</div>
+            </div>`;
+    inner = `${grid}
+            <div class="solution">
+                <h4>Musterlösung:</h4>
+                ${solutionLines.map((l) => `<p>${l}</p>`).join('\n                ')}
+            </div>`;
+  }
+
+  const taskHtml = buildTaskShell(spec, inner, isStack ? 'exam-task-stack' : '');
 
   const correctAnswers: Record<string, string[]> = {};
   allFields.forEach((f) => {
@@ -703,9 +936,38 @@ function parseSubsection(
 function taskBlockIsEditorManaged(body: string): boolean {
   return (
     body.includes('exam-task-grid') ||
+    body.includes('exam-task-stack') ||
     body.includes('exam-task-flow') ||
-    body.includes('data-exam-flow=')
+    body.includes('data-exam-flow=') ||
+    body.includes('data-exam-spec=')
   );
+}
+
+function parseStackSubsectionsFromHtml(taskHtml: string): GridSubsection[] | null {
+  const doc = new DOMParser().parseFromString(taskHtml, 'text/html');
+  const stack = doc.querySelector('.exam-task-stack');
+  if (!stack) return null;
+  const out: GridSubsection[] = [];
+  stack.querySelectorAll('.exam-subsection[data-exam-spec]').forEach((el) => {
+    const raw = el.getAttribute('data-exam-spec');
+    if (!raw) return;
+    try {
+      const spec = JSON.parse(decodeURIComponent(raw)) as GridSubsection;
+      if (spec?.kind) out.push(spec);
+    } catch {
+      /* ignore */
+    }
+  });
+  return out.length ? out : null;
+}
+
+function taskMetaFromHtml(taskHtml: string): { points: number; afbLevel: 1 | 2 | 3 } {
+  const pointsMatch = taskHtml.match(/\((\d+)\s*Punkte\)/i);
+  const points = pointsMatch ? parseInt(pointsMatch[1], 10) || 5 : 5;
+  let afbLevel: 1 | 2 | 3 = 1;
+  if (taskHtml.includes('afb-badge afb-3')) afbLevel = 3;
+  else if (taskHtml.includes('afb-badge afb-2')) afbLevel = 2;
+  return { points, afbLevel };
 }
 
 export function listGridTaskNumbersInExamHtml(fullHtml: string): number[] {
@@ -725,19 +987,25 @@ export function parseExamGridTaskFromExamHtml(fullHtml: string, taskNumber: numb
   const taskHtml = extractExamTaskHtml(fullHtml, taskNumber);
   if (!taskHtml || !taskBlockIsEditorManaged(taskHtml)) return null;
 
-  const flowKey = detectExamFlowKey(taskHtml);
-  if (flowKey) {
-    const pointsMatch = taskHtml.match(/\((\d+)\s*Punkte\)/i);
-    const points = pointsMatch ? parseInt(pointsMatch[1], 10) || druckFlowMeta(flowKey).defaultPoints : druckFlowMeta(flowKey).defaultPoints;
-    let afbLevel: 1 | 2 | 3 = druckFlowMeta(flowKey).afb;
-    const afbEl = taskHtml.match(/afb-badge afb-(\d)/);
-    if (afbEl) {
-      const n = parseInt(afbEl[1], 10);
-      if (n === 2 || n === 3) afbLevel = n;
+  const meta = taskMetaFromHtml(taskHtml);
+  const stackSubs = parseStackSubsectionsFromHtml(taskHtml);
+  if (stackSubs) {
+    return {
+      taskNumber,
+      points: meta.points,
+      afbLevel: meta.afbLevel,
+      layout: 'stack',
+      subsections: stackSubs,
+    };
+  }
+
+  const legacyFlow = detectExamFlowKey(taskHtml);
+  if (legacyFlow || taskHtml.includes('exam-task-flow') || taskHtml.includes('exam-roman-table')) {
+    const preset = getDruckmaterialPreset(taskNumber);
+    if (preset) {
+      const answers = extractCorrectAnswersMap(fullHtml);
+      return hydrateDruckmaterialSpec(preset, answers, meta);
     }
-    const spec = createDruckFlowTaskSpec(flowKey, taskNumber, points);
-    spec.afbLevel = afbLevel;
-    return spec;
   }
 
   if (!taskHtml.includes('exam-task-grid')) return null;

@@ -3144,8 +3144,10 @@ KRITISCH WICHTIG:
         const body = gridMatch[2];
         const editorTask =
           body.includes('exam-task-grid') ||
+          body.includes('exam-task-stack') ||
           body.includes('exam-task-flow') ||
-          body.includes('data-exam-flow=');
+          body.includes('data-exam-flow=') ||
+          body.includes('data-exam-spec=');
         if (editorTask && !Number.isNaN(n)) {
           gridTaskNumbers.push(n);
         }

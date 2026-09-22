@@ -9,6 +9,8 @@ import {
   Typography,
   Alert,
   CircularProgress,
+  Tab,
+  Tabs,
   Tooltip,
   IconButton,
 } from '@mui/material';
@@ -77,6 +79,7 @@ export default function ExamGridTaskBuilderDialog({
   ]);
   const [activeFilePath, setActiveFilePath] = useState(filePath);
   const [previewOpenByTask, setPreviewOpenByTask] = useState<Record<number, boolean>>({});
+  const [activeTaskTab, setActiveTaskTab] = useState(0);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -157,6 +160,7 @@ export default function ExamGridTaskBuilderDialog({
         const loaded = loadGridTaskSpecsFromExamHtml(html, initialTaskNumber);
         loadedKeyRef.current = loadKey;
         setSpecs(loaded);
+        setActiveTaskTab(0);
         specsDraftByPathRef.current[activeFilePath] = loaded;
       } catch {
         if (generation !== loadGenerationRef.current) return;
@@ -235,8 +239,18 @@ export default function ExamGridTaskBuilderDialog({
 
   const addAufgabe = () => {
     const next = nextTaskNumberFromSpecs(specs, existingTaskNumbers);
-    setSpecs((prev) => [...prev, createBlankExamGridTask(next)]);
+    setSpecs((prev) => {
+      const nextSpecs = [...prev, createBlankExamGridTask(next)];
+      setActiveTaskTab(nextSpecs.length - 1);
+      return nextSpecs;
+    });
   };
+
+  React.useEffect(() => {
+    if (activeTaskTab >= specs.length) {
+      setActiveTaskTab(Math.max(0, specs.length - 1));
+    }
+  }, [activeTaskTab, specs.length]);
 
   const insertDemoExample = () => {
     const next = nextTaskNumberFromSpecs(specs, existingTaskNumbers);
@@ -357,26 +371,41 @@ export default function ExamGridTaskBuilderDialog({
             />
           ) : null}
 
-          {specs.map((spec, taskIdx) => (
-            <Box key={`task-${spec.taskNumber}-${taskIdx}`} sx={TASK_OUTER_SX}>
-              <Typography
-                variant="subtitle1"
-                sx={{ fontWeight: 800, color: '#1565c0', mb: 1.5, fontSize: '1rem' }}
-              >
-                Aufgabe {spec.taskNumber}
-              </Typography>
+          {specs.length > 0 ? (
+            <Tabs
+              value={activeTaskTab}
+              onChange={(_, v) => setActiveTaskTab(v)}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{ mb: 1.5, minHeight: 40, borderBottom: 1, borderColor: 'divider' }}
+            >
+              {specs.map((s, i) => (
+                <Tab
+                  key={`tab-${s.taskNumber}-${i}`}
+                  label={`Aufgabe ${s.taskNumber}`}
+                  sx={{ minHeight: 40, py: 0.5, textTransform: 'none', fontWeight: 600 }}
+                />
+              ))}
+            </Tabs>
+          ) : null}
+
+          {specs[activeTaskTab] ? (
+            <Box key={`task-${specs[activeTaskTab].taskNumber}-${activeTaskTab}`} sx={TASK_OUTER_SX}>
               <GridTaskEditorPanel
-                spec={spec}
+                spec={specs[activeTaskTab]}
                 onChange={(next) =>
-                  setSpecs((prev) => prev.map((s, i) => (i === taskIdx ? next : s)))
+                  setSpecs((prev) => prev.map((s, i) => (i === activeTaskTab ? next : s)))
                 }
-                previewExpanded={Boolean(previewOpenByTask[taskIdx])}
+                previewExpanded={Boolean(previewOpenByTask[activeTaskTab])}
                 onTogglePreview={() =>
-                  setPreviewOpenByTask((prev) => ({ ...prev, [taskIdx]: !prev[taskIdx] }))
+                  setPreviewOpenByTask((prev) => ({
+                    ...prev,
+                    [activeTaskTab]: !prev[activeTaskTab],
+                  }))
                 }
               />
             </Box>
-          ))}
+          ) : null}
 
           <Button
             startIcon={<PostAddIcon />}
