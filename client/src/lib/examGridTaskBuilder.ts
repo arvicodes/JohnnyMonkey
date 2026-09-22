@@ -671,7 +671,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
           | { kind: 'input-roman'; answerId: string; solution: string }
           | { kind: 'input-decimal'; answerId: string; solution: string },
       ): string => {
-        if (slot.kind === 'empty') return '<span class="exam-roman-grid-slot exam-roman-grid-slot--empty"></span>';
+        if (slot.kind === 'empty') return '';
         if (slot.kind === 'roman') {
           return `<span class="exam-roman-grid-rom exam-roman-grid-slot">${escapeHtml(slot.text)}</span>`;
         }
@@ -698,13 +698,19 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
         }
         return `<div class="exam-roman-grid-single-cell">${renderGridSlot(cell)}</div>`;
       };
+      const exampleRow = `<tr class="exam-roman-example-row">${sub.examples
+        .map(
+          (r) =>
+            `<td class="exam-roman-grid-cell"><div class="exam-roman-cell-pair"><span class="exam-roman-grid-rom exam-roman-grid-slot">${escapeHtml(r.roman)}</span><span class="exam-roman-grid-dec exam-roman-grid-slot">${escapeHtml(r.decimal)}</span></div></td>`,
+        )
+        .join('')}</tr>`;
       const gridBody = sub.gridRows
         .map(
           (row) =>
             `<tr>${row.cells.map((c) => `<td class="exam-roman-grid-cell">${renderGridCell(c)}</td>`).join('')}</tr>`,
         )
         .join('');
-      body = `${exampleBand}<table class="grade-table exam-roman-table exam-roman-triple-grid" aria-label="Römische Zahlen"><tbody>${gridBody}</tbody></table>`;
+      body = `<table class="grade-table exam-roman-table exam-roman-triple-grid" aria-label="Römische Zahlen"><tbody>${exampleRow}${gridBody}</tbody></table>`;
     } else {
       const inTableExamples = sub.layout === 'paired-table';
       const exampleRows = inTableExamples

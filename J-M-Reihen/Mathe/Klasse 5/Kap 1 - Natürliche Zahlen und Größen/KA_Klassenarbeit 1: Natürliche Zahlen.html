@@ -1191,6 +1191,7 @@
         .exam-roman-example-band--grid .exam-roman-example-pair { border-right-color: #222; font-weight: bold; padding: 10px 14px; }
         .exam-roman-triple-grid { max-width: 480px; margin: 0 0 10px; border-collapse: collapse; background: #fff; }
         .exam-roman-triple-grid td { border: 1px solid #222; padding: 12px 10px; text-align: center; vertical-align: middle; min-width: 72px; height: 44px; }
+        .exam-roman-example-row td { font-weight: bold; background: #fff; }
         .exam-roman-grid-rom { font-family: Georgia, 'Times New Roman', serif; font-weight: normal; }
         .exam-roman-grid-dec { font-weight: bold; }
         .exam-roman-cell-pair { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; min-height: 34px; }
@@ -1500,17 +1501,15 @@
 <label class="exam-life-date-label" for="a2b">Mit römischen Zahlzeichen</label>
 <input type="text" id="a2b" class="blank-wide exam-life-date-input" autocomplete="off" aria-label="Leonardo da Vinci">
 </div></div></div>
-<div class="exam-subsection" data-sub-kind="roman-table" data-sub-id="k2-b" data-exam-spec="%7B%22id%22%3A%22k2-b%22%2C%22letter%22%3A%22B%22%2C%22title%22%3A%22F%C3%BClle%20die%20L%C3%BCcken%20wie%20im%20unten%20stehenden%20Beispiel%20aus.%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22roman-table%22%2C%22layout%22%3A%22triple-grid%22%2C%22examples%22%3A%5B%7B%22roman%22%3A%22XXIX%22%2C%22decimal%22%3A%2229%22%7D%2C%7B%22roman%22%3A%22XXX%22%2C%22decimal%22%3A%2230%22%7D%2C%7B%22roman%22%3A%22XXXI%22%2C%22decimal%22%3A%2231%22%7D%5D%2C%22gridRows%22%3A%5B%7B%22cells%22%3A%5B%7B%22kind%22%3A%22pair%22%2C%22left%22%3A%7B%22kind%22%3A%22input-roman%22%2C%22answerId%22%3A%22a2c%22%2C%22solution%22%3A%22XXXII%22%7D%2C%22right%22%3A%7B%22kind%22%3A%22input-decimal%22%2C%22answerId%22%3A%22a2d%22%2C%22solution%22%3A%2232%22%7D%7D%2C%7B%22kind%22%3A%22pair%22%2C%22left%22%3A%7B%22kind%22%3A%22input-roman%22%2C%22answerId%22%3A%22a2e%22%2C%22solution%22%3A%22XXXIII%22%7D%2C%22right%22%3A%7B%22kind%22%3A%22input-decimal%22%2C%22answerId%22%3A%22a2h%22%2C%22solution%22%3A%2233%22%7D%7D%2C%7B%22kind%22%3A%22pair%22%2C%22left%22%3A%7B%22kind%22%3A%22input-roman%22%2C%22answerId%22%3A%22a2f%22%2C%22solution%22%3A%22L%22%7D%2C%22right%22%3A%7B%22kind%22%3A%22decimal%22%2C%22text%22%3A%2250%22%7D%7D%5D%7D%2C%7B%22cells%22%3A%5B%7B%22kind%22%3A%22pair%22%2C%22left%22%3A%7B%22kind%22%3A%22roman%22%2C%22text%22%3A%22XCIV%22%7D%2C%22right%22%3A%7B%22kind%22%3A%22input-decimal%22%2C%22answerId%22%3A%22a2g%22%2C%22solution%22%3A%2294%22%7D%7D%2C%7B%22kind%22%3A%22empty%22%7D%2C%7B%22kind%22%3A%22empty%22%7D%5D%7D%5D%7D"><div class="exam-subsection-title"><span class="item-label">B)</span> Fülle die Lücken wie im unten stehenden Beispiel aus.</div><div class="exam-roman-example-band exam-roman-example-band--grid" aria-label="Beispiel"><div class="exam-roman-example-pair"><span class="exam-roman-ex-rom">XXIX</span><span class="exam-roman-ex-dec">29</span></div><div class="exam-roman-example-pair"><span class="exam-roman-ex-rom">XXX</span><span class="exam-roman-ex-dec">30</span></div><div class="exam-roman-example-pair"><span class="exam-roman-ex-rom">XXXI</span><span class="exam-roman-ex-dec">31</span></div></div><table class="grade-table exam-roman-table exam-roman-triple-grid" aria-label="Römische Zahlen"><tbody><tr><td class="exam-roman-grid-cell"><div class="exam-roman-cell-pair"><input type="text" id="a2c" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"><input type="text" id="a2d" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"></div></td><td class="exam-roman-grid-cell"><div class="exam-roman-cell-pair"><input type="text" id="a2e" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"><input type="text" id="a2h" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"></div></td><td class="exam-roman-grid-cell"><div class="exam-roman-cell-pair"><input type="text" id="a2f" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"><span class="exam-roman-grid-dec exam-roman-grid-slot">50</span></div></td></tr><tr><td class="exam-roman-grid-cell"><div class="exam-roman-cell-pair"><span class="exam-roman-grid-rom exam-roman-grid-slot">XCIV</span><input type="text" id="a2g" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"></div></td><td class="exam-roman-grid-cell"></td><td class="exam-roman-grid-cell"></td></tr></tbody></table></div>
+<div class="exam-subsection" data-sub-kind="roman-table" data-sub-id="k2-b" data-exam-spec="%7B%22id%22%3A%22k2-b%22%2C%22letter%22%3A%22B%22%2C%22title%22%3A%22F%C3%BClle%20die%20L%C3%BCcken%20wie%20im%20unten%20stehenden%20Beispiel%20aus.%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22roman-table%22%2C%22layout%22%3A%22triple-grid%22%2C%22examples%22%3A%5B%7B%22roman%22%3A%22XXIX%22%2C%22decimal%22%3A%2229%22%7D%2C%7B%22roman%22%3A%22XXX%22%2C%22decimal%22%3A%2230%22%7D%2C%7B%22roman%22%3A%22XXXI%22%2C%22decimal%22%3A%2231%22%7D%5D%2C%22gridRows%22%3A%5B%7B%22cells%22%3A%5B%7B%22kind%22%3A%22input-roman%22%2C%22answerId%22%3A%22a2c%22%2C%22solution%22%3A%22XXXII%22%7D%2C%7B%22kind%22%3A%22input-roman%22%2C%22answerId%22%3A%22a2e%22%2C%22solution%22%3A%22XXXIII%22%7D%2C%7B%22kind%22%3A%22decimal%22%2C%22text%22%3A%2250%22%7D%5D%7D%2C%7B%22cells%22%3A%5B%7B%22kind%22%3A%22roman%22%2C%22text%22%3A%22XCIV%22%7D%2C%7B%22kind%22%3A%22input-decimal%22%2C%22answerId%22%3A%22a2d%22%2C%22solution%22%3A%2232%22%7D%2C%7B%22kind%22%3A%22input-decimal%22%2C%22answerId%22%3A%22a2h%22%2C%22solution%22%3A%2233%22%7D%5D%7D%5D%7D"><div class="exam-subsection-title"><span class="item-label">B)</span> Fülle die Lücken wie im unten stehenden Beispiel aus.</div><table class="grade-table exam-roman-table exam-roman-triple-grid" aria-label="Römische Zahlen"><tbody><tr class="exam-roman-example-row"><td class="exam-roman-grid-cell"><div class="exam-roman-cell-pair"><span class="exam-roman-grid-rom exam-roman-grid-slot">XXIX</span><span class="exam-roman-grid-dec exam-roman-grid-slot">29</span></div></td><td class="exam-roman-grid-cell"><div class="exam-roman-cell-pair"><span class="exam-roman-grid-rom exam-roman-grid-slot">XXX</span><span class="exam-roman-grid-dec exam-roman-grid-slot">30</span></div></td><td class="exam-roman-grid-cell"><div class="exam-roman-cell-pair"><span class="exam-roman-grid-rom exam-roman-grid-slot">XXXI</span><span class="exam-roman-grid-dec exam-roman-grid-slot">31</span></div></td></tr><tr><td class="exam-roman-grid-cell"><div class="exam-roman-grid-single-cell"><input type="text" id="a2c" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"></div></td><td class="exam-roman-grid-cell"><div class="exam-roman-grid-single-cell"><input type="text" id="a2e" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"></div></td><td class="exam-roman-grid-cell"><div class="exam-roman-grid-single-cell"><span class="exam-roman-grid-dec exam-roman-grid-slot">50</span></div></td></tr><tr><td class="exam-roman-grid-cell"><div class="exam-roman-grid-single-cell"><span class="exam-roman-grid-rom exam-roman-grid-slot">XCIV</span></div></td><td class="exam-roman-grid-cell"><div class="exam-roman-grid-single-cell"><input type="text" id="a2d" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"></div></td><td class="exam-roman-grid-cell"><div class="exam-roman-grid-single-cell"><input type="text" id="a2h" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"></div></td></tr></tbody></table></div>
             <div class="solution">
                 <h4>Musterlösung:</h4>
                 <p>A) Pablo Picasso <strong>25.10.1881 / 25.10.1 881</strong></p>
                 <p>A) Leonardo da Vinci <strong>15.4.1452 / 15.4.1 452</strong></p>
                 <p>B) <strong>XXXII</strong></p>
-                <p>B) <strong>32</strong></p>
                 <p>B) <strong>XXXIII</strong></p>
+                <p>B) <strong>32</strong></p>
                 <p>B) <strong>33</strong></p>
-                <p>B) <strong>L</strong></p>
-                <p>B) <strong>94</strong></p>
             </div>
         </div>
     </div>
@@ -2352,11 +2351,9 @@
             a2a: ['25.10.1881', '25.10.1 881'],
             a2b: ['15.4.1452', '15.4.1 452'],
             a2c: ['XXXII'],
-            a2d: ['32'],
             a2e: ['XXXIII'],
+            a2d: ['32'],
             a2h: ['33'],
-            a2f: ['L'],
-            a2g: ['94'],
             a3a: ['66'],
             a3b: ['30.11.2010', '30.11.2 010'],
             a3c: ['0, 1, 2, 3, 4, 5, 6, 7', '0,1,2,3,4,5,6,7', '01234567', '01 234 567', '01.234.567', '0; 1; 2; 3; 4; 5; 6; 7', '0 1 2 3 4 5 6 7'],
@@ -2480,6 +2477,8 @@
                 });
             }
         }
+
+
 
 
 
@@ -2741,6 +2740,8 @@
                 });
             });
         }
+
+
 
 
 

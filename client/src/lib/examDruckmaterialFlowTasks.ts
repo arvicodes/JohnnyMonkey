@@ -326,6 +326,7 @@ export const EXAM_NUMBER_LINE_CSS = `
         .exam-roman-example-band--grid .exam-roman-example-pair { border-right-color: #222; font-weight: bold; padding: 10px 14px; }
         .exam-roman-triple-grid { max-width: 480px; margin: 0 0 10px; border-collapse: collapse; background: #fff; }
         .exam-roman-triple-grid td { border: 1px solid #222; padding: 12px 10px; text-align: center; vertical-align: middle; min-width: 72px; height: 44px; }
+        .exam-roman-example-row td { font-weight: bold; background: #fff; }
         .exam-roman-grid-rom { font-family: Georgia, 'Times New Roman', serif; font-weight: normal; }
         .exam-roman-grid-dec { font-weight: bold; }
         .exam-roman-cell-pair { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; min-height: 34px; }

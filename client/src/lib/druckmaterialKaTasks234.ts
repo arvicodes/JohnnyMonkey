@@ -102,16 +102,15 @@ export function druckmaterialKlassenarbeit2(version: DruckmaterialKaVersion = 'A
       ? { lines: '*16.5.1451', solution: '16.5.1451' }
       : { lines: '*15.4.1452', solution: '15.4.1452' };
 
-  const fiftyOrForty =
+  const fiftyOrFortyCell =
     version === 'B'
-      ? {
-          left: { kind: 'input-roman' as const, answerId: 'a2f', solution: 'XL' },
-          right: { kind: 'decimal' as const, text: '40' },
-        }
-      : {
-          left: { kind: 'input-roman' as const, answerId: 'a2f', solution: 'L' },
-          right: { kind: 'decimal' as const, text: '50' },
-        };
+      ? ({ kind: 'decimal' as const, text: '40' })
+      : ({ kind: 'decimal' as const, text: '50' });
+
+  const row1Col2 =
+    version === 'B'
+      ? ({ kind: 'input-roman' as const, answerId: 'a2f', solution: 'XL' })
+      : ({ kind: 'input-roman' as const, answerId: 'a2e', solution: 'XXXIII' });
 
   return {
     taskNumber: 2,
@@ -157,32 +156,16 @@ export function druckmaterialKlassenarbeit2(version: DruckmaterialKaVersion = 'A
         gridRows: [
           {
             cells: [
-              {
-                kind: 'pair',
-                left: { kind: 'input-roman', answerId: 'a2c', solution: 'XXXII' },
-                right: { kind: 'input-decimal', answerId: 'a2d', solution: '32' },
-              },
-              {
-                kind: 'pair',
-                left: { kind: 'input-roman', answerId: 'a2e', solution: 'XXXIII' },
-                right: { kind: 'input-decimal', answerId: 'a2h', solution: '33' },
-              },
-              {
-                kind: 'pair',
-                left: fiftyOrForty.left,
-                right: fiftyOrForty.right,
-              },
+              { kind: 'input-roman', answerId: 'a2c', solution: 'XXXII' },
+              row1Col2,
+              fiftyOrFortyCell,
             ],
           },
           {
             cells: [
-              {
-                kind: 'pair',
-                left: { kind: 'roman', text: 'XCIV' },
-                right: { kind: 'input-decimal', answerId: 'a2g', solution: '94' },
-              },
-              { kind: 'empty' },
-              { kind: 'empty' },
+              { kind: 'roman', text: 'XCIV' },
+              { kind: 'input-decimal', answerId: 'a2d', solution: '32' },
+              { kind: 'input-decimal', answerId: 'a2h', solution: '33' },
             ],
           },
         ],
