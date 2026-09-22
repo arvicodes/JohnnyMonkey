@@ -70,6 +70,13 @@ export declare class FileSystemPathController {
      * Datei im Stundenordner löschen (nur unter J-M-Reihen / git-intern).
      */
     static deleteFile(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    private static normalizeDeleteFilePath;
+    private static assertDeletableUnderJmRoot;
+    private static isExamCorrectionHtmlFileName;
+    /**
+     * Prüfungs-HTML löschen (KA/KU/HU/QZ). Basis-Datei (A) löscht alle Varianten laut EXAM_VERSIONS.
+     */
+    static deleteExamination(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /**
      * Load whiteboard file (.wb) as JSON
      */
@@ -126,6 +133,14 @@ export declare class FileSystemPathController {
      * Aktualisiert eine einzelne Frage in der HTML-Datei
      */
     static updateSingleQuestion(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    private static resolveExaminationHtmlPath;
+    private static readonly EXAM_TASK_GRID_STYLE_SNIPPET;
+    private static ensureExamTaskGridStyles;
+    private static sumExamTaskPoints;
+    private static taskBlockEndLookahead;
+    private static mergeCorrectAnswersInHtml;
+    /** Raster-Aufgabe (2×2) in die Prüfungs-HTML einfügen oder ersetzen. */
+    static upsertExaminationGridTask(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /**
      * Aktualisiert den Titel einer Prüfung
      */
@@ -134,5 +149,11 @@ export declare class FileSystemPathController {
      * Generiert eine einzelne Frage und ersetzt sie in der HTML-Datei
      */
     static generateSingleQuestion(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    private static resolveExamGitBasePath;
+    private static fullPathForGitExam;
+    /** Versionen einer Prüfung (A = Basisdatei, B/C = Kopien __B / __C). */
+    static getExaminationVersions(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    static addExaminationVersion(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    static removeExaminationVersion(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
 }
 //# sourceMappingURL=FileSystemPathController.d.ts.map

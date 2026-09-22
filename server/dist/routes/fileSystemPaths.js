@@ -66,6 +66,8 @@ router.get('/load-whiteboard', FileSystemPathController_1.FileSystemPathControll
 router.get('/static/*', FileSystemPathController_1.FileSystemPathController.serveStaticFile);
 // Prüfung erstellen (KA, KU, HU, QZ)
 router.post('/create-examination', FileSystemPathController_1.FileSystemPathController.createExamination);
+// Prüfung löschen (mit Varianten bei Basis-Datei A)
+router.post('/delete-examination', FileSystemPathController_1.FileSystemPathController.deleteExamination);
 // Stunde erstellen (Ordner + Standardmaterialien)
 router.post('/create-lesson-folder', FileSystemPathController_1.FileSystemPathController.createLessonFolder);
 // Prüfungsinhalte generieren
@@ -76,7 +78,12 @@ router.post('/generate-single-question', FileSystemPathController_1.FileSystemPa
 router.get('/get-examination-questions', FileSystemPathController_1.FileSystemPathController.getExaminationQuestions);
 // Einzelfrage aktualisieren
 router.post('/update-single-question', FileSystemPathController_1.FileSystemPathController.updateSingleQuestion);
+// Raster-Aufgabe (2×2) speichern
+router.post('/upsert-examination-grid-task', FileSystemPathController_1.FileSystemPathController.upsertExaminationGridTask);
 // Titel einer Prüfung aktualisieren
 router.post('/update-examination-title', FileSystemPathController_1.FileSystemPathController.updateExaminationTitle);
+router.get('/get-examination-versions', FileSystemPathController_1.FileSystemPathController.getExaminationVersions);
+router.post('/add-examination-version', FileSystemPathController_1.FileSystemPathController.addExaminationVersion);
+router.post('/remove-examination-version', FileSystemPathController_1.FileSystemPathController.removeExaminationVersion);
 exports.default = router;
 //# sourceMappingURL=fileSystemPaths.js.map

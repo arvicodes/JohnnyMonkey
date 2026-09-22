@@ -16,6 +16,8 @@ router.get('/submissions/:id', KACorrectionController_1.KACorrectionController.g
 router.post('/corrections', KACorrectionController_1.KACorrectionController.saveCorrection);
 // Status der Abgabe aktualisieren
 router.patch('/submissions/:id/status', KACorrectionController_1.KACorrectionController.updateStatus);
+// Krank markieren (nicht im Klassenschnitt)
+router.patch('/submissions/:id/marked-sick', KACorrectionController_1.KACorrectionController.setMarkedSick);
 // Abgabe nachträglich bearbeiten (Lehrer)
 router.patch('/submissions/:id/answers', KACorrectionController_1.KACorrectionController.updateSubmissionAnswers);
 // Leere Abgabe für Schüler anlegen (Lehrer, ohne SuS-Abgabe)
@@ -34,5 +36,6 @@ router.get('/my-released', KACorrectionController_1.KACorrectionController.getMy
 router.post('/release-all', KACorrectionController_1.KACorrectionController.releaseAllGrades);
 // Freigabestatus für eine Klassenarbeit prüfen (nur für Lehrer)
 router.get('/release-status', KACorrectionController_1.KACorrectionController.getReleaseStatus);
+router.patch('/submissions/:id/exam-version', KACorrectionController_1.KACorrectionController.updateSubmissionExamVersion);
 exports.default = router;
 //# sourceMappingURL=kaCorrections.js.map

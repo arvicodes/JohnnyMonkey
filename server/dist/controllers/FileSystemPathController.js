@@ -47,7 +47,9 @@ const path_1 = __importDefault(require("path"));
 const mammoth_1 = __importDefault(require("mammoth"));
 const XLSX = __importStar(require("xlsx"));
 const libreoffice_convert_1 = require("libreoffice-convert");
+const examVersionPaths_1 = require("../lib/examVersionPaths");
 const prisma = new client_1.PrismaClient();
+const DEV_PROJECT_ROOT = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
 class FileSystemPathController {
     /** PPTX/PPT → PDF (LibreOffice/soffice; lokal installiert) für Folien-Editor */
     static convertPowerPointBufferToPdf(fileContent) {
@@ -1456,6 +1458,103 @@ class FileSystemPathController {
             res.status(500).json({ error: 'Datei konnte nicht gelöscht werden: ' + (error.message || '') });
         }
     }
+    static normalizeDeleteFilePath(filePathRaw) {
+        let fp = filePathRaw.replace(/\\/g, '/').trim();
+        if (fp.startsWith('git-intern//Users/')) {
+            fp = fp.replace('git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/', 'git-intern/');
+        }
+        return fp;
+    }
+    static assertDeletableUnderJmRoot(fullPath) {
+        const jmRoot = storageManager_1.StorageManager.resolveGitInternRelativePath('');
+        const normalizedFull = path_1.default.resolve(fullPath);
+        const normalizedRoot = path_1.default.resolve(jmRoot);
+        if (normalizedFull !== normalizedRoot &&
+            !normalizedFull.startsWith(normalizedRoot + path_1.default.sep)) {
+            return 'Löschen außerhalb von J-M-Reihen nicht erlaubt';
+        }
+        return null;
+    }
+    static isExamCorrectionHtmlFileName(fileName) {
+        const stem = (0, examVersionPaths_1.fileStemFromName)(fileName);
+        return (stem.startsWith('KA_') ||
+            stem.startsWith('KU_') ||
+            stem.startsWith('HÜ_') ||
+            stem.startsWith('HU_') ||
+            stem.startsWith('QZ_'));
+    }
+    /**
+     * Prüfungs-HTML löschen (KA/KU/HU/QZ). Basis-Datei (A) löscht alle Varianten laut EXAM_VERSIONS.
+     */
+    static async deleteExamination(req, res) {
+        var _a, _b;
+        try {
+            const filePathRaw = (((_a = req.body) === null || _a === void 0 ? void 0 : _a.filePath) || ((_b = req.query) === null || _b === void 0 ? void 0 : _b.filePath));
+            if (!filePathRaw || typeof filePathRaw !== 'string') {
+                return res.status(400).json({ error: 'filePath ist erforderlich' });
+            }
+            const fp = FileSystemPathController.normalizeDeleteFilePath(filePathRaw);
+            const normalizedFp = fp.startsWith('J-M-Reihen/')
+                ? `git-intern/${fp.slice('J-M-Reihen/'.length)}`
+                : fp.startsWith('J-M-Reihen')
+                    ? 'git-intern'
+                    : fp;
+            const fileName = path_1.default.basename(normalizedFp);
+            if (!/\.html?$/i.test(fileName) || !FileSystemPathController.isExamCorrectionHtmlFileName(fileName)) {
+                return res.status(403).json({
+                    error: 'Nur Prüfungsdateien (KA_, KU_, HU_, QZ_) können gelöscht werden.',
+                });
+            }
+            const fullPath = storageManager_1.StorageManager.resolveFilePath(fp);
+            if (!fullPath) {
+                return res.status(404).json({ error: 'Datei nicht gefunden' });
+            }
+            const rootErr = FileSystemPathController.assertDeletableUnderJmRoot(fullPath);
+            if (rootErr) {
+                return res.status(403).json({ error: rootErr });
+            }
+            const stem = (0, examVersionPaths_1.fileStemFromName)(fileName);
+            const letter = (0, examVersionPaths_1.versionLetterFromStem)(stem);
+            const gitPathsToDelete = [];
+            if (letter === 'A') {
+                let html = '';
+                if (fs_1.default.existsSync(fullPath) && fs_1.default.statSync(fullPath).isFile()) {
+                    html = fs_1.default.readFileSync(fullPath, 'utf8');
+                }
+                const { letters } = (0, examVersionPaths_1.parseExamVersionsMeta)(html);
+                for (const L of letters) {
+                    gitPathsToDelete.push((0, examVersionPaths_1.gitPathVariant)(fp, L));
+                }
+            }
+            else {
+                gitPathsToDelete.push(fp);
+            }
+            const deleted = [];
+            for (const gp of [...new Set(gitPathsToDelete)]) {
+                const resolved = storageManager_1.StorageManager.resolveFilePath(gp);
+                if (!resolved)
+                    continue;
+                const rootCheck = FileSystemPathController.assertDeletableUnderJmRoot(resolved);
+                if (rootCheck)
+                    continue;
+                if (!fs_1.default.existsSync(resolved) || !fs_1.default.statSync(resolved).isFile())
+                    continue;
+                fs_1.default.unlinkSync(resolved);
+                deleted.push(path_1.default.basename(resolved));
+                console.log('Deleted examination file:', resolved);
+            }
+            if (deleted.length === 0) {
+                return res.status(404).json({ error: 'Datei nicht gefunden' });
+            }
+            res.json({ success: true, deleted });
+        }
+        catch (error) {
+            console.error('Error deleting examination:', error);
+            res.status(500).json({
+                error: 'Prüfung konnte nicht gelöscht werden: ' + (error.message || ''),
+            });
+        }
+    }
     /**
      * Load whiteboard file (.wb) as JSON
      */
@@ -1821,6 +1920,8 @@ class FileSystemPathController {
             if (!fs_1.default.existsSync(fullFolderPath)) {
                 fs_1.default.mkdirSync(fullFolderPath, { recursive: true });
             }
+            templateContent = (0, examVersionPaths_1.writeExamVersionsMeta)(templateContent, (0, examVersionPaths_1.defaultExamVersionLetters)());
+            templateContent = templateContent.replace(/const KA_KEY = ['"](.*?)['"]/, `const KA_KEY = '${kaKey}'\n        const EXAM_VERSION_LETTERS = ['A'];`);
             // Schreibe die neue Datei
             fs_1.default.writeFileSync(filePath, templateContent, 'utf-8');
             console.log('✅ Prüfungsdatei erstellt:', filePath);
@@ -2542,13 +2643,17 @@ KRITISCH WICHTIG:
                 }
             }
             // Extrahiere alle Aufgaben (`<!-- Aufgabe 1 -->` oder `<!-- Aufgabe 1: AFB … -->`)
-            const taskPattern = /<!-- Aufgabe (\d+)\s*(?::([^>]*))?\s*-->([\s\S]*?)(?=<!-- Aufgabe |<div class="submit-section">)/g;
+            // Ende: nächste Aufgabe, Abgabe-Block, Fußzeile (Sidebar-Vorlagen) oder Dateiende
+            const taskPattern = /<!-- Aufgabe (\d+)\s*(?::([^>]*))?\s*-->([\s\S]*?)(?=<!-- Aufgabe \d|<div class="submit-section">|<div class="footer">|$)/g;
             const questions = [];
             let match;
             while ((match = taskPattern.exec(htmlContent)) !== null) {
                 const taskNumber = parseInt(match[1]);
                 const taskMeta = (match[2] || '').trim();
                 const taskHTML = (match[3] || '').trim();
+                if (taskHTML.includes('exam-task-grid')) {
+                    continue;
+                }
                 // Bestimme den Fragentyp
                 const isMultipleChoice = taskHTML.includes('type="radio"');
                 const questionType = isMultipleChoice ? 'multiple-choice' : 'text';
@@ -2609,10 +2714,28 @@ KRITISCH WICHTIG:
                     taskMeta
                 });
             }
+            const gridTaskNumbers = [];
+            const gridTaskRe = /<!-- Aufgabe (\d+)\s*(?::[^>]*)?\s*-->([\s\S]*?)(?=<!-- Aufgabe \d|<div class="submit-section">|<div class="footer">|$)/gi;
+            let gridMatch;
+            while ((gridMatch = gridTaskRe.exec(htmlContent)) !== null) {
+                const n = parseInt(gridMatch[1], 10);
+                if (gridMatch[2].includes('exam-task-grid') && !Number.isNaN(n)) {
+                    gridTaskNumbers.push(n);
+                }
+            }
+            gridTaskNumbers.sort((a, b) => a - b);
+            const versionMeta = (0, examVersionPaths_1.parseExamVersionsMeta)(htmlContent);
+            const fileName = path_1.default.basename(fullFilePath);
+            const currentLetter = (0, examVersionPaths_1.versionLetterFromStem)((0, examVersionPaths_1.fileStemFromName)(fileName));
+            const baseGitPath = (0, examVersionPaths_1.gitPathVariant)(filePath.startsWith('git-intern/') ? filePath : filePath.replace(/\\/g, '/'), 'A');
             res.json({
                 success: true,
                 title: title,
-                questions: questions.sort((a, b) => a.taskNumber - b.taskNumber)
+                questions: questions.sort((a, b) => a.taskNumber - b.taskNumber),
+                gridTaskNumbers,
+                versionLetters: versionMeta.letters,
+                currentVersionLetter: currentLetter,
+                baseFilePath: baseGitPath.startsWith('git-intern/') ? baseGitPath : filePath,
             });
         }
         catch (error) {
@@ -2756,6 +2879,124 @@ ${optionsHTML}
             res.status(500).json({
                 error: 'Fehler beim Aktualisieren der Frage',
                 details: errorMessage
+            });
+        }
+    }
+    static resolveExaminationHtmlPath(filePath) {
+        if (filePath.startsWith('git-intern/')) {
+            const relativePath = filePath.replace('git-intern/', '');
+            if (process.env.NODE_ENV === 'production') {
+                const serverPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
+                const projectPath = path_1.default.join(process.cwd(), '..', 'J-M-Reihen');
+                const jmReihenPath = fs_1.default.existsSync(serverPath) ? serverPath : projectPath;
+                return path_1.default.join(jmReihenPath, relativePath);
+            }
+            const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
+            return path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
+        }
+        return path_1.default.resolve(filePath);
+    }
+    static ensureExamTaskGridStyles(html) {
+        if (html.includes('.exam-task-grid'))
+            return html;
+        const closeStyle = html.lastIndexOf('</style>');
+        if (closeStyle < 0)
+            return html;
+        return `${html.slice(0, closeStyle)}${FileSystemPathController.EXAM_TASK_GRID_STYLE_SNIPPET}${html.slice(closeStyle)}`;
+    }
+    static sumExamTaskPoints(html) {
+        const re = /<div class="task-number">[\s\S]*?\((\d+)\s*Punkte\)/g;
+        let sum = 0;
+        let found = false;
+        let m;
+        while ((m = re.exec(html)) !== null) {
+            sum += parseInt(m[1], 10) || 0;
+            found = true;
+        }
+        return found ? sum : null;
+    }
+    static taskBlockEndLookahead() {
+        return '(?=<!-- Aufgabe \\d|<div class="submit-section">|<div class="footer">|$)';
+    }
+    static mergeCorrectAnswersInHtml(html, taskNumber, incoming) {
+        const blockRe = /const correctAnswers = \{([\s\S]*?)\};/;
+        const m = html.match(blockRe);
+        if (!m)
+            return html;
+        const taskKeyRe = new RegExp(`^a${taskNumber}([a-z]|z\\d+)$`);
+        const kept = [];
+        const entryRe = /([a-zA-Z]\w*)\s*:\s*(\[[^\]]*\])/g;
+        let em;
+        while ((em = entryRe.exec(m[1])) !== null) {
+            const key = em[1];
+            if (taskKeyRe.test(key)) {
+                continue;
+            }
+            kept.push(`${key}: ${em[2]}`);
+        }
+        for (const [k, vals] of Object.entries(incoming)) {
+            const inner = vals
+                .map((x) => `'${String(x).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`)
+                .join(', ');
+            kept.push(`${k}: [${inner}]`);
+        }
+        const newBody = kept.map((line) => `            ${line}`).join(',\n');
+        return html.replace(blockRe, `const correctAnswers = {\n${newBody}\n        };`);
+    }
+    /** Raster-Aufgabe (2×2) in die Prüfungs-HTML einfügen oder ersetzen. */
+    static async upsertExaminationGridTask(req, res) {
+        try {
+            const { filePath, taskNumber, taskHtml, correctAnswers, totalPoints } = req.body;
+            if (!filePath || !taskNumber || !taskHtml) {
+                return res.status(400).json({ error: 'filePath, taskNumber und taskHtml sind erforderlich' });
+            }
+            const fullFilePath = FileSystemPathController.resolveExaminationHtmlPath(filePath);
+            if (!fs_1.default.existsSync(fullFilePath)) {
+                return res.status(404).json({ error: 'Datei nicht gefunden' });
+            }
+            let htmlContent = fs_1.default.readFileSync(fullFilePath, 'utf-8');
+            const tn = Number(taskNumber);
+            const blockRe = new RegExp(`<!-- Aufgabe ${tn}\\s*(?::[^>]*)?\\s*-->[\\s\\S]*?${FileSystemPathController.taskBlockEndLookahead()}`, 'i');
+            const trimmed = String(taskHtml).trim();
+            if (/class=["']exam-shell["']/i.test(trimmed) || /<aside\s+class=["']exam-chrome["']/i.test(trimmed)) {
+                return res.status(400).json({
+                    error: 'Ungültiger Inhalt: Nur der Aufgaben-Block wird gespeichert (ohne Prüfungs-Rahmen).',
+                });
+            }
+            if (blockRe.test(htmlContent)) {
+                htmlContent = htmlContent.replace(blockRe, `${trimmed}\n\n`);
+            }
+            else {
+                const footerIdx = htmlContent.indexOf('<div class="footer">');
+                const submitIdx = htmlContent.indexOf('<div class="submit-section">');
+                const insertIdx = footerIdx >= 0 ? footerIdx : submitIdx;
+                if (insertIdx < 0) {
+                    return res.status(400).json({ error: 'Keine Einfügestelle (footer) in der HTML-Datei gefunden' });
+                }
+                htmlContent = `${htmlContent.slice(0, insertIdx)}${trimmed}\n\n${htmlContent.slice(insertIdx)}`;
+            }
+            htmlContent = FileSystemPathController.ensureExamTaskGridStyles(htmlContent);
+            if (correctAnswers && typeof correctAnswers === 'object') {
+                htmlContent = FileSystemPathController.mergeCorrectAnswersInHtml(htmlContent, tn, correctAnswers);
+            }
+            const summedPoints = FileSystemPathController.sumExamTaskPoints(htmlContent);
+            const resolvedTotal = summedPoints && summedPoints > 0
+                ? summedPoints
+                : typeof totalPoints === 'number' && totalPoints > 0
+                    ? totalPoints
+                    : null;
+            if (resolvedTotal !== null) {
+                htmlContent = htmlContent.replace(/return \{ achieved: achievedPoints, total: \d+ \};/, `return { achieved: achievedPoints, total: ${resolvedTotal} };`);
+                htmlContent = htmlContent.replace(/<span id="totalPoints">[^<]*<\/span>/, `<span id="totalPoints">${resolvedTotal}</span>`);
+            }
+            fs_1.default.writeFileSync(fullFilePath, htmlContent, 'utf-8');
+            res.json({ success: true, taskNumber: tn });
+        }
+        catch (error) {
+            console.error('❌ Raster-Aufgabe speichern:', error);
+            res.status(500).json({
+                error: 'Fehler beim Speichern der Raster-Aufgabe',
+                details: error instanceof Error ? error.message : String(error),
             });
         }
     }
@@ -2929,6 +3170,166 @@ ${aiContent.optionsHTML}
             });
         }
     }
+    static resolveExamGitBasePath(filePath) {
+        const p = filePath.replace(/\\/g, '/');
+        return (0, examVersionPaths_1.gitPathVariant)(p, 'A');
+    }
+    static fullPathForGitExam(filePath) {
+        return (0, examVersionPaths_1.resolveFullPathFromGitIntern)(filePath, DEV_PROJECT_ROOT);
+    }
+    /** Versionen einer Prüfung (A = Basisdatei, B/C = Kopien __B / __C). */
+    static async getExaminationVersions(req, res) {
+        try {
+            const { filePath } = req.query;
+            if (!filePath || typeof filePath !== 'string') {
+                return res.status(400).json({ error: 'filePath ist erforderlich' });
+            }
+            const baseGit = FileSystemPathController.resolveExamGitBasePath(filePath);
+            const baseFull = FileSystemPathController.fullPathForGitExam(baseGit);
+            if (!fs_1.default.existsSync(baseFull)) {
+                return res.status(404).json({ error: 'Prüfungsdatei nicht gefunden' });
+            }
+            const html = (0, examVersionPaths_1.readExamHtmlFullPath)(baseFull);
+            const meta = (0, examVersionPaths_1.parseExamVersionsMeta)(html);
+            const paths = {};
+            for (const letter of meta.letters) {
+                paths[letter] = (0, examVersionPaths_1.gitPathVariant)(baseGit, letter);
+            }
+            res.json({
+                success: true,
+                baseFilePath: baseGit,
+                letters: meta.letters,
+                paths,
+            });
+        }
+        catch (error) {
+            console.error('getExaminationVersions:', error);
+            res.status(500).json({ error: 'Fehler beim Lesen der Versionen' });
+        }
+    }
+    static async addExaminationVersion(req, res) {
+        try {
+            const { filePath, letter: letterRaw } = req.body;
+            if (!filePath) {
+                return res.status(400).json({ error: 'filePath ist erforderlich' });
+            }
+            const letter = (0, examVersionPaths_1.normalizeVersionLetter)(letterRaw || '');
+            if (!letter || letter === 'A') {
+                return res.status(400).json({ error: 'Ungültiger Buchstabe (B, C, …)' });
+            }
+            const baseGit = FileSystemPathController.resolveExamGitBasePath(filePath);
+            const baseFull = FileSystemPathController.fullPathForGitExam(baseGit);
+            if (!fs_1.default.existsSync(baseFull)) {
+                return res.status(404).json({ error: 'Basis-Prüfung (A) nicht gefunden' });
+            }
+            const baseHtml = (0, examVersionPaths_1.readExamHtmlFullPath)(baseFull);
+            const meta = (0, examVersionPaths_1.parseExamVersionsMeta)(baseHtml);
+            if (meta.letters.includes(letter)) {
+                return res.status(400).json({ error: `Version ${letter} existiert bereits` });
+            }
+            const nextLetters = [...meta.letters, letter].sort();
+            const baseStem = (0, examVersionPaths_1.baseStemFromStem)((0, examVersionPaths_1.fileStemFromName)(path_1.default.basename(baseFull)));
+            const variantFull = path_1.default.join(path_1.default.dirname(baseFull), `${(0, examVersionPaths_1.variantStem)(baseStem, letter)}.html`);
+            if (fs_1.default.existsSync(variantFull)) {
+                return res.status(409).json({ error: 'Variantendatei existiert bereits' });
+            }
+            const variantKey = (0, examVersionPaths_1.variantStem)(baseStem, letter);
+            let variantHtml = (0, examVersionPaths_1.patchKaKeyInHtml)(baseHtml, variantKey);
+            variantHtml = (0, examVersionPaths_1.applyVersionsToExamHtml)(variantHtml, nextLetters, letter);
+            (0, examVersionPaths_1.writeExamHtmlFullPath)(variantFull, variantHtml);
+            const updatedBase = (0, examVersionPaths_1.applyVersionsToExamHtml)(baseHtml, nextLetters, 'A');
+            (0, examVersionPaths_1.writeExamHtmlFullPath)(baseFull, updatedBase);
+            for (const L of meta.letters) {
+                if (L === 'A' || L === letter)
+                    continue;
+                const vGit = (0, examVersionPaths_1.gitPathVariant)(baseGit, L);
+                const vFull = FileSystemPathController.fullPathForGitExam(vGit);
+                if (!fs_1.default.existsSync(vFull))
+                    continue;
+                const vHtml = (0, examVersionPaths_1.readExamHtmlFullPath)(vFull);
+                (0, examVersionPaths_1.writeExamHtmlFullPath)(vFull, (0, examVersionPaths_1.applyVersionsToExamHtml)(vHtml, nextLetters, L));
+            }
+            res.json({
+                success: true,
+                letters: nextLetters,
+                addedPath: (0, examVersionPaths_1.gitPathVariant)(baseGit, letter),
+            });
+        }
+        catch (error) {
+            console.error('addExaminationVersion:', error);
+            res.status(500).json({ error: 'Fehler beim Anlegen der Version' });
+        }
+    }
+    static async removeExaminationVersion(req, res) {
+        try {
+            const { filePath, letter: letterRaw } = req.body;
+            if (!filePath) {
+                return res.status(400).json({ error: 'filePath ist erforderlich' });
+            }
+            const letter = (0, examVersionPaths_1.normalizeVersionLetter)(letterRaw || '');
+            if (!letter || letter === 'A') {
+                return res.status(400).json({ error: 'Version A kann nicht entfernt werden' });
+            }
+            const baseGit = FileSystemPathController.resolveExamGitBasePath(filePath);
+            const baseFull = FileSystemPathController.fullPathForGitExam(baseGit);
+            if (!fs_1.default.existsSync(baseFull)) {
+                return res.status(404).json({ error: 'Basis-Prüfung nicht gefunden' });
+            }
+            const baseHtml = (0, examVersionPaths_1.readExamHtmlFullPath)(baseFull);
+            const meta = (0, examVersionPaths_1.parseExamVersionsMeta)(baseHtml);
+            if (!meta.letters.includes(letter)) {
+                return res.status(404).json({ error: `Version ${letter} ist nicht aktiv` });
+            }
+            const nextLetters = meta.letters.filter((l) => l !== letter);
+            const variantFull = FileSystemPathController.fullPathForGitExam((0, examVersionPaths_1.gitPathVariant)(baseGit, letter));
+            if (fs_1.default.existsSync(variantFull)) {
+                fs_1.default.unlinkSync(variantFull);
+            }
+            (0, examVersionPaths_1.writeExamHtmlFullPath)(baseFull, (0, examVersionPaths_1.applyVersionsToExamHtml)(baseHtml, nextLetters, 'A'));
+            for (const L of nextLetters) {
+                if (L === 'A')
+                    continue;
+                const vFull = FileSystemPathController.fullPathForGitExam((0, examVersionPaths_1.gitPathVariant)(baseGit, L));
+                if (!fs_1.default.existsSync(vFull))
+                    continue;
+                const vHtml = (0, examVersionPaths_1.readExamHtmlFullPath)(vFull);
+                (0, examVersionPaths_1.writeExamHtmlFullPath)(vFull, (0, examVersionPaths_1.applyVersionsToExamHtml)(vHtml, nextLetters, L));
+            }
+            res.json({ success: true, letters: nextLetters });
+        }
+        catch (error) {
+            console.error('removeExaminationVersion:', error);
+            res.status(500).json({ error: 'Fehler beim Entfernen der Version' });
+        }
+    }
 }
 exports.FileSystemPathController = FileSystemPathController;
+FileSystemPathController.EXAM_TASK_GRID_STYLE_SNIPPET = `
+        .exam-task-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin: 12px 0 16px;
+            overflow: hidden;
+            background: #fff;
+        }
+        .exam-task-grid-cell {
+            padding: 10px 12px;
+            border: 1px solid #e8e8e8;
+            min-height: 72px;
+            font-size: 14px;
+            line-height: 1.65;
+            vertical-align: top;
+        }
+        .exam-subsection { margin-bottom: 12px; }
+        .exam-subsection:last-child { margin-bottom: 0; }
+        .exam-subsection-title { font-weight: 700; margin-bottom: 6px; line-height: 1.4; }
+        .exam-round-line { margin: 6px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .exam-cloze-line { margin: 6px 0; line-height: 1.8; }
+        .exam-cloze-line input { min-width: 72px; margin: 0 4px; }
+        .exam-grid-blank-list { margin: 4px 0 0 18px; padding: 0; }
+        .exam-grid-blank-list li { margin: 6px 0; }
+`;
 //# sourceMappingURL=FileSystemPathController.js.map

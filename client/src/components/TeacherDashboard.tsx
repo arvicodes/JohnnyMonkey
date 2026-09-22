@@ -6799,6 +6799,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [examToDelete, setExamToDelete] = useState<{ path: string; name: string } | null>(null);
   const [confirmExamDeleteCheck, setConfirmExamDeleteCheck] = useState(false);
   const [confirmExamDeleteWord, setConfirmExamDeleteWord] = useState('');
+  const [examDeleteSubmitting, setExamDeleteSubmitting] = useState(false);
   const [examsPanelRefreshKey, setExamsPanelRefreshKey] = useState(0);
   const [examGridTaskNumbers, setExamGridTaskNumbers] = useState<number[]>([]);
   const [examGridEditTaskNumber, setExamGridEditTaskNumber] = useState(1);
@@ -12089,8 +12090,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     }
   };
 
+  const normalizeExamDeletePath = (raw: string): string => {
+    const portable = toPortableWorkingReihePath(raw) || raw.replace(/\\/g, '/').trim();
+    if (/\.html?$/i.test(portable)) return portable;
+    return `${portable.replace(/\/+$/, '')}.html`;
+  };
+
+  const examDeleteConfirmationOk = () =>
+    confirmExamDeleteCheck && confirmExamDeleteWord.trim().toUpperCase() === 'ENTFERNEN';
+
   const handleExamDeleteDialogOpen = (item: { path?: string; name: string }) => {
-    const filePath = (item.path || '').replace(/\\/g, '/');
+    const filePath = normalizeExamDeletePath(item.path || '');
     if (!filePath) {
       showSnackbar('Kein Dateipfad für diese Prüfung.', 'error');
       return;
@@ -12098,10 +12108,12 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     setExamToDelete({ path: filePath, name: item.name });
     setConfirmExamDeleteCheck(false);
     setConfirmExamDeleteWord('');
+    setExamDeleteSubmitting(false);
     setExamDeleteDialogOpen(true);
   };
 
   const handleExamDeleteDialogClose = () => {
+    if (examDeleteSubmitting) return;
     setExamDeleteDialogOpen(false);
     setExamToDelete(null);
     setConfirmExamDeleteCheck(false);
@@ -12127,16 +12139,34 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
 
   const handleDeleteExamination = async () => {
     if (!examToDelete) return;
+    if (!examDeleteConfirmationOk()) {
+      showSnackbar('Bitte Häkchen setzen und ENTFERNEN eingeben (Großbuchstaben).', 'warning');
+      return;
+    }
+    setExamDeleteSubmitting(true);
     try {
+      const filePath = normalizeExamDeletePath(examToDelete.path);
       const res = await fetch('/api/file-system-paths/delete-examination', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': localStorage.getItem('loginCode') || '',
+        },
         credentials: 'include',
-        body: JSON.stringify({ filePath: examToDelete.path }),
+        body: JSON.stringify({ filePath }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error || 'Löschen fehlgeschlagen');
+        let message = 'Löschen fehlgeschlagen';
+        try {
+          const err = (await res.json()) as { error?: string };
+          if (err?.error) message = err.error;
+        } catch {
+          if (res.status === 404) {
+            message =
+              'Server kennt „Prüfung löschen“ nicht — bitte Backend neu starten (npm run dev im Ordner server).';
+          }
+        }
+        throw new Error(message);
       }
       const data = (await res.json()) as { deleted?: string[] };
       const deletedNames = data.deleted?.length ? data.deleted.join(', ') : examToDelete.name;
@@ -12151,10 +12181,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       refreshAssignedFolderTrees();
       setExamsPanelRefreshKey((k) => k + 1);
       showSnackbar(`Prüfung gelöscht (${deletedNames}).`, 'success');
+      handleExamDeleteDialogClose();
     } catch (e) {
       showSnackbar(e instanceof Error ? e.message : 'Löschen fehlgeschlagen', 'error');
     } finally {
-      handleExamDeleteDialogClose();
+      setExamDeleteSubmitting(false);
     }
   };
   
@@ -19110,7 +19141,11 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         </DialogActions>
       </Dialog>
 
-      <Dialog open={examDeleteDialogOpen} onClose={handleExamDeleteDialogClose}>
+      <Dialog
+        open={examDeleteDialogOpen}
+        onClose={handleExamDeleteDialogClose}
+        sx={{ zIndex: (theme) => theme.zIndex.modal + 2 }}
+      >
         <DialogTitle>Prüfung löschen</DialogTitle>
         <DialogContent>
           <Typography>
@@ -19131,32 +19166,41 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 checked={confirmExamDeleteCheck}
                 onChange={(e) => setConfirmExamDeleteCheck(e.target.checked)}
                 style={{ marginRight: 8 }}
+                disabled={examDeleteSubmitting}
               />
               Ich möchte diese Prüfung unwiderruflich löschen.
             </label>
             <Box sx={{ mt: 2 }}>
               <Typography variant="body2" sx={{ mb: 1, color: 'error.main', fontWeight: 'bold' }}>
-                Zur Bestätigung: Gib „ENTFERNEN“ ein
+                Zur Bestätigung: Gib ENTFERNEN ein (nur Großbuchstaben)
               </Typography>
               <TextField
                 fullWidth
                 size="small"
                 value={confirmExamDeleteWord}
                 onChange={(e) => setConfirmExamDeleteWord(e.target.value)}
-                placeholder="ENTFERNEN eingeben"
+                placeholder="ENTFERNEN"
+                disabled={examDeleteSubmitting}
+                autoComplete="off"
+                spellCheck={false}
               />
             </Box>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleExamDeleteDialogClose}>Abbrechen</Button>
+          <Button onClick={handleExamDeleteDialogClose} disabled={examDeleteSubmitting}>
+            Abbrechen
+          </Button>
           <Button
             onClick={() => void handleDeleteExamination()}
             color="error"
             variant="contained"
-            disabled={!(confirmExamDeleteCheck && confirmExamDeleteWord === 'ENTFERNEN')}
+            disabled={examDeleteSubmitting}
+            sx={{
+              opacity: examDeleteConfirmationOk() ? 1 : 0.55,
+            }}
           >
-            Löschen
+            {examDeleteSubmitting ? 'Wird gelöscht…' : 'Löschen'}
           </Button>
         </DialogActions>
       </Dialog>

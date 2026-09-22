@@ -1644,14 +1644,19 @@ export class FileSystemPathController {
       }
 
       const fp = FileSystemPathController.normalizeDeleteFilePath(filePathRaw);
-      const fileName = path.basename(fp);
+      const normalizedFp = fp.startsWith('J-M-Reihen/')
+        ? `git-intern/${fp.slice('J-M-Reihen/'.length)}`
+        : fp.startsWith('J-M-Reihen')
+          ? 'git-intern'
+          : fp;
+      const fileName = path.basename(normalizedFp);
       if (!/\.html?$/i.test(fileName) || !FileSystemPathController.isExamCorrectionHtmlFileName(fileName)) {
         return res.status(403).json({
           error: 'Nur Prüfungsdateien (KA_, KU_, HU_, QZ_) können gelöscht werden.',
         });
       }
 
-      const fullPath = StorageManager.resolveFilePath(fp);
+      const fullPath = StorageManager.resolveFilePath(normalizedFp);
       if (!fullPath) {
         return res.status(404).json({ error: 'Datei nicht gefunden' });
       }
@@ -1672,10 +1677,10 @@ export class FileSystemPathController {
         }
         const { letters } = parseExamVersionsMeta(html);
         for (const L of letters) {
-          gitPathsToDelete.push(gitPathVariant(fp, L));
+          gitPathsToDelete.push(gitPathVariant(normalizedFp, L));
         }
       } else {
-        gitPathsToDelete.push(fp);
+        gitPathsToDelete.push(normalizedFp);
       }
 
       const deleted: string[] = [];

@@ -25,6 +25,8 @@ export declare class KACorrectionController {
     /**
      * Status der Abgabe aktualisieren (z.B. wenn Zeit abgelaufen)
      */
+    /** Lehrer: Abgabe als krank markieren (hellgelb in UI, nicht im Klassenschnitt). */
+    static setMarkedSick(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static updateStatus(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /**
      * Prüfe ob eine Submission für einen Schüler existiert (für Schüler)
@@ -51,5 +53,7 @@ export declare class KACorrectionController {
     static updateAnswerKey(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /** Lehrer: Alle Abgaben einer Prüfung neu automatisch bewerten */
     static recalculateExam(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /** Lehrer: Prüfungsversion (Buchstabe) nachträglich korrigieren — Masterpasswort „vertippt“. */
+    static updateSubmissionExamVersion(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
 }
 //# sourceMappingURL=KACorrectionController.d.ts.map

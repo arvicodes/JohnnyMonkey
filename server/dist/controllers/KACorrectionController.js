@@ -43,6 +43,7 @@ const examAutoPoints_1 = require("../utils/examAutoPoints");
 const examGradeNumeric_1 = require("../utils/examGradeNumeric");
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const examVersionPaths_1 = require("../lib/examVersionPaths");
 const prisma = new client_1.PrismaClient();
 /**
  * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, KU_, HÜ_, HU_, QZ_)
@@ -117,6 +118,14 @@ function getPossiblePaths(filePath) {
     add(normalized);
     add(base);
     add(withoutExt);
+    const familyStem = (0, examVersionPaths_1.baseStemFromStem)(withoutExt);
+    for (const letter of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
+        const variantFileStem = (0, examVersionPaths_1.variantStem)(familyStem, letter);
+        add(variantFileStem);
+        for (const pref of ['KA_', 'KU_', 'HÜ_', 'HU_', 'QZ_', '']) {
+            add(`${pref}${variantFileStem.replace(/^(KA_|KU_|HÜ_|HU_|QZ_)/i, '')}`);
+        }
+    }
     for (const pref of ['KA_', 'KU_', 'HÜ_', 'HU_', 'QZ_', '']) {
         add(`${pref}${stem}`);
     }
@@ -301,7 +310,8 @@ class KACorrectionController {
                 return (base === fileNameLower ||
                     stem === stemLower ||
                     n.toLowerCase() === fileNameLower ||
-                    n.toLowerCase().endsWith('/' + fileNameLower));
+                    n.toLowerCase().endsWith('/' + fileNameLower) ||
+                    (0, examVersionPaths_1.kaPathsMatchFamily)(kaFilePath, stored));
             };
             let submissions = [];
             try {
@@ -673,6 +683,31 @@ class KACorrectionController {
     /**
      * Status der Abgabe aktualisieren (z.B. wenn Zeit abgelaufen)
      */
+    /** Lehrer: Abgabe als krank markieren (hellgelb in UI, nicht im Klassenschnitt). */
+    static async setMarkedSick(req, res) {
+        var _a;
+        try {
+            const teacher = await requireTeacher(req);
+            if (!teacher) {
+                return res.status(403).json({ error: 'Nur Lehrer können Krank markieren' });
+            }
+            const { id } = req.params;
+            const markedSick = Boolean((_a = req.body) === null || _a === void 0 ? void 0 : _a.markedSick);
+            const submission = await prisma.kASubmission.update({
+                where: { id },
+                data: { markedSick },
+                include: {
+                    student: { select: { id: true, name: true, loginCode: true } },
+                    corrections: { where: { teacherId: teacher.id } },
+                },
+            });
+            res.json({ success: true, submission });
+        }
+        catch (error) {
+            console.error('Error setting markedSick:', error);
+            res.status(500).json({ error: 'Krank-Status konnte nicht gespeichert werden' });
+        }
+    }
     static async updateStatus(req, res) {
         try {
             const { id } = req.params;
@@ -1004,7 +1039,7 @@ class KACorrectionController {
             const resultsSource = filtered;
             // Klassenschnitt je Prüfungsdatei (alle freigegebenen Abgaben derselben Datei)
             const allReleasedPeers = await prisma.kASubmission.findMany({
-                where: { isReleased: true },
+                where: { isReleased: true, markedSick: false },
                 select: { kaFilePath: true, totalPoints: true },
             });
             const classStats = new Map();
@@ -1278,6 +1313,67 @@ class KACorrectionController {
         catch (error) {
             console.error('Error recalculating exam:', error);
             res.status(500).json({ error: 'Fehler bei der Neubewertung' });
+        }
+    }
+    /** Lehrer: Prüfungsversion (Buchstabe) nachträglich korrigieren — Masterpasswort „vertippt“. */
+    static async updateSubmissionExamVersion(req, res) {
+        try {
+            const teacher = await requireTeacher(req);
+            if (!teacher)
+                return res.status(403).json({ error: 'Nur Lehrer' });
+            const { id } = req.params;
+            const { versionLetter: letterRaw, masterPassword } = req.body;
+            if (String(masterPassword || '') !== 'vertippt') {
+                return res.status(403).json({ error: 'Masterpasswort falsch' });
+            }
+            const letter = (0, examVersionPaths_1.normalizeVersionLetter)(letterRaw || '');
+            if (!letter) {
+                return res.status(400).json({ error: 'Ungültiger Buchstabe' });
+            }
+            const submission = await prisma.kASubmission.findUnique({
+                where: { id },
+                include: { student: { select: { id: true, name: true, loginCode: true } } },
+            });
+            if (!submission)
+                return res.status(404).json({ error: 'Abgabe nicht gefunden' });
+            const stored = submission.kaFilePath.replace(/\\/g, '/');
+            const slash = stored.lastIndexOf('/');
+            const dir = slash >= 0 ? stored.slice(0, slash + 1) : '';
+            const file = slash >= 0 ? stored.slice(slash + 1) : stored;
+            const familyStem = (0, examVersionPaths_1.baseStemFromStem)((0, examVersionPaths_1.fileStemFromName)(file));
+            const nextFile = `${(0, examVersionPaths_1.variantStem)(familyStem, letter)}.html`;
+            const nextKaPath = `${dir}${nextFile}`;
+            if (nextKaPath === stored) {
+                return res.json({
+                    success: true,
+                    submission: {
+                        ...submission,
+                        versionLetter: (0, examVersionPaths_1.versionLetterFromKaPath)(stored),
+                    },
+                });
+            }
+            try {
+                (0, examAutoPoints_1.readExamHtml)(nextKaPath);
+            }
+            catch {
+                return res.status(404).json({ error: `Prüfungsdatei für Version ${letter} nicht gefunden` });
+            }
+            await prisma.kASubmission.update({
+                where: { id },
+                data: { kaFilePath: nextKaPath },
+            });
+            const updated = await KACorrectionController.recomputeSubmissionById(id, teacher.id);
+            const payload = updated
+                ? {
+                    ...updated,
+                    versionLetter: (0, examVersionPaths_1.versionLetterFromKaPath)(updated.kaFilePath),
+                }
+                : null;
+            res.json({ success: true, submission: payload });
+        }
+        catch (error) {
+            console.error('Error updating submission exam version:', error);
+            res.status(500).json({ error: 'Fehler beim Ändern der Version' });
         }
     }
 }
