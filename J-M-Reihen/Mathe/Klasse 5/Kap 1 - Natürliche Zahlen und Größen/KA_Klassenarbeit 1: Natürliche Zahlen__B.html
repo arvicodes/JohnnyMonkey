@@ -1842,8 +1842,27 @@
         let timerElement = null;
         let timerInterval = null;
         
+        function applyExamTimerEpochFromUrl() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const epoch = params.get('timerEpoch');
+                if (!epoch) return;
+                const EPOCH_KEY = `ka_timer_epoch_${KA_KEY}_${studentId}`;
+                if (localStorage.getItem(EPOCH_KEY) === epoch) return;
+                localStorage.setItem(EPOCH_KEY, epoch);
+                localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem(TIMER_KEY);
+                localStorage.removeItem(START_TIME_KEY);
+                timeLeft = 60 * 60;
+                console.log('⏱️ Neuer Prüfungs-Timer (timerEpoch):', epoch);
+            } catch (e) {
+                console.warn('timerEpoch:', e);
+            }
+        }
+
         // Timer SOFORT starten (unabhängig von Prüfung)
         function startTimerImmediately(retryCount = 0) {
+            applyExamTimerEpochFromUrl();
             console.log('⏱️ startTimerImmediately() aufgerufen, Versuch:', retryCount + 1);
             
             // Stelle sicher, dass timerElement verfügbar ist

@@ -23,6 +23,10 @@ export declare class KACorrectionController {
      */
     static resetAllSubmissions(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /**
+     * Abgaben zurücksetzen und optional laufende Prüfung (Beacon) neu starten → SuS-Timer per timerEpoch.
+     */
+    static resetExamSession(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /**
      * Status der Abgabe aktualisieren (z.B. wenn Zeit abgelaufen)
      */
     /** Lehrer: Abgabe als krank markieren (hellgelb in UI, nicht im Klassenschnitt). */

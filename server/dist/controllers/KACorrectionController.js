@@ -681,6 +681,59 @@ class KACorrectionController {
         }
     }
     /**
+     * Abgaben zurücksetzen und optional laufende Prüfung (Beacon) neu starten → SuS-Timer per timerEpoch.
+     */
+    static async resetExamSession(req, res) {
+        try {
+            const { kaFilePath, restartTimer } = req.body;
+            const loginCode = req.headers['x-login-code'];
+            if (!loginCode) {
+                return res.status(401).json({ error: 'Nicht angemeldet' });
+            }
+            const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
+            if (!user || user.role !== 'TEACHER') {
+                return res.status(403).json({ error: 'Nur Lehrer können die Prüfung zurücksetzen' });
+            }
+            if (!kaFilePath || typeof kaFilePath !== 'string') {
+                return res.status(400).json({ error: 'kaFilePath ist erforderlich' });
+            }
+            const uniquePaths = getPossiblePaths(kaFilePath);
+            const deleted = await prisma.kASubmission.deleteMany({
+                where: {
+                    OR: uniquePaths.map((p) => ({ kaFilePath: p })),
+                },
+            });
+            let restartedGroups = 0;
+            if (restartTimer) {
+                const activeBeacons = await prisma.lessonExamBeacon.findMany({
+                    where: { active: true },
+                });
+                for (const row of activeBeacons) {
+                    if (!(0, examVersionPaths_1.kaPathsMatchFamily)(kaFilePath, row.filePath))
+                        continue;
+                    const beaconId = `exam-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+                    await prisma.lessonExamBeacon.update({
+                        where: { groupId: row.groupId },
+                        data: { beaconId },
+                    });
+                    restartedGroups += 1;
+                }
+            }
+            res.json({
+                success: true,
+                deletedCount: deleted.count,
+                restartedGroups,
+                message: restartTimer
+                    ? `${deleted.count} Abgabe(n) gelöscht, Zeit in ${restartedGroups} Lerngruppe(n) neu gestartet`
+                    : `${deleted.count} Abgabe(n) wurden zurückgesetzt`,
+            });
+        }
+        catch (error) {
+            console.error('Error resetting exam session:', error);
+            res.status(500).json({ error: 'Fehler beim Zurücksetzen der Prüfung' });
+        }
+    }
+    /**
      * Status der Abgabe aktualisieren (z.B. wenn Zeit abgelaufen)
      */
     /** Lehrer: Abgabe als krank markieren (hellgelb in UI, nicht im Klassenschnitt). */

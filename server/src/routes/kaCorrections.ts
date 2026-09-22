@@ -36,6 +36,8 @@ router.post('/recalculate', KACorrectionController.recalculateExam);
 // Alle Abgaben für eine Klassenarbeit zurücksetzen (nur für Lehrer)
 router.post('/reset-all', KACorrectionController.resetAllSubmissions);
 
+router.post('/reset-exam-session', KACorrectionController.resetExamSession);
+
 // Prüfe ob eigene Submission existiert (für Schüler)
 router.get('/check-my-submission', KACorrectionController.checkMySubmission);
 

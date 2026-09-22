@@ -25,6 +25,7 @@ import {
 } from '../../lib/examGridTaskBuilder';
 import { loadGridTaskSpecsFromExamHtml } from '../../lib/loadGridTaskSpecsFromExamHtml';
 import { examBaseGitPath, examFamilyKey } from '../../lib/examVersionPaths';
+import { resetExamSession } from '../../lib/examSessionReset';
 
 type Props = {
   open: boolean;
@@ -90,6 +91,7 @@ export default function ExamGridTaskBuilderDialog({
   const [activeTaskTab, setActiveTaskTab] = useState(0);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sessionResetBusy, setSessionResetBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loadedKeyRef = React.useRef('');
   const loadGenerationRef = React.useRef(0);
@@ -98,6 +100,49 @@ export default function ExamGridTaskBuilderDialog({
   specsRef.current = specs;
 
   const versionMetaPath = React.useMemo(() => examBaseGitPath(filePath), [filePath]);
+
+  const handleResetSubmissions = React.useCallback(async () => {
+    const pathForReset = examBaseGitPath(activeFilePath || filePath);
+    if (
+      !window.confirm(
+        'Alle Abgaben und Korrekturen für diese Prüfung (A/B …) löschen?\n\nSchüler können die Arbeit danach neu bearbeiten.',
+      )
+    ) {
+      return;
+    }
+    setSessionResetBusy(true);
+    try {
+      const result = await resetExamSession(pathForReset, { restartTimer: false });
+      onNotify?.(result.message, 'success');
+    } catch (e) {
+      onNotify?.(e instanceof Error ? e.message : 'Zurücksetzen fehlgeschlagen', 'error');
+    } finally {
+      setSessionResetBusy(false);
+    }
+  }, [activeFilePath, filePath, onNotify]);
+
+  const handleRestartTimerForAll = React.useCallback(async () => {
+    const pathForReset = examBaseGitPath(activeFilePath || filePath);
+    if (
+      !window.confirm(
+        'Zeit für alle neu starten?\n\n' +
+          '• Abgaben werden gelöscht\n' +
+          '• Laufende Prüfung in allen betroffenen Lerngruppen wird neu gestartet\n' +
+          '• Schüler mit offenem Prüfungsfenster bekommen den Timer neu (60 Min.)',
+      )
+    ) {
+      return;
+    }
+    setSessionResetBusy(true);
+    try {
+      const result = await resetExamSession(pathForReset, { restartTimer: true });
+      onNotify?.(result.message, 'success');
+    } catch (e) {
+      onNotify?.(e instanceof Error ? e.message : 'Neustart fehlgeschlagen', 'error');
+    } finally {
+      setSessionResetBusy(false);
+    }
+  }, [activeFilePath, filePath, onNotify]);
   const openFamilyRef = React.useRef('');
 
   React.useEffect(() => {
@@ -370,13 +415,35 @@ export default function ExamGridTaskBuilderDialog({
             </Alert>
           ) : null}
           {activeFilePath ? (
-            <ExamVersionTabsBar
-              compact
-              filePath={versionMetaPath}
-              activeVariantPath={activeFilePath}
-              disabled={loading || saving}
-              onActiveFilePathChange={handleVersionPathChange}
-            />
+            <Box sx={{ mb: 1 }}>
+              <ExamVersionTabsBar
+                compact
+                filePath={versionMetaPath}
+                activeVariantPath={activeFilePath}
+                disabled={loading || saving || sessionResetBusy}
+                onActiveFilePathChange={handleVersionPathChange}
+              />
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.75 }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="error"
+                  disabled={loading || saving || sessionResetBusy}
+                  onClick={() => void handleResetSubmissions()}
+                >
+                  Abgaben zurücksetzen
+                </Button>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="warning"
+                  disabled={loading || saving || sessionResetBusy}
+                  onClick={() => void handleRestartTimerForAll()}
+                >
+                  Zeit für alle neu starten
+                </Button>
+              </Box>
+            </Box>
           ) : null}
 
           {specs.length > 0 ? (

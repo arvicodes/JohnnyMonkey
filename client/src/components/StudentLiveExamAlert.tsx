@@ -59,7 +59,8 @@ export default function StudentLiveExamAlert({ userId }: { userId: string }) {
           prev &&
           prev.beaconId === next.beaconId &&
           prev.filePath === next.filePath &&
-          prev.groupId === next.groupId
+          prev.groupId === next.groupId &&
+          prev.updatedAt === next.updatedAt
         ) {
           return prev;
         }
@@ -136,10 +137,13 @@ export default function StudentLiveExamAlert({ userId }: { userId: string }) {
       baseFilePath || beacon.filePath,
       chosenLetter,
     );
-    setHtmlUrl(
-      `/api/file-system-paths/read-html?filePath=${encodeURIComponent(path)}`,
+    const timerEpoch = encodeURIComponent(
+      beacon.updatedAt || beacon.beaconId || String(Date.now()),
     );
-  }, [beacon?.filePath, chosenLetter, versionPaths, baseFilePath]);
+    setHtmlUrl(
+      `/api/file-system-paths/read-html?filePath=${encodeURIComponent(path)}&timerEpoch=${timerEpoch}`,
+    );
+  }, [beacon?.filePath, beacon?.updatedAt, beacon?.beaconId, chosenLetter, versionPaths, baseFilePath]);
 
   const open = Boolean(beacon);
   const needsLetterPrompt = Boolean(
