@@ -9,8 +9,6 @@ import {
   Typography,
   Alert,
   CircularProgress,
-  Tab,
-  Tabs,
   Tooltip,
   IconButton,
 } from '@mui/material';
@@ -63,6 +61,16 @@ const compactIconBtnSx = {
   width: 28,
   height: 28,
 };
+
+/** Schmale farbige Aufgaben-Tabs (1, 2, 3 …) */
+const TASK_TAB_PALETTE = [
+  { bg: '#dbeafe', border: '#2563eb', on: '#1d4ed8', fg: '#1e3a8a' },
+  { bg: '#ede9fe', border: '#7c3aed', on: '#6d28d9', fg: '#4c1d95' },
+  { bg: '#d1fae5', border: '#059669', on: '#047857', fg: '#065f46' },
+  { bg: '#ffedd5', border: '#ea580c', on: '#c2410c', fg: '#9a3412' },
+  { bg: '#fce7f3', border: '#db2777', on: '#be185d', fg: '#9d174d' },
+  { bg: '#cffafe', border: '#0891b2', on: '#0e7490', fg: '#155e75' },
+];
 
 export default function ExamGridTaskBuilderDialog({
   open,
@@ -372,40 +380,63 @@ export default function ExamGridTaskBuilderDialog({
           ) : null}
 
           {specs.length > 0 ? (
-            <Tabs
-              value={activeTaskTab}
-              onChange={(_, v) => setActiveTaskTab(v)}
-              variant="scrollable"
-              scrollButtons="auto"
+            <Box
+              role="tablist"
+              aria-label="Aufgaben"
               sx={{
+                display: 'inline-flex',
+                flexDirection: 'row',
+                flexWrap: 'nowrap',
+                alignItems: 'center',
+                gap: '3px',
                 mb: 1,
-                minHeight: 26,
-                maxHeight: 26,
-                borderBottom: 1,
-                borderColor: 'divider',
-                '& .MuiTabs-indicator': { height: 2 },
-                '& .MuiTabs-flexContainer': { gap: 0 },
+                py: 0.25,
               }}
             >
-              {specs.map((s, i) => (
-                <Tab
-                  key={`tab-${s.taskNumber}-${i}`}
-                  label={String(s.taskNumber)}
-                  title={`Aufgabe ${s.taskNumber}`}
-                  sx={{
-                    minHeight: 26,
-                    maxHeight: 26,
-                    minWidth: 32,
-                    px: 0.75,
-                    py: 0,
-                    fontSize: '0.72rem',
-                    lineHeight: 1,
-                    textTransform: 'none',
-                    fontWeight: 700,
-                  }}
-                />
-              ))}
-            </Tabs>
+              {specs.map((s, i) => {
+                const pal = TASK_TAB_PALETTE[i % TASK_TAB_PALETTE.length];
+                const active = activeTaskTab === i;
+                return (
+                  <Tooltip key={`tab-${s.taskNumber}-${i}`} title={`Aufgabe ${s.taskNumber}`}>
+                    <Box
+                      component="button"
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      aria-label={`Aufgabe ${s.taskNumber}`}
+                      onClick={() => setActiveTaskTab(i)}
+                      sx={{
+                        flex: '0 0 auto',
+                        width: 20,
+                        minWidth: 20,
+                        height: 20,
+                        p: 0,
+                        m: 0,
+                        border: `1.5px solid ${active ? pal.on : pal.border}`,
+                        borderRadius: '3px',
+                        bgcolor: active ? pal.on : pal.bg,
+                        color: active ? '#fff' : pal.fg,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.62rem',
+                        fontWeight: 800,
+                        lineHeight: 1,
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        boxShadow: active ? `0 0 0 1px ${pal.on}40` : 'none',
+                        '&:hover': {
+                          bgcolor: active ? pal.on : pal.bg,
+                          filter: active ? 'brightness(1.05)' : 'brightness(0.97)',
+                        },
+                      }}
+                    >
+                      {s.taskNumber}
+                    </Box>
+                  </Tooltip>
+                );
+              })}
+            </Box>
           ) : null}
 
           {specs[activeTaskTab] ? (
