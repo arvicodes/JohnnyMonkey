@@ -26,6 +26,7 @@ import {
 import { loadGridTaskSpecsFromExamHtml } from '../../lib/loadGridTaskSpecsFromExamHtml';
 import { examBaseGitPath, examFamilyKey } from '../../lib/examVersionPaths';
 import { resetExamSession } from '../../lib/examSessionReset';
+import ExamFullResetConfirmDialog from './ExamFullResetConfirmDialog';
 
 type Props = {
   open: boolean;
@@ -92,6 +93,7 @@ export default function ExamGridTaskBuilderDialog({
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sessionResetBusy, setSessionResetBusy] = useState(false);
+  const [fullResetOpen, setFullResetOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loadedKeyRef = React.useRef('');
   const loadGenerationRef = React.useRef(0);
@@ -143,6 +145,21 @@ export default function ExamGridTaskBuilderDialog({
       setSessionResetBusy(false);
     }
   }, [activeFilePath, filePath, onNotify]);
+
+  const handleFullResetConfirm = React.useCallback(async () => {
+    const pathForReset = examBaseGitPath(activeFilePath || filePath);
+    setSessionResetBusy(true);
+    try {
+      const result = await resetExamSession(pathForReset, { restartTimer: true });
+      onNotify?.(result.message, 'success');
+      setFullResetOpen(false);
+    } catch (e) {
+      onNotify?.(e instanceof Error ? e.message : 'Zurücksetzen fehlgeschlagen', 'error');
+    } finally {
+      setSessionResetBusy(false);
+    }
+  }, [activeFilePath, filePath, onNotify]);
+
   const openFamilyRef = React.useRef('');
 
   React.useEffect(() => {
@@ -442,9 +459,26 @@ export default function ExamGridTaskBuilderDialog({
                 >
                   Zeit für alle neu starten
                 </Button>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="error"
+                  disabled={loading || saving || sessionResetBusy}
+                  onClick={() => setFullResetOpen(true)}
+                >
+                  Alles zurücksetzen
+                </Button>
               </Box>
             </Box>
           ) : null}
+
+          <ExamFullResetConfirmDialog
+            open={fullResetOpen}
+            onClose={() => setFullResetOpen(false)}
+            onConfirm={handleFullResetConfirm}
+            busy={sessionResetBusy}
+            examLabel={activeFilePath?.split('/').pop() || filePath.split('/').pop()}
+          />
 
           {specs.length > 0 ? (
             <Box
