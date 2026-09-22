@@ -1218,6 +1218,15 @@
         .exam-sort-chip:active {
             cursor: grabbing;
         }
+        .exam-sort-chip-selected {
+            outline: 2px solid #1976d2;
+            background: #bbdefb;
+        }
+        .exam-sort-hint {
+            font-size: 11px;
+            color: #666;
+            margin: 6px 0 0;
+        }
         .exam-sort-slots-row {
             display: flex;
             flex-wrap: wrap;
@@ -2270,27 +2279,32 @@
                     });
                 }
 
-                var touchChip = null;
-                var touchSlot = null;
-                root.addEventListener('touchstart', function (e) {
+                var selectedChip = null;
+                function selectChip(chip) {
+                    root.querySelectorAll('.exam-sort-chip-selected').forEach(function (c) {
+                        c.classList.remove('exam-sort-chip-selected');
+                    });
+                    selectedChip = chip;
+                    if (chip) chip.classList.add('exam-sort-chip-selected');
+                }
+                root.addEventListener('click', function (e) {
                     var chip = e.target.closest('.exam-sort-chip');
-                    if (!chip || !root.contains(chip)) return;
-                    touchChip = chip;
-                    touchSlot = chip.parentElement && chip.parentElement.classList.contains('exam-sort-slot')
-                        ? chip.parentElement : null;
-                }, { passive: true });
-                root.addEventListener('touchend', function (e) {
-                    if (!touchChip) return;
                     var slot = e.target.closest('.exam-sort-slot');
-                    if (slot && root.contains(slot)) {
-                        placeChip(slot, touchChip);
-                    } else if (pool && e.target.closest('.exam-sort-pool')) {
-                        pool.appendChild(touchChip);
-                        syncHidden();
+                    if (chip && root.contains(chip)) {
+                        selectChip(chip);
+                        return;
                     }
-                    touchChip = null;
-                    touchSlot = null;
-                }, { passive: true });
+                    if (slot && root.contains(slot) && selectedChip) {
+                        placeChip(slot, selectedChip);
+                        selectChip(null);
+                        return;
+                    }
+                    if (pool && e.target.closest('.exam-sort-pool') && selectedChip) {
+                        pool.appendChild(selectedChip);
+                        syncHidden();
+                        selectChip(null);
+                    }
+                });
             });
         }
 

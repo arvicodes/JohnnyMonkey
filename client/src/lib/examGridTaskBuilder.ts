@@ -347,7 +347,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
 <div class="exam-sort-pool" aria-label="Zahlen zum Ziehen">${chips}</div>
 <div class="exam-sort-slots-row" aria-label="Reihenfolge von klein nach groß">${slots}</div>
 <input type="hidden" id="${id}" value="">
-</div>`;
+</div><p class="exam-sort-hint">Zahl anklicken, dann leeren Slot anklicken (oder Drag &amp; Drop).</p>`;
     } else {
       body = `<div class="item input-group full-width"><p style="margin:0 0 6px;">${escapeHtml(sub.given)}</p><input type="text" id="${id}" class="blank-wide" autocomplete="off"></div>`;
     }
