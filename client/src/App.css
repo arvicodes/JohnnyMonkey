@@ -138,6 +138,34 @@ main {
   font-size: 0.85rem;
   text-align: center;
   letter-spacing: 0.1em;
+  box-sizing: border-box;
+}
+
+.login-code-field {
+  position: relative;
+}
+
+.login-code-field input {
+  padding-right: 2.5rem;
+}
+
+.login-code-visibility {
+  position: absolute !important;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: auto !important;
+  min-width: 36px !important;
+  padding: 4px !important;
+  background: transparent !important;
+  color: #666 !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+.login-code-visibility:hover {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: #333 !important;
 }
 
 .form-group input:focus {

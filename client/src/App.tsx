@@ -43,7 +43,9 @@ import FlyerStudioPage from './pages/FlyerStudioPage';
 import AnnouncementStudentPreviewPage from './pages/AnnouncementStudentPreviewPage';
 import WallOfFamePage from './pages/WallOfFamePage';
 
-import { Snackbar, Alert, Box, CircularProgress } from '@mui/material';
+import { Snackbar, Alert, Box, CircularProgress, IconButton } from '@mui/material';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { ensurePresentationSoundHotkey } from './lib/presentationSound';
 import JohnnyCompanionSimple from './components/JohnnyCompanionSimple';
 import FlutterElf from './components/FlutterElf';
@@ -59,6 +61,7 @@ interface User {
 
 function AppContent() {
   const [loginCode, setLoginCode] = useState('');
+  const [showLoginCode, setShowLoginCode] = useState(false);
   const [message, setMessage] = useState('');
   const [user, setUser] = useState<User | null>(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -150,6 +153,7 @@ function AppContent() {
     // Only handle ESC in login form, not in modals
     if (e.key === 'Escape' && !user) {
       setLoginCode('');
+      setShowLoginCode(false);
       setMessage('');
       loginInputRef.current?.focus();
       e.preventDefault();
@@ -296,10 +300,10 @@ function AppContent() {
               <div className="login-container">
                 <h2>Willkommen!</h2>
                 <form onSubmit={handleLogin}>
-                  <div className="form-group">
+                  <div className="form-group login-code-field">
                     <input
                       ref={loginInputRef}
-                      type="password"
+                      type={showLoginCode ? 'text' : 'password'}
                       value={loginCode}
                       onChange={(e) => setLoginCode(e.target.value)}
                       placeholder="Login-Code eingeben"
@@ -307,6 +311,20 @@ function AppContent() {
                       autoFocus
                       autoComplete="off"
                     />
+                    <IconButton
+                      type="button"
+                      className="login-code-visibility"
+                      onClick={() => setShowLoginCode((v) => !v)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      aria-label={showLoginCode ? 'Login-Code verbergen' : 'Login-Code anzeigen'}
+                      size="small"
+                    >
+                      {showLoginCode ? (
+                        <VisibilityOff sx={{ fontSize: 20 }} />
+                      ) : (
+                        <Visibility sx={{ fontSize: 20 }} />
+                      )}
+                    </IconButton>
                   </div>
                   <button type="submit">Anmelden</button>
                   {message && <p className="message">{message}</p>}
