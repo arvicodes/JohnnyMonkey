@@ -6795,6 +6795,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   const [singleQuestionModalOpen, setSingleQuestionModalOpen] = useState(false);
   const [singleQuestionFilePath, setSingleQuestionFilePath] = useState<string>('');
   const [examGridBuilderOpen, setExamGridBuilderOpen] = useState(false);
+  const [examDeleteDialogOpen, setExamDeleteDialogOpen] = useState(false);
+  const [examToDelete, setExamToDelete] = useState<{ path: string; name: string } | null>(null);
+  const [confirmExamDeleteCheck, setConfirmExamDeleteCheck] = useState(false);
+  const [confirmExamDeleteWord, setConfirmExamDeleteWord] = useState('');
   const [examGridTaskNumbers, setExamGridTaskNumbers] = useState<number[]>([]);
   const [examGridEditTaskNumber, setExamGridEditTaskNumber] = useState(1);
   const [examinationQuestions, setExaminationQuestions] = useState<any[]>([]);
@@ -10874,28 +10878,50 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             {/* Icon für Bearbeitung von Prüfungsdateien */}
             {item.type === 'file' && isCorrectionFile(item.name) && (
               materialFocus === 'exams' ? (
-                <Button
-                  size="small"
-                  startIcon={<EditIcon sx={{ fontSize: 12 }} />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditSingleQuestion(item);
-                  }}
-                  sx={{
-                    fontSize: '0.58rem',
-                    textTransform: 'none',
-                    py: 0,
-                    px: 0.6,
-                    minHeight: 20,
-                    ml: 0.5,
-                    bgcolor: '#fff3e0',
-                    color: '#ef6c00',
-                    border: '1px solid #ffcc80',
-                    '&:hover': { bgcolor: '#ffe0b2' },
-                  }}
+                <Box
+                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25, ml: 0.5 }}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  Bearbeiten
-                </Button>
+                  <Button
+                    size="small"
+                    startIcon={<EditIcon sx={{ fontSize: 12 }} />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditSingleQuestion(item);
+                    }}
+                    sx={{
+                      fontSize: '0.58rem',
+                      textTransform: 'none',
+                      py: 0,
+                      px: 0.6,
+                      minHeight: 20,
+                      bgcolor: '#fff3e0',
+                      color: '#ef6c00',
+                      border: '1px solid #ffcc80',
+                      '&:hover': { bgcolor: '#ffe0b2' },
+                    }}
+                  >
+                    Bearbeiten
+                  </Button>
+                  <IconButton
+                    size="small"
+                    aria-label="Prüfung löschen"
+                    title="Prüfung löschen"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleExamDeleteDialogOpen(item);
+                    }}
+                    sx={{
+                      p: 0.25,
+                      width: 22,
+                      height: 22,
+                      color: '#c62828',
+                      '&:hover': { bgcolor: 'rgba(198, 40, 40, 0.08)' },
+                    }}
+                  >
+                    <DeleteIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Box>
               ) : (
               <IconButton
                 size="small"
@@ -12047,6 +12073,86 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     } catch (error) {
       console.error('Fehler beim Erstellen der Prüfung:', error);
       showSnackbar('Fehler beim Erstellen der Prüfung', 'error');
+    }
+  };
+
+  const refreshAssignedFolderTrees = () => {
+    Object.keys(assignedFolders).forEach((groupId) => {
+      (assignedFolders[groupId] || []).forEach((folderPath: string) => {
+        fetchAssignedFolderContent(groupId, folderPath);
+      });
+    });
+    for (const path of workingReihenPaths) {
+      const gid = resolveGroupIdForReihe(path);
+      void fetchAssignedFolderContent(gid, path);
+    }
+  };
+
+  const handleExamDeleteDialogOpen = (item: { path?: string; name: string }) => {
+    const filePath = (item.path || '').replace(/\\/g, '/');
+    if (!filePath) {
+      showSnackbar('Kein Dateipfad für diese Prüfung.', 'error');
+      return;
+    }
+    setExamToDelete({ path: filePath, name: item.name });
+    setConfirmExamDeleteCheck(false);
+    setConfirmExamDeleteWord('');
+    setExamDeleteDialogOpen(true);
+  };
+
+  const handleExamDeleteDialogClose = () => {
+    setExamDeleteDialogOpen(false);
+    setExamToDelete(null);
+    setConfirmExamDeleteCheck(false);
+    setConfirmExamDeleteWord('');
+  };
+
+  const pathMatchesDeletedExamFamily = (openPath: string, deletedPath: string): boolean => {
+    const norm = (p: string) => p.replace(/\\/g, '/').toLowerCase();
+    const o = norm(openPath);
+    const d = norm(deletedPath);
+    if (o === d) return true;
+    const baseStem = (p: string) => {
+      const file = p.split('/').pop() || p;
+      const stem = file.replace(/\.html?$/i, '');
+      return stem.replace(/__[A-Z]$/i, '').toLowerCase();
+    };
+    const dir = (p: string) => {
+      const i = p.lastIndexOf('/');
+      return i >= 0 ? p.slice(0, i) : '';
+    };
+    return dir(o) === dir(d) && baseStem(o) === baseStem(d);
+  };
+
+  const handleDeleteExamination = async () => {
+    if (!examToDelete) return;
+    try {
+      const res = await fetch('/api/file-system-paths/delete-examination', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ filePath: examToDelete.path }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error || 'Löschen fehlgeschlagen');
+      }
+      const data = (await res.json()) as { deleted?: string[] };
+      const deletedNames = data.deleted?.length ? data.deleted.join(', ') : examToDelete.name;
+      if (
+        singleQuestionFilePath &&
+        pathMatchesDeletedExamFamily(singleQuestionFilePath, examToDelete.path)
+      ) {
+        setSingleQuestionModalOpen(false);
+        setExamGridBuilderOpen(false);
+        setSingleQuestionFilePath('');
+      }
+      refreshAssignedFolderTrees();
+      showSnackbar(`Prüfung gelöscht (${deletedNames}).`, 'success');
+    } catch (e) {
+      showSnackbar(e instanceof Error ? e.message : 'Löschen fehlgeschlagen', 'error');
+    } finally {
+      handleExamDeleteDialogClose();
     }
   };
   
@@ -18997,6 +19103,57 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 handleDeleteGroup();
               }
             }}>Löschen</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={examDeleteDialogOpen} onClose={handleExamDeleteDialogClose}>
+        <DialogTitle>Prüfung löschen</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Möchtest du die Prüfung{' '}
+            <strong>{examToDelete?.name || ''}</strong> wirklich löschen? Diese Aktion kann nicht
+            rückgängig gemacht werden.
+          </Typography>
+          {examToDelete?.name && !/__[A-Z]\.html?$/i.test(examToDelete.name) ? (
+            <Typography sx={{ color: 'error.main', mt: 1.5, fontSize: '0.875rem' }}>
+              Bei der Basis-Datei werden auch alle Prüfungsversionen (B, C, …) derselben Arbeit
+              gelöscht.
+            </Typography>
+          ) : null}
+          <Box sx={{ mt: 2 }}>
+            <label style={{ display: 'flex', alignItems: 'center' }}>
+              <input
+                type="checkbox"
+                checked={confirmExamDeleteCheck}
+                onChange={(e) => setConfirmExamDeleteCheck(e.target.checked)}
+                style={{ marginRight: 8 }}
+              />
+              Ich möchte diese Prüfung unwiderruflich löschen.
+            </label>
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" sx={{ mb: 1, color: 'error.main', fontWeight: 'bold' }}>
+                Zur Bestätigung: Gib „ENTFERNEN“ ein
+              </Typography>
+              <TextField
+                fullWidth
+                size="small"
+                value={confirmExamDeleteWord}
+                onChange={(e) => setConfirmExamDeleteWord(e.target.value)}
+                placeholder="ENTFERNEN eingeben"
+              />
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleExamDeleteDialogClose}>Abbrechen</Button>
+          <Button
+            onClick={() => void handleDeleteExamination()}
+            color="error"
+            variant="contained"
+            disabled={!(confirmExamDeleteCheck && confirmExamDeleteWord === 'ENTFERNEN')}
+          >
+            Löschen
+          </Button>
         </DialogActions>
       </Dialog>
 

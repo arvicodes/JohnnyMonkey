@@ -1598,6 +1598,111 @@ export class FileSystemPathController {
     }
   }
 
+  private static normalizeDeleteFilePath(filePathRaw: string): string {
+    let fp = filePathRaw.replace(/\\/g, '/').trim();
+    if (fp.startsWith('git-intern//Users/')) {
+      fp = fp.replace(
+        'git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/',
+        'git-intern/'
+      );
+    }
+    return fp;
+  }
+
+  private static assertDeletableUnderJmRoot(fullPath: string): string | null {
+    const jmRoot = StorageManager.resolveGitInternRelativePath('');
+    const normalizedFull = path.resolve(fullPath);
+    const normalizedRoot = path.resolve(jmRoot);
+    if (
+      normalizedFull !== normalizedRoot &&
+      !normalizedFull.startsWith(normalizedRoot + path.sep)
+    ) {
+      return 'Löschen außerhalb von J-M-Reihen nicht erlaubt';
+    }
+    return null;
+  }
+
+  private static isExamCorrectionHtmlFileName(fileName: string): boolean {
+    const stem = fileStemFromName(fileName);
+    return (
+      stem.startsWith('KA_') ||
+      stem.startsWith('KU_') ||
+      stem.startsWith('HÜ_') ||
+      stem.startsWith('HU_') ||
+      stem.startsWith('QZ_')
+    );
+  }
+
+  /**
+   * Prüfungs-HTML löschen (KA/KU/HU/QZ). Basis-Datei (A) löscht alle Varianten laut EXAM_VERSIONS.
+   */
+  static async deleteExamination(req: Request, res: Response) {
+    try {
+      const filePathRaw = (req.body?.filePath || req.query?.filePath) as string | undefined;
+      if (!filePathRaw || typeof filePathRaw !== 'string') {
+        return res.status(400).json({ error: 'filePath ist erforderlich' });
+      }
+
+      const fp = FileSystemPathController.normalizeDeleteFilePath(filePathRaw);
+      const fileName = path.basename(fp);
+      if (!/\.html?$/i.test(fileName) || !FileSystemPathController.isExamCorrectionHtmlFileName(fileName)) {
+        return res.status(403).json({
+          error: 'Nur Prüfungsdateien (KA_, KU_, HU_, QZ_) können gelöscht werden.',
+        });
+      }
+
+      const fullPath = StorageManager.resolveFilePath(fp);
+      if (!fullPath) {
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      }
+
+      const rootErr = FileSystemPathController.assertDeletableUnderJmRoot(fullPath);
+      if (rootErr) {
+        return res.status(403).json({ error: rootErr });
+      }
+
+      const stem = fileStemFromName(fileName);
+      const letter = versionLetterFromStem(stem);
+      const gitPathsToDelete: string[] = [];
+
+      if (letter === 'A') {
+        let html = '';
+        if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+          html = fs.readFileSync(fullPath, 'utf8');
+        }
+        const { letters } = parseExamVersionsMeta(html);
+        for (const L of letters) {
+          gitPathsToDelete.push(gitPathVariant(fp, L));
+        }
+      } else {
+        gitPathsToDelete.push(fp);
+      }
+
+      const deleted: string[] = [];
+      for (const gp of [...new Set(gitPathsToDelete)]) {
+        const resolved = StorageManager.resolveFilePath(gp);
+        if (!resolved) continue;
+        const rootCheck = FileSystemPathController.assertDeletableUnderJmRoot(resolved);
+        if (rootCheck) continue;
+        if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) continue;
+        fs.unlinkSync(resolved);
+        deleted.push(path.basename(resolved));
+        console.log('Deleted examination file:', resolved);
+      }
+
+      if (deleted.length === 0) {
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      }
+
+      res.json({ success: true, deleted });
+    } catch (error: any) {
+      console.error('Error deleting examination:', error);
+      res.status(500).json({
+        error: 'Prüfung konnte nicht gelöscht werden: ' + (error.message || ''),
+      });
+    }
+  }
+
   /**
    * Load whiteboard file (.wb) as JSON
    */
