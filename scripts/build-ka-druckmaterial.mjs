@@ -25,6 +25,8 @@ const {
 
 const { EXAM_NUMBER_LINE_CSS, EXAM_NUMBER_LINE_JS } = await import(pathToFileURL(flowLib).href);
 const { normalizeAnswerJsSource } = await import(pathToFileURL(normalizeLib).href);
+const collectLib = path.join(__dirname, '../client/src/lib/examCollectAnswersJs.ts');
+const { examCollectAnswersJsSource } = await import(pathToFileURL(collectLib).href);
 const { applyVersionsToExamHtml, patchKaKeyInHtml, variantStem, baseStemFromStem, fileStemFromName } =
   await import(pathToFileURL(examVerLib).href);
 
@@ -136,6 +138,17 @@ function applyKaPatches(html, { task1, task2, task3, task4, allAnswers }, versio
   html = html.replace(
     /function normalizeAnswer\(raw\) \{[\s\S]*?\n        \}/,
     normalizeAnswerJsSource(),
+  );
+
+  if (!html.includes('function collectExamAnswers')) {
+    html = html.replace(
+      /(\s+\/\/ Abgeben-Funktion\s+async function submitTest)/,
+      `${examCollectAnswersJsSource()}\n$1`,
+    );
+  }
+  html = html.replace(
+    /\/\/ Sammle alle Antworten\s+const answers = \{\};[\s\S]*?radioNames\.forEach\(name => \{[\s\S]*?\}\);\s*/g,
+    'const answers = collectExamAnswers();\n            ',
   );
 
   html = html.replace(

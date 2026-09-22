@@ -585,6 +585,7 @@ export const EXAM_NUMBER_LINE_JS = `
                     var inp = document.createElement('input');
                     inp.type = 'text';
                     inp.className = 'exam-nl-fixed-input';
+                    inp.setAttribute('data-answer-id', id);
                     inp.style.left = markerPct + '%';
                     inp.autocomplete = 'off';
                     var hidden = document.getElementById(id);

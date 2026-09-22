@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <!-- EXAM_VERSIONS {"letters":["A","B"]} -->
+    <!-- EXAM_VERSIONS {"letters":["A"]} -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Klassenarbeit 1: Natürliche Zahlen</title>
@@ -10,7 +10,7 @@
         (function() {
             try {
                 const KA_KEY = 'KA_Klassenarbeit 1: Natürliche Zahlen';
-        const EXAM_VERSION_LETTERS = ['A', 'B'];
+        const EXAM_VERSION_LETTERS = ['A'];
                 const isTeacher = localStorage.getItem('teacherId') !== null;
                 
                 // Wenn Lehrer, keine Sperre
@@ -1375,7 +1375,7 @@
             <button type="button" class="submit-button-large" id="submitBtnBottom">Fertig.<br>Jetzt abgeben!</button>
         </div>
     </aside>
-    <div class="exam-paper exam-multi-version">
+    <div class="exam-paper">
     <div class="exam-version-letter" id="examVersionLetter" aria-hidden="true">A</div>
     <div class="header">
         <div class="header-brand-row">
@@ -2140,41 +2140,43 @@
             }, 3000);
         }
 
+        function flushExamNumberLineDrafts() {
+            document.querySelectorAll('.exam-nl-fixed-input').forEach(function (inp) {
+                var id = inp.getAttribute('data-answer-id');
+                if (!id) return;
+                var hidden = document.getElementById(id);
+                if (hidden) hidden.value = (inp.value || '').trim();
+            });
+        }
+        function collectExamAnswers() {
+            flushExamNumberLineDrafts();
+            const answers = {};
+            document.querySelectorAll('input[type="text"], textarea, input[type="number"]').forEach(function (input) {
+                const id = input.id;
+                if (id) answers[id] = input.value || '';
+            });
+            document.querySelectorAll('input[type="hidden"][id^="a"]').forEach(function (input) {
+                const id = input.id;
+                if (id) answers[id] = input.value || '';
+            });
+            const radioNames = new Set();
+            document.querySelectorAll('input[type="radio"]').forEach(function (radio) {
+                if (radio.name) radioNames.add(radio.name);
+            });
+            radioNames.forEach(function (name) {
+                const selected = document.querySelector('input[name="' + name + '"]:checked');
+                if (selected) answers[name] = selected.value || '';
+            });
+            return answers;
+        }
+
         // Abgeben-Funktion
         async function submitTest() {
             // Schüler-Modus: Abgabe durchführen
             updateSubmitButtons('Wird abgegeben...', true);
             clearInterval(timerInterval);
             
-            // Sammle alle Antworten
-            const answers = {};
-            // Text-Inputs und Textareas
-            const inputs = document.querySelectorAll('input[type="text"], textarea');
-            inputs.forEach(input => {
-                const id = input.id;
-                if (id) {
-                    answers[id] = input.value || '';
-                }
-            });
-            // Number-Inputs (Koordinaten)
-            const numberInputs = document.querySelectorAll('input[type="number"]');
-            numberInputs.forEach(input => {
-                const id = input.id;
-                if (id) {
-                    answers[id] = input.value || '';
-                }
-            });
-            // Radio-Buttons
-            const radioNames = new Set();
-            document.querySelectorAll('input[type="radio"]').forEach(radio => {
-                if (radio.name) radioNames.add(radio.name);
-            });
-            radioNames.forEach(name => {
-                const selected = document.querySelector(`input[name="${name}"]:checked`);
-                if (selected) {
-                    answers[name] = selected.value || '';
-                }
-            });
+            const answers = collectExamAnswers();
             
             // Berechne Punkte
             const points = calculatePoints();
@@ -2225,25 +2227,7 @@
             updateSubmitButtons('Wird automatisch abgegeben...', true);
             clearInterval(timerInterval);
             
-            // Sammle alle Antworten
-                    const answers = {};
-                    const inputs = document.querySelectorAll('input[type="text"], textarea');
-                    inputs.forEach(input => {
-                        const id = input.id;
-                        if (id) {
-                            answers[id] = input.value || '';
-                        }
-                    });
-                    const radioNames = new Set();
-                    document.querySelectorAll('input[type="radio"]').forEach(radio => {
-                        if (radio.name) radioNames.add(radio.name);
-                    });
-                    radioNames.forEach(name => {
-                        const selected = document.querySelector(`input[name="${name}"]:checked`);
-                        if (selected) {
-                            answers[name] = selected.value || '';
-                        }
-                    });
+                    const answers = collectExamAnswers();
                     
                     // Berechne Punkte
                     const points = calculatePoints();
@@ -2640,6 +2624,7 @@
                     var inp = document.createElement('input');
                     inp.type = 'text';
                     inp.className = 'exam-nl-fixed-input';
+                    inp.setAttribute('data-answer-id', id);
                     inp.style.left = markerPct + '%';
                     inp.autocomplete = 'off';
                     var hidden = document.getElementById(id);
