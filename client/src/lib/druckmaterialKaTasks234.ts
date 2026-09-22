@@ -162,7 +162,10 @@ export function druckmaterialKlassenarbeit3(): ExamGridTaskSpec {
             text:
               '„Ich habe schon bald Geburtstag. Nur noch wenige Tage! Im Moment bin ich gerade einmal 100000002 Jahre alt. Aber am 111102. 10012. 111111010102 ist es endlich so weit. Dann feiere ich einen robotertastischen Geburtstag und werde ein Jahr älter!“',
           },
-          { type: 'p', text: 'Entschlüssle die Binärzahlen und schreibe als Dezimalzahl:' },
+          {
+            type: 'p',
+            text: '<strong>Entschlüssle</strong> die Binärzahlen und schreibe als Dezimalzahl:',
+          },
           {
             type: 'field',
             label: 'Wie alt unser Roboter wird:',
@@ -200,7 +203,7 @@ export function druckmaterialKlassenarbeit3(): ExamGridTaskSpec {
           {
             type: 'p',
             text:
-              '1) Nenne alle Ziffern, die das Alien in seinem Zahlensystem überhaupt benutzen kann:',
+              '1) <strong>Nenne</strong> alle Ziffern, die das Alien in seinem Zahlensystem überhaupt benutzen kann:',
           },
           {
             type: 'field',
@@ -212,7 +215,7 @@ export function druckmaterialKlassenarbeit3(): ExamGridTaskSpec {
           {
             type: 'p',
             text:
-              '2) Das Oktalsystem basiert auf der Zahl 8. Trage die Zahl 12 auch in diese Stellenwerttafel ein:',
+              '2) Das Oktalsystem basiert auf der Zahl 8. <strong>Trage</strong> die Zahl 12 auch in diese Stellenwerttafel ein:',
           },
           {
             type: 'place-table',
@@ -316,12 +319,19 @@ export function druckmaterialKlassenarbeit4(): ExamGridTaskSpec {
           'Klicke auf einen roten Pfeil und trage die abgelesene Geschwindigkeit ein. Wähle „Pferd“ oder „Biene“, klicke auf den Zahlenstrahl und beschrifte den Punkt.',
         min: 0,
         max: 72,
-        step: 3,
+        step: 4,
         bg: druckKaImageUrl('image5.jpeg'),
+        bgAspect: 1602 / 109,
+        axis: [
+          { value: 0, pct: 0.37 },
+          { value: 24, pct: 29.0 },
+          { value: 48, pct: 58.1 },
+          { value: 72, pct: 87.1 },
+        ],
         fixed: [
-          { value: 12, answerId: 'a4c1', solution: '12' },
-          { value: 24, answerId: 'a4c2', solution: '24' },
-          { value: 63, answerId: 'a4c3', solution: '63' },
+          { value: 12, answerId: 'a4c1', solution: '12', positionPct: 9.99 },
+          { value: 24, answerId: 'a4c2', solution: '24', positionPct: 31.84 },
+          { value: 63, answerId: 'a4c3', solution: '63', positionPct: 65.92 },
         ],
         chips: [
           { label: 'Pferd', value: 70, answerId: 'a4c4', solution: '70' },
@@ -347,12 +357,19 @@ export function druckmaterialKlassenarbeit4(): ExamGridTaskSpec {
           'Klicke auf einen roten Pfeil und trage die Besucherzahl ein. Wähle „gestern“ oder „heute“, klicke auf den Zahlenstrahl und beschrifte den Punkt.',
         min: 50000,
         max: 56000,
-        step: 100,
+        step: 20,
         bg: druckKaImageUrl('image6.jpeg'),
+        bgAspect: 1593 / 105,
+        axis: [
+          { value: 50000, pct: 6.6 },
+          { value: 52000, pct: 43.8 },
+          { value: 54000, pct: 80.7 },
+          { value: 56000, pct: 97.5 },
+        ],
         fixed: [
-          { value: 50800, answerId: 'a4d1', solution: '50800' },
-          { value: 52600, answerId: 'a4d2', solution: '52600' },
-          { value: 54300, answerId: 'a4d3', solution: '54300' },
+          { value: 50800, answerId: 'a4d1', solution: '50800', positionPct: 17.26 },
+          { value: 52600, answerId: 'a4d2', solution: '52600', positionPct: 60.95 },
+          { value: 54300, answerId: 'a4d3', solution: '54300', positionPct: 81.61 },
         ],
         chips: [
           { label: 'gestern', value: 52400, answerId: 'a4d4', solution: '52400', display: 'gestern (52 400)' },

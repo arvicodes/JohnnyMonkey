@@ -347,6 +347,23 @@ export const EXAM_NUMBER_LINE_CSS = `
             background-size: 100% auto;
             cursor: crosshair;
         }
+        .exam-nl-track.exam-nl-track--has-bg {
+            height: auto;
+            border-bottom: none;
+            aspect-ratio: 1602 / 109;
+            min-height: 72px;
+            max-height: 140px;
+        }
+        .exam-nl-track--has-bg .exam-nl-tick,
+        .exam-nl-track--has-bg .exam-nl-tick-label { display: none; }
+        .exam-nl-track--has-bg .exam-nl-fixed {
+            color: transparent;
+            font-size: 32px;
+            bottom: 18%;
+            padding: 0 10px;
+        }
+        .exam-nl-track--has-bg .exam-nl-fixed.exam-nl-fixed-active { color: rgba(200, 0, 0, 0.45); }
+        .exam-nl-track--has-bg .exam-nl-fixed-input { bottom: 42%; }
         .exam-nl-tick { position: absolute; bottom: 0; width: 2px; height: 12px; background: #222; transform: translateX(-50%); pointer-events: none; }
         .exam-nl-tick-label { position: absolute; bottom: -20px; transform: translateX(-50%); font-size: 10px; white-space: nowrap; pointer-events: none; }
         .exam-nl-fixed {
@@ -379,24 +396,68 @@ export const EXAM_NUMBER_LINE_JS = `
                 var track = root.querySelector('.exam-nl-track');
                 if (!track) return;
                 var bg = root.getAttribute('data-bg');
-                if (bg) track.style.backgroundImage = 'url(' + bg + ')';
+                if (bg) {
+                    track.style.backgroundImage = 'url(' + bg + ')';
+                    track.classList.add('exam-nl-track--has-bg');
+                    var aspect = parseFloat(root.getAttribute('data-bg-aspect') || '0');
+                    if (aspect > 0) track.style.aspectRatio = String(aspect);
+                }
+                function parseAxis() {
+                    var raw = root.getAttribute('data-axis') || '';
+                    var pts = raw.split(',').map(function (pair) {
+                        var bits = pair.split(':');
+                        return { value: parseFloat(bits[0]), pct: parseFloat(bits[1]) };
+                    }).filter(function (p) {
+                        return !Number.isNaN(p.value) && !Number.isNaN(p.pct);
+                    });
+                    pts.sort(function (a, b) { return a.value - b.value; });
+                    return pts;
+                }
+                var axis = parseAxis();
                 function snap(v) {
                     if (!step) return v;
                     return Math.round((v - min) / step) * step + min;
                 }
                 function valueToPct(v) {
+                    if (axis.length >= 2) {
+                        if (v <= axis[0].value) return axis[0].pct;
+                        for (var i = 1; i < axis.length; i++) {
+                            var hi = axis[i];
+                            var lo = axis[i - 1];
+                            if (v <= hi.value) {
+                                var t = (v - lo.value) / (hi.value - lo.value);
+                                return lo.pct + t * (hi.pct - lo.pct);
+                            }
+                        }
+                        return axis[axis.length - 1].pct;
+                    }
                     if (max === min) return 0;
                     return ((v - min) / (max - min)) * 100;
                 }
                 function pctToValue(pct) {
+                    if (axis.length >= 2) {
+                        if (pct <= axis[0].pct) return snap(axis[0].value);
+                        for (var j = 1; j < axis.length; j++) {
+                            var hiA = axis[j];
+                            var loA = axis[j - 1];
+                            if (pct <= hiA.pct) {
+                                var t2 = (pct - loA.pct) / (hiA.pct - loA.pct);
+                                var rawA = loA.value + t2 * (hiA.value - loA.value);
+                                return snap(Math.max(min, Math.min(max, rawA)));
+                            }
+                        }
+                        return snap(axis[axis.length - 1].value);
+                    }
                     var raw = min + (pct / 100) * (max - min);
                     return snap(Math.max(min, Math.min(max, raw)));
                 }
-                var majorLabels = [];
-                if (max <= 100) {
-                    majorLabels = [0, 24, 48, 72].filter(function (x) { return x >= min && x <= max; });
-                } else {
-                    majorLabels = [50000, 52000, 54000, 56000].filter(function (x) { return x >= min && x <= max; });
+                var majorLabels = axis.length ? axis.map(function (p) { return p.value; }) : [];
+                if (!majorLabels.length) {
+                    if (max <= 100) {
+                        majorLabels = [0, 24, 48, 72].filter(function (x) { return x >= min && x <= max; });
+                    } else {
+                        majorLabels = [50000, 52000, 54000, 56000].filter(function (x) { return x >= min && x <= max; });
+                    }
                 }
                 majorLabels.forEach(function (v) {
                     var tick = document.createElement('div');
@@ -419,9 +480,11 @@ export const EXAM_NUMBER_LINE_JS = `
                     if (bits.length < 2) return;
                     var val = parseFloat(bits[0]);
                     var id = bits[1];
+                    var markerPct = bits.length >= 3 ? parseFloat(bits[2]) : valueToPct(val);
+                    if (Number.isNaN(markerPct)) markerPct = valueToPct(val);
                     var marker = document.createElement('div');
                     marker.className = 'exam-nl-fixed';
-                    marker.style.left = valueToPct(val) + '%';
+                    marker.style.left = markerPct + '%';
                     marker.textContent = '▼';
                     marker.title = 'Pfeil ablesen';
                     marker.addEventListener('click', function (e) {
@@ -432,7 +495,7 @@ export const EXAM_NUMBER_LINE_JS = `
                         var inp = document.createElement('input');
                         inp.type = 'text';
                         inp.className = 'exam-nl-fixed-input';
-                        inp.style.left = valueToPct(val) + '%';
+                        inp.style.left = markerPct + '%';
                         inp.autocomplete = 'off';
                         var hidden = document.getElementById(id);
                         if (hidden && hidden.value) inp.value = hidden.value;

@@ -145,7 +145,10 @@ export type GridSubsection =
       max: number;
       step: number;
       bg: string;
-      fixed: { value: number; answerId: string; solution: string }[];
+      /** Kalibrierung: Wert → Position in % der Bildbreite (passend zum Hintergrundbild). */
+      axis?: { value: number; pct: number }[];
+      bgAspect?: number;
+      fixed: { value: number; answerId: string; solution: string; positionPct?: number }[];
       chips: { label: string; value: number; answerId: string; solution: string; display?: string }[];
     } & SubImage
   | {
@@ -647,7 +650,16 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       })
       .join('');
   } else if (sub.kind === 'number-line') {
-    const fixedAttr = sub.fixed.map((f) => `${f.value}:${f.answerId}`).join(',');
+    const fixedAttr = sub.fixed
+      .map((f) =>
+        f.positionPct != null
+          ? `${f.value}:${f.answerId}:${f.positionPct}`
+          : `${f.value}:${f.answerId}`,
+      )
+      .join(',');
+    const axisAttr = (sub.axis ?? [])
+      .map((a) => `${a.value}:${a.pct}`)
+      .join(',');
     const chipsAttr = sub.chips.map((c) => `${c.label}:${c.value}:${c.answerId}`).join(',');
     sub.fixed.forEach((f) => {
       const answers = parseSolutionAlternatives(f.solution, 'number');
@@ -666,11 +678,13 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
     const hidden = [...sub.fixed, ...sub.chips]
       .map((x) => `<input type="hidden" id="${x.answerId}" value="">`)
       .join('');
+    const aspectAttr = sub.bgAspect ? ` data-bg-aspect="${sub.bgAspect}"` : '';
+    const axisAttrHtml = axisAttr ? ` data-axis="${escapeHtml(axisAttr)}"` : '';
     body = `<div class="exam-number-line-interactive"
                  data-min="${sub.min}" data-max="${sub.max}" data-step="${sub.step}"
                  data-bg="${escapeHtml(sub.bg)}"
                  data-fixed="${escapeHtml(fixedAttr)}"
-                 data-chips="${escapeHtml(chipsAttr)}">
+                 data-chips="${escapeHtml(chipsAttr)}"${axisAttrHtml}${aspectAttr}>
                 <p class="exam-sort-hint">${escapeHtml(sub.hint)}</p>
                 <div class="exam-nl-chip-bar">${chipButtons}</div>
                 <div class="exam-nl-stage"><div class="exam-nl-track" role="img" aria-label="Zahlenstrahl"></div></div>

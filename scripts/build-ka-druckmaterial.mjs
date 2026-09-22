@@ -97,6 +97,21 @@ if (!html.includes('function setupExamNumberLines')) {
     /setupExamSortDrag\(\);/,
     'setupExamSortDrag();\n        setupExamNumberLines();',
   );
+} else {
+  html = html.replace(
+    /\n        function setupExamNumberLines\(\) \{[\s\S]*?\n        \}\n/,
+    `\n${EXAM_NUMBER_LINE_JS}\n`,
+  );
+}
+
+const needsNlCss =
+  !html.includes('.exam-nl-track--has-bg') || !html.includes('parseAxis');
+if (needsNlCss && html.includes('function setupExamNumberLines')) {
+  html = html.replace(
+    /\n        \.exam-roman-table[\s\S]*?\.exam-nl-place-chip\.exam-sort-chip-selected[\s\S]*?\n/,
+    '\n',
+  );
+  html = html.replace(/    <\/style>/, `${EXAM_NUMBER_LINE_CSS}\n    </style>`);
 }
 
 html = html.replace(

@@ -1202,6 +1202,32 @@
         .exam-roman-example-pair:last-child { border-right: none; }
         .exam-roman-ex-rom { font-family: Georgia, 'Times New Roman', serif; }
         .exam-roman-ex-dec { font-weight: normal; }
+
+
+        .exam-life-dates { margin: 8px 0 12px; }
+        .exam-life-dates--with-portrait { display: grid; grid-template-columns: minmax(88px, 26%) 1fr; gap: 12px; align-items: start; }
+        .exam-life-dates-portrait { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; }
+        .exam-life-dates-cards { display: flex; flex-direction: column; gap: 10px; }
+        .exam-life-dates-cards-only { display: flex; flex-wrap: wrap; gap: 10px; }
+        .exam-life-dates-cards-only .exam-life-date-card { flex: 1 1 220px; }
+        .exam-life-date-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; background: #fafafa; }
+        .exam-life-date-name { font-weight: bold; margin: 0 0 4px; font-size: 14px; }
+        .exam-life-date-roman { font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px; line-height: 1.35; color: #333; }
+        .exam-life-date-label { display: block; font-size: 11px; color: #555; margin-bottom: 4px; }
+        .exam-life-date-input { max-width: 100%; }
+        .exam-chart-figure { margin: 6px 0 10px; }
+        .exam-chart-figure img { width: 100%; height: auto; display: block; }
+        .exam-chart-figure--compact { max-width: min(48%, 380px); }
+        .exam-answer-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; }
+        .exam-answer-row-label { flex: 1 1 200px; font-size: 13px; margin: 0; }
+        .exam-answer-row-input { flex: 1 1 160px; max-width: 100%; }
+        .exam-subsection-media .exam-answer-row { margin-top: 4px; }
+        .exam-cloze-line .exam-cloze-gap { min-width: 8em; width: 8em; max-width: 100%; margin: 0 2px; }
+        .exam-roman-example-band { display: flex; flex-wrap: wrap; gap: 0; max-width: 420px; margin: 6px 0 0; border: 1px solid #d8d4cb; border-bottom: none; background: #f5f2eb; }
+        .exam-roman-example-pair { flex: 1 1 33%; display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-right: 1px solid #d8d4cb; font-weight: bold; }
+        .exam-roman-example-pair:last-child { border-right: none; }
+        .exam-roman-ex-rom { font-family: Georgia, 'Times New Roman', serif; }
+        .exam-roman-ex-dec { font-weight: normal; }
         .exam-roman-table { max-width: 420px; margin: 0 0 10px; border-collapse: collapse; background: #f5f2eb; }
         .exam-roman-table th, .exam-roman-table td { border: 1px solid #d8d4cb; padding: 8px 12px; text-align: center; }
         .exam-roman-table thead th { background: #ebe6dc; font-weight: bold; font-size: 13px; }
@@ -1232,6 +1258,23 @@
             background-size: 100% auto;
             cursor: crosshair;
         }
+        .exam-nl-track.exam-nl-track--has-bg {
+            height: auto;
+            border-bottom: none;
+            aspect-ratio: 1602 / 109;
+            min-height: 72px;
+            max-height: 140px;
+        }
+        .exam-nl-track--has-bg .exam-nl-tick,
+        .exam-nl-track--has-bg .exam-nl-tick-label { display: none; }
+        .exam-nl-track--has-bg .exam-nl-fixed {
+            color: transparent;
+            font-size: 32px;
+            bottom: 18%;
+            padding: 0 10px;
+        }
+        .exam-nl-track--has-bg .exam-nl-fixed.exam-nl-fixed-active { color: rgba(200, 0, 0, 0.45); }
+        .exam-nl-track--has-bg .exam-nl-fixed-input { bottom: 42%; }
         .exam-nl-tick { position: absolute; bottom: 0; width: 2px; height: 12px; background: #222; transform: translateX(-50%); pointer-events: none; }
         .exam-nl-tick-label { position: absolute; bottom: -20px; transform: translateX(-50%); font-size: 10px; white-space: nowrap; pointer-events: none; }
         .exam-nl-fixed {
@@ -1460,17 +1503,17 @@
             </div>
         </div>
         <div class="task-content exam-task-stack">
-<div class="exam-subsection exam-subsection-has-image" data-sub-kind="rich-part" data-sub-id="k3-a" data-exam-spec="%7B%22id%22%3A%22k3-a%22%2C%22letter%22%3A%22A%22%2C%22title%22%3A%22Geburtstagsr%C3%A4tsel%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22rich-part%22%2C%22image%22%3A%7B%22src%22%3A%22%2Fapi%2Ffile-system-paths%2Fread-image%3FfilePath%3Dgit-intern%252FMathe%252FKlasse%25205%252FKap%25201%2520-%2520Nat%25C3%25BCrliche%2520Zahlen%2520und%2520Gr%25C3%25B6%25C3%259Fen%252FKA1-Druckmaterial%252Fimage2.png%22%2C%22align%22%3A%22left%22%7D%2C%22blocks%22%3A%5B%7B%22type%22%3A%22quote%22%2C%22text%22%3A%22%E2%80%9EIch%20habe%20schon%20bald%20Geburtstag.%20Nur%20noch%20wenige%20Tage!%20Im%20Moment%20bin%20ich%20gerade%20einmal%20100000002%20Jahre%20alt.%20Aber%20am%20111102.%2010012.%20111111010102%20ist%20es%20endlich%20so%20weit.%20Dann%20feiere%20ich%20einen%20robotertastischen%20Geburtstag%20und%20werde%20ein%20Jahr%20%C3%A4lter!%E2%80%9C%22%7D%2C%7B%22type%22%3A%22p%22%2C%22text%22%3A%22Entschl%C3%BCssle%20die%20Bin%C3%A4rzahlen%20und%20schreibe%20als%20Dezimalzahl%3A%22%7D%2C%7B%22type%22%3A%22field%22%2C%22label%22%3A%22Wie%20alt%20unser%20Roboter%20wird%3A%22%2C%22answerId%22%3A%22a3a%22%2C%22solution%22%3A%2266%22%2C%22wide%22%3Atrue%7D%2C%7B%22type%22%3A%22field%22%2C%22label%22%3A%22Das%20Datum%20seines%20Geburtstags%3A%22%2C%22answerId%22%3A%22a3b%22%2C%22solution%22%3A%2230.11.2010%22%2C%22wide%22%3Atrue%7D%5D%7D"><div class="exam-subsection-media exam-subsection-media-left"><img class="exam-subsection-image" src="/api/file-system-paths/read-image?filePath=git-intern%2FMathe%2FKlasse%205%2FKap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen%2FKA1-Druckmaterial%2Fimage2.png" alt="" loading="lazy"><div class="exam-subsection-media-body"><div class="exam-subsection-title"><span class="item-label">A)</span> Geburtstagsrätsel</div><p class="exam-quote">„Ich habe schon bald Geburtstag. Nur noch wenige Tage! Im Moment bin ich gerade einmal 100000002 Jahre alt. Aber am 111102. 10012. 111111010102 ist es endlich so weit. Dann feiere ich einen robotertastischen Geburtstag und werde ein Jahr älter!“</p><p>Entschlüssle die Binärzahlen und schreibe als Dezimalzahl:</p><div class="exam-answer-row item input-group full-width">
+<div class="exam-subsection exam-subsection-has-image" data-sub-kind="rich-part" data-sub-id="k3-a" data-exam-spec="%7B%22id%22%3A%22k3-a%22%2C%22letter%22%3A%22A%22%2C%22title%22%3A%22Geburtstagsr%C3%A4tsel%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22rich-part%22%2C%22image%22%3A%7B%22src%22%3A%22%2Fapi%2Ffile-system-paths%2Fread-image%3FfilePath%3Dgit-intern%252FMathe%252FKlasse%25205%252FKap%25201%2520-%2520Nat%25C3%25BCrliche%2520Zahlen%2520und%2520Gr%25C3%25B6%25C3%259Fen%252FKA1-Druckmaterial%252Fimage2.png%22%2C%22align%22%3A%22left%22%7D%2C%22blocks%22%3A%5B%7B%22type%22%3A%22quote%22%2C%22text%22%3A%22%E2%80%9EIch%20habe%20schon%20bald%20Geburtstag.%20Nur%20noch%20wenige%20Tage!%20Im%20Moment%20bin%20ich%20gerade%20einmal%20100000002%20Jahre%20alt.%20Aber%20am%20111102.%2010012.%20111111010102%20ist%20es%20endlich%20so%20weit.%20Dann%20feiere%20ich%20einen%20robotertastischen%20Geburtstag%20und%20werde%20ein%20Jahr%20%C3%A4lter!%E2%80%9C%22%7D%2C%7B%22type%22%3A%22p%22%2C%22text%22%3A%22%3Cstrong%3EEntschl%C3%BCssle%3C%2Fstrong%3E%20die%20Bin%C3%A4rzahlen%20und%20schreibe%20als%20Dezimalzahl%3A%22%7D%2C%7B%22type%22%3A%22field%22%2C%22label%22%3A%22Wie%20alt%20unser%20Roboter%20wird%3A%22%2C%22answerId%22%3A%22a3a%22%2C%22solution%22%3A%2266%22%2C%22wide%22%3Atrue%7D%2C%7B%22type%22%3A%22field%22%2C%22label%22%3A%22Das%20Datum%20seines%20Geburtstags%3A%22%2C%22answerId%22%3A%22a3b%22%2C%22solution%22%3A%2230.11.2010%22%2C%22wide%22%3Atrue%7D%5D%7D"><div class="exam-subsection-media exam-subsection-media-left"><img class="exam-subsection-image" src="/api/file-system-paths/read-image?filePath=git-intern%2FMathe%2FKlasse%205%2FKap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen%2FKA1-Druckmaterial%2Fimage2.png" alt="" loading="lazy"><div class="exam-subsection-media-body"><div class="exam-subsection-title"><span class="item-label">A)</span> Geburtstagsrätsel</div><p class="exam-quote">„Ich habe schon bald Geburtstag. Nur noch wenige Tage! Im Moment bin ich gerade einmal 100000002 Jahre alt. Aber am 111102. 10012. 111111010102 ist es endlich so weit. Dann feiere ich einen robotertastischen Geburtstag und werde ein Jahr älter!“</p><p><strong>Entschlüssle</strong> die Binärzahlen und schreibe als Dezimalzahl:</p><div class="exam-answer-row item input-group full-width">
 <label class="exam-answer-row-label" for="a3a">Wie alt unser Roboter wird:</label>
 <input type="text" id="a3a" class="blank-wide exam-answer-row-input" autocomplete="off">
 </div><div class="exam-answer-row item input-group full-width">
 <label class="exam-answer-row-label" for="a3b">Das Datum seines Geburtstags:</label>
 <input type="text" id="a3b" class="blank-wide exam-answer-row-input" autocomplete="off">
 </div></div></div></div>
-<div class="exam-subsection exam-subsection-has-image" data-sub-kind="rich-part" data-sub-id="k3-b" data-exam-spec="%7B%22id%22%3A%22k3-b%22%2C%22letter%22%3A%22B%22%2C%22title%22%3A%22Besucher%20aus%20der%20Oktalwelt%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22rich-part%22%2C%22image%22%3A%7B%22src%22%3A%22%2Fapi%2Ffile-system-paths%2Fread-image%3FfilePath%3Dgit-intern%252FMathe%252FKlasse%25205%252FKap%25201%2520-%2520Nat%25C3%25BCrliche%2520Zahlen%2520und%2520Gr%25C3%25B6%25C3%259Fen%252FKA1-Druckmaterial%252Fimage3.png%22%2C%22align%22%3A%22right%22%7D%2C%22blocks%22%3A%5B%7B%22type%22%3A%22quote%22%2C%22text%22%3A%22%E2%80%9EWo%20bin%20ich%20denn%20hier%20gelandet%3F%20Was%20habt%20ihr%20denn%20f%C3%BCr%20komische%20Zahlen%3F%20Bei%20mir%20zu%20Hause%20rechnen%20wir%20ganz%20anders.%20Wir%20benutzen%20das%20Oktalsystem.%20Das%20beruht%20auf%20der%20Zahl%208.%E2%80%9C%22%7D%2C%7B%22type%22%3A%22quote%22%2C%22text%22%3A%22%E2%80%9EIn%20meiner%20Welt%20bin%20ich%2015%20Jahre%20alt.%20Wie%20alt%20bin%20ich%20denn%20bei%20euch%20Menschen%3F%E2%80%9C%22%7D%2C%7B%22type%22%3A%22p%22%2C%22text%22%3A%22Hilf%20dem%20kleinen%20Alien%2C%20sein%20Alter%20im%20Dezimalsystem%20herauszufinden.%22%7D%2C%7B%22type%22%3A%22p%22%2C%22text%22%3A%221)%20Nenne%20alle%20Ziffern%2C%20die%20das%20Alien%20in%20seinem%20Zahlensystem%20%C3%BCberhaupt%20benutzen%20kann%3A%22%7D%2C%7B%22type%22%3A%22field%22%2C%22label%22%3A%22%22%2C%22answerId%22%3A%22a3c%22%2C%22solution%22%3A%220%2C%201%2C%202%2C%203%2C%204%2C%205%2C%206%2C%207%22%2C%22wide%22%3Atrue%7D%2C%7B%22type%22%3A%22p%22%2C%22text%22%3A%222)%20Das%20Oktalsystem%20basiert%20auf%20der%20Zahl%208.%20Trage%20die%20Zahl%2012%20auch%20in%20diese%20Stellenwerttafel%20ein%3A%22%7D%2C%7B%22type%22%3A%22place-table%22%2C%22headers%22%3A%5B%22512%22%2C%2264%22%2C%228%22%2C%221%22%5D%2C%22cells%22%3A%5B%7B%22answerId%22%3A%22a3e1%22%2C%22solution%22%3A%220%22%7D%2C%7B%22answerId%22%3A%22a3e2%22%2C%22solution%22%3A%220%22%7D%2C%7B%22answerId%22%3A%22a3e3%22%2C%22solution%22%3A%221%22%7D%2C%7B%22answerId%22%3A%22a3e4%22%2C%22solution%22%3A%224%22%7D%5D%7D%2C%7B%22type%22%3A%22inline-field%22%2C%22before%22%3A%22Das%20Alien%20ist%20bei%20uns%20Menschen%20also%20%22%2C%22after%22%3A%22%20Jahre%20alt.%22%2C%22answerId%22%3A%22a3d%22%2C%22solution%22%3A%2213%22%7D%2C%7B%22type%22%3A%22help%22%2C%22title%22%3A%22Kleine%20Hilfestellung%3A%22%2C%22paragraphs%22%3A%5B%22Das%20Dezimalsystem%20basiert%20auf%20der%20Zahl%2010.%20In%20der%20Stellenwerttafel%20tragen%20wir%20die%2012%20wie%20folgt%20ein%3A%22%2C%22Das%20Bin%C3%A4rsystem%20basiert%20auf%20der%20Zahl%202.%20In%20der%20Stellenwerttafel%20tragen%20wir%20die%2012%20wie%20folgt%20ein%3A%22%5D%2C%22tables%22%3A%5B%7B%22headers%22%3A%5B%2210000%22%2C%221000%22%2C%22100%22%2C%2210%22%2C%221%22%5D%2C%22row%22%3A%5B%221%22%2C%220%22%2C%220%22%2C%221%22%2C%222%22%5D%7D%2C%7B%22headers%22%3A%5B%228%22%2C%224%22%2C%222%22%2C%221%22%5D%2C%22row%22%3A%5B%221%22%2C%221%22%2C%220%22%2C%220%22%5D%7D%5D%7D%5D%7D"><div class="exam-subsection-media exam-subsection-media-right"><div class="exam-subsection-media-body"><div class="exam-subsection-title"><span class="item-label">B)</span> Besucher aus der Oktalwelt</div><p class="exam-quote">„Wo bin ich denn hier gelandet? Was habt ihr denn für komische Zahlen? Bei mir zu Hause rechnen wir ganz anders. Wir benutzen das Oktalsystem. Das beruht auf der Zahl 8.“</p><p class="exam-quote">„In meiner Welt bin ich 15 Jahre alt. Wie alt bin ich denn bei euch Menschen?“</p><p>Hilf dem kleinen Alien, sein Alter im Dezimalsystem herauszufinden.</p><p>1) Nenne alle Ziffern, die das Alien in seinem Zahlensystem überhaupt benutzen kann:</p><div class="exam-answer-row item input-group full-width">
+<div class="exam-subsection exam-subsection-has-image" data-sub-kind="rich-part" data-sub-id="k3-b" data-exam-spec="%7B%22id%22%3A%22k3-b%22%2C%22letter%22%3A%22B%22%2C%22title%22%3A%22Besucher%20aus%20der%20Oktalwelt%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22rich-part%22%2C%22image%22%3A%7B%22src%22%3A%22%2Fapi%2Ffile-system-paths%2Fread-image%3FfilePath%3Dgit-intern%252FMathe%252FKlasse%25205%252FKap%25201%2520-%2520Nat%25C3%25BCrliche%2520Zahlen%2520und%2520Gr%25C3%25B6%25C3%259Fen%252FKA1-Druckmaterial%252Fimage3.png%22%2C%22align%22%3A%22right%22%7D%2C%22blocks%22%3A%5B%7B%22type%22%3A%22quote%22%2C%22text%22%3A%22%E2%80%9EWo%20bin%20ich%20denn%20hier%20gelandet%3F%20Was%20habt%20ihr%20denn%20f%C3%BCr%20komische%20Zahlen%3F%20Bei%20mir%20zu%20Hause%20rechnen%20wir%20ganz%20anders.%20Wir%20benutzen%20das%20Oktalsystem.%20Das%20beruht%20auf%20der%20Zahl%208.%E2%80%9C%22%7D%2C%7B%22type%22%3A%22quote%22%2C%22text%22%3A%22%E2%80%9EIn%20meiner%20Welt%20bin%20ich%2015%20Jahre%20alt.%20Wie%20alt%20bin%20ich%20denn%20bei%20euch%20Menschen%3F%E2%80%9C%22%7D%2C%7B%22type%22%3A%22p%22%2C%22text%22%3A%22Hilf%20dem%20kleinen%20Alien%2C%20sein%20Alter%20im%20Dezimalsystem%20herauszufinden.%22%7D%2C%7B%22type%22%3A%22p%22%2C%22text%22%3A%221)%20%3Cstrong%3ENenne%3C%2Fstrong%3E%20alle%20Ziffern%2C%20die%20das%20Alien%20in%20seinem%20Zahlensystem%20%C3%BCberhaupt%20benutzen%20kann%3A%22%7D%2C%7B%22type%22%3A%22field%22%2C%22label%22%3A%22%22%2C%22answerId%22%3A%22a3c%22%2C%22solution%22%3A%220%2C%201%2C%202%2C%203%2C%204%2C%205%2C%206%2C%207%22%2C%22wide%22%3Atrue%7D%2C%7B%22type%22%3A%22p%22%2C%22text%22%3A%222)%20Das%20Oktalsystem%20basiert%20auf%20der%20Zahl%208.%20%3Cstrong%3ETrage%3C%2Fstrong%3E%20die%20Zahl%2012%20auch%20in%20diese%20Stellenwerttafel%20ein%3A%22%7D%2C%7B%22type%22%3A%22place-table%22%2C%22headers%22%3A%5B%22512%22%2C%2264%22%2C%228%22%2C%221%22%5D%2C%22cells%22%3A%5B%7B%22answerId%22%3A%22a3e1%22%2C%22solution%22%3A%220%22%7D%2C%7B%22answerId%22%3A%22a3e2%22%2C%22solution%22%3A%220%22%7D%2C%7B%22answerId%22%3A%22a3e3%22%2C%22solution%22%3A%221%22%7D%2C%7B%22answerId%22%3A%22a3e4%22%2C%22solution%22%3A%224%22%7D%5D%7D%2C%7B%22type%22%3A%22inline-field%22%2C%22before%22%3A%22Das%20Alien%20ist%20bei%20uns%20Menschen%20also%20%22%2C%22after%22%3A%22%20Jahre%20alt.%22%2C%22answerId%22%3A%22a3d%22%2C%22solution%22%3A%2213%22%7D%2C%7B%22type%22%3A%22help%22%2C%22title%22%3A%22Kleine%20Hilfestellung%3A%22%2C%22paragraphs%22%3A%5B%22Das%20Dezimalsystem%20basiert%20auf%20der%20Zahl%2010.%20In%20der%20Stellenwerttafel%20tragen%20wir%20die%2012%20wie%20folgt%20ein%3A%22%2C%22Das%20Bin%C3%A4rsystem%20basiert%20auf%20der%20Zahl%202.%20In%20der%20Stellenwerttafel%20tragen%20wir%20die%2012%20wie%20folgt%20ein%3A%22%5D%2C%22tables%22%3A%5B%7B%22headers%22%3A%5B%2210000%22%2C%221000%22%2C%22100%22%2C%2210%22%2C%221%22%5D%2C%22row%22%3A%5B%221%22%2C%220%22%2C%220%22%2C%221%22%2C%222%22%5D%7D%2C%7B%22headers%22%3A%5B%228%22%2C%224%22%2C%222%22%2C%221%22%5D%2C%22row%22%3A%5B%221%22%2C%221%22%2C%220%22%2C%220%22%5D%7D%5D%7D%5D%7D"><div class="exam-subsection-media exam-subsection-media-right"><div class="exam-subsection-media-body"><div class="exam-subsection-title"><span class="item-label">B)</span> Besucher aus der Oktalwelt</div><p class="exam-quote">„Wo bin ich denn hier gelandet? Was habt ihr denn für komische Zahlen? Bei mir zu Hause rechnen wir ganz anders. Wir benutzen das Oktalsystem. Das beruht auf der Zahl 8.“</p><p class="exam-quote">„In meiner Welt bin ich 15 Jahre alt. Wie alt bin ich denn bei euch Menschen?“</p><p>Hilf dem kleinen Alien, sein Alter im Dezimalsystem herauszufinden.</p><p>1) <strong>Nenne</strong> alle Ziffern, die das Alien in seinem Zahlensystem überhaupt benutzen kann:</p><div class="exam-answer-row item input-group full-width">
 <label class="exam-answer-row-label" for="a3c"></label>
 <input type="text" id="a3c" class="blank-wide exam-answer-row-input" autocomplete="off">
-</div><p>2) Das Oktalsystem basiert auf der Zahl 8. Trage die Zahl 12 auch in diese Stellenwerttafel ein:</p><table class="grade-table exam-place-value-table" aria-label="Stellenwerttafel"><tr><th>512</th><th>64</th><th>8</th><th>1</th></tr><tr><td><input type="text" id="a3e1" class="blank-tiny exam-table-input" autocomplete="off" maxlength="2"></td><td><input type="text" id="a3e2" class="blank-tiny exam-table-input" autocomplete="off" maxlength="2"></td><td><input type="text" id="a3e3" class="blank-tiny exam-table-input" autocomplete="off" maxlength="2"></td><td><input type="text" id="a3e4" class="blank-tiny exam-table-input" autocomplete="off" maxlength="2"></td></tr></table><p style="margin-top:10px;">Das Alien ist bei uns Menschen also <input type="text" id="a3d" class="blank-tiny" autocomplete="off" style="min-width:4em;"> Jahre alt.</p><div class="exam-hilfestellung"><p><strong>Kleine Hilfestellung:</strong></p><p>Das Dezimalsystem basiert auf der Zahl 10. In der Stellenwerttafel tragen wir die 12 wie folgt ein:</p><p style="margin-top:8px;">Das Binärsystem basiert auf der Zahl 2. In der Stellenwerttafel tragen wir die 12 wie folgt ein:</p><table class="grade-table exam-place-value-table exam-place-value-example"><tr><th>10000</th><th>1000</th><th>100</th><th>10</th><th>1</th></tr><tr><td>1</td><td>0</td><td>0</td><td>1</td><td>2</td></tr></table><table class="grade-table exam-place-value-table exam-place-value-example"><tr><th>8</th><th>4</th><th>2</th><th>1</th></tr><tr><td>1</td><td>1</td><td>0</td><td>0</td></tr></table></div></div><img class="exam-subsection-image" src="/api/file-system-paths/read-image?filePath=git-intern%2FMathe%2FKlasse%205%2FKap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen%2FKA1-Druckmaterial%2Fimage3.png" alt="" loading="lazy"></div></div>
+</div><p>2) Das Oktalsystem basiert auf der Zahl 8. <strong>Trage</strong> die Zahl 12 auch in diese Stellenwerttafel ein:</p><table class="grade-table exam-place-value-table" aria-label="Stellenwerttafel"><tr><th>512</th><th>64</th><th>8</th><th>1</th></tr><tr><td><input type="text" id="a3e1" class="blank-tiny exam-table-input" autocomplete="off" maxlength="2"></td><td><input type="text" id="a3e2" class="blank-tiny exam-table-input" autocomplete="off" maxlength="2"></td><td><input type="text" id="a3e3" class="blank-tiny exam-table-input" autocomplete="off" maxlength="2"></td><td><input type="text" id="a3e4" class="blank-tiny exam-table-input" autocomplete="off" maxlength="2"></td></tr></table><p style="margin-top:10px;">Das Alien ist bei uns Menschen also <input type="text" id="a3d" class="blank-tiny" autocomplete="off" style="min-width:4em;"> Jahre alt.</p><div class="exam-hilfestellung"><p><strong>Kleine Hilfestellung:</strong></p><p>Das Dezimalsystem basiert auf der Zahl 10. In der Stellenwerttafel tragen wir die 12 wie folgt ein:</p><p style="margin-top:8px;">Das Binärsystem basiert auf der Zahl 2. In der Stellenwerttafel tragen wir die 12 wie folgt ein:</p><table class="grade-table exam-place-value-table exam-place-value-example"><tr><th>10000</th><th>1000</th><th>100</th><th>10</th><th>1</th></tr><tr><td>1</td><td>0</td><td>0</td><td>1</td><td>2</td></tr></table><table class="grade-table exam-place-value-table exam-place-value-example"><tr><th>8</th><th>4</th><th>2</th><th>1</th></tr><tr><td>1</td><td>1</td><td>0</td><td>0</td></tr></table></div></div><img class="exam-subsection-image" src="/api/file-system-paths/read-image?filePath=git-intern%2FMathe%2FKlasse%205%2FKap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen%2FKA1-Druckmaterial%2Fimage3.png" alt="" loading="lazy"></div></div>
             <div class="solution">
                 <h4>Musterlösung:</h4>
                 <p>A) <strong>66</strong></p>
@@ -1500,22 +1543,22 @@
 <div class="exam-subsection" data-sub-kind="one-line" data-sub-id="k4-a" data-exam-spec="%7B%22id%22%3A%22k4-a%22%2C%22letter%22%3A%22A%22%2C%22title%22%3A%22Nenne%20die%20Geschwindigkeit%20des%20schnellsten%20Lebewesens%3A%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22%22%2C%22solution%22%3A%22180%22%2C%22answerId%22%3A%22a4a%22%2C%22suffix%22%3A%22km%2Fh%22%7D"><div class="exam-subsection-title"><span class="item-label">A)</span> Nenne die Geschwindigkeit des schnellsten Lebewesens:</div><div class="item input-group full-width" style="margin-top:4px;"><input type="text" id="a4a" class="blank-wide" autocomplete="off"> <span>km/h</span></div></div>
 <div class="exam-subsection" data-sub-kind="one-line" data-sub-id="k4-b" data-exam-spec="%7B%22id%22%3A%22k4-b%22%2C%22letter%22%3A%22B%22%2C%22title%22%3A%22Berechne%20die%20Differenz%20vom%20schnellsten%20zum%20Langsamsten%20Lebewesen%3A%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22%22%2C%22solution%22%3A%22160%22%2C%22answerId%22%3A%22a4b%22%2C%22suffix%22%3A%22km%2Fh%22%7D"><div class="exam-subsection-title"><span class="item-label">B)</span> Berechne die Differenz vom schnellsten zum Langsamsten Lebewesen:</div><div class="item input-group full-width" style="margin-top:4px;"><input type="text" id="a4b" class="blank-wide" autocomplete="off"> <span>km/h</span></div></div>
 <div class="exam-subsection" data-sub-kind="paragraph" data-sub-id="k4-c-t" data-exam-spec="%7B%22id%22%3A%22k4-c-t%22%2C%22letter%22%3A%22C%22%2C%22title%22%3A%22Auf%20dem%20Zahlenstrahl%20sind%20bereits%20einige%20Geschwindigkeiten%20durch%20Pfeile%20markiert.%20Lies%20die%20markierten%20Geschwindigkeiten%20ab.%20Trage%20anschlie%C3%9Fend%20auf%20demselben%20Zahlenstrahl%20die%20Geschwindigkeiten%20von%20Pferd%20und%20Biene%20ein%20und%20beschrifte%20die%20Punkte%20mit%20den%20passenden%20Namen.%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22paragraph%22%2C%22text%22%3A%22%22%7D"><div class="exam-subsection-title"><span class="item-label">C)</span> Auf dem Zahlenstrahl sind bereits einige Geschwindigkeiten durch Pfeile markiert. Lies die markierten Geschwindigkeiten ab. Trage anschließend auf demselben Zahlenstrahl die Geschwindigkeiten von Pferd und Biene ein und beschrifte die Punkte mit den passenden Namen.</div></div>
-<div class="exam-subsection" data-sub-kind="number-line" data-sub-id="k4-c-nl" data-exam-spec="%7B%22id%22%3A%22k4-c-nl%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22number-line%22%2C%22hint%22%3A%22Klicke%20auf%20einen%20roten%20Pfeil%20und%20trage%20die%20abgelesene%20Geschwindigkeit%20ein.%20W%C3%A4hle%20%E2%80%9EPferd%E2%80%9C%20oder%20%E2%80%9EBiene%E2%80%9C%2C%20klicke%20auf%20den%20Zahlenstrahl%20und%20beschrifte%20den%20Punkt.%22%2C%22min%22%3A0%2C%22max%22%3A72%2C%22step%22%3A3%2C%22bg%22%3A%22%2Fapi%2Ffile-system-paths%2Fread-image%3FfilePath%3Dgit-intern%252FMathe%252FKlasse%25205%252FKap%25201%2520-%2520Nat%25C3%25BCrliche%2520Zahlen%2520und%2520Gr%25C3%25B6%25C3%259Fen%252FKA1-Druckmaterial%252Fimage5.jpeg%22%2C%22fixed%22%3A%5B%7B%22value%22%3A12%2C%22answerId%22%3A%22a4c1%22%2C%22solution%22%3A%2212%22%7D%2C%7B%22value%22%3A24%2C%22answerId%22%3A%22a4c2%22%2C%22solution%22%3A%2224%22%7D%2C%7B%22value%22%3A63%2C%22answerId%22%3A%22a4c3%22%2C%22solution%22%3A%2263%22%7D%5D%2C%22chips%22%3A%5B%7B%22label%22%3A%22Pferd%22%2C%22value%22%3A70%2C%22answerId%22%3A%22a4c4%22%2C%22solution%22%3A%2270%22%7D%2C%7B%22label%22%3A%22Biene%22%2C%22value%22%3A20%2C%22answerId%22%3A%22a4c5%22%2C%22solution%22%3A%2220%22%7D%5D%7D"><div class="exam-number-line-interactive"
-                 data-min="0" data-max="72" data-step="3"
+<div class="exam-subsection" data-sub-kind="number-line" data-sub-id="k4-c-nl" data-exam-spec="%7B%22id%22%3A%22k4-c-nl%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22number-line%22%2C%22hint%22%3A%22Klicke%20auf%20einen%20roten%20Pfeil%20und%20trage%20die%20abgelesene%20Geschwindigkeit%20ein.%20W%C3%A4hle%20%E2%80%9EPferd%E2%80%9C%20oder%20%E2%80%9EBiene%E2%80%9C%2C%20klicke%20auf%20den%20Zahlenstrahl%20und%20beschrifte%20den%20Punkt.%22%2C%22min%22%3A0%2C%22max%22%3A72%2C%22step%22%3A4%2C%22bg%22%3A%22%2Fapi%2Ffile-system-paths%2Fread-image%3FfilePath%3Dgit-intern%252FMathe%252FKlasse%25205%252FKap%25201%2520-%2520Nat%25C3%25BCrliche%2520Zahlen%2520und%2520Gr%25C3%25B6%25C3%259Fen%252FKA1-Druckmaterial%252Fimage5.jpeg%22%2C%22bgAspect%22%3A14.697247706422019%2C%22axis%22%3A%5B%7B%22value%22%3A0%2C%22pct%22%3A0.37%7D%2C%7B%22value%22%3A24%2C%22pct%22%3A29%7D%2C%7B%22value%22%3A48%2C%22pct%22%3A58.1%7D%2C%7B%22value%22%3A72%2C%22pct%22%3A87.1%7D%5D%2C%22fixed%22%3A%5B%7B%22value%22%3A12%2C%22answerId%22%3A%22a4c1%22%2C%22solution%22%3A%2212%22%2C%22positionPct%22%3A9.99%7D%2C%7B%22value%22%3A24%2C%22answerId%22%3A%22a4c2%22%2C%22solution%22%3A%2224%22%2C%22positionPct%22%3A31.84%7D%2C%7B%22value%22%3A63%2C%22answerId%22%3A%22a4c3%22%2C%22solution%22%3A%2263%22%2C%22positionPct%22%3A65.92%7D%5D%2C%22chips%22%3A%5B%7B%22label%22%3A%22Pferd%22%2C%22value%22%3A70%2C%22answerId%22%3A%22a4c4%22%2C%22solution%22%3A%2270%22%7D%2C%7B%22label%22%3A%22Biene%22%2C%22value%22%3A20%2C%22answerId%22%3A%22a4c5%22%2C%22solution%22%3A%2220%22%7D%5D%7D"><div class="exam-number-line-interactive"
+                 data-min="0" data-max="72" data-step="4"
                  data-bg="/api/file-system-paths/read-image?filePath=git-intern%2FMathe%2FKlasse%205%2FKap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen%2FKA1-Druckmaterial%2Fimage5.jpeg"
-                 data-fixed="12:a4c1,24:a4c2,63:a4c3"
-                 data-chips="Pferd:70:a4c4,Biene:20:a4c5">
+                 data-fixed="12:a4c1:9.99,24:a4c2:31.84,63:a4c3:65.92"
+                 data-chips="Pferd:70:a4c4,Biene:20:a4c5" data-axis="0:0.37,24:29,48:58.1,72:87.1" data-bg-aspect="14.697247706422019">
                 <p class="exam-sort-hint">Klicke auf einen roten Pfeil und trage die abgelesene Geschwindigkeit ein. Wähle „Pferd“ oder „Biene“, klicke auf den Zahlenstrahl und beschrifte den Punkt.</p>
                 <div class="exam-nl-chip-bar"><button type="button" class="exam-sort-chip exam-nl-place-chip" data-label="Pferd">Pferd</button><button type="button" class="exam-sort-chip exam-nl-place-chip" data-label="Biene">Biene</button></div>
                 <div class="exam-nl-stage"><div class="exam-nl-track" role="img" aria-label="Zahlenstrahl"></div></div>
                 <input type="hidden" id="a4c1" value=""><input type="hidden" id="a4c2" value=""><input type="hidden" id="a4c3" value=""><input type="hidden" id="a4c4" value=""><input type="hidden" id="a4c5" value="">
             </div></div>
 <div class="exam-subsection" data-sub-kind="paragraph" data-sub-id="k4-d-t" data-exam-spec="%7B%22id%22%3A%22k4-d-t%22%2C%22letter%22%3A%22D%22%2C%22title%22%3A%22Im%20Tierpark%20wird%20gez%C3%A4hlt%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22paragraph%22%2C%22text%22%3A%22Im%20Tierpark%20wurden%20an%20mehreren%20Tagen%20die%20Besucherzahlen%20notiert.%20Auf%20dem%20Zahlenstrahl%20sind%20einige%20Besucherzahlen%20bereits%20durch%20rote%20Pfeile%20markiert.%20Lies%20die%20markierten%20Zahlen%20ab.%20Trage%20au%C3%9Ferdem%20die%20Besucherzahlen%20von%20gestern%20(52%20400)%20und%20von%20heute%20(54%20640)%20auch%20in%20den%20Zahlenstrahl%20ein.%22%7D"><div class="exam-subsection-title"><span class="item-label">D)</span> Im Tierpark wird gezählt</div><p>Im Tierpark wurden an mehreren Tagen die Besucherzahlen notiert. Auf dem Zahlenstrahl sind einige Besucherzahlen bereits durch rote Pfeile markiert. Lies die markierten Zahlen ab. Trage außerdem die Besucherzahlen von gestern (52 400) und von heute (54 640) auch in den Zahlenstrahl ein.</p></div>
-<div class="exam-subsection" data-sub-kind="number-line" data-sub-id="k4-d-nl" data-exam-spec="%7B%22id%22%3A%22k4-d-nl%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22number-line%22%2C%22hint%22%3A%22Klicke%20auf%20einen%20roten%20Pfeil%20und%20trage%20die%20Besucherzahl%20ein.%20W%C3%A4hle%20%E2%80%9Egestern%E2%80%9C%20oder%20%E2%80%9Eheute%E2%80%9C%2C%20klicke%20auf%20den%20Zahlenstrahl%20und%20beschrifte%20den%20Punkt.%22%2C%22min%22%3A50000%2C%22max%22%3A56000%2C%22step%22%3A100%2C%22bg%22%3A%22%2Fapi%2Ffile-system-paths%2Fread-image%3FfilePath%3Dgit-intern%252FMathe%252FKlasse%25205%252FKap%25201%2520-%2520Nat%25C3%25BCrliche%2520Zahlen%2520und%2520Gr%25C3%25B6%25C3%259Fen%252FKA1-Druckmaterial%252Fimage6.jpeg%22%2C%22fixed%22%3A%5B%7B%22value%22%3A50800%2C%22answerId%22%3A%22a4d1%22%2C%22solution%22%3A%2250800%22%7D%2C%7B%22value%22%3A52600%2C%22answerId%22%3A%22a4d2%22%2C%22solution%22%3A%2252600%22%7D%2C%7B%22value%22%3A54300%2C%22answerId%22%3A%22a4d3%22%2C%22solution%22%3A%2254300%22%7D%5D%2C%22chips%22%3A%5B%7B%22label%22%3A%22gestern%22%2C%22value%22%3A52400%2C%22answerId%22%3A%22a4d4%22%2C%22solution%22%3A%2252400%22%2C%22display%22%3A%22gestern%20(52%20400)%22%7D%2C%7B%22label%22%3A%22heute%22%2C%22value%22%3A54640%2C%22answerId%22%3A%22a4d5%22%2C%22solution%22%3A%2254640%22%2C%22display%22%3A%22heute%20(54%20640)%22%7D%5D%7D"><div class="exam-number-line-interactive"
-                 data-min="50000" data-max="56000" data-step="100"
+<div class="exam-subsection" data-sub-kind="number-line" data-sub-id="k4-d-nl" data-exam-spec="%7B%22id%22%3A%22k4-d-nl%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22number-line%22%2C%22hint%22%3A%22Klicke%20auf%20einen%20roten%20Pfeil%20und%20trage%20die%20Besucherzahl%20ein.%20W%C3%A4hle%20%E2%80%9Egestern%E2%80%9C%20oder%20%E2%80%9Eheute%E2%80%9C%2C%20klicke%20auf%20den%20Zahlenstrahl%20und%20beschrifte%20den%20Punkt.%22%2C%22min%22%3A50000%2C%22max%22%3A56000%2C%22step%22%3A20%2C%22bg%22%3A%22%2Fapi%2Ffile-system-paths%2Fread-image%3FfilePath%3Dgit-intern%252FMathe%252FKlasse%25205%252FKap%25201%2520-%2520Nat%25C3%25BCrliche%2520Zahlen%2520und%2520Gr%25C3%25B6%25C3%259Fen%252FKA1-Druckmaterial%252Fimage6.jpeg%22%2C%22bgAspect%22%3A15.17142857142857%2C%22axis%22%3A%5B%7B%22value%22%3A50000%2C%22pct%22%3A6.6%7D%2C%7B%22value%22%3A52000%2C%22pct%22%3A43.8%7D%2C%7B%22value%22%3A54000%2C%22pct%22%3A80.7%7D%2C%7B%22value%22%3A56000%2C%22pct%22%3A97.5%7D%5D%2C%22fixed%22%3A%5B%7B%22value%22%3A50800%2C%22answerId%22%3A%22a4d1%22%2C%22solution%22%3A%2250800%22%2C%22positionPct%22%3A17.26%7D%2C%7B%22value%22%3A52600%2C%22answerId%22%3A%22a4d2%22%2C%22solution%22%3A%2252600%22%2C%22positionPct%22%3A60.95%7D%2C%7B%22value%22%3A54300%2C%22answerId%22%3A%22a4d3%22%2C%22solution%22%3A%2254300%22%2C%22positionPct%22%3A81.61%7D%5D%2C%22chips%22%3A%5B%7B%22label%22%3A%22gestern%22%2C%22value%22%3A52400%2C%22answerId%22%3A%22a4d4%22%2C%22solution%22%3A%2252400%22%2C%22display%22%3A%22gestern%20(52%20400)%22%7D%2C%7B%22label%22%3A%22heute%22%2C%22value%22%3A54640%2C%22answerId%22%3A%22a4d5%22%2C%22solution%22%3A%2254640%22%2C%22display%22%3A%22heute%20(54%20640)%22%7D%5D%7D"><div class="exam-number-line-interactive"
+                 data-min="50000" data-max="56000" data-step="20"
                  data-bg="/api/file-system-paths/read-image?filePath=git-intern%2FMathe%2FKlasse%205%2FKap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen%2FKA1-Druckmaterial%2Fimage6.jpeg"
-                 data-fixed="50800:a4d1,52600:a4d2,54300:a4d3"
-                 data-chips="gestern:52400:a4d4,heute:54640:a4d5">
+                 data-fixed="50800:a4d1:17.26,52600:a4d2:60.95,54300:a4d3:81.61"
+                 data-chips="gestern:52400:a4d4,heute:54640:a4d5" data-axis="50000:6.6,52000:43.8,54000:80.7,56000:97.5" data-bg-aspect="15.17142857142857">
                 <p class="exam-sort-hint">Klicke auf einen roten Pfeil und trage die Besucherzahl ein. Wähle „gestern“ oder „heute“, klicke auf den Zahlenstrahl und beschrifte den Punkt.</p>
                 <div class="exam-nl-chip-bar"><button type="button" class="exam-sort-chip exam-nl-place-chip" data-label="gestern">gestern (52 400)</button><button type="button" class="exam-sort-chip exam-nl-place-chip" data-label="heute">heute (54 640)</button></div>
                 <div class="exam-nl-stage"><div class="exam-nl-track" role="img" aria-label="Zahlenstrahl"></div></div>
@@ -2393,6 +2436,7 @@
                 });
             }
         }
+
         function setupExamNumberLines() {
             document.querySelectorAll('.exam-number-line-interactive').forEach(function (root) {
                 if (root.getAttribute('data-nl-init') === '1') return;
@@ -2403,24 +2447,68 @@
                 var track = root.querySelector('.exam-nl-track');
                 if (!track) return;
                 var bg = root.getAttribute('data-bg');
-                if (bg) track.style.backgroundImage = 'url(' + bg + ')';
+                if (bg) {
+                    track.style.backgroundImage = 'url(' + bg + ')';
+                    track.classList.add('exam-nl-track--has-bg');
+                    var aspect = parseFloat(root.getAttribute('data-bg-aspect') || '0');
+                    if (aspect > 0) track.style.aspectRatio = String(aspect);
+                }
+                function parseAxis() {
+                    var raw = root.getAttribute('data-axis') || '';
+                    var pts = raw.split(',').map(function (pair) {
+                        var bits = pair.split(':');
+                        return { value: parseFloat(bits[0]), pct: parseFloat(bits[1]) };
+                    }).filter(function (p) {
+                        return !Number.isNaN(p.value) && !Number.isNaN(p.pct);
+                    });
+                    pts.sort(function (a, b) { return a.value - b.value; });
+                    return pts;
+                }
+                var axis = parseAxis();
                 function snap(v) {
                     if (!step) return v;
                     return Math.round((v - min) / step) * step + min;
                 }
                 function valueToPct(v) {
+                    if (axis.length >= 2) {
+                        if (v <= axis[0].value) return axis[0].pct;
+                        for (var i = 1; i < axis.length; i++) {
+                            var hi = axis[i];
+                            var lo = axis[i - 1];
+                            if (v <= hi.value) {
+                                var t = (v - lo.value) / (hi.value - lo.value);
+                                return lo.pct + t * (hi.pct - lo.pct);
+                            }
+                        }
+                        return axis[axis.length - 1].pct;
+                    }
                     if (max === min) return 0;
                     return ((v - min) / (max - min)) * 100;
                 }
                 function pctToValue(pct) {
+                    if (axis.length >= 2) {
+                        if (pct <= axis[0].pct) return snap(axis[0].value);
+                        for (var j = 1; j < axis.length; j++) {
+                            var hiA = axis[j];
+                            var loA = axis[j - 1];
+                            if (pct <= hiA.pct) {
+                                var t2 = (pct - loA.pct) / (hiA.pct - loA.pct);
+                                var rawA = loA.value + t2 * (hiA.value - loA.value);
+                                return snap(Math.max(min, Math.min(max, rawA)));
+                            }
+                        }
+                        return snap(axis[axis.length - 1].value);
+                    }
                     var raw = min + (pct / 100) * (max - min);
                     return snap(Math.max(min, Math.min(max, raw)));
                 }
-                var majorLabels = [];
-                if (max <= 100) {
-                    majorLabels = [0, 24, 48, 72].filter(function (x) { return x >= min && x <= max; });
-                } else {
-                    majorLabels = [50000, 52000, 54000, 56000].filter(function (x) { return x >= min && x <= max; });
+                var majorLabels = axis.length ? axis.map(function (p) { return p.value; }) : [];
+                if (!majorLabels.length) {
+                    if (max <= 100) {
+                        majorLabels = [0, 24, 48, 72].filter(function (x) { return x >= min && x <= max; });
+                    } else {
+                        majorLabels = [50000, 52000, 54000, 56000].filter(function (x) { return x >= min && x <= max; });
+                    }
                 }
                 majorLabels.forEach(function (v) {
                     var tick = document.createElement('div');
@@ -2443,9 +2531,11 @@
                     if (bits.length < 2) return;
                     var val = parseFloat(bits[0]);
                     var id = bits[1];
+                    var markerPct = bits.length >= 3 ? parseFloat(bits[2]) : valueToPct(val);
+                    if (Number.isNaN(markerPct)) markerPct = valueToPct(val);
                     var marker = document.createElement('div');
                     marker.className = 'exam-nl-fixed';
-                    marker.style.left = valueToPct(val) + '%';
+                    marker.style.left = markerPct + '%';
                     marker.textContent = '▼';
                     marker.title = 'Pfeil ablesen';
                     marker.addEventListener('click', function (e) {
@@ -2456,7 +2546,7 @@
                         var inp = document.createElement('input');
                         inp.type = 'text';
                         inp.className = 'exam-nl-fixed-input';
-                        inp.style.left = valueToPct(val) + '%';
+                        inp.style.left = markerPct + '%';
                         inp.autocomplete = 'off';
                         var hidden = document.getElementById(id);
                         if (hidden && hidden.value) inp.value = hidden.value;
@@ -2484,6 +2574,8 @@
                 function placePin(value, label) {
                     var cfg = chipMap[label];
                     if (!cfg) return;
+                    var expected = cfg.value;
+                    if (Math.abs(value - expected) <= step * 2) value = expected;
                     var hidden = document.getElementById(cfg.id);
                     if (hidden) {
                         hidden.value = String(value);
@@ -2510,6 +2602,7 @@
                 });
             });
         }
+
 
 
 
