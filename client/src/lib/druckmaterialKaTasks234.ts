@@ -1,6 +1,8 @@
 import type { ExamGridTaskSpec, GridSubsection } from './examGridTaskBuilder';
 import { druckKaImageUrl } from './examDruckmaterialFlowTasks';
 
+export type DruckmaterialKaVersion = 'A' | 'B';
+
 function hydrateField(solution: string, answers: Record<string, string[]>, answerId: string): string {
   const fromMap = answers[answerId]?.[0];
   return fromMap ?? solution;
@@ -94,7 +96,22 @@ function hydrateSubsections(
   });
 }
 
-export function druckmaterialKlassenarbeit2(): ExamGridTaskSpec {
+export function druckmaterialKlassenarbeit2(version: DruckmaterialKaVersion = 'A'): ExamGridTaskSpec {
+  const leonardo =
+    version === 'B'
+      ? { lines: '*16.5.1451', solution: '16.5.1451' }
+      : { lines: '*15.4.1452', solution: '15.4.1452' };
+
+  const fiftyOrFortyCell =
+    version === 'B'
+      ? ({ kind: 'decimal' as const, text: '40' })
+      : ({ kind: 'decimal' as const, text: '50' });
+
+  const row1Col2 =
+    version === 'B'
+      ? ({ kind: 'input-roman' as const, answerId: 'a2f', solution: 'XL' })
+      : ({ kind: 'input-roman' as const, answerId: 'a2e', solution: 'XXXIII' });
+
   return {
     taskNumber: 2,
     points: 10,
@@ -117,9 +134,9 @@ export function druckmaterialKlassenarbeit2(): ExamGridTaskSpec {
           },
           {
             heading: 'Leonardo da Vinci',
-            lines: '*15.4.1452',
+            lines: leonardo.lines,
             answerId: 'a2b',
-            solution: '15.4.1452',
+            solution: leonardo.solution,
             inputLabel: 'Mit römischen Zahlzeichen',
           },
         ],
@@ -139,32 +156,16 @@ export function druckmaterialKlassenarbeit2(): ExamGridTaskSpec {
         gridRows: [
           {
             cells: [
-              {
-                kind: 'pair',
-                left: { kind: 'input-roman', answerId: 'a2c', solution: 'XXXII' },
-                right: { kind: 'input-decimal', answerId: 'a2d', solution: '32' },
-              },
-              {
-                kind: 'pair',
-                left: { kind: 'input-roman', answerId: 'a2e', solution: 'XXXIII' },
-                right: { kind: 'input-decimal', answerId: 'a2h', solution: '33' },
-              },
-              {
-                kind: 'pair',
-                left: { kind: 'input-roman', answerId: 'a2f', solution: 'L' },
-                right: { kind: 'decimal', text: '50' },
-              },
+              { kind: 'input-roman', answerId: 'a2c', solution: 'XXXII' },
+              row1Col2,
+              fiftyOrFortyCell,
             ],
           },
           {
             cells: [
-              {
-                kind: 'pair',
-                left: { kind: 'roman', text: 'XCIV' },
-                right: { kind: 'input-decimal', answerId: 'a2g', solution: '94' },
-              },
-              { kind: 'empty' },
-              { kind: 'empty' },
+              { kind: 'roman', text: 'XCIV' },
+              { kind: 'input-decimal', answerId: 'a2d', solution: '32' },
+              { kind: 'input-decimal', answerId: 'a2h', solution: '33' },
             ],
           },
         ],
@@ -173,9 +174,18 @@ export function druckmaterialKlassenarbeit2(): ExamGridTaskSpec {
   };
 }
 
-export function druckmaterialKlassenarbeit3(): ExamGridTaskSpec {
+export function druckmaterialKlassenarbeit3(version: DruckmaterialKaVersion = 'A'): ExamGridTaskSpec {
   const img2 = druckKaImageUrl('image2.png');
   const img3 = druckKaImageUrl('image3.png');
+  const robotQuote =
+    version === 'B'
+      ? '„Ich habe schon bald Geburtstag. Nur noch wenige Tage! Im Moment bin ich gerade einmal 100000102 Jahre alt. Aber am 111002. 10012. 111111010102 ist es endlich so weit. Dann feiere ich einen robotertastischen Geburtstag und werde ein Jahr älter!“'
+      : '„Ich habe schon bald Geburtstag. Nur noch wenige Tage! Im Moment bin ich gerade einmal 100000002 Jahre alt. Aber am 111102. 10012. 111111010102 ist es endlich so weit. Dann feiere ich einen robotertastischen Geburtstag und werde ein Jahr älter!“';
+  const robotAge = '66';
+  const robotDate = version === 'B' ? '28.11.2010' : '30.11.2010';
+  const alienAgeOctal = version === 'B' ? '13' : '15';
+  const alienAgeDecimal = version === 'B' ? '11' : '13';
+
   return {
     taskNumber: 3,
     points: 7,
@@ -192,8 +202,7 @@ export function druckmaterialKlassenarbeit3(): ExamGridTaskSpec {
         blocks: [
           {
             type: 'quote',
-            text:
-              '„Ich habe schon bald Geburtstag. Nur noch wenige Tage! Im Moment bin ich gerade einmal 100000002 Jahre alt. Aber am 111102. 10012. 111111010102 ist es endlich so weit. Dann feiere ich einen robotertastischen Geburtstag und werde ein Jahr älter!“',
+            text: robotQuote,
           },
           {
             type: 'p',
@@ -203,14 +212,14 @@ export function druckmaterialKlassenarbeit3(): ExamGridTaskSpec {
             type: 'field',
             label: 'Wie alt unser Roboter wird:',
             answerId: 'a3a',
-            solution: '66',
+            solution: robotAge,
             wide: true,
           },
           {
             type: 'field',
             label: 'Das Datum seines Geburtstags:',
             answerId: 'a3b',
-            solution: '30.11.2010',
+            solution: robotDate,
             wide: true,
           },
         ],
@@ -230,7 +239,7 @@ export function druckmaterialKlassenarbeit3(): ExamGridTaskSpec {
           },
           {
             type: 'quote',
-            text: '„In meiner Welt bin ich 15 Jahre alt. Wie alt bin ich denn bei euch Menschen?“',
+            text: `„In meiner Welt bin ich ${alienAgeOctal} Jahre alt. Wie alt bin ich denn bei euch Menschen?“`,
           },
           { type: 'p', text: 'Hilf dem kleinen Alien, sein Alter im Dezimalsystem herauszufinden.' },
           {
@@ -265,7 +274,7 @@ export function druckmaterialKlassenarbeit3(): ExamGridTaskSpec {
             before: 'Das Alien ist bei uns Menschen also ',
             after: ' Jahre alt.',
             answerId: 'a3d',
-            solution: '13',
+            solution: alienAgeDecimal,
           },
           {
             type: 'help',
@@ -285,7 +294,29 @@ export function druckmaterialKlassenarbeit3(): ExamGridTaskSpec {
   };
 }
 
-export function druckmaterialKlassenarbeit4(): ExamGridTaskSpec {
+export function druckmaterialKlassenarbeit4(version: DruckmaterialKaVersion = 'A'): ExamGridTaskSpec {
+  const slowest = version === 'B';
+  const speedChips =
+    version === 'B'
+      ? [
+          { label: 'Hai', value: 40, answerId: 'a4c4', solution: '40' },
+          { label: 'Elefant', value: 40, answerId: 'a4c5', solution: '40' },
+        ]
+      : [
+          { label: 'Pferd', value: 70, answerId: 'a4c4', solution: '70' },
+          { label: 'Biene', value: 20, answerId: 'a4c5', solution: '20' },
+        ];
+  const visitorChips =
+    version === 'B'
+      ? [
+          { label: 'gestern', value: 53300, answerId: 'a4d4', solution: '53300', display: 'gestern (53 300)' },
+          { label: 'heute', value: 54700, answerId: 'a4d5', solution: '54700', display: 'heute (54 700)' },
+        ]
+      : [
+          { label: 'gestern', value: 52400, answerId: 'a4d4', solution: '52400', display: 'gestern (52 400)' },
+          { label: 'heute', value: 54640, answerId: 'a4d5', solution: '54640', display: 'heute (54 640)' },
+        ];
+
   return {
     taskNumber: 4,
     points: 12,
@@ -314,11 +345,13 @@ export function druckmaterialKlassenarbeit4(): ExamGridTaskSpec {
       {
         id: 'k4-a',
         letter: 'A',
-        title: 'Nenne die Geschwindigkeit des schnellsten Lebewesens:',
+        title: slowest
+          ? 'Nenne die Geschwindigkeit des langsamsten Lebewesens:'
+          : 'Nenne die Geschwindigkeit des schnellsten Lebewesens:',
         quadrant: 'tl',
         kind: 'one-line',
         prompt: '',
-        solution: '180',
+        solution: slowest ? '20' : '180',
         answerId: 'a4a',
         suffix: 'km/h',
       },
@@ -336,8 +369,9 @@ export function druckmaterialKlassenarbeit4(): ExamGridTaskSpec {
       {
         id: 'k4-c-t',
         letter: 'C',
-        title:
-          'Auf dem Zahlenstrahl sind bereits einige Geschwindigkeiten durch Pfeile markiert. Lies die markierten Geschwindigkeiten ab. Trage anschließend auf demselben Zahlenstrahl die Geschwindigkeiten von Pferd und Biene ein und beschrifte die Punkte mit den passenden Namen.',
+        title: slowest
+          ? 'Auf dem Zahlenstrahl sind bereits einige Geschwindigkeiten durch Pfeile markiert. Lies die markierten Geschwindigkeiten ab. Trage anschließend auf demselben Zahlenstrahl die Geschwindigkeiten von Hai und Elefant ein und beschrifte die Punkte mit den passenden Namen.'
+          : 'Auf dem Zahlenstrahl sind bereits einige Geschwindigkeiten durch Pfeile markiert. Lies die markierten Geschwindigkeiten ab. Trage anschließend auf demselben Zahlenstrahl die Geschwindigkeiten von Pferd und Biene ein und beschrifte die Punkte mit den passenden Namen.',
         quadrant: 'tl',
         kind: 'paragraph',
         text: '',
@@ -348,8 +382,9 @@ export function druckmaterialKlassenarbeit4(): ExamGridTaskSpec {
         title: '',
         quadrant: 'tl',
         kind: 'number-line',
-        hint:
-          'Klicke auf einen roten Pfeil und trage die abgelesene Geschwindigkeit ein. Wähle „Pferd“ oder „Biene“, klicke auf den Zahlenstrahl und beschrifte den Punkt.',
+        hint: slowest
+          ? 'Klicke auf einen roten Pfeil und trage die abgelesene Geschwindigkeit ein. Wähle „Hai“ oder „Elefant“, klicke auf den Zahlenstrahl und beschrifte den Punkt.'
+          : 'Klicke auf einen roten Pfeil und trage die abgelesene Geschwindigkeit ein. Wähle „Pferd“ oder „Biene“, klicke auf den Zahlenstrahl und beschrifte den Punkt.',
         min: 0,
         max: 72,
         step: 4,
@@ -366,10 +401,7 @@ export function druckmaterialKlassenarbeit4(): ExamGridTaskSpec {
           { value: 24, answerId: 'a4c2', solution: '24', positionPct: 31.84 },
           { value: 63, answerId: 'a4c3', solution: '63', positionPct: 65.92 },
         ],
-        chips: [
-          { label: 'Pferd', value: 70, answerId: 'a4c4', solution: '70' },
-          { label: 'Biene', value: 20, answerId: 'a4c5', solution: '20' },
-        ],
+        chips: speedChips,
       },
       {
         id: 'k4-d-t',
@@ -377,8 +409,9 @@ export function druckmaterialKlassenarbeit4(): ExamGridTaskSpec {
         title: 'Im Tierpark wird gezählt',
         quadrant: 'tl',
         kind: 'paragraph',
-        text:
-          'Im Tierpark wurden an mehreren Tagen die Besucherzahlen notiert. Auf dem Zahlenstrahl sind einige Besucherzahlen bereits durch rote Pfeile markiert. Lies die markierten Zahlen ab. Trage außerdem die Besucherzahlen von gestern (52 400) und von heute (54 640) auch in den Zahlenstrahl ein.',
+        text: slowest
+          ? 'Im Tierpark wurden an mehreren Tagen die Besucherzahlen notiert. Auf dem Zahlenstrahl sind einige Besucherzahlen bereits durch rote Pfeile markiert. Lies die markierten Zahlen ab. Trage außerdem die Besucherzahlen von gestern (53 300) und von heute (54 700) auch in den Zahlenstrahl ein.'
+          : 'Im Tierpark wurden an mehreren Tagen die Besucherzahlen notiert. Auf dem Zahlenstrahl sind einige Besucherzahlen bereits durch rote Pfeile markiert. Lies die markierten Zahlen ab. Trage außerdem die Besucherzahlen von gestern (52 400) und von heute (54 640) auch in den Zahlenstrahl ein.',
       },
       {
         id: 'k4-d-nl',
@@ -404,20 +437,80 @@ export function druckmaterialKlassenarbeit4(): ExamGridTaskSpec {
           { value: 52600, answerId: 'a4d2', solution: '52600', positionPct: 60.95 },
           { value: 54300, answerId: 'a4d3', solution: '54300', positionPct: 81.61 },
         ],
-        chips: [
-          { label: 'gestern', value: 52400, answerId: 'a4d4', solution: '52400', display: 'gestern (52 400)' },
-          { label: 'heute', value: 54640, answerId: 'a4d5', solution: '54640', display: 'heute (54 640)' },
-        ],
+        chips: visitorChips,
       },
     ],
   };
 }
 
-export function getDruckmaterialPreset(taskNumber: number): ExamGridTaskSpec | null {
-  if (taskNumber === 2) return druckmaterialKlassenarbeit2();
-  if (taskNumber === 3) return druckmaterialKlassenarbeit3();
-  if (taskNumber === 4) return druckmaterialKlassenarbeit4();
+export function getDruckmaterialPreset(
+  taskNumber: number,
+  version: DruckmaterialKaVersion = 'A',
+): ExamGridTaskSpec | null {
+  if (taskNumber === 2) return druckmaterialKlassenarbeit2(version);
+  if (taskNumber === 3) return druckmaterialKlassenarbeit3(version);
+  if (taskNumber === 4) return druckmaterialKlassenarbeit4(version);
   return null;
+}
+
+export function druckmaterialVersionFromKaPath(kaPath: string): DruckmaterialKaVersion {
+  return /__B\.html$/i.test(kaPath) || /__B$/i.test(kaPath) ? 'B' : 'A';
+}
+
+type RomanTableSub = Extract<GridSubsection, { kind: 'roman-table' }>;
+
+function collectRomanSolutions(sub: RomanTableSub): Map<string, string> {
+  const solutions = new Map<string, string>();
+  const add = (slot: { kind: string; answerId?: string; solution?: string }) => {
+    if (
+      (slot.kind === 'input-roman' || slot.kind === 'input-decimal') &&
+      slot.answerId
+    ) {
+      solutions.set(slot.answerId, slot.solution ?? '');
+    }
+  };
+  sub.gridRows?.forEach((row) => {
+    row.cells.forEach((cell) => {
+      if (cell.kind === 'pair') {
+        add(cell.left);
+        add(cell.right);
+      } else if (cell.kind === 'input-roman' || cell.kind === 'input-decimal') {
+        add(cell);
+      }
+    });
+  });
+  return solutions;
+}
+
+/** Altes Layout (2 Felder pro Zelle) → ein Eingabefeld pro leerer Tabellenzelle. */
+export function normalizeRomanTripleGridSub(sub: RomanTableSub): RomanTableSub {
+  if (sub.layout !== 'triple-grid' || !sub.gridRows?.length) return sub;
+  const hasPair = sub.gridRows.some((row) => row.cells.some((c) => c.kind === 'pair'));
+  if (!hasPair) return sub;
+
+  const solutions = collectRomanSolutions(sub);
+  const version: DruckmaterialKaVersion =
+    solutions.get('a2f') === 'XL' ? 'B' : 'A';
+  const canonical = druckmaterialKlassenarbeit2(version).subsections.find(
+    (s): s is RomanTableSub => s.kind === 'roman-table' && s.layout === 'triple-grid',
+  );
+  if (!canonical?.gridRows) return sub;
+
+  const gridRows = canonical.gridRows.map((row) => ({
+    cells: row.cells.map((cell) => {
+      if (cell.kind === 'input-roman' || cell.kind === 'input-decimal') {
+        return { ...cell, solution: solutions.get(cell.answerId) ?? cell.solution };
+      }
+      return cell;
+    }),
+  }));
+
+  return { ...sub, examples: canonical.examples, gridRows };
+}
+
+export function druckmaterialVersionFromExamHtml(fullHtml: string): DruckmaterialKaVersion {
+  const m = fullHtml.match(/class="exam-version-letter"[^>]*>\s*([A-Z])\s*</i);
+  return m?.[1] === 'B' ? 'B' : 'A';
 }
 
 export function hydrateDruckmaterialSpec(

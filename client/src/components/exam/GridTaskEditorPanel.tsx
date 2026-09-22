@@ -150,9 +150,31 @@ function newSubsection(kind: GridSubsection['kind']): GridSubsection {
     case 'roman-table':
       return {
         ...base,
+        letter: 'B',
+        title: 'Fülle die Lücken wie im unten stehenden Beispiel aus.',
         kind,
-        examples: [{ roman: 'I', decimal: '1' }],
-        gaps: [{ roman: 'V', answerId: 'a0b', solution: '' }],
+        layout: 'triple-grid',
+        examples: [
+          { roman: 'XXIX', decimal: '29' },
+          { roman: 'XXX', decimal: '30' },
+          { roman: 'XXXI', decimal: '31' },
+        ],
+        gridRows: [
+          {
+            cells: [
+              { kind: 'input-roman', answerId: 'a0a', solution: '' },
+              { kind: 'input-roman', answerId: 'a0b', solution: '' },
+              { kind: 'decimal', text: '50' },
+            ],
+          },
+          {
+            cells: [
+              { kind: 'roman', text: 'XCIV' },
+              { kind: 'input-decimal', answerId: 'a0c', solution: '' },
+              { kind: 'input-decimal', answerId: 'a0d', solution: '' },
+            ],
+          },
+        ],
       };
     case 'rich-part':
       return { ...base, kind, blocks: [{ type: 'p', text: '' }] };

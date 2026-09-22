@@ -329,9 +329,10 @@ export const EXAM_NUMBER_LINE_CSS = `
         .exam-roman-grid-rom { font-family: Georgia, 'Times New Roman', serif; font-weight: normal; }
         .exam-roman-grid-dec { font-weight: bold; }
         .exam-roman-cell-pair { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; min-height: 34px; }
+        .exam-roman-grid-single-cell { display: flex; justify-content: center; align-items: center; width: 100%; min-height: 38px; }
         .exam-roman-grid-slot { flex: 1 1 0; min-width: 0; text-align: center; }
         .exam-roman-grid-slot--empty { visibility: hidden; min-height: 1.4em; }
-        .exam-roman-grid-input { width: 100%; max-width: 4.2em; margin: 0 auto; display: block; }
+        .exam-roman-grid-input { width: 100%; max-width: 5.5em; min-width: 3.2em; margin: 0 auto; display: block; box-sizing: border-box; }
         .exam-table-input { width: 4em; text-align: center; }
         .exam-quote { font-style: italic; margin: 8px 0; }
         .exam-binary { font-family: ui-monospace, monospace; font-style: normal; }

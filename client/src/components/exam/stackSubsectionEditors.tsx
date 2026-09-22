@@ -5,6 +5,38 @@ import type { GridSubsection, RichPartBlock } from '../../lib/examGridTaskBuilde
 
 type RowFill = (subIndex: number, rowIndex: number) => Record<string, unknown>;
 
+function collectRomanTableInputs(sub: Extract<GridSubsection, { kind: 'roman-table' }>) {
+  if (sub.layout === 'triple-grid' && sub.gridRows?.length) {
+    const out: { answerId: string; solution: string; label: string }[] = [];
+    for (const row of sub.gridRows) {
+      for (const cell of row.cells) {
+        const push = (
+          slot:
+            | { kind: 'input-roman'; answerId: string; solution: string }
+            | { kind: 'input-decimal'; answerId: string; solution: string },
+        ) => {
+          out.push({
+            answerId: slot.answerId,
+            solution: slot.solution,
+            label: slot.kind === 'input-roman' ? 'Römisch' : 'Dezimal',
+          });
+        };
+        if (cell.kind === 'input-roman' || cell.kind === 'input-decimal') push(cell);
+        else if (cell.kind === 'pair') {
+          if (cell.left.kind === 'input-roman' || cell.left.kind === 'input-decimal') push(cell.left);
+          if (cell.right.kind === 'input-roman' || cell.right.kind === 'input-decimal') push(cell.right);
+        }
+      }
+    }
+    return out;
+  }
+  return (sub.gaps ?? []).map((g) => ({
+    answerId: g.answerId,
+    solution: g.solution,
+    label: g.roman || 'Lücke',
+  }));
+}
+
 type Props = {
   sub: GridSubsection;
   subIndex: number;
@@ -109,23 +141,15 @@ export function StackSubsectionFields({ sub, subIndex, updateSub, editorRowFill 
   }
 
   if (sub.kind === 'roman-table') {
-    const gapRows =
-      sub.layout === 'triple-grid' && sub.gridRows
-        ? sub.gridRows.flatMap((row) =>
-            row.cells.filter(
-              (c): c is { kind: 'input-roman' | 'input-decimal'; answerId: string; solution: string } =>
-                c.kind === 'input-roman' || c.kind === 'input-decimal',
-            ),
-          )
-        : sub.gaps ?? [];
+    const gapRows = collectRomanTableInputs(sub);
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         {gapRows.map((gap, i) => (
-          <Box key={i} sx={{ display: 'flex', gap: 1, ...editorRowFill(subIndex, i) }}>
+          <Box key={gap.answerId || i} sx={{ display: 'flex', gap: 1, ...editorRowFill(subIndex, i) }}>
             <TextField
               size="small"
               label="Feld"
-              value={'roman' in gap ? gap.roman : gap.kind === 'input-roman' ? 'Römisch' : 'Dezimal'}
+              value={gap.label}
               disabled
               sx={{ width: 100 }}
             />
@@ -137,12 +161,30 @@ export function StackSubsectionFields({ sub, subIndex, updateSub, editorRowFill 
               onChange={(e) => {
                 if (sub.layout === 'triple-grid' && sub.gridRows) {
                   const gridRows = sub.gridRows.map((row) => ({
-                    cells: row.cells.map((c) =>
-                      (c.kind === 'input-roman' || c.kind === 'input-decimal') &&
-                      c.answerId === gap.answerId
-                        ? { ...c, solution: e.target.value }
-                        : c,
-                    ),
+                    cells: row.cells.map((c) => {
+                      if (
+                        (c.kind === 'input-roman' || c.kind === 'input-decimal') &&
+                        c.answerId === gap.answerId
+                      ) {
+                        return { ...c, solution: e.target.value };
+                      }
+                      if (c.kind === 'pair') {
+                        return {
+                          ...c,
+                          left:
+                            (c.left.kind === 'input-roman' || c.left.kind === 'input-decimal') &&
+                            c.left.answerId === gap.answerId
+                              ? { ...c.left, solution: e.target.value }
+                              : c.left,
+                          right:
+                            (c.right.kind === 'input-roman' || c.right.kind === 'input-decimal') &&
+                            c.right.answerId === gap.answerId
+                              ? { ...c.right, solution: e.target.value }
+                              : c.right,
+                        };
+                      }
+                      return c;
+                    }),
                   }));
                   updateSub(sub.id, { gridRows });
                 } else if (sub.gaps) {

@@ -1,7 +1,14 @@
 /** 2×2-Raster-Aufgaben für KA-HTML (wie Klassenarbeit-Layout). */
 
+import { germanNumberAnswerVariants } from './examAnswerNormalize';
 import { detectExamFlowKey, druckKaImageUrl } from './examDruckmaterialFlowTasks';
-import { getDruckmaterialPreset, hydrateDruckmaterialSpec } from './druckmaterialKaTasks234';
+import {
+  type DruckmaterialKaVersion,
+  druckmaterialVersionFromExamHtml,
+  getDruckmaterialPreset,
+  hydrateDruckmaterialSpec,
+  normalizeRomanTripleGridSub,
+} from './druckmaterialKaTasks234';
 
 export type RichPartBlock =
   | { type: 'p'; text: string }
@@ -244,6 +251,11 @@ export function parseSolutionAlternatives(raw: string, expand: SolutionExpandKin
       add(withSpacesThousands);
     }
 
+    const looksLikeDate = /^\d{1,2}\.\d{1,2}\.\d{2,4}$/.test(base.replace(/\s/g, ''));
+    if (!looksLikeDate && (expand === 'number' || /^[\d\s.,]+$/.test(base))) {
+      for (const v of germanNumberAnswerVariants(base)) add(v);
+    }
+
     if (expand === 'sort' || (expand === 'text' && /[,;]/.test(base))) {
       const tokens = base.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
       if (tokens.length > 1) {
@@ -305,8 +317,95 @@ export function createBlankExamGridTask(taskNumber: number): ExamGridTaskSpec {
   };
 }
 
+const druckmaterialTask1G: GridSubsection = {
+  id: 's-g',
+  letter: 'G',
+  title: 'Vervollständige die Lücken:',
+  quadrant: 'br',
+  kind: 'cloze',
+  template:
+    'Die Menge der natürlichen Zahlen ist nach oben ___ . Die Zahl 13 ist zusammengesetzt aus den beiden ___ 1 und 3. Sie ist ein ___ der Menge der natürlichen Zahlen.',
+  solutions: ['unbeschränkt / unendlich', 'Ziffern / Ziffer', 'Element'],
+};
+
 /** Inhalt aus Druck-Klassenarbeit (Word) – Aufgabe 1. */
-export function druckmaterialKlassenarbeit1(): ExamGridTaskSpec {
+export function druckmaterialKlassenarbeit1(version: DruckmaterialKaVersion = 'A'): ExamGridTaskSpec {
+  if (version === 'B') {
+    return {
+      taskNumber: 1,
+      points: 15,
+      afbLevel: 1,
+      subsections: [
+        {
+          id: 's-a',
+          letter: 'A',
+          title: 'Runde die Zahlen:',
+          quadrant: 'tl',
+          kind: 'round-lines',
+          lines: [
+            { text: '77777 auf Hunderter =', solution: '77800' },
+            { text: '77777 auf Tausender =', solution: '78000' },
+            { text: '3581631 auf Zehner =', solution: '3581630' },
+            { text: '3581631 auf Hunderter =', solution: '3581600' },
+          ],
+        },
+        {
+          id: 's-b',
+          letter: 'B',
+          title: 'Setze das richtige Vergleichszeichen ein:',
+          quadrant: 'tr',
+          kind: 'compare',
+          rows: [
+            { left: '4 469', right: '4 4911', solution: '<' },
+            { left: '1 591', right: '209', solution: '>' },
+            { left: '45 123 496', right: '45 223 496', solution: '<' },
+          ],
+        },
+        {
+          id: 's-c',
+          letter: 'C',
+          title: 'Schreibe die Zahlen von der kleinsten zur größten auf:',
+          quadrant: 'tr',
+          kind: 'sort',
+          given: '391, 589, 389, 399',
+          solution: '389, 391, 399, 589',
+          interaction: 'drag',
+        },
+        {
+          id: 's-d',
+          letter: 'D',
+          title: 'Schreibe die Zahl in Worten:',
+          quadrant: 'bl',
+          kind: 'one-line',
+          prompt: '819 028 105 056',
+          solution:
+            'achthundertneunzehnmilliardenachtundzwanzigmillioneneinhundertfünftausendsechsundfünfzig',
+        },
+        {
+          id: 's-e',
+          letter: 'E',
+          title: 'Schreibe als Zahl:',
+          quadrant: 'bl',
+          kind: 'one-line',
+          prompt: 'Acht Milliarden zwölf Millionen einhundertzehntausend',
+          solution: '8012110000 / 8 012 110 000',
+        },
+        {
+          id: 's-f',
+          letter: 'F',
+          title: 'Nenne:',
+          quadrant: 'br',
+          kind: 'bullet-blanks',
+          items: [
+            { text: 'Die kleinste Zahl mit fünf Ziffern:', solution: '10000' },
+            { text: 'Die kleinste natürliche Zahl:', solution: '1' },
+          ],
+        },
+        druckmaterialTask1G,
+      ],
+    };
+  }
+
   return {
     taskNumber: 1,
     points: 15,
@@ -377,20 +476,7 @@ export function druckmaterialKlassenarbeit1(): ExamGridTaskSpec {
           { text: 'Die kleinste natürliche Zahl:', solution: '1' },
         ],
       },
-      {
-        id: 's-g',
-        letter: 'G',
-        title: 'Vervollständige die Lücken:',
-        quadrant: 'br',
-        kind: 'cloze',
-        template:
-          'Die Menge der natürlichen Zahlen ist nach oben ___ . Die Zahl 13 ist zusammengesetzt aus den beiden ___ 1 und 3. Sie ist ein ___ der Menge der natürlichen Zahlen.',
-        solutions: [
-          'unbeschränkt / unendlich',
-          'Ziffern / Ziffer',
-          'Element',
-        ],
-      },
+      druckmaterialTask1G,
     ],
   };
 }
@@ -606,7 +692,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
         if (cell.kind === 'pair') {
           return `<div class="exam-roman-cell-pair">${renderGridSlot(cell.left)}${renderGridSlot(cell.right)}</div>`;
         }
-        return renderGridSlot(cell);
+        return `<div class="exam-roman-grid-single-cell">${renderGridSlot(cell)}</div>`;
       };
       const gridBody = sub.gridRows
         .map(
@@ -1076,7 +1162,9 @@ function parseStackSubsectionsFromHtml(taskHtml: string): GridSubsection[] | nul
     if (!raw) return;
     try {
       const spec = JSON.parse(decodeURIComponent(raw)) as GridSubsection;
-      if (spec?.kind) out.push(spec);
+      if (spec?.kind === 'roman-table') {
+        out.push(normalizeRomanTripleGridSub(spec as Extract<GridSubsection, { kind: 'roman-table' }>));
+      } else if (spec?.kind) out.push(spec);
     } catch {
       /* ignore */
     }
@@ -1124,7 +1212,8 @@ export function parseExamGridTaskFromExamHtml(fullHtml: string, taskNumber: numb
 
   const legacyFlow = detectExamFlowKey(taskHtml);
   if (legacyFlow || taskHtml.includes('exam-task-flow') || taskHtml.includes('exam-roman-table')) {
-    const preset = getDruckmaterialPreset(taskNumber);
+    const version = druckmaterialVersionFromExamHtml(fullHtml);
+    const preset = getDruckmaterialPreset(taskNumber, version);
     if (preset) {
       const answers = extractCorrectAnswersMap(fullHtml);
       return hydrateDruckmaterialSpec(preset, answers, meta);
