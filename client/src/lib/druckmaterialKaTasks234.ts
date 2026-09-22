@@ -102,15 +102,16 @@ export function druckmaterialKlassenarbeit2(version: DruckmaterialKaVersion = 'A
       ? { lines: '*16.5.1451', solution: '16.5.1451' }
       : { lines: '*15.4.1452', solution: '15.4.1452' };
 
-  const fiftyOrFortyCell =
+  const fiftyOrForty =
     version === 'B'
-      ? ({ kind: 'decimal' as const, text: '40' })
-      : ({ kind: 'decimal' as const, text: '50' });
-
-  const row1Col2 =
-    version === 'B'
-      ? ({ kind: 'input-roman' as const, answerId: 'a2f', solution: 'XL' })
-      : ({ kind: 'input-roman' as const, answerId: 'a2e', solution: 'XXXIII' });
+      ? {
+          left: { kind: 'input-roman' as const, answerId: 'a2f', solution: 'XL' },
+          right: { kind: 'decimal' as const, text: '40' },
+        }
+      : {
+          left: { kind: 'input-roman' as const, answerId: 'a2f', solution: 'L' },
+          right: { kind: 'decimal' as const, text: '50' },
+        };
 
   return {
     taskNumber: 2,
@@ -156,16 +157,32 @@ export function druckmaterialKlassenarbeit2(version: DruckmaterialKaVersion = 'A
         gridRows: [
           {
             cells: [
-              { kind: 'input-roman', answerId: 'a2c', solution: 'XXXII' },
-              row1Col2,
-              fiftyOrFortyCell,
+              {
+                kind: 'pair',
+                left: { kind: 'input-roman', answerId: 'a2c', solution: 'XXXII' },
+                right: { kind: 'input-decimal', answerId: 'a2d', solution: '32' },
+              },
+              {
+                kind: 'pair',
+                left: { kind: 'input-roman', answerId: 'a2e', solution: 'XXXIII' },
+                right: { kind: 'input-decimal', answerId: 'a2h', solution: '33' },
+              },
+              {
+                kind: 'pair',
+                left: fiftyOrForty.left,
+                right: fiftyOrForty.right,
+              },
             ],
           },
           {
             cells: [
-              { kind: 'roman', text: 'XCIV' },
-              { kind: 'input-decimal', answerId: 'a2d', solution: '32' },
-              { kind: 'input-decimal', answerId: 'a2h', solution: '33' },
+              {
+                kind: 'pair',
+                left: { kind: 'roman', text: 'XCIV' },
+                right: { kind: 'input-decimal', answerId: 'a2g', solution: '94' },
+              },
+              { kind: 'empty' },
+              { kind: 'empty' },
             ],
           },
         ],
@@ -390,6 +407,8 @@ export function druckmaterialKlassenarbeit4(version: DruckmaterialKaVersion = 'A
         step: 4,
         bg: druckKaImageUrl('image5.jpeg'),
         bgAspect: 1602 / 109,
+        fixedTopPct: 2.5,
+        pinAxisTopPct: 47,
         axis: [
           { value: 0, pct: 0.37 },
           { value: 24, pct: 29.0 },
@@ -426,6 +445,8 @@ export function druckmaterialKlassenarbeit4(version: DruckmaterialKaVersion = 'A
         step: 20,
         bg: druckKaImageUrl('image6.jpeg'),
         bgAspect: 1593 / 105,
+        fixedTopPct: 2.5,
+        pinAxisTopPct: 47,
         axis: [
           { value: 50000, pct: 6.6 },
           { value: 52000, pct: 43.8 },

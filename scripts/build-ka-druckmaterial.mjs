@@ -121,6 +121,13 @@ function applyKaPatches(html, { task1, task2, task3, task4, allAnswers }, versio
     html = html.replace(/    <\/style>/, `${EXAM_NUMBER_LINE_CSS}\n    </style>`);
   }
 
+  if (html.includes('.exam-nl-visual')) {
+    html = html.replace(
+      /\n        \.exam-life-dates \{[\s\S]*?\.exam-nl-place-chip\.exam-sort-chip-selected \{ outline: 2px solid #1565c0; \}\n/,
+      EXAM_NUMBER_LINE_CSS,
+    );
+  }
+
   html = html.replace(
     /function normalizeAnswer\(raw\) \{[\s\S]*?\n        \}/,
     normalizeAnswerJsSource(),

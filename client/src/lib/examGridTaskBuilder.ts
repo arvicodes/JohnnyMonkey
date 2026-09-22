@@ -176,6 +176,10 @@ export type GridSubsection =
       /** Kalibrierung: Wert → Position in % der Bildbreite (passend zum Hintergrundbild). */
       axis?: { value: number; pct: number }[];
       bgAspect?: number;
+      /** Position der Eingabe über den roten Pfeilen (% von oben). */
+      fixedTopPct?: number;
+      /** Höhe der Achse für Tier-/Besucher-Markierungen (% von oben). */
+      pinAxisTopPct?: number;
       fixed: { value: number; answerId: string; solution: string; positionPct?: number }[];
       chips: { label: string; value: number; answerId: string; solution: string; display?: string }[];
     } & SubImage
@@ -809,7 +813,11 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       .join('');
     const aspectAttr = sub.bgAspect ? ` data-bg-aspect="${sub.bgAspect}"` : '';
     const axisAttrHtml = axisAttr ? ` data-axis="${escapeHtml(axisAttr)}"` : '';
+    const fixedTop = sub.fixedTopPct ?? 3;
+    const pinAxis = sub.pinAxisTopPct ?? 47;
+    const nlStyle = `--nl-fixed-top:${fixedTop}%;--nl-pin-axis:${pinAxis}%`;
     body = `<div class="exam-number-line-interactive"
+                 style="${nlStyle}"
                  data-min="${sub.min}" data-max="${sub.max}" data-step="${sub.step}"
                  data-fixed="${escapeHtml(fixedAttr)}"
                  data-chips="${escapeHtml(chipsAttr)}"${axisAttrHtml}${aspectAttr}>

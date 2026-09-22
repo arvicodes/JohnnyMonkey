@@ -360,65 +360,94 @@ export const EXAM_NUMBER_LINE_CSS = `
             width: 100%;
             height: 100%;
             cursor: crosshair;
+            line-height: normal;
         }
         .exam-nl-overlay.exam-nl-overlay--place-mode { cursor: copy; }
         .exam-nl-hit {
             position: absolute;
             top: 0;
-            height: 62%;
-            width: 44px;
+            height: calc(var(--nl-pin-axis, 47%) + 4%);
+            width: 36px;
             transform: translateX(-50%);
             cursor: pointer;
             z-index: 2;
             border: none;
             background: transparent;
             padding: 0;
+            border-radius: 4px;
         }
         .exam-nl-hit:hover,
         .exam-nl-hit.exam-nl-hit-active {
-            background: rgba(200, 0, 0, 0.14);
-            outline: 2px solid rgba(200, 0, 0, 0.45);
-            outline-offset: -2px;
+            background: rgba(200, 0, 0, 0.12);
+            box-shadow: inset 0 0 0 2px rgba(200, 0, 0, 0.35);
         }
         .exam-nl-fixed-input {
             position: absolute;
-            top: 4%;
+            top: var(--nl-fixed-top, 3%);
             transform: translateX(-50%);
-            width: 4.8em;
-            font-size: 12px;
+            width: 4.2em;
+            max-width: 22vw;
+            font-size: 13px;
+            line-height: 1.25;
             text-align: center;
-            z-index: 4;
+            z-index: 5;
+            padding: 2px 4px;
+            border: 1px solid #333;
+            border-radius: 3px;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
         }
         .exam-nl-fixed-value {
             position: absolute;
-            top: 6%;
+            top: var(--nl-fixed-top, 3%);
             transform: translateX(-50%);
-            font-size: 12px;
+            font-size: 13px;
+            line-height: 1.25;
             font-weight: bold;
             background: #fff;
-            padding: 1px 6px;
-            border: 1px solid #c00;
-            border-radius: 4px;
-            z-index: 4;
+            padding: 2px 6px;
+            border: 1px solid #333;
+            border-radius: 3px;
+            z-index: 5;
             cursor: pointer;
             white-space: nowrap;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
         }
         .exam-nl-pin {
             position: absolute;
-            bottom: 22%;
+            top: var(--nl-pin-axis, 47%);
             transform: translateX(-50%);
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 2px;
-            z-index: 3;
+            gap: 3px;
+            z-index: 4;
             pointer-events: auto;
             cursor: grab;
             touch-action: none;
+            line-height: 1.2;
         }
         .exam-nl-pin.exam-nl-pin--dragging { cursor: grabbing; }
-        .exam-nl-pin-dot { width: 10px; height: 10px; border-radius: 50%; background: #1565c0; border: 2px solid #fff; box-shadow: 0 0 0 1px #1565c0; }
-        .exam-nl-pin-label { font-size: 10px; font-weight: bold; background: #fff; padding: 0 4px; border: 1px solid #ccc; border-radius: 3px; white-space: nowrap; }
+        .exam-nl-pin-dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            background: #1565c0;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 1px #1565c0;
+            flex-shrink: 0;
+            margin-top: -5px;
+        }
+        .exam-nl-pin-label {
+            font-size: 11px;
+            font-weight: bold;
+            background: #fff;
+            padding: 1px 5px;
+            border: 1px solid #888;
+            border-radius: 3px;
+            white-space: nowrap;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        }
         .exam-nl-chip-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
         .exam-nl-place-chip.exam-sort-chip-selected { outline: 2px solid #1565c0; }
 `;
@@ -659,7 +688,7 @@ export const EXAM_NUMBER_LINE_JS = `
                     pin.className = 'exam-nl-pin';
                     pin.setAttribute('data-label', label);
                     pin.style.left = pct + '%';
-                    pin.innerHTML = '<span class="exam-nl-pin-label">' + label + ' (' + value + ')</span><span class="exam-nl-pin-dot"></span>';
+                    pin.innerHTML = '<span class="exam-nl-pin-dot" aria-hidden="true"></span><span class="exam-nl-pin-label">' + label + '</span>';
                     overlay.appendChild(pin);
                     enablePinDrag(pin, label);
                 }
