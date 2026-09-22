@@ -687,12 +687,16 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
     const axisAttrHtml = axisAttr ? ` data-axis="${escapeHtml(axisAttr)}"` : '';
     body = `<div class="exam-number-line-interactive"
                  data-min="${sub.min}" data-max="${sub.max}" data-step="${sub.step}"
-                 data-bg="${escapeHtml(sub.bg)}"
                  data-fixed="${escapeHtml(fixedAttr)}"
                  data-chips="${escapeHtml(chipsAttr)}"${axisAttrHtml}${aspectAttr}>
                 <p class="exam-sort-hint">${escapeHtml(sub.hint)}</p>
                 <div class="exam-nl-chip-bar">${chipButtons}</div>
-                <div class="exam-nl-stage"><div class="exam-nl-track" role="img" aria-label="Zahlenstrahl"></div></div>
+                <div class="exam-nl-stage">
+                  <div class="exam-nl-visual">
+                    <img class="exam-nl-img" src="${escapeHtml(sub.bg)}" alt="Zahlenstrahl" draggable="false" loading="lazy">
+                    <div class="exam-nl-overlay" role="application" aria-label="Zahlenstrahl interaktiv"></div>
+                  </div>
+                </div>
                 ${hidden}
             </div>`;
   } else if (sub.kind === 'bullet-blanks') {

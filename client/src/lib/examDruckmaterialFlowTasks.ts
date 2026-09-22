@@ -335,49 +335,66 @@ export const EXAM_NUMBER_LINE_CSS = `
         .exam-hilfestellung { margin-top: 12px; padding: 10px 12px; background: #f8f8f8; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
         .exam-place-value-table { max-width: 420px; margin: 6px 0; text-align: center; }
         .exam-place-value-example td { background: #fafafa; }
-        .exam-number-line-interactive { margin: 10px 0 16px; }
-        .exam-nl-stage { position: relative; padding: 8px 4px 28px; }
-        .exam-nl-track {
+        .exam-number-line-interactive { margin: 10px 0 16px; max-width: 720px; }
+        .exam-nl-stage { position: relative; padding: 4px 0 8px; }
+        .exam-nl-visual {
             position: relative;
-            height: 88px;
-            border-bottom: 3px solid #222;
-            margin: 0 6px;
-            background-repeat: no-repeat;
-            background-position: center bottom;
-            background-size: 100% auto;
+            width: 100%;
+            line-height: 0;
+        }
+        .exam-nl-img {
+            display: block;
+            width: 100%;
+            height: auto;
+            user-select: none;
+            pointer-events: none;
+        }
+        .exam-nl-overlay {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
             cursor: crosshair;
         }
-        .exam-nl-track.exam-nl-track--has-bg {
-            height: auto;
-            border-bottom: none;
-            aspect-ratio: 1602 / 109;
-            min-height: 72px;
-            max-height: 140px;
+        .exam-nl-overlay.exam-nl-overlay--place-mode { cursor: copy; }
+        .exam-nl-hit {
+            position: absolute;
+            top: 0;
+            height: 62%;
+            width: 44px;
+            transform: translateX(-50%);
+            cursor: pointer;
+            z-index: 2;
+            border: none;
+            background: transparent;
+            padding: 0;
         }
-        .exam-nl-track--has-bg .exam-nl-tick,
-        .exam-nl-track--has-bg .exam-nl-tick-label { display: none; }
-        .exam-nl-track--has-bg .exam-nl-fixed {
-            color: transparent;
-            font-size: 32px;
-            bottom: 18%;
-            padding: 0 10px;
+        .exam-nl-hit:hover,
+        .exam-nl-hit.exam-nl-hit-active {
+            background: rgba(200, 0, 0, 0.14);
+            outline: 2px solid rgba(200, 0, 0, 0.45);
+            outline-offset: -2px;
         }
-        .exam-nl-track--has-bg .exam-nl-fixed.exam-nl-fixed-active { color: rgba(200, 0, 0, 0.45); }
-        .exam-nl-track--has-bg .exam-nl-fixed-input { bottom: 42%; }
-        .exam-nl-tick { position: absolute; bottom: 0; width: 2px; height: 12px; background: #222; transform: translateX(-50%); pointer-events: none; }
-        .exam-nl-tick-label { position: absolute; bottom: -20px; transform: translateX(-50%); font-size: 10px; white-space: nowrap; pointer-events: none; }
-        .exam-nl-fixed {
-            position: absolute; bottom: 2px; transform: translateX(-50%);
-            color: #c00; font-size: 22px; line-height: 1; cursor: pointer; user-select: none;
-        }
-        .exam-nl-fixed.exam-nl-fixed-active { filter: drop-shadow(0 0 2px #c00); }
         .exam-nl-fixed-input {
-            position: absolute; bottom: 36px; transform: translateX(-50%);
-            width: 4.5em; font-size: 12px; text-align: center; z-index: 3;
+            position: absolute;
+            top: 4%;
+            transform: translateX(-50%);
+            width: 4.8em;
+            font-size: 12px;
+            text-align: center;
+            z-index: 4;
         }
         .exam-nl-pin {
-            position: absolute; bottom: 14px; transform: translateX(-50%);
-            display: flex; flex-direction: column; align-items: center; gap: 2px; z-index: 2;
+            position: absolute;
+            bottom: 22%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            z-index: 3;
+            pointer-events: none;
         }
         .exam-nl-pin-dot { width: 10px; height: 10px; border-radius: 50%; background: #1565c0; border: 2px solid #fff; box-shadow: 0 0 0 1px #1565c0; }
         .exam-nl-pin-label { font-size: 10px; font-weight: bold; background: #fff; padding: 0 4px; border: 1px solid #ccc; border-radius: 3px; white-space: nowrap; }
@@ -393,15 +410,30 @@ export const EXAM_NUMBER_LINE_JS = `
                 var min = parseFloat(root.getAttribute('data-min') || '0');
                 var max = parseFloat(root.getAttribute('data-max') || '100');
                 var step = parseFloat(root.getAttribute('data-step') || '1');
-                var track = root.querySelector('.exam-nl-track');
-                if (!track) return;
-                var bg = root.getAttribute('data-bg');
-                if (bg) {
-                    track.style.backgroundImage = 'url(' + bg + ')';
-                    track.classList.add('exam-nl-track--has-bg');
-                    var aspect = parseFloat(root.getAttribute('data-bg-aspect') || '0');
-                    if (aspect > 0) track.style.aspectRatio = String(aspect);
+                var overlay = root.querySelector('.exam-nl-overlay');
+                var legacyTrack = root.querySelector('.exam-nl-track');
+                if (!overlay && legacyTrack) {
+                    var img = root.querySelector('.exam-nl-img');
+                    if (!img) {
+                        var bg = root.getAttribute('data-bg');
+                        if (bg) {
+                            var visual = document.createElement('div');
+                            visual.className = 'exam-nl-visual';
+                            img = document.createElement('img');
+                            img.className = 'exam-nl-img';
+                            img.src = bg;
+                            img.alt = 'Zahlenstrahl';
+                            img.draggable = false;
+                            overlay = document.createElement('div');
+                            overlay.className = 'exam-nl-overlay';
+                            visual.appendChild(img);
+                            visual.appendChild(overlay);
+                            legacyTrack.replaceWith(visual);
+                        }
+                    }
                 }
+                if (!overlay) return;
+
                 function parseAxis() {
                     var raw = root.getAttribute('data-axis') || '';
                     var pts = raw.split(',').map(function (pair) {
@@ -414,6 +446,7 @@ export const EXAM_NUMBER_LINE_JS = `
                     return pts;
                 }
                 var axis = parseAxis();
+
                 function snap(v) {
                     if (!step) return v;
                     return Math.round((v - min) / step) * step + min;
@@ -451,75 +484,81 @@ export const EXAM_NUMBER_LINE_JS = `
                     var raw = min + (pct / 100) * (max - min);
                     return snap(Math.max(min, Math.min(max, raw)));
                 }
-                var majorLabels = axis.length ? axis.map(function (p) { return p.value; }) : [];
-                if (!majorLabels.length) {
-                    if (max <= 100) {
-                        majorLabels = [0, 24, 48, 72].filter(function (x) { return x >= min && x <= max; });
-                    } else {
-                        majorLabels = [50000, 52000, 54000, 56000].filter(function (x) { return x >= min && x <= max; });
-                    }
+                function overlayPctFromEvent(e) {
+                    var rect = overlay.getBoundingClientRect();
+                    if (!rect.width) return 0;
+                    var x = e.clientX - rect.left;
+                    return Math.max(0, Math.min(100, (x / rect.width) * 100));
                 }
-                majorLabels.forEach(function (v) {
-                    var tick = document.createElement('div');
-                    tick.className = 'exam-nl-tick';
-                    tick.style.left = valueToPct(v) + '%';
-                    track.appendChild(tick);
-                    var lab = document.createElement('div');
-                    lab.className = 'exam-nl-tick-label';
-                    lab.style.left = valueToPct(v) + '%';
-                    lab.textContent = v >= 1000 ? v.toLocaleString('de-DE') : String(v);
-                    track.appendChild(lab);
-                });
+                function clearFixedInput() {
+                    overlay.querySelectorAll('.exam-nl-fixed-input').forEach(function (el) { el.remove(); });
+                    overlay.querySelectorAll('.exam-nl-hit-active').forEach(function (el) { el.classList.remove('exam-nl-hit-active'); });
+                }
+                function openFixedInput(markerPct, id) {
+                    clearFixedInput();
+                    var hit = overlay.querySelector('.exam-nl-hit[data-answer-id="' + id + '"]');
+                    if (hit) hit.classList.add('exam-nl-hit-active');
+                    var inp = document.createElement('input');
+                    inp.type = 'text';
+                    inp.className = 'exam-nl-fixed-input';
+                    inp.style.left = markerPct + '%';
+                    inp.autocomplete = 'off';
+                    var hidden = document.getElementById(id);
+                    if (hidden && hidden.value) inp.value = hidden.value;
+                    inp.addEventListener('input', function () {
+                        if (hidden) {
+                            hidden.value = inp.value.trim();
+                            hidden.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    });
+                    inp.addEventListener('keydown', function (ev) { ev.stopPropagation(); });
+                    overlay.appendChild(inp);
+                    inp.focus();
+                }
+
                 var chipMap = {};
                 (root.getAttribute('data-chips') || '').split(',').forEach(function (part) {
                     var bits = part.split(':');
                     if (bits.length >= 3) chipMap[bits[0]] = { value: parseFloat(bits[1]), id: bits[2] };
                 });
+
                 (root.getAttribute('data-fixed') || '').split(',').forEach(function (part) {
+                    if (!part.trim()) return;
                     var bits = part.split(':');
                     if (bits.length < 2) return;
                     var val = parseFloat(bits[0]);
                     var id = bits[1];
                     var markerPct = bits.length >= 3 ? parseFloat(bits[2]) : valueToPct(val);
                     if (Number.isNaN(markerPct)) markerPct = valueToPct(val);
-                    var marker = document.createElement('div');
-                    marker.className = 'exam-nl-fixed';
-                    marker.style.left = markerPct + '%';
-                    marker.textContent = '▼';
-                    marker.title = 'Pfeil ablesen';
-                    marker.addEventListener('click', function (e) {
+                    var hit = document.createElement('button');
+                    hit.type = 'button';
+                    hit.className = 'exam-nl-hit';
+                    hit.style.left = markerPct + '%';
+                    hit.setAttribute('data-answer-id', id);
+                    hit.title = 'Roten Pfeil anklicken und Wert eintragen';
+                    hit.addEventListener('click', function (e) {
+                        e.preventDefault();
                         e.stopPropagation();
-                        root.querySelectorAll('.exam-nl-fixed-input').forEach(function (el) { el.remove(); });
-                        root.querySelectorAll('.exam-nl-fixed-active').forEach(function (el) { el.classList.remove('exam-nl-fixed-active'); });
-                        marker.classList.add('exam-nl-fixed-active');
-                        var inp = document.createElement('input');
-                        inp.type = 'text';
-                        inp.className = 'exam-nl-fixed-input';
-                        inp.style.left = markerPct + '%';
-                        inp.autocomplete = 'off';
-                        var hidden = document.getElementById(id);
-                        if (hidden && hidden.value) inp.value = hidden.value;
-                        inp.addEventListener('input', function () {
-                            if (hidden) {
-                                hidden.value = inp.value.trim();
-                                hidden.dispatchEvent(new Event('input', { bubbles: true }));
-                            }
-                        });
-                        inp.addEventListener('keydown', function (ev) { ev.stopPropagation(); });
-                        track.appendChild(inp);
-                        inp.focus();
+                        openFixedInput(markerPct, id);
                     });
-                    track.appendChild(marker);
+                    overlay.appendChild(hit);
                 });
+
                 var selectedLabel = null;
+                function setPlaceMode(on) {
+                    if (on) overlay.classList.add('exam-nl-overlay--place-mode');
+                    else overlay.classList.remove('exam-nl-overlay--place-mode');
+                }
                 root.querySelectorAll('.exam-nl-place-chip').forEach(function (btn) {
                     btn.addEventListener('click', function (e) {
                         e.preventDefault();
                         selectedLabel = btn.getAttribute('data-label');
                         root.querySelectorAll('.exam-nl-place-chip').forEach(function (b) { b.classList.remove('exam-sort-chip-selected'); });
                         btn.classList.add('exam-sort-chip-selected');
+                        setPlaceMode(true);
                     });
                 });
+
                 function placePin(value, label) {
                     var cfg = chipMap[label];
                     if (!cfg) return;
@@ -530,23 +569,24 @@ export const EXAM_NUMBER_LINE_JS = `
                         hidden.value = String(value);
                         hidden.dispatchEvent(new Event('input', { bubbles: true }));
                     }
-                    var existing = track.querySelector('.exam-nl-pin[data-label="' + label + '"]');
+                    var existing = overlay.querySelector('.exam-nl-pin[data-label="' + label + '"]');
                     if (existing) existing.remove();
                     var pin = document.createElement('div');
                     pin.className = 'exam-nl-pin';
                     pin.setAttribute('data-label', label);
                     pin.style.left = valueToPct(value) + '%';
                     pin.innerHTML = '<span class="exam-nl-pin-label">' + label + '</span><span class="exam-nl-pin-dot"></span>';
-                    track.appendChild(pin);
+                    overlay.appendChild(pin);
                 }
-                track.addEventListener('click', function (e) {
-                    if (e.target.closest('.exam-nl-fixed') || e.target.closest('.exam-nl-fixed-input')) return;
+
+                overlay.addEventListener('click', function (e) {
+                    if (e.target.closest('.exam-nl-hit') || e.target.closest('.exam-nl-fixed-input')) return;
                     if (!selectedLabel) return;
-                    var rect = track.getBoundingClientRect();
-                    var pct = ((e.clientX - rect.left) / rect.width) * 100;
+                    var pct = overlayPctFromEvent(e);
                     var value = pctToValue(pct);
                     placePin(value, selectedLabel);
                     selectedLabel = null;
+                    setPlaceMode(false);
                     root.querySelectorAll('.exam-nl-place-chip').forEach(function (b) { b.classList.remove('exam-sort-chip-selected'); });
                 });
             });

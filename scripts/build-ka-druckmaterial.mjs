@@ -105,7 +105,7 @@ if (!html.includes('function setupExamNumberLines')) {
 }
 
 const needsNlCss =
-  !html.includes('.exam-nl-track--has-bg') || !html.includes('parseAxis');
+  !html.includes('.exam-nl-visual') || !html.includes('exam-nl-hit');
 if (needsNlCss && html.includes('function setupExamNumberLines')) {
   html = html.replace(
     /\n        \.exam-roman-table[\s\S]*?\.exam-nl-place-chip\.exam-sort-chip-selected[\s\S]*?\n/,
