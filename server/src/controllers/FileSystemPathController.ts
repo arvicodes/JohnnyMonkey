@@ -3141,7 +3141,12 @@ KRITISCH WICHTIG:
       let gridMatch: RegExpExecArray | null;
       while ((gridMatch = gridTaskRe.exec(htmlContent)) !== null) {
         const n = parseInt(gridMatch[1], 10);
-        if (gridMatch[2].includes('exam-task-grid') && !Number.isNaN(n)) {
+        const body = gridMatch[2];
+        const editorTask =
+          body.includes('exam-task-grid') ||
+          body.includes('exam-task-flow') ||
+          body.includes('data-exam-flow=');
+        if (editorTask && !Number.isNaN(n)) {
           gridTaskNumbers.push(n);
         }
       }

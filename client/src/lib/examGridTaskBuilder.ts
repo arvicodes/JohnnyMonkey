@@ -1,5 +1,12 @@
 /** 2×2-Raster-Aufgaben für KA-HTML (wie Klassenarbeit-Layout). */
 
+import {
+  buildDruckFlowTaskHtml,
+  detectExamFlowKey,
+  druckFlowMeta,
+  type ExamFlowKey,
+} from './examDruckmaterialFlowTasks';
+
 export type GridQuadrant = 'tl' | 'tr' | 'bl' | 'br';
 
 export type GridSubsectionImage = {
@@ -70,7 +77,26 @@ export type ExamGridTaskSpec = {
   points: number;
   afbLevel: 1 | 2 | 3;
   subsections: GridSubsection[];
+  /** Standard: 2×2-Raster; flow = Druckvorlage (Tabelle, Zahlenstrahl, …) */
+  layout?: 'grid' | 'flow';
+  flowKey?: ExamFlowKey;
 };
+
+export function createDruckFlowTaskSpec(
+  flowKey: ExamFlowKey,
+  taskNumber: number,
+  points?: number,
+): ExamGridTaskSpec {
+  const meta = druckFlowMeta(flowKey);
+  return {
+    taskNumber,
+    points: points ?? meta.defaultPoints,
+    afbLevel: meta.afb,
+    layout: 'flow',
+    flowKey,
+    subsections: [],
+  };
+}
 
 function escapeHtml(s: string): string {
   return String(s || '')
@@ -409,6 +435,15 @@ export function buildExamGridTaskHtml(spec: ExamGridTaskSpec): {
   correctAnswers: Record<string, string[]>;
   solutionLines: string[];
 } {
+  if (spec.layout === 'flow' && spec.flowKey) {
+    return buildDruckFlowTaskHtml({
+      taskNumber: spec.taskNumber,
+      points: spec.points,
+      afbLevel: spec.afbLevel,
+      flowKey: spec.flowKey,
+    });
+  }
+
   const fieldIndex = { n: 0 };
   const byQ: Record<GridQuadrant, string[]> = { tl: [], tr: [], bl: [], br: [] };
   const allFields: BuiltField[] = [];
@@ -665,6 +700,14 @@ function parseSubsection(
   return attachImage(subEl, { id, letter, title, quadrant, kind: 'one-line', prompt: '', solution: '' });
 }
 
+function taskBlockIsEditorManaged(body: string): boolean {
+  return (
+    body.includes('exam-task-grid') ||
+    body.includes('exam-task-flow') ||
+    body.includes('data-exam-flow=')
+  );
+}
+
 export function listGridTaskNumbersInExamHtml(fullHtml: string): number[] {
   const nums: number[] = [];
   const re =
@@ -672,7 +715,7 @@ export function listGridTaskNumbersInExamHtml(fullHtml: string): number[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(fullHtml)) !== null) {
     const n = parseInt(m[1], 10);
-    if (!Number.isNaN(n) && m[2].includes('exam-task-grid')) nums.push(n);
+    if (!Number.isNaN(n) && taskBlockIsEditorManaged(m[2])) nums.push(n);
   }
   return [...new Set(nums)].sort((a, b) => a - b);
 }
@@ -680,7 +723,24 @@ export function listGridTaskNumbersInExamHtml(fullHtml: string): number[] {
 /** Liest eine gespeicherte Raster-Aufgabe aus der vollständigen Prüfungs-HTML. */
 export function parseExamGridTaskFromExamHtml(fullHtml: string, taskNumber: number): ExamGridTaskSpec | null {
   const taskHtml = extractExamTaskHtml(fullHtml, taskNumber);
-  if (!taskHtml || !taskHtml.includes('exam-task-grid')) return null;
+  if (!taskHtml || !taskBlockIsEditorManaged(taskHtml)) return null;
+
+  const flowKey = detectExamFlowKey(taskHtml);
+  if (flowKey) {
+    const pointsMatch = taskHtml.match(/\((\d+)\s*Punkte\)/i);
+    const points = pointsMatch ? parseInt(pointsMatch[1], 10) || druckFlowMeta(flowKey).defaultPoints : druckFlowMeta(flowKey).defaultPoints;
+    let afbLevel: 1 | 2 | 3 = druckFlowMeta(flowKey).afb;
+    const afbEl = taskHtml.match(/afb-badge afb-(\d)/);
+    if (afbEl) {
+      const n = parseInt(afbEl[1], 10);
+      if (n === 2 || n === 3) afbLevel = n;
+    }
+    const spec = createDruckFlowTaskSpec(flowKey, taskNumber, points);
+    spec.afbLevel = afbLevel;
+    return spec;
+  }
+
+  if (!taskHtml.includes('exam-task-grid')) return null;
 
   const answers = extractCorrectAnswersMap(fullHtml);
   const doc = new DOMParser().parseFromString(taskHtml, 'text/html');

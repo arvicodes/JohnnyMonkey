@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import {
+  Alert,
   Box,
   Button,
   Collapse,
@@ -134,6 +135,8 @@ export default function GridTaskEditorPanel({
 }: Props) {
   const built = useMemo(() => buildExamGridTaskHtml(spec), [spec]);
 
+  const isFlowTask = spec.layout === 'flow' && spec.flowKey;
+
   const updateSub = (id: string, patch: Partial<GridSubsection>) => {
     onChange({
       ...spec,
@@ -146,6 +149,15 @@ export default function GridTaskEditorPanel({
   const removeSub = (id: string) => {
     onChange({ ...spec, subsections: spec.subsections.filter((s) => s.id !== id) });
   };
+
+  const flowTitle =
+    spec.flowKey === 'druck-ka-2'
+      ? 'Römische Zahlen & Lebensdaten (Druckvorlage)'
+      : spec.flowKey === 'druck-ka-3'
+        ? 'Binär & Oktal (Druckvorlage)'
+        : spec.flowKey === 'druck-ka-4'
+          ? 'Diagramm & Zahlenstrahl (Druckvorlage)'
+          : 'Druckaufgabe';
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -186,7 +198,16 @@ export default function GridTaskEditorPanel({
         </FormControl>
       </Box>
 
-      {spec.subsections.map((sub, subIndex) => (
+      {isFlowTask ? (
+        <Alert severity="info" sx={{ fontSize: 13 }}>
+          <strong>{flowTitle}</strong> — Texte, Tabelle und Zahlenstrahle entsprechen der Word-Vorlage. Du kannst
+          Aufgaben-Nr., Punkte und AFB anpassen und mit „In Prüfung speichern“ die digitale KA aktualisieren. Die
+          Einzelfelder im Raster-Editor sind für diese Aufgabe nicht aufgeteilt.
+        </Alert>
+      ) : null}
+
+      {!isFlowTask &&
+        spec.subsections.map((sub, subIndex) => (
         <Box
           key={sub.id}
           sx={{
@@ -566,18 +587,20 @@ export default function GridTaskEditorPanel({
         </Box>
       ))}
 
-      <Button
-        startIcon={<AddIcon />}
-        variant="outlined"
-        onClick={() =>
-          onChange({
-            ...spec,
-            subsections: [...spec.subsections, newSubsection('round-lines')],
-          })
-        }
-      >
-        Teil hinzufügen (A, B, C …)
-      </Button>
+      {!isFlowTask ? (
+        <Button
+          startIcon={<AddIcon />}
+          variant="outlined"
+          onClick={() =>
+            onChange({
+              ...spec,
+              subsections: [...spec.subsections, newSubsection('round-lines')],
+            })
+          }
+        >
+          Teil hinzufügen (A, B, C …)
+        </Button>
+      ) : null}
 
       <Box sx={{ pt: 1 }}>
         <Button
