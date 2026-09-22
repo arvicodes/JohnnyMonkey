@@ -328,7 +328,10 @@ export const EXAM_NUMBER_LINE_CSS = `
         .exam-roman-triple-grid td { border: 1px solid #222; padding: 12px 10px; text-align: center; vertical-align: middle; min-width: 72px; height: 44px; }
         .exam-roman-grid-rom { font-family: Georgia, 'Times New Roman', serif; font-weight: normal; }
         .exam-roman-grid-dec { font-weight: bold; }
-        .exam-roman-grid-input { width: 4.5em; margin: 0 auto; display: block; }
+        .exam-roman-cell-pair { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; min-height: 34px; }
+        .exam-roman-grid-slot { flex: 1 1 0; min-width: 0; text-align: center; }
+        .exam-roman-grid-slot--empty { visibility: hidden; min-height: 1.4em; }
+        .exam-roman-grid-input { width: 100%; max-width: 4.2em; margin: 0 auto; display: block; }
         .exam-table-input { width: 4em; text-align: center; }
         .exam-quote { font-style: italic; margin: 8px 0; }
         .exam-binary { font-family: ui-monospace, monospace; font-style: normal; }
@@ -385,6 +388,20 @@ export const EXAM_NUMBER_LINE_CSS = `
             text-align: center;
             z-index: 4;
         }
+        .exam-nl-fixed-value {
+            position: absolute;
+            top: 6%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            font-weight: bold;
+            background: #fff;
+            padding: 1px 6px;
+            border: 1px solid #c00;
+            border-radius: 4px;
+            z-index: 4;
+            cursor: pointer;
+            white-space: nowrap;
+        }
         .exam-nl-pin {
             position: absolute;
             bottom: 22%;
@@ -394,8 +411,11 @@ export const EXAM_NUMBER_LINE_CSS = `
             align-items: center;
             gap: 2px;
             z-index: 3;
-            pointer-events: none;
+            pointer-events: auto;
+            cursor: grab;
+            touch-action: none;
         }
+        .exam-nl-pin.exam-nl-pin--dragging { cursor: grabbing; }
         .exam-nl-pin-dot { width: 10px; height: 10px; border-radius: 50%; background: #1565c0; border: 2px solid #fff; box-shadow: 0 0 0 1px #1565c0; }
         .exam-nl-pin-label { font-size: 10px; font-weight: bold; background: #fff; padding: 0 4px; border: 1px solid #ccc; border-radius: 3px; white-space: nowrap; }
         .exam-nl-chip-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
@@ -467,22 +487,28 @@ export const EXAM_NUMBER_LINE_JS = `
                     if (max === min) return 0;
                     return ((v - min) / (max - min)) * 100;
                 }
-                function pctToValue(pct) {
+                function pctToValue(pct, doSnap) {
+                    var raw;
                     if (axis.length >= 2) {
-                        if (pct <= axis[0].pct) return snap(axis[0].value);
-                        for (var j = 1; j < axis.length; j++) {
-                            var hiA = axis[j];
-                            var loA = axis[j - 1];
-                            if (pct <= hiA.pct) {
-                                var t2 = (pct - loA.pct) / (hiA.pct - loA.pct);
-                                var rawA = loA.value + t2 * (hiA.value - loA.value);
-                                return snap(Math.max(min, Math.min(max, rawA)));
+                        if (pct <= axis[0].pct) raw = axis[0].value;
+                        else {
+                            raw = axis[axis.length - 1].value;
+                            for (var j = 1; j < axis.length; j++) {
+                                var hiA = axis[j];
+                                var loA = axis[j - 1];
+                                if (pct <= hiA.pct) {
+                                    var t2 = (pct - loA.pct) / (hiA.pct - loA.pct);
+                                    raw = loA.value + t2 * (hiA.value - loA.value);
+                                    break;
+                                }
                             }
                         }
-                        return snap(axis[axis.length - 1].value);
+                    } else {
+                        raw = min + (pct / 100) * (max - min);
                     }
-                    var raw = min + (pct / 100) * (max - min);
-                    return snap(Math.max(min, Math.min(max, raw)));
+                    raw = Math.max(min, Math.min(max, raw));
+                    if (doSnap) return snap(raw);
+                    return Math.round(raw);
                 }
                 function overlayPctFromEvent(e) {
                     var rect = overlay.getBoundingClientRect();
@@ -494,8 +520,35 @@ export const EXAM_NUMBER_LINE_JS = `
                     overlay.querySelectorAll('.exam-nl-fixed-input').forEach(function (el) { el.remove(); });
                     overlay.querySelectorAll('.exam-nl-hit-active').forEach(function (el) { el.classList.remove('exam-nl-hit-active'); });
                 }
+                function showFixedValue(markerPct, id, text) {
+                    overlay.querySelectorAll('.exam-nl-fixed-value[data-answer-id="' + id + '"]').forEach(function (el) { el.remove(); });
+                    if (!text) return;
+                    var tag = document.createElement('span');
+                    tag.className = 'exam-nl-fixed-value';
+                    tag.setAttribute('data-answer-id', id);
+                    tag.style.left = markerPct + '%';
+                    tag.textContent = text;
+                    tag.title = 'Klicken zum Ändern';
+                    tag.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        openFixedInput(markerPct, id);
+                    });
+                    overlay.appendChild(tag);
+                }
+                function persistFixedInput(inp, markerPct, id) {
+                    var v = inp.value.trim();
+                    var hidden = document.getElementById(id);
+                    if (hidden) {
+                        hidden.value = v;
+                        hidden.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    if (inp.parentNode) inp.remove();
+                    showFixedValue(markerPct, id, v);
+                    clearFixedInput();
+                }
                 function openFixedInput(markerPct, id) {
                     clearFixedInput();
+                    overlay.querySelectorAll('.exam-nl-fixed-value[data-answer-id="' + id + '"]').forEach(function (el) { el.remove(); });
                     var hit = overlay.querySelector('.exam-nl-hit[data-answer-id="' + id + '"]');
                     if (hit) hit.classList.add('exam-nl-hit-active');
                     var inp = document.createElement('input');
@@ -512,6 +565,9 @@ export const EXAM_NUMBER_LINE_JS = `
                         }
                     });
                     inp.addEventListener('keydown', function (ev) { ev.stopPropagation(); });
+                    inp.addEventListener('blur', function () {
+                        persistFixedInput(inp, markerPct, id);
+                    });
                     overlay.appendChild(inp);
                     inp.focus();
                 }
@@ -542,6 +598,8 @@ export const EXAM_NUMBER_LINE_JS = `
                         openFixedInput(markerPct, id);
                     });
                     overlay.appendChild(hit);
+                    var hiddenInit = document.getElementById(id);
+                    if (hiddenInit && hiddenInit.value) showFixedValue(markerPct, id, hiddenInit.value);
                 });
 
                 var selectedLabel = null;
@@ -559,11 +617,36 @@ export const EXAM_NUMBER_LINE_JS = `
                     });
                 });
 
-                function placePin(value, label) {
+                function enablePinDrag(pin, label) {
+                    pin.addEventListener('mousedown', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        pin.classList.add('exam-nl-pin--dragging');
+                        function onMove(ev) {
+                            var pct = overlayPctFromEvent(ev);
+                            pin.style.left = pct + '%';
+                            var cfg = chipMap[label];
+                            if (!cfg) return;
+                            var val = pctToValue(pct, false);
+                            var hidden = document.getElementById(cfg.id);
+                            if (hidden) {
+                                hidden.value = String(val);
+                                hidden.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                        }
+                        function onUp() {
+                            pin.classList.remove('exam-nl-pin--dragging');
+                            document.removeEventListener('mousemove', onMove);
+                            document.removeEventListener('mouseup', onUp);
+                        }
+                        document.addEventListener('mousemove', onMove);
+                        document.addEventListener('mouseup', onUp);
+                    });
+                }
+                function placePinAtPct(pct, label) {
                     var cfg = chipMap[label];
                     if (!cfg) return;
-                    var expected = cfg.value;
-                    if (Math.abs(value - expected) <= step * 2) value = expected;
+                    var value = pctToValue(pct, false);
                     var hidden = document.getElementById(cfg.id);
                     if (hidden) {
                         hidden.value = String(value);
@@ -574,17 +657,17 @@ export const EXAM_NUMBER_LINE_JS = `
                     var pin = document.createElement('div');
                     pin.className = 'exam-nl-pin';
                     pin.setAttribute('data-label', label);
-                    pin.style.left = valueToPct(value) + '%';
-                    pin.innerHTML = '<span class="exam-nl-pin-label">' + label + '</span><span class="exam-nl-pin-dot"></span>';
+                    pin.style.left = pct + '%';
+                    pin.innerHTML = '<span class="exam-nl-pin-label">' + label + ' (' + value + ')</span><span class="exam-nl-pin-dot"></span>';
                     overlay.appendChild(pin);
+                    enablePinDrag(pin, label);
                 }
 
                 overlay.addEventListener('click', function (e) {
-                    if (e.target.closest('.exam-nl-hit') || e.target.closest('.exam-nl-fixed-input')) return;
+                    if (e.target.closest('.exam-nl-hit') || e.target.closest('.exam-nl-fixed-input') || e.target.closest('.exam-nl-fixed-value') || e.target.closest('.exam-nl-pin')) return;
                     if (!selectedLabel) return;
                     var pct = overlayPctFromEvent(e);
-                    var value = pctToValue(pct);
-                    placePin(value, selectedLabel);
+                    placePinAtPct(pct, selectedLabel);
                     selectedLabel = null;
                     setPlaceMode(false);
                     root.querySelectorAll('.exam-nl-place-chip').forEach(function (b) { b.classList.remove('exam-sort-chip-selected'); });

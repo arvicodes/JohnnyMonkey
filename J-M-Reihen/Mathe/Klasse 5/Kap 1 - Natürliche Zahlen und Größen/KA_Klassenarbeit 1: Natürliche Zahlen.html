@@ -1254,6 +1254,32 @@
         .exam-roman-example-pair:last-child { border-right: none; }
         .exam-roman-ex-rom { font-family: Georgia, 'Times New Roman', serif; }
         .exam-roman-ex-dec { font-weight: normal; }
+
+
+        .exam-life-dates { margin: 8px 0 12px; }
+        .exam-life-dates--with-portrait { display: grid; grid-template-columns: minmax(88px, 26%) 1fr; gap: 12px; align-items: start; }
+        .exam-life-dates-portrait { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; }
+        .exam-life-dates-cards { display: flex; flex-direction: column; gap: 10px; }
+        .exam-life-dates-cards-only { display: flex; flex-wrap: wrap; gap: 10px; }
+        .exam-life-dates-cards-only .exam-life-date-card { flex: 1 1 220px; }
+        .exam-life-date-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; background: #fafafa; }
+        .exam-life-date-name { font-weight: bold; margin: 0 0 4px; font-size: 14px; }
+        .exam-life-date-roman { font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px; line-height: 1.35; color: #333; }
+        .exam-life-date-label { display: block; font-size: 11px; color: #555; margin-bottom: 4px; }
+        .exam-life-date-input { max-width: 100%; }
+        .exam-chart-figure { margin: 6px 0 10px; }
+        .exam-chart-figure img { width: 100%; height: auto; display: block; }
+        .exam-chart-figure--compact { max-width: min(48%, 380px); }
+        .exam-answer-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; }
+        .exam-answer-row-label { flex: 1 1 200px; font-size: 13px; margin: 0; }
+        .exam-answer-row-input { flex: 1 1 160px; max-width: 100%; }
+        .exam-subsection-media .exam-answer-row { margin-top: 4px; }
+        .exam-cloze-line .exam-cloze-gap { min-width: 8em; width: 8em; max-width: 100%; margin: 0 2px; }
+        .exam-roman-example-band { display: flex; flex-wrap: wrap; gap: 0; max-width: 420px; margin: 6px 0 0; border: 1px solid #d8d4cb; border-bottom: none; background: #f5f2eb; }
+        .exam-roman-example-pair { flex: 1 1 33%; display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-right: 1px solid #d8d4cb; font-weight: bold; }
+        .exam-roman-example-pair:last-child { border-right: none; }
+        .exam-roman-ex-rom { font-family: Georgia, 'Times New Roman', serif; }
+        .exam-roman-ex-dec { font-weight: normal; }
         .exam-roman-table { max-width: 420px; margin: 0 0 10px; border-collapse: collapse; background: #f5f2eb; }
         .exam-roman-table th, .exam-roman-table td { border: 1px solid #d8d4cb; padding: 8px 12px; text-align: center; }
         .exam-roman-table thead th { background: #ebe6dc; font-weight: bold; font-size: 13px; }
@@ -1265,7 +1291,10 @@
         .exam-roman-triple-grid td { border: 1px solid #222; padding: 12px 10px; text-align: center; vertical-align: middle; min-width: 72px; height: 44px; }
         .exam-roman-grid-rom { font-family: Georgia, 'Times New Roman', serif; font-weight: normal; }
         .exam-roman-grid-dec { font-weight: bold; }
-        .exam-roman-grid-input { width: 4.5em; margin: 0 auto; display: block; }
+        .exam-roman-cell-pair { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; min-height: 34px; }
+        .exam-roman-grid-slot { flex: 1 1 0; min-width: 0; text-align: center; }
+        .exam-roman-grid-slot--empty { visibility: hidden; min-height: 1.4em; }
+        .exam-roman-grid-input { width: 100%; max-width: 4.2em; margin: 0 auto; display: block; }
         .exam-table-input { width: 4em; text-align: center; }
         .exam-quote { font-style: italic; margin: 8px 0; }
         .exam-binary { font-family: ui-monospace, monospace; font-style: normal; }
@@ -1322,6 +1351,20 @@
             text-align: center;
             z-index: 4;
         }
+        .exam-nl-fixed-value {
+            position: absolute;
+            top: 6%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            font-weight: bold;
+            background: #fff;
+            padding: 1px 6px;
+            border: 1px solid #c00;
+            border-radius: 4px;
+            z-index: 4;
+            cursor: pointer;
+            white-space: nowrap;
+        }
         .exam-nl-pin {
             position: absolute;
             bottom: 22%;
@@ -1331,8 +1374,11 @@
             align-items: center;
             gap: 2px;
             z-index: 3;
-            pointer-events: none;
+            pointer-events: auto;
+            cursor: grab;
+            touch-action: none;
         }
+        .exam-nl-pin.exam-nl-pin--dragging { cursor: grabbing; }
         .exam-nl-pin-dot { width: 10px; height: 10px; border-radius: 50%; background: #1565c0; border: 2px solid #fff; box-shadow: 0 0 0 1px #1565c0; }
         .exam-nl-pin-label { font-size: 10px; font-weight: bold; background: #fff; padding: 0 4px; border: 1px solid #ccc; border-radius: 3px; white-space: nowrap; }
         .exam-nl-chip-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
@@ -1459,8 +1505,8 @@
         <div class="task-content">
 
             <div class="exam-task-grid">
-                <div class="exam-task-grid-cell"><div class="exam-subsection" data-sub-kind="round-lines" data-sub-id="sub-A-tl-asllr" data-exam-spec="%7B%22id%22%3A%22sub-A-tl-asllr%22%2C%22letter%22%3A%22A%22%2C%22title%22%3A%22Runde%20die%20Zahlen%3A%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22round-lines%22%2C%22lines%22%3A%5B%7B%22text%22%3A%2266666%20auf%20Hunderter%20%3D%22%2C%22solution%22%3A%2266700%20%2F%2066%20700%22%7D%2C%7B%22text%22%3A%2266666%20auf%20Tausender%20%3D%22%2C%22solution%22%3A%2267000%20%2F%2067%20000%22%7D%2C%7B%22text%22%3A%222481632%20auf%20Zehner%20%3D%22%2C%22solution%22%3A%222481630%20%2F%202%20481%20630%22%7D%2C%7B%22text%22%3A%222481632%20auf%20Hunderter%20%3D%22%2C%22solution%22%3A%222481600%20%2F%202%20481%20600%22%7D%5D%7D"><div class="exam-subsection-title"><span class="item-label">A)</span> Runde die Zahlen:</div><div class="exam-round-line item input-group"><span>66666 auf Hunderter =</span><input type="text" id="a1a" class="blank-wide" autocomplete="off"></div><div class="exam-round-line item input-group"><span>66666 auf Tausender =</span><input type="text" id="a1b" class="blank-wide" autocomplete="off"></div><div class="exam-round-line item input-group"><span>2481632 auf Zehner =</span><input type="text" id="a1c" class="blank-wide" autocomplete="off"></div><div class="exam-round-line item input-group"><span>2481632 auf Hunderter =</span><input type="text" id="a1d" class="blank-wide" autocomplete="off"></div></div></div>
-                <div class="exam-task-grid-cell"><div class="exam-subsection" data-sub-kind="compare" data-sub-id="sub-B-tr-lyfmp" data-exam-spec="%7B%22id%22%3A%22sub-B-tr-lyfmp%22%2C%22letter%22%3A%22B%22%2C%22title%22%3A%22Setze%20das%20richtige%20Vergleichszeichen%20ein%3A%22%2C%22quadrant%22%3A%22tr%22%2C%22kind%22%3A%22compare%22%2C%22rows%22%3A%5B%7B%22left%22%3A%223%20469%22%2C%22right%22%3A%2234%20911%22%2C%22solution%22%3A%22%3C%22%7D%2C%7B%22left%22%3A%222%20591%22%2C%22right%22%3A%22109%22%2C%22solution%22%3A%22%3E%22%7D%2C%7B%22left%22%3A%2234%20123%20496%22%2C%22right%22%3A%2234%20223%20496%22%2C%22solution%22%3A%22%3C%22%7D%5D%7D"><div class="exam-subsection-title"><span class="item-label">B)</span> Setze das richtige Vergleichszeichen ein:</div><div class="item input-group"><span>3 469</span><span class="compare-choice">
+                <div class="exam-task-grid-cell"><div class="exam-subsection" data-sub-kind="round-lines" data-sub-id="s-a" data-exam-spec="%7B%22id%22%3A%22s-a%22%2C%22letter%22%3A%22A%22%2C%22title%22%3A%22Runde%20die%20Zahlen%3A%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22round-lines%22%2C%22lines%22%3A%5B%7B%22text%22%3A%2266666%20auf%20Hunderter%20%3D%22%2C%22solution%22%3A%2266700%22%7D%2C%7B%22text%22%3A%2266666%20auf%20Tausender%20%3D%22%2C%22solution%22%3A%2267000%22%7D%2C%7B%22text%22%3A%222481632%20auf%20Zehner%20%3D%22%2C%22solution%22%3A%222481630%22%7D%2C%7B%22text%22%3A%222481632%20auf%20Hunderter%20%3D%22%2C%22solution%22%3A%222481600%22%7D%5D%7D"><div class="exam-subsection-title"><span class="item-label">A)</span> Runde die Zahlen:</div><div class="exam-round-line item input-group"><span>66666 auf Hunderter =</span><input type="text" id="a1a" class="blank-wide" autocomplete="off"></div><div class="exam-round-line item input-group"><span>66666 auf Tausender =</span><input type="text" id="a1b" class="blank-wide" autocomplete="off"></div><div class="exam-round-line item input-group"><span>2481632 auf Zehner =</span><input type="text" id="a1c" class="blank-wide" autocomplete="off"></div><div class="exam-round-line item input-group"><span>2481632 auf Hunderter =</span><input type="text" id="a1d" class="blank-wide" autocomplete="off"></div></div></div>
+                <div class="exam-task-grid-cell"><div class="exam-subsection" data-sub-kind="compare" data-sub-id="s-b" data-exam-spec="%7B%22id%22%3A%22s-b%22%2C%22letter%22%3A%22B%22%2C%22title%22%3A%22Setze%20das%20richtige%20Vergleichszeichen%20ein%3A%22%2C%22quadrant%22%3A%22tr%22%2C%22kind%22%3A%22compare%22%2C%22rows%22%3A%5B%7B%22left%22%3A%223%20469%22%2C%22right%22%3A%2234%20911%22%2C%22solution%22%3A%22%3C%22%7D%2C%7B%22left%22%3A%222%20591%22%2C%22right%22%3A%22109%22%2C%22solution%22%3A%22%3E%22%7D%2C%7B%22left%22%3A%2234%20123%20496%22%2C%22right%22%3A%2234%20223%20496%22%2C%22solution%22%3A%22%3C%22%7D%5D%7D"><div class="exam-subsection-title"><span class="item-label">B)</span> Setze das richtige Vergleichszeichen ein:</div><div class="item input-group"><span>3 469</span><span class="compare-choice">
 <label><input type="radio" name="a1e" value="<"> &lt;</label>
 <label><input type="radio" name="a1e" value=">"> &gt;</label>
 <label><input type="radio" name="a1e" value="="> =</label>
@@ -1472,13 +1518,13 @@
 <label><input type="radio" name="a1g" value="<"> &lt;</label>
 <label><input type="radio" name="a1g" value=">"> &gt;</label>
 <label><input type="radio" name="a1g" value="="> =</label>
-</span><span>34 223 496</span></div></div><div class="exam-subsection" data-sub-kind="sort" data-sub-id="sub-C-tr-gfu7y" data-exam-spec="%7B%22id%22%3A%22sub-C-tr-gfu7y%22%2C%22letter%22%3A%22C%22%2C%22title%22%3A%22Schreibe%20die%20Zahlen%20von%20der%20kleinsten%20zur%20gr%C3%B6%C3%9Ften%20auf%3A%22%2C%22quadrant%22%3A%22tr%22%2C%22kind%22%3A%22sort%22%2C%22given%22%3A%22391%2C%20589%2C%20389%2C%20399%22%2C%22solution%22%3A%22389%20%2F%20391%20%2F%20399%20%2F%20589%20%2F%20389%3B%20391%3B%20399%3B%20589%20%2F%20389%20391%20399%20589%22%2C%22interaction%22%3A%22drag%22%7D"><div class="exam-subsection-title"><span class="item-label">C)</span> Schreibe die Zahlen von der kleinsten zur größten auf:</div><div class="exam-sort-drag" data-answer-id="a1h">
+</span><span>34 223 496</span></div></div><div class="exam-subsection" data-sub-kind="sort" data-sub-id="s-c" data-exam-spec="%7B%22id%22%3A%22s-c%22%2C%22letter%22%3A%22C%22%2C%22title%22%3A%22Schreibe%20die%20Zahlen%20von%20der%20kleinsten%20zur%20gr%C3%B6%C3%9Ften%20auf%3A%22%2C%22quadrant%22%3A%22tr%22%2C%22kind%22%3A%22sort%22%2C%22given%22%3A%22391%2C%20589%2C%20389%2C%20399%22%2C%22solution%22%3A%22389%2C%20391%2C%20399%2C%20589%22%2C%22interaction%22%3A%22drag%22%7D"><div class="exam-subsection-title"><span class="item-label">C)</span> Schreibe die Zahlen von der kleinsten zur größten auf:</div><div class="exam-sort-drag" data-answer-id="a1h">
 <div class="exam-sort-pool" aria-label="Zahlen zum Ziehen"><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="391">391</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="589">589</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="389">389</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="399">399</span></div>
 <div class="exam-sort-slots-row" aria-label="Reihenfolge von klein nach groß"><div class="exam-sort-slot" data-slot="0" aria-label="Position 1"></div><div class="exam-sort-slot" data-slot="1" aria-label="Position 2"></div><div class="exam-sort-slot" data-slot="2" aria-label="Position 3"></div><div class="exam-sort-slot" data-slot="3" aria-label="Position 4"></div></div>
 <input type="hidden" id="a1h" value="">
 </div><p class="exam-sort-hint">Ziehe die Zahlen.</p></div></div>
-                <div class="exam-task-grid-cell"><div class="exam-subsection" data-sub-kind="one-line" data-sub-id="sub-D-bl-b734d" data-exam-spec="%7B%22id%22%3A%22sub-D-bl-b734d%22%2C%22letter%22%3A%22D%22%2C%22title%22%3A%22Schreibe%20die%20Zahl%20in%20Worten%3A%22%2C%22quadrant%22%3A%22bl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22918%20027%20604%20055%22%2C%22solution%22%3A%22neunhundertachtzehnmilliardensiebenundzwanzigmillionensechshundertvierundf%C3%BCnfzigtausendf%C3%BCnfundf%C3%BCnfzig%20%2F%20neunhundertachtzehnmilliardensiebenundzwanzigmillionensechshundertvierundfuenfzigtausendfuenfundfuenfzig%22%7D"><div class="exam-subsection-title"><span class="item-label">D)</span> Schreibe die Zahl in Worten:</div><div class="item input-group full-width" style="margin-top:8px;"><p style="margin:0 0 6px;">918 027 604 055</p><input type="text" id="a1i" class="blank-wide" autocomplete="off"></div></div><div class="exam-subsection" data-sub-kind="one-line" data-sub-id="sub-E-bl-odia6" data-exam-spec="%7B%22id%22%3A%22sub-E-bl-odia6%22%2C%22letter%22%3A%22E%22%2C%22title%22%3A%22Schreibe%20als%20Zahl%3A%22%2C%22quadrant%22%3A%22bl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22Neun%20Milliarden%20elf%20Millionen%20einhundertzehntausend%22%2C%22solution%22%3A%229011110000%20%2F%209%20011%20110%20000%22%7D"><div class="exam-subsection-title"><span class="item-label">E)</span> Schreibe als Zahl:</div><div class="item input-group full-width" style="margin-top:8px;"><p style="margin:0 0 6px;">Neun Milliarden elf Millionen einhundertzehntausend</p><input type="text" id="a1k" class="blank-wide" autocomplete="off"></div></div></div>
-                <div class="exam-task-grid-cell"><div class="exam-subsection" data-sub-kind="bullet-blanks" data-sub-id="sub-F-br-xvn9p" data-exam-spec="%7B%22id%22%3A%22sub-F-br-xvn9p%22%2C%22letter%22%3A%22F%22%2C%22title%22%3A%22Nenne%3A%22%2C%22quadrant%22%3A%22br%22%2C%22kind%22%3A%22bullet-blanks%22%2C%22items%22%3A%5B%7B%22text%22%3A%22Die%20gr%C3%B6%C3%9Fte%20Zahl%20mit%20f%C3%BCnf%20Ziffern%3A%22%2C%22solution%22%3A%2299999%20%2F%2099%20999%22%7D%2C%7B%22text%22%3A%22Die%20kleinste%20nat%C3%BCrliche%20Zahl%3A%22%2C%22solution%22%3A%221%22%7D%5D%7D"><div class="exam-subsection-title"><span class="item-label">F)</span> Nenne:</div><ul class="exam-grid-blank-list"><li>Die größte Zahl mit fünf Ziffern: <input type="text" id="a1m" class="blank-tiny" autocomplete="off"></li><li>Die kleinste natürliche Zahl: <input type="text" id="a1n" class="blank-tiny" autocomplete="off"></li></ul></div><div class="exam-subsection" data-sub-kind="cloze" data-sub-id="sub-G-br-o0h66" data-exam-spec="%7B%22id%22%3A%22sub-G-br-o0h66%22%2C%22letter%22%3A%22G%22%2C%22title%22%3A%22Vervollst%C3%A4ndige%20die%20L%C3%BCcken%3A%22%2C%22quadrant%22%3A%22br%22%2C%22kind%22%3A%22cloze%22%2C%22template%22%3A%22Die%20Menge%20der%20nat%C3%BCrlichen%20Zahlen%20ist%20nach%20oben%20___%20.%20Die%20Zahl%2013%20ist%20zusammengesetzt%20aus%20den%20beiden%20___%201%20und%203.%20Sie%20ist%20ein%20___%20der%20Menge%20der%20nat%C3%BCrlichen%20Zahlen.%22%2C%22solutions%22%3A%5B%22unbeschr%C3%A4nkt%20%2F%20unbeschraenkt%20%2F%20unendlich%22%2C%22Ziffern%20%2F%20Ziffer%22%2C%22Element%22%5D%7D"><div class="exam-subsection-title"><span class="item-label">G)</span> Vervollständige die Lücken:</div><div class="exam-cloze-line">Die Menge der natürlichen Zahlen ist nach oben <input type="text" id="a1o" class="blank-wide exam-cloze-gap" autocomplete="off"> . Die Zahl 13 ist zusammengesetzt aus den beiden <input type="text" id="a1p" class="blank-wide exam-cloze-gap" autocomplete="off"> 1 und 3. Sie ist ein <input type="text" id="a1q" class="blank-wide exam-cloze-gap" autocomplete="off"> der Menge der natürlichen Zahlen.</div></div></div>
+                <div class="exam-task-grid-cell"><div class="exam-subsection" data-sub-kind="one-line" data-sub-id="s-d" data-exam-spec="%7B%22id%22%3A%22s-d%22%2C%22letter%22%3A%22D%22%2C%22title%22%3A%22Schreibe%20die%20Zahl%20in%20Worten%3A%22%2C%22quadrant%22%3A%22bl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22918%20027%20604%20055%22%2C%22solution%22%3A%22neunhundertachtzehnmilliardensiebenundzwanzigmillionensechshundertvierundf%C3%BCnfzigtausendf%C3%BCnfundf%C3%BCnfzig%22%7D"><div class="exam-subsection-title"><span class="item-label">D)</span> Schreibe die Zahl in Worten:</div><div class="item input-group full-width" style="margin-top:8px;"><p style="margin:0 0 6px;">918 027 604 055</p><input type="text" id="a1i" class="blank-wide" autocomplete="off"></div></div><div class="exam-subsection" data-sub-kind="one-line" data-sub-id="s-e" data-exam-spec="%7B%22id%22%3A%22s-e%22%2C%22letter%22%3A%22E%22%2C%22title%22%3A%22Schreibe%20als%20Zahl%3A%22%2C%22quadrant%22%3A%22bl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22Neun%20Milliarden%20elf%20Millionen%20einhundertzehntausend%22%2C%22solution%22%3A%229011110000%20%2F%209%20011%20110%20000%22%7D"><div class="exam-subsection-title"><span class="item-label">E)</span> Schreibe als Zahl:</div><div class="item input-group full-width" style="margin-top:8px;"><p style="margin:0 0 6px;">Neun Milliarden elf Millionen einhundertzehntausend</p><input type="text" id="a1k" class="blank-wide" autocomplete="off"></div></div></div>
+                <div class="exam-task-grid-cell"><div class="exam-subsection" data-sub-kind="bullet-blanks" data-sub-id="s-f" data-exam-spec="%7B%22id%22%3A%22s-f%22%2C%22letter%22%3A%22F%22%2C%22title%22%3A%22Nenne%3A%22%2C%22quadrant%22%3A%22br%22%2C%22kind%22%3A%22bullet-blanks%22%2C%22items%22%3A%5B%7B%22text%22%3A%22Die%20gr%C3%B6%C3%9Fte%20Zahl%20mit%20f%C3%BCnf%20Ziffern%3A%22%2C%22solution%22%3A%2299999%22%7D%2C%7B%22text%22%3A%22Die%20kleinste%20nat%C3%BCrliche%20Zahl%3A%22%2C%22solution%22%3A%221%22%7D%5D%7D"><div class="exam-subsection-title"><span class="item-label">F)</span> Nenne:</div><ul class="exam-grid-blank-list"><li>Die größte Zahl mit fünf Ziffern: <input type="text" id="a1m" class="blank-tiny" autocomplete="off"></li><li>Die kleinste natürliche Zahl: <input type="text" id="a1n" class="blank-tiny" autocomplete="off"></li></ul></div><div class="exam-subsection" data-sub-kind="cloze" data-sub-id="s-g" data-exam-spec="%7B%22id%22%3A%22s-g%22%2C%22letter%22%3A%22G%22%2C%22title%22%3A%22Vervollst%C3%A4ndige%20die%20L%C3%BCcken%3A%22%2C%22quadrant%22%3A%22br%22%2C%22kind%22%3A%22cloze%22%2C%22template%22%3A%22Die%20Menge%20der%20nat%C3%BCrlichen%20Zahlen%20ist%20nach%20oben%20___%20.%20Die%20Zahl%2013%20ist%20zusammengesetzt%20aus%20den%20beiden%20___%201%20und%203.%20Sie%20ist%20ein%20___%20der%20Menge%20der%20nat%C3%BCrlichen%20Zahlen.%22%2C%22solutions%22%3A%5B%22unbeschr%C3%A4nkt%20%2F%20unendlich%22%2C%22Ziffern%20%2F%20Ziffer%22%2C%22Element%22%5D%7D"><div class="exam-subsection-title"><span class="item-label">G)</span> Vervollständige die Lücken:</div><div class="exam-cloze-line">Die Menge der natürlichen Zahlen ist nach oben <input type="text" id="a1o" class="blank-wide exam-cloze-gap" autocomplete="off"> . Die Zahl 13 ist zusammengesetzt aus den beiden <input type="text" id="a1p" class="blank-wide exam-cloze-gap" autocomplete="off"> 1 und 3. Sie ist ein <input type="text" id="a1q" class="blank-wide exam-cloze-gap" autocomplete="off"> der Menge der natürlichen Zahlen.</div></div></div>
             </div>
             <div class="solution">
                 <h4>Musterlösung:</h4>
@@ -1489,7 +1535,7 @@
                 <p>B) 3 469 <strong><</strong> 34 911</p>
                 <p>B) 2 591 <strong>></strong> 109</p>
                 <p>B) 34 123 496 <strong><</strong> 34 223 496</p>
-                <p>C) <strong>389 / 391 / 399 / 589 / 389; 391; 399; 589 / 389;391;399;589 / 389, 391, 399, 589 / 389 391 399 589 / 389,391,399,589 / 389391399589</strong></p>
+                <p>C) <strong>389, 391, 399, 589 / 389,391,399,589 / 389; 391; 399; 589 / 389 391 399 589</strong></p>
                 <p>D) <strong>neunhundertachtzehnmilliardensiebenundzwanzigmillionensechshundertvierundfünfzigtausendfünfundfünfzig / neunhundertachtzehnmilliardensiebenundzwanzigmillionensechshundertvierundfuenfzigtausendfuenfundfuenfzig</strong></p>
                 <p>E) <strong>9011110000 / 9 011 110 000</strong></p>
                 <p>F a) Die größte Zahl mit fünf Ziffern: <strong>99999 / 99 999</strong></p>
@@ -1501,7 +1547,7 @@
         </div>
     </div>
 
-<!-- Aufgabe 2 -->
+    <!-- Aufgabe 2 -->
     <div class="task">
         <div class="task-header">
             <div class="task-number">Aufgabe 2 <span style="font-size: 11px; color: #666; font-weight: normal;">(10 Punkte)</span></div>
@@ -1522,20 +1568,22 @@
 <label class="exam-life-date-label" for="a2b">Mit römischen Zahlzeichen</label>
 <input type="text" id="a2b" class="blank-wide exam-life-date-input" autocomplete="off" aria-label="Leonardo da Vinci">
 </div></div></div>
-<div class="exam-subsection" data-sub-kind="roman-table" data-sub-id="k2-b" data-exam-spec="%7B%22id%22%3A%22k2-b%22%2C%22letter%22%3A%22B%22%2C%22title%22%3A%22F%C3%BClle%20die%20L%C3%BCcken%20wie%20im%20unten%20stehenden%20Beispiel%20aus.%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22roman-table%22%2C%22layout%22%3A%22paired-table%22%2C%22examples%22%3A%5B%7B%22roman%22%3A%22XXIX%22%2C%22decimal%22%3A%2229%22%7D%2C%7B%22roman%22%3A%22XXX%22%2C%22decimal%22%3A%2230%22%7D%2C%7B%22roman%22%3A%22XXXI%22%2C%22decimal%22%3A%2231%22%7D%5D%2C%22gaps%22%3A%5B%7B%22roman%22%3A%22L%22%2C%22answerId%22%3A%22a2f%22%2C%22solution%22%3A%2250%22%7D%2C%7B%22roman%22%3A%22XCIV%22%2C%22answerId%22%3A%22a2g%22%2C%22solution%22%3A%2294%22%7D%5D%7D"><div class="exam-subsection-title"><span class="item-label">B)</span> Fülle die Lücken wie im unten stehenden Beispiel aus.</div><table class="grade-table exam-roman-table" aria-label="Römische Zahlen">
-<thead><tr><th>Römische Zahl</th><th>Dezimalzahl</th></tr></thead>
-<tbody><tr class="exam-roman-example-row"><td class="exam-roman-gap-rom">XXIX</td><td>29</td></tr><tr class="exam-roman-example-row"><td class="exam-roman-gap-rom">XXX</td><td>30</td></tr><tr class="exam-roman-example-row"><td class="exam-roman-gap-rom">XXXI</td><td>31</td></tr><tr><td class="exam-roman-gap-rom">L</td><td class="exam-roman-gap-dec"><input type="text" id="a2f" class="blank-tiny exam-table-input exam-roman-gap-input" autocomplete="off"></td></tr><tr><td class="exam-roman-gap-rom">XCIV</td><td class="exam-roman-gap-dec"><input type="text" id="a2g" class="blank-tiny exam-table-input exam-roman-gap-input" autocomplete="off"></td></tr></tbody></table></div>
+<div class="exam-subsection" data-sub-kind="roman-table" data-sub-id="k2-b" data-exam-spec="%7B%22id%22%3A%22k2-b%22%2C%22letter%22%3A%22B%22%2C%22title%22%3A%22F%C3%BClle%20die%20L%C3%BCcken%20wie%20im%20unten%20stehenden%20Beispiel%20aus.%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22roman-table%22%2C%22layout%22%3A%22triple-grid%22%2C%22examples%22%3A%5B%7B%22roman%22%3A%22XXIX%22%2C%22decimal%22%3A%2229%22%7D%2C%7B%22roman%22%3A%22XXX%22%2C%22decimal%22%3A%2230%22%7D%2C%7B%22roman%22%3A%22XXXI%22%2C%22decimal%22%3A%2231%22%7D%5D%2C%22gridRows%22%3A%5B%7B%22cells%22%3A%5B%7B%22kind%22%3A%22pair%22%2C%22left%22%3A%7B%22kind%22%3A%22input-roman%22%2C%22answerId%22%3A%22a2c%22%2C%22solution%22%3A%22XXXII%22%7D%2C%22right%22%3A%7B%22kind%22%3A%22input-decimal%22%2C%22answerId%22%3A%22a2d%22%2C%22solution%22%3A%2232%22%7D%7D%2C%7B%22kind%22%3A%22pair%22%2C%22left%22%3A%7B%22kind%22%3A%22input-roman%22%2C%22answerId%22%3A%22a2e%22%2C%22solution%22%3A%22XXXIII%22%7D%2C%22right%22%3A%7B%22kind%22%3A%22input-decimal%22%2C%22answerId%22%3A%22a2h%22%2C%22solution%22%3A%2233%22%7D%7D%2C%7B%22kind%22%3A%22pair%22%2C%22left%22%3A%7B%22kind%22%3A%22input-roman%22%2C%22answerId%22%3A%22a2f%22%2C%22solution%22%3A%22L%22%7D%2C%22right%22%3A%7B%22kind%22%3A%22decimal%22%2C%22text%22%3A%2250%22%7D%7D%5D%7D%2C%7B%22cells%22%3A%5B%7B%22kind%22%3A%22pair%22%2C%22left%22%3A%7B%22kind%22%3A%22roman%22%2C%22text%22%3A%22XCIV%22%7D%2C%22right%22%3A%7B%22kind%22%3A%22input-decimal%22%2C%22answerId%22%3A%22a2g%22%2C%22solution%22%3A%2294%22%7D%7D%2C%7B%22kind%22%3A%22empty%22%7D%2C%7B%22kind%22%3A%22empty%22%7D%5D%7D%5D%7D"><div class="exam-subsection-title"><span class="item-label">B)</span> Fülle die Lücken wie im unten stehenden Beispiel aus.</div><div class="exam-roman-example-band exam-roman-example-band--grid" aria-label="Beispiel"><div class="exam-roman-example-pair"><span class="exam-roman-ex-rom">XXIX</span><span class="exam-roman-ex-dec">29</span></div><div class="exam-roman-example-pair"><span class="exam-roman-ex-rom">XXX</span><span class="exam-roman-ex-dec">30</span></div><div class="exam-roman-example-pair"><span class="exam-roman-ex-rom">XXXI</span><span class="exam-roman-ex-dec">31</span></div></div><table class="grade-table exam-roman-table exam-roman-triple-grid" aria-label="Römische Zahlen"><tbody><tr><td class="exam-roman-grid-cell"><div class="exam-roman-cell-pair"><input type="text" id="a2c" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"><input type="text" id="a2d" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"></div></td><td class="exam-roman-grid-cell"><div class="exam-roman-cell-pair"><input type="text" id="a2e" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"><input type="text" id="a2h" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"></div></td><td class="exam-roman-grid-cell"><div class="exam-roman-cell-pair"><input type="text" id="a2f" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"><span class="exam-roman-grid-dec exam-roman-grid-slot">50</span></div></td></tr><tr><td class="exam-roman-grid-cell"><div class="exam-roman-cell-pair"><span class="exam-roman-grid-rom exam-roman-grid-slot">XCIV</span><input type="text" id="a2g" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"></div></td><td class="exam-roman-grid-cell"></td><td class="exam-roman-grid-cell"></td></tr></tbody></table></div>
             <div class="solution">
                 <h4>Musterlösung:</h4>
                 <p>A) Pablo Picasso <strong>25.10.1881 / 25.10.1 881</strong></p>
                 <p>A) Leonardo da Vinci <strong>15.4.1452 / 15.4.1 452</strong></p>
-                <p>B) L <strong>50</strong></p>
-                <p>B) XCIV <strong>94</strong></p>
+                <p>B) <strong>XXXII</strong></p>
+                <p>B) <strong>32</strong></p>
+                <p>B) <strong>XXXIII</strong></p>
+                <p>B) <strong>33</strong></p>
+                <p>B) <strong>L</strong></p>
+                <p>B) <strong>94</strong></p>
             </div>
         </div>
     </div>
 
-<!-- Aufgabe 3 -->
+    <!-- Aufgabe 3 -->
     <div class="task">
         <div class="task-header">
             <div class="task-number">Aufgabe 3 <span style="font-size: 11px; color: #666; font-weight: normal;">(7 Punkte)</span></div>
@@ -1570,7 +1618,7 @@
         </div>
     </div>
 
-<!-- Aufgabe 4 -->
+    <!-- Aufgabe 4 -->
     <div class="task">
         <div class="task-header">
             <div class="task-number">Aufgabe 4 <span style="font-size: 11px; color: #666; font-weight: normal;">(12 Punkte)</span></div>
@@ -2344,20 +2392,6 @@
         }
 
         const correctAnswers = {
-            a3e1: ['0'],
-            a3e2: ['0'],
-            a3e3: ['1'],
-            a3e4: ['4'],
-            a4c1: ['12'],
-            a4c2: ['24'],
-            a4c3: ['63'],
-            a4c4: ['70'],
-            a4c5: ['20'],
-            a4d1: ['50800', '50 800'],
-            a4d2: ['52600', '52 600'],
-            a4d3: ['54300', '54 300'],
-            a4d4: ['52400', '52 400'],
-            a4d5: ['54640', '54 640'],
             a1a: ['66700', '66 700'],
             a1b: ['67000', '67 000'],
             a1c: ['2481630', '2 481 630'],
@@ -2365,7 +2399,7 @@
             a1e: ['<'],
             a1f: ['>'],
             a1g: ['<'],
-            a1h: ['389', '391', '399', '589', '389; 391; 399; 589', '389;391;399;589', '389, 391, 399, 589', '389 391 399 589', '389,391,399,589', '389391399589'],
+            a1h: ['389, 391, 399, 589', '389,391,399,589', '389; 391; 399; 589', '389 391 399 589'],
             a1i: ['neunhundertachtzehnmilliardensiebenundzwanzigmillionensechshundertvierundfünfzigtausendfünfundfünfzig', 'neunhundertachtzehnmilliardensiebenundzwanzigmillionensechshundertvierundfuenfzigtausendfuenfundfuenfzig'],
             a1k: ['9011110000', '9 011 110 000'],
             a1m: ['99999', '99 999'],
@@ -2375,7 +2409,11 @@
             a1q: ['Element'],
             a2a: ['25.10.1881', '25.10.1 881'],
             a2b: ['15.4.1452', '15.4.1 452'],
-            a2f: ['50'],
+            a2c: ['XXXII'],
+            a2d: ['32'],
+            a2e: ['XXXIII'],
+            a2h: ['33'],
+            a2f: ['L'],
             a2g: ['94'],
             a3a: ['66'],
             a3b: ['30.11.2010', '30.11.2 010'],
@@ -2396,7 +2434,7 @@
             a4d2: ['52600', '52 600'],
             a4d3: ['54300', '54 300'],
             a4d4: ['52400', '52 400'],
-            a4d5: ['54640', '54 640']
+            a4d5: ['54640', '54 640'],
         };
 
         function getAnswerValue(id) {
@@ -2504,6 +2542,8 @@
 
 
 
+
+
         function setupExamNumberLines() {
             document.querySelectorAll('.exam-number-line-interactive').forEach(function (root) {
                 if (root.getAttribute('data-nl-init') === '1') return;
@@ -2568,22 +2608,28 @@
                     if (max === min) return 0;
                     return ((v - min) / (max - min)) * 100;
                 }
-                function pctToValue(pct) {
+                function pctToValue(pct, doSnap) {
+                    var raw;
                     if (axis.length >= 2) {
-                        if (pct <= axis[0].pct) return snap(axis[0].value);
-                        for (var j = 1; j < axis.length; j++) {
-                            var hiA = axis[j];
-                            var loA = axis[j - 1];
-                            if (pct <= hiA.pct) {
-                                var t2 = (pct - loA.pct) / (hiA.pct - loA.pct);
-                                var rawA = loA.value + t2 * (hiA.value - loA.value);
-                                return snap(Math.max(min, Math.min(max, rawA)));
+                        if (pct <= axis[0].pct) raw = axis[0].value;
+                        else {
+                            raw = axis[axis.length - 1].value;
+                            for (var j = 1; j < axis.length; j++) {
+                                var hiA = axis[j];
+                                var loA = axis[j - 1];
+                                if (pct <= hiA.pct) {
+                                    var t2 = (pct - loA.pct) / (hiA.pct - loA.pct);
+                                    raw = loA.value + t2 * (hiA.value - loA.value);
+                                    break;
+                                }
                             }
                         }
-                        return snap(axis[axis.length - 1].value);
+                    } else {
+                        raw = min + (pct / 100) * (max - min);
                     }
-                    var raw = min + (pct / 100) * (max - min);
-                    return snap(Math.max(min, Math.min(max, raw)));
+                    raw = Math.max(min, Math.min(max, raw));
+                    if (doSnap) return snap(raw);
+                    return Math.round(raw);
                 }
                 function overlayPctFromEvent(e) {
                     var rect = overlay.getBoundingClientRect();
@@ -2595,8 +2641,35 @@
                     overlay.querySelectorAll('.exam-nl-fixed-input').forEach(function (el) { el.remove(); });
                     overlay.querySelectorAll('.exam-nl-hit-active').forEach(function (el) { el.classList.remove('exam-nl-hit-active'); });
                 }
+                function showFixedValue(markerPct, id, text) {
+                    overlay.querySelectorAll('.exam-nl-fixed-value[data-answer-id="' + id + '"]').forEach(function (el) { el.remove(); });
+                    if (!text) return;
+                    var tag = document.createElement('span');
+                    tag.className = 'exam-nl-fixed-value';
+                    tag.setAttribute('data-answer-id', id);
+                    tag.style.left = markerPct + '%';
+                    tag.textContent = text;
+                    tag.title = 'Klicken zum Ändern';
+                    tag.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        openFixedInput(markerPct, id);
+                    });
+                    overlay.appendChild(tag);
+                }
+                function persistFixedInput(inp, markerPct, id) {
+                    var v = inp.value.trim();
+                    var hidden = document.getElementById(id);
+                    if (hidden) {
+                        hidden.value = v;
+                        hidden.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    if (inp.parentNode) inp.remove();
+                    showFixedValue(markerPct, id, v);
+                    clearFixedInput();
+                }
                 function openFixedInput(markerPct, id) {
                     clearFixedInput();
+                    overlay.querySelectorAll('.exam-nl-fixed-value[data-answer-id="' + id + '"]').forEach(function (el) { el.remove(); });
                     var hit = overlay.querySelector('.exam-nl-hit[data-answer-id="' + id + '"]');
                     if (hit) hit.classList.add('exam-nl-hit-active');
                     var inp = document.createElement('input');
@@ -2613,6 +2686,9 @@
                         }
                     });
                     inp.addEventListener('keydown', function (ev) { ev.stopPropagation(); });
+                    inp.addEventListener('blur', function () {
+                        persistFixedInput(inp, markerPct, id);
+                    });
                     overlay.appendChild(inp);
                     inp.focus();
                 }
@@ -2643,6 +2719,8 @@
                         openFixedInput(markerPct, id);
                     });
                     overlay.appendChild(hit);
+                    var hiddenInit = document.getElementById(id);
+                    if (hiddenInit && hiddenInit.value) showFixedValue(markerPct, id, hiddenInit.value);
                 });
 
                 var selectedLabel = null;
@@ -2660,11 +2738,36 @@
                     });
                 });
 
-                function placePin(value, label) {
+                function enablePinDrag(pin, label) {
+                    pin.addEventListener('mousedown', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        pin.classList.add('exam-nl-pin--dragging');
+                        function onMove(ev) {
+                            var pct = overlayPctFromEvent(ev);
+                            pin.style.left = pct + '%';
+                            var cfg = chipMap[label];
+                            if (!cfg) return;
+                            var val = pctToValue(pct, false);
+                            var hidden = document.getElementById(cfg.id);
+                            if (hidden) {
+                                hidden.value = String(val);
+                                hidden.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                        }
+                        function onUp() {
+                            pin.classList.remove('exam-nl-pin--dragging');
+                            document.removeEventListener('mousemove', onMove);
+                            document.removeEventListener('mouseup', onUp);
+                        }
+                        document.addEventListener('mousemove', onMove);
+                        document.addEventListener('mouseup', onUp);
+                    });
+                }
+                function placePinAtPct(pct, label) {
                     var cfg = chipMap[label];
                     if (!cfg) return;
-                    var expected = cfg.value;
-                    if (Math.abs(value - expected) <= step * 2) value = expected;
+                    var value = pctToValue(pct, false);
                     var hidden = document.getElementById(cfg.id);
                     if (hidden) {
                         hidden.value = String(value);
@@ -2675,23 +2778,25 @@
                     var pin = document.createElement('div');
                     pin.className = 'exam-nl-pin';
                     pin.setAttribute('data-label', label);
-                    pin.style.left = valueToPct(value) + '%';
-                    pin.innerHTML = '<span class="exam-nl-pin-label">' + label + '</span><span class="exam-nl-pin-dot"></span>';
+                    pin.style.left = pct + '%';
+                    pin.innerHTML = '<span class="exam-nl-pin-label">' + label + ' (' + value + ')</span><span class="exam-nl-pin-dot"></span>';
                     overlay.appendChild(pin);
+                    enablePinDrag(pin, label);
                 }
 
                 overlay.addEventListener('click', function (e) {
-                    if (e.target.closest('.exam-nl-hit') || e.target.closest('.exam-nl-fixed-input')) return;
+                    if (e.target.closest('.exam-nl-hit') || e.target.closest('.exam-nl-fixed-input') || e.target.closest('.exam-nl-fixed-value') || e.target.closest('.exam-nl-pin')) return;
                     if (!selectedLabel) return;
                     var pct = overlayPctFromEvent(e);
-                    var value = pctToValue(pct);
-                    placePin(value, selectedLabel);
+                    placePinAtPct(pct, selectedLabel);
                     selectedLabel = null;
                     setPlaceMode(false);
                     root.querySelectorAll('.exam-nl-place-chip').forEach(function (b) { b.classList.remove('exam-sort-chip-selected'); });
                 });
             });
         }
+
+
 
 
 

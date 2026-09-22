@@ -125,6 +125,21 @@ export type GridSubsection =
       gridRows?: {
         cells: (
           | { kind: 'empty' }
+          | {
+              kind: 'pair';
+              left:
+                | { kind: 'empty' }
+                | { kind: 'roman'; text: string }
+                | { kind: 'decimal'; text: string }
+                | { kind: 'input-roman'; answerId: string; solution: string }
+                | { kind: 'input-decimal'; answerId: string; solution: string };
+              right:
+                | { kind: 'empty' }
+                | { kind: 'roman'; text: string }
+                | { kind: 'decimal'; text: string }
+                | { kind: 'input-roman'; answerId: string; solution: string }
+                | { kind: 'input-decimal'; answerId: string; solution: string };
+            }
           | { kind: 'roman'; text: string }
           | { kind: 'decimal'; text: string }
           | { kind: 'input-roman'; answerId: string; solution: string }
@@ -558,19 +573,26 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       .join('')}</div>`;
 
     if (gridLayout && sub.gridRows?.length) {
-      const renderGridCell = (cell: (typeof sub.gridRows)[0]['cells'][0]): string => {
-        if (cell.kind === 'empty') return '';
-        if (cell.kind === 'roman') {
-          return `<span class="exam-roman-grid-rom">${escapeHtml(cell.text)}</span>`;
+      const renderGridSlot = (
+        slot:
+          | { kind: 'empty' }
+          | { kind: 'roman'; text: string }
+          | { kind: 'decimal'; text: string }
+          | { kind: 'input-roman'; answerId: string; solution: string }
+          | { kind: 'input-decimal'; answerId: string; solution: string },
+      ): string => {
+        if (slot.kind === 'empty') return '<span class="exam-roman-grid-slot exam-roman-grid-slot--empty"></span>';
+        if (slot.kind === 'roman') {
+          return `<span class="exam-roman-grid-rom exam-roman-grid-slot">${escapeHtml(slot.text)}</span>`;
         }
-        if (cell.kind === 'decimal') {
-          return `<span class="exam-roman-grid-dec">${escapeHtml(cell.text)}</span>`;
+        if (slot.kind === 'decimal') {
+          return `<span class="exam-roman-grid-dec exam-roman-grid-slot">${escapeHtml(slot.text)}</span>`;
         }
-        const id = fieldId(cell, taskNumber, fieldIndex);
-        if (!cell.answerId) fieldIndex.n++;
+        const id = fieldId(slot, taskNumber, fieldIndex);
+        if (!slot.answerId) fieldIndex.n++;
         const answers = parseSolutionAlternatives(
-          cell.solution,
-          cell.kind === 'input-roman' ? 'text' : 'number',
+          slot.solution,
+          slot.kind === 'input-roman' ? 'text' : 'number',
         );
         fields.push({
           id,
@@ -578,6 +600,13 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
           solutionHtml: `<strong>${solutionDisplayHtml(answers)}</strong>`,
         });
         return `<input type="text" id="${id}" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off">`;
+      };
+      const renderGridCell = (cell: (typeof sub.gridRows)[0]['cells'][0]): string => {
+        if (cell.kind === 'empty') return '';
+        if (cell.kind === 'pair') {
+          return `<div class="exam-roman-cell-pair">${renderGridSlot(cell.left)}${renderGridSlot(cell.right)}</div>`;
+        }
+        return renderGridSlot(cell);
       };
       const gridBody = sub.gridRows
         .map(

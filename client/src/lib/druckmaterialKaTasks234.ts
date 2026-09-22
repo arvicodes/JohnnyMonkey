@@ -25,10 +25,26 @@ function hydrateSubsections(
         ...g,
         solution: hydrateField(g.solution, answers, g.answerId),
       }));
+      const hydrateSlot = (
+        slot:
+          | { kind: 'empty' }
+          | { kind: 'roman'; text: string }
+          | { kind: 'decimal'; text: string }
+          | { kind: 'input-roman'; answerId: string; solution: string }
+          | { kind: 'input-decimal'; answerId: string; solution: string },
+      ) => {
+        if (slot.kind === 'input-roman' || slot.kind === 'input-decimal') {
+          return { ...slot, solution: hydrateField(slot.solution, answers, slot.answerId) };
+        }
+        return slot;
+      };
       const hydratedGridRows = sub.gridRows?.map((row) => ({
         cells: row.cells.map((c) => {
           if (c.kind === 'input-roman' || c.kind === 'input-decimal') {
             return { ...c, solution: hydrateField(c.solution, answers, c.answerId) };
+          }
+          if (c.kind === 'pair') {
+            return { ...c, left: hydrateSlot(c.left), right: hydrateSlot(c.right) };
           }
           return c;
         }),
@@ -114,15 +130,43 @@ export function druckmaterialKlassenarbeit2(): ExamGridTaskSpec {
         title: 'Fülle die Lücken wie im unten stehenden Beispiel aus.',
         quadrant: 'tl',
         kind: 'roman-table',
-        layout: 'paired-table',
+        layout: 'triple-grid',
         examples: [
           { roman: 'XXIX', decimal: '29' },
           { roman: 'XXX', decimal: '30' },
           { roman: 'XXXI', decimal: '31' },
         ],
-        gaps: [
-          { roman: 'L', answerId: 'a2f', solution: '50' },
-          { roman: 'XCIV', answerId: 'a2g', solution: '94' },
+        gridRows: [
+          {
+            cells: [
+              {
+                kind: 'pair',
+                left: { kind: 'input-roman', answerId: 'a2c', solution: 'XXXII' },
+                right: { kind: 'input-decimal', answerId: 'a2d', solution: '32' },
+              },
+              {
+                kind: 'pair',
+                left: { kind: 'input-roman', answerId: 'a2e', solution: 'XXXIII' },
+                right: { kind: 'input-decimal', answerId: 'a2h', solution: '33' },
+              },
+              {
+                kind: 'pair',
+                left: { kind: 'input-roman', answerId: 'a2f', solution: 'L' },
+                right: { kind: 'decimal', text: '50' },
+              },
+            ],
+          },
+          {
+            cells: [
+              {
+                kind: 'pair',
+                left: { kind: 'roman', text: 'XCIV' },
+                right: { kind: 'input-decimal', answerId: 'a2g', solution: '94' },
+              },
+              { kind: 'empty' },
+              { kind: 'empty' },
+            ],
+          },
         ],
       },
     ],

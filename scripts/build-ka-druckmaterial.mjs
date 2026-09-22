@@ -105,7 +105,10 @@ if (!html.includes('function setupExamNumberLines')) {
 }
 
 const needsNlCss =
-  !html.includes('.exam-nl-visual') || !html.includes('exam-nl-hit');
+  !html.includes('.exam-nl-visual') ||
+  !html.includes('exam-nl-hit') ||
+  !html.includes('.exam-roman-cell-pair') ||
+  !html.includes('.exam-nl-fixed-value');
 if (needsNlCss && html.includes('function setupExamNumberLines')) {
   html = html.replace(
     /\n        \.exam-roman-table[\s\S]*?\.exam-nl-place-chip\.exam-sort-chip-selected[\s\S]*?\n/,
