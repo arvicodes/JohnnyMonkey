@@ -119,7 +119,7 @@ export type GridSubsection =
       title: string;
       quadrant: GridQuadrant;
       kind: 'roman-table';
-      layout?: 'paired-rows' | 'triple-grid';
+      layout?: 'paired-rows' | 'paired-table' | 'triple-grid';
       examples: { roman: string; decimal: string }[];
       gaps?: { roman: string; answerId: string; solution: string }[];
       gridRows?: {
@@ -368,7 +368,6 @@ export function druckmaterialKlassenarbeit1(): ExamGridTaskSpec {
         title: 'Vervollständige die Lücken:',
         quadrant: 'br',
         kind: 'cloze',
-        image: { src: druckKaImageUrl('image-n-menge.png'), align: 'left' },
         template:
           'Die Menge der natürlichen Zahlen ist nach oben ___ . Die Zahl 13 ist zusammengesetzt aus den beiden ___ 1 und 3. Sie ist ein ___ der Menge der natürlichen Zahlen.',
         solutions: [
@@ -588,6 +587,15 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
         .join('');
       body = `${exampleBand}<table class="grade-table exam-roman-table exam-roman-triple-grid" aria-label="Römische Zahlen"><tbody>${gridBody}</tbody></table>`;
     } else {
+      const inTableExamples = sub.layout === 'paired-table';
+      const exampleRows = inTableExamples
+        ? sub.examples
+            .map(
+              (r) =>
+                `<tr class="exam-roman-example-row"><td class="exam-roman-gap-rom">${escapeHtml(r.roman)}</td><td>${escapeHtml(r.decimal)}</td></tr>`,
+            )
+            .join('')
+        : '';
       const gapRows = (sub.gaps ?? [])
         .map((g) => {
           const id = fieldId(g, taskNumber, fieldIndex);
@@ -601,9 +609,10 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
           return `<tr><td class="exam-roman-gap-rom">${escapeHtml(g.roman)}</td><td class="exam-roman-gap-dec"><input type="text" id="${id}" class="blank-tiny exam-table-input exam-roman-gap-input" autocomplete="off"></td></tr>`;
         })
         .join('');
-      body = `${exampleBand}<table class="grade-table exam-roman-table" aria-label="Römische Zahlen">
+      const tablePrefix = inTableExamples ? '' : exampleBand;
+      body = `${tablePrefix}<table class="grade-table exam-roman-table" aria-label="Römische Zahlen">
 <thead><tr><th>Römische Zahl</th><th>Dezimalzahl</th></tr></thead>
-<tbody>${gapRows}</tbody></table>`;
+<tbody>${exampleRows}${gapRows}</tbody></table>`;
     }
   } else if (sub.kind === 'rich-part') {
     body = sub.blocks

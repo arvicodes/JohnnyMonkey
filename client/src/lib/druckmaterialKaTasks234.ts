@@ -114,27 +114,15 @@ export function druckmaterialKlassenarbeit2(): ExamGridTaskSpec {
         title: 'Fülle die Lücken wie im unten stehenden Beispiel aus.',
         quadrant: 'tl',
         kind: 'roman-table',
-        layout: 'triple-grid',
+        layout: 'paired-table',
         examples: [
           { roman: 'XXIX', decimal: '29' },
           { roman: 'XXX', decimal: '30' },
           { roman: 'XXXI', decimal: '31' },
         ],
-        gridRows: [
-          {
-            cells: [
-              { kind: 'input-roman', answerId: 'a2f', solution: 'L' },
-              { kind: 'empty' },
-              { kind: 'decimal', text: '50' },
-            ],
-          },
-          {
-            cells: [
-              { kind: 'roman', text: 'XCIV' },
-              { kind: 'input-decimal', answerId: 'a2g', solution: '94' },
-              { kind: 'empty' },
-            ],
-          },
+        gaps: [
+          { roman: 'L', answerId: 'a2f', solution: '50' },
+          { roman: 'XCIV', answerId: 'a2g', solution: '94' },
         ],
       },
     ],
@@ -165,7 +153,7 @@ export function druckmaterialKlassenarbeit3(): ExamGridTaskSpec {
           },
           {
             type: 'p',
-            text: '<strong>Entschlüssle</strong> die Binärzahlen und schreibe als Dezimalzahl:',
+            text: '<strong>Entschlüssle die Binärzahlen und schreibe als Dezimalzahl:</strong>',
           },
           {
             type: 'field',
@@ -204,7 +192,7 @@ export function druckmaterialKlassenarbeit3(): ExamGridTaskSpec {
           {
             type: 'p',
             text:
-              '1) <strong>Nenne</strong> alle Ziffern, die das Alien in seinem Zahlensystem überhaupt benutzen kann:',
+              '<strong>1) Nenne alle Ziffern, die das Alien in seinem Zahlensystem überhaupt benutzen kann:</strong>',
           },
           {
             type: 'field',
@@ -216,7 +204,7 @@ export function druckmaterialKlassenarbeit3(): ExamGridTaskSpec {
           {
             type: 'p',
             text:
-              '2) Das Oktalsystem basiert auf der Zahl 8. <strong>Trage</strong> die Zahl 12 auch in diese Stellenwerttafel ein:',
+              '<strong>2) Das Oktalsystem basiert auf der Zahl 8. Trage die Zahl 12 auch in diese Stellenwerttafel ein:</strong>',
           },
           {
             type: 'place-table',
