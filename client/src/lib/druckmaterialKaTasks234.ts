@@ -91,19 +91,20 @@ export function druckmaterialKlassenarbeit2(): ExamGridTaskSpec {
         title: 'Übersetze die Lebensdaten.',
         quadrant: 'tl',
         kind: 'life-dates',
-        image: { src: druckKaImageUrl('image1.jpeg'), align: 'left' },
         entries: [
           {
             heading: 'Pablo Picasso',
-            lines: '* XXV.X.\nMDCCCLXXXI',
+            lines: '* XXV.X. MDCCCLXXXI',
             answerId: 'a2a',
             solution: '25.10.1881',
+            inputLabel: 'in Arabischen Ziffern',
           },
           {
             heading: 'Leonardo da Vinci',
             lines: '*15.4.1452',
             answerId: 'a2b',
             solution: '15.4.1452',
+            inputLabel: 'Mit römischen Zahlzeichen',
           },
         ],
       },

@@ -105,7 +105,13 @@ export type GridSubsection =
       title: string;
       quadrant: GridQuadrant;
       kind: 'life-dates';
-      entries: { heading: string; lines: string; answerId: string; solution: string }[];
+      entries: {
+        heading: string;
+        lines: string;
+        answerId: string;
+        solution: string;
+        inputLabel?: string;
+      }[];
     } & SubImage
   | {
       id: string;
@@ -351,7 +357,6 @@ export function druckmaterialKlassenarbeit1(): ExamGridTaskSpec {
         title: 'Nenne:',
         quadrant: 'br',
         kind: 'bullet-blanks',
-        image: { src: druckKaImageUrl('image-farbpinsel.jpeg'), align: 'right' },
         items: [
           { text: 'Die größte Zahl mit fünf Ziffern:', solution: '99999' },
           { text: 'Die kleinste natürliche Zahl:', solution: '1' },
@@ -522,14 +527,14 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
           answers,
           solutionHtml: `${escapeHtml(e.heading)} <strong>${solutionDisplayHtml(answers)}</strong>`,
         });
-        const lines = e.lines
-          .split('\n')
-          .map((ln) => escapeHtml(ln))
-          .join('<br>');
+        const lines = e.lines.includes('\n')
+          ? e.lines.split('\n').map((ln) => escapeHtml(ln)).join('<br>')
+          : escapeHtml(e.lines);
+        const inputLabel = e.inputLabel?.trim() || 'Deutsche Lebensdaten (TT.MM.JJJJ)';
         return `<div class="exam-life-date-card">
 <p class="exam-life-date-name">${escapeHtml(e.heading)}</p>
 <p class="exam-life-date-roman">${lines}</p>
-<label class="exam-life-date-label" for="${id}">Deutsche Lebensdaten (TT.MM.JJJJ)</label>
+<label class="exam-life-date-label" for="${id}">${escapeHtml(inputLabel)}</label>
 <input type="text" id="${id}" class="blank-wide exam-life-date-input" autocomplete="off" aria-label="${escapeHtml(e.heading)}">
 </div>`;
       })

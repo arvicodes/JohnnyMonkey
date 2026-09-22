@@ -82,6 +82,18 @@ export function StackSubsectionFields({ sub, subIndex, updateSub, editorRowFill 
             <TextField
               fullWidth
               size="small"
+              label="Beschriftung Eingabefeld"
+              value={entry.inputLabel ?? ''}
+              onChange={(e) => {
+                const entries = [...sub.entries];
+                entries[i] = { ...entry, inputLabel: e.target.value };
+                updateSub(sub.id, { entries });
+              }}
+              sx={{ mb: 0.5 }}
+            />
+            <TextField
+              fullWidth
+              size="small"
               label="Musterlösung"
               value={entry.solution}
               onChange={(e) => {
