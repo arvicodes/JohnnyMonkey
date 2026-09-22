@@ -177,7 +177,8 @@ export function createBlankExamGridTask(taskNumber: number): ExamGridTaskSpec {
   };
 }
 
-export function demoNatuerlicheZahlenTask1(): ExamGridTaskSpec {
+/** Inhalt aus Druck-Klassenarbeit (Word) – Aufgabe 1. */
+export function druckmaterialKlassenarbeit1(): ExamGridTaskSpec {
   return {
     taskNumber: 1,
     points: 15,
@@ -192,7 +193,8 @@ export function demoNatuerlicheZahlenTask1(): ExamGridTaskSpec {
         lines: [
           { text: '66666 auf Hunderter =', solution: '66700' },
           { text: '66666 auf Tausender =', solution: '67000' },
-          { text: '66666 auf Zehntausender =', solution: '70000' },
+          { text: '2481632 auf Zehner =', solution: '2481630' },
+          { text: '2481632 auf Hunderter =', solution: '2481600' },
         ],
       },
       {
@@ -203,7 +205,8 @@ export function demoNatuerlicheZahlenTask1(): ExamGridTaskSpec {
         kind: 'compare',
         rows: [
           { left: '3 469', right: '34 911', solution: '<' },
-          { left: '12 345', right: '12 345', solution: '=' },
+          { left: '2 591', right: '109', solution: '>' },
+          { left: '34 123 496', right: '34 223 496', solution: '<' },
         ],
       },
       {
@@ -222,8 +225,9 @@ export function demoNatuerlicheZahlenTask1(): ExamGridTaskSpec {
         title: 'Schreibe die Zahl in Worten:',
         quadrant: 'bl',
         kind: 'one-line',
-        prompt: '13 007',
-        solution: 'dreizehntausendsieben',
+        prompt: '918 027 604 055',
+        solution:
+          'neunhundertachtzehnmilliardensiebenundzwanzigmillionensechshundertvierundfünfzigtausendfünfundfünfzig',
       },
       {
         id: 's-e',
@@ -231,8 +235,8 @@ export function demoNatuerlicheZahlenTask1(): ExamGridTaskSpec {
         title: 'Schreibe als Zahl:',
         quadrant: 'bl',
         kind: 'one-line',
-        prompt: 'vierhundertfünfundzwanzigtausenddrei',
-        solution: '425003',
+        prompt: 'Neun Milliarden elf Millionen einhundertzehntausend',
+        solution: '9011110000 / 9 011 110 000',
       },
       {
         id: 's-f',
@@ -241,8 +245,8 @@ export function demoNatuerlicheZahlenTask1(): ExamGridTaskSpec {
         quadrant: 'br',
         kind: 'bullet-blanks',
         items: [
+          { text: 'Die größte Zahl mit fünf Ziffern:', solution: '99999' },
           { text: 'Die kleinste natürliche Zahl:', solution: '1' },
-          { text: 'Die größte dreistellige Zahl:', solution: '999' },
         ],
       },
       {
@@ -252,11 +256,19 @@ export function demoNatuerlicheZahlenTask1(): ExamGridTaskSpec {
         quadrant: 'br',
         kind: 'cloze',
         template:
-          'Die Zahl 13 ist zusammengesetzt aus den beiden ___ 1 und 3. Die Zahl 17 ist eine ___ Zahl.',
-        solutions: ['Ziffern / Ziffer', 'Primzahl / Prim'],
+          'Die Menge der natürlichen Zahlen ist nach oben ___ . Die Zahl 13 ist zusammengesetzt aus den beiden ___ 1 und 3. Sie ist ein ___ der Menge der natürlichen Zahlen.',
+        solutions: [
+          'unbeschränkt / unendlich',
+          'Ziffern / Ziffer',
+          'Element',
+        ],
       },
     ],
   };
+}
+
+export function demoNatuerlicheZahlenTask1(): ExamGridTaskSpec {
+  return druckmaterialKlassenarbeit1();
 }
 
 type BuiltField = { id: string; answers: string[]; solutionHtml: string };
