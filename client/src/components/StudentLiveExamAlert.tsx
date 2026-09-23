@@ -10,6 +10,7 @@ import {
 import {
   examVersionStorageKey,
   fetchExamVersionLetters,
+  fetchExamVersionLettersFromHtml,
   normalizeVersionLetter,
   resolveVersionFilePath,
 } from '../lib/examVersionPaths';
@@ -96,37 +97,50 @@ export default function StudentLiveExamAlert({ userId }: { userId: string }) {
 
     let cancelled = false;
     setVersionsLoading(true);
+    setChosenLetter(null);
+    setHtmlUrl(null);
     void (async () => {
       try {
-        const meta =
-          beacon.versionLetters && beacon.versionLetters.length > 0
-            ? {
-                letters: beacon.versionLetters,
-                paths: beacon.versionPaths || {},
-                baseFilePath: beacon.baseFilePath || beacon.filePath,
-              }
-            : await fetchExamVersionLetters(beacon.filePath);
+        const fromHtml = await fetchExamVersionLettersFromHtml(beacon.filePath);
+        let meta = fromHtml;
+        const serverLetters = beacon.versionLetters || [];
+        if (!meta || meta.letters.length < 2) {
+          if (serverLetters.length > (meta?.letters.length || 0)) {
+            meta = {
+              letters: serverLetters,
+              paths: beacon.versionPaths || {},
+              baseFilePath: beacon.baseFilePath || beacon.filePath,
+            };
+          }
+        }
+        if (!meta || meta.letters.length < 2) {
+          try {
+            const fromApi = await fetchExamVersionLetters(beacon.filePath);
+            if (!meta || fromApi.letters.length > meta.letters.length) meta = fromApi;
+          } catch {
+            /* HTML bleibt die Quelle */
+          }
+        }
         if (cancelled) return;
-        setVersionLetters(meta.letters);
-        setVersionPaths(meta.paths);
-        setBaseFilePath(meta.baseFilePath);
+        const letters = meta?.letters?.length ? meta.letters : ['A'];
+        setVersionLetters(letters);
+        setVersionPaths(meta?.paths || {});
+        setBaseFilePath(meta?.baseFilePath || beacon.filePath);
 
         const storageKey = examVersionStorageKey(beacon.beaconId, userId);
         const saved = localStorage.getItem(storageKey);
         const savedNorm = saved ? normalizeVersionLetter(saved) : null;
-        if (savedNorm && meta.letters.includes(savedNorm)) {
+        if (savedNorm && letters.includes(savedNorm)) {
           setChosenLetter(savedNorm);
-        } else if (meta.letters.length <= 1) {
+        } else if (letters.length <= 1) {
           setChosenLetter('A');
         } else {
           setChosenLetter(null);
         }
       } catch {
         if (!cancelled) {
-          setVersionLetters(beacon.versionLetters?.length ? beacon.versionLetters : ['A']);
-          const letters = beacon.versionLetters?.length ? beacon.versionLetters : ['A'];
-          if (letters.length <= 1) setChosenLetter('A');
-          else setChosenLetter(null);
+          setVersionLetters(['A']);
+          setChosenLetter('A');
         }
       } finally {
         if (!cancelled) setVersionsLoading(false);
