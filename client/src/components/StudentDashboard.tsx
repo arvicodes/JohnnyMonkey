@@ -5836,10 +5836,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     title={moderatorGroupName ? `Moderator · ${moderatorGroupName}` : 'Klassen-Moderator'}
                     sx={{
                       position: 'absolute',
-                      top: -10,
-                      right: -12,
-                      width: 28,
-                      height: 28,
+                      top: -6,
+                      right: -8,
+                      width: 22,
+                      height: 22,
                       objectFit: 'contain',
                       filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.35))',
                       pointerEvents: 'none',
@@ -5848,7 +5848,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 )}
               </Box>
               <Box sx={{ flex: 1, minWidth: 8 }} />
-              <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexShrink: 0, flexWrap: 'nowrap', ml: 'auto' }}>
+              <Box sx={{ display: 'flex', gap: 0.25, alignItems: 'center', flexShrink: 1, flexWrap: 'nowrap', ml: 'auto', minWidth: 0, overflow: 'hidden' }}>
                 {/* Exkursionsprotokoll */}
                 <Box sx={{ position: 'relative' }}>
                   <Tooltip
@@ -5866,10 +5866,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         onClick={() => navigate('/protokoll')}
                         sx={{
                           p: 0,
-                          minWidth: 44,
-                          width: 44,
-                          height: 44,
-                          borderRadius: 1.4,
+                          minWidth: 34,
+                          width: 34,
+                          height: 34,
+                          borderRadius: 1.1,
                           border: excursionProtocolPublishedForStudent
                             ? '2px solid rgba(251, 140, 0, 0.55)'
                             : '2px solid rgba(245, 124, 0, 0.35)',
@@ -5909,7 +5909,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         <Typography
                           component="span"
                           sx={{
-                            fontSize: '1.35rem',
+                            fontSize: '1.05rem',
                             fontWeight: 800,
                             lineHeight: 1,
                             display: 'inline-block',
@@ -5961,10 +5961,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         onClick={() => navigate('/epo-noten')}
                         sx={{
                           p: 0,
-                          minWidth: 44,
-                          width: 44,
-                          height: 44,
-                          borderRadius: 1.4,
+                          minWidth: 34,
+                          width: 34,
+                          height: 34,
+                          borderRadius: 1.1,
                           border: epoNotenPublishedForStudent
                             ? '2px solid rgba(46, 125, 50, 0.55)'
                             : '2px solid rgba(46, 125, 50, 0.35)',
@@ -5995,7 +5995,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                           transition: 'all 0.2s ease',
                         }}
                       >
-                        <GradeIcon sx={{ fontSize: 22 }} />
+                        <GradeIcon sx={{ fontSize: 18 }} />
                       </IconButton>
                     </span>
                   </Tooltip>
@@ -6041,10 +6041,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         onClick={() => navigate('/ankuendigungen')}
                         sx={{
                           p: 0,
-                          minWidth: 44,
-                          width: 44,
-                          height: 44,
-                          borderRadius: 1.4,
+                          minWidth: 34,
+                          width: 34,
+                          height: 34,
+                          borderRadius: 1.1,
                           border: announcementPublishedForStudent
                             ? '2px solid rgba(0, 131, 143, 0.55)'
                             : '2px solid rgba(0, 131, 143, 0.35)',
@@ -6075,7 +6075,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         <Typography
                           component="span"
                           sx={{
-                            fontSize: '1.35rem',
+                            fontSize: '1.05rem',
                             fontWeight: 800,
                             lineHeight: 1,
                             display: 'inline-block',

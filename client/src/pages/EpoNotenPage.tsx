@@ -4,8 +4,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   CircularProgress,
   IconButton,
   MenuItem,
@@ -18,10 +16,9 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { apiGetSafe, apiPost } from '../lib/api';
 import { EpoNotenTeacherView } from '../components/epo-noten/EpoNotenTeacherView';
 import { EpoNotenCategoryGrid } from '../components/epo-noten/EpoNotenCategoryGrid';
+import { EpoNotenStudentSelfWizard } from '../components/epo-noten/EpoNotenStudentSelfWizard';
 import { epoNotenCardSx, epoNotenPageBgSx, epoNotenPalette } from '../components/epo-noten/epoNotenUi';
 import {
-  EPO_NOTEN_POINTS_TO_GRADE,
-  EPO_NOTEN_STUDENT_CATEGORIES,
   EPO_NOTEN_TEACHER_CATEGORIES,
   type EpoNotenEntry,
   type EpoNotenStudentSession,
@@ -62,17 +59,13 @@ export default function EpoNotenPage() {
 
   const selectedRoundId = searchParams.get('roundId') || '';
 
-  const totalSelf = sumCategoryScores(selfScores);
-
-  useEffect(() => {
-    setSelfGradeFromTable(gradeFromTotalPoints(totalSelf));
-  }, [totalSelf]);
-
   const populateFromEntry = useCallback((entry: EpoNotenEntry | null) => {
     setSuggestedGrade(entry?.suggestedGrade || '');
     setJustification(entry?.justification || '');
     setSelfScores(normalizeCategoryScores(entry?.selfScores));
-    setSelfGradeFromTable(entry?.selfGradeFromTable || gradeFromTotalPoints(sumCategoryScores(entry?.selfScores)));
+    setSelfGradeFromTable(
+      entry?.selfGradeFromTable || gradeFromTotalPoints(sumCategoryScores(entry?.selfScores)),
+    );
     setGoal(entry?.goal || '');
     setGoalAction(entry?.goalAction || '');
   }, []);
@@ -114,7 +107,7 @@ export default function EpoNotenPage() {
     setSearchParams({ roundId: id });
   };
 
-  const submitSelf = async () => {
+  const submitSelf = useCallback(async () => {
     setSubmitting(true);
     setError(null);
     try {
@@ -124,6 +117,7 @@ export default function EpoNotenPage() {
         suggestedGrade,
         justification,
         selfScores,
+        selfGradeFromTable: selfGradeFromTable || gradeFromTotalPoints(sumCategoryScores(selfScores)),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -132,10 +126,20 @@ export default function EpoNotenPage() {
       await loadStudent();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
+      throw e;
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [
+    justification,
+    loadStudent,
+    roundMeta?.id,
+    selectedRoundId,
+    selfGradeFromTable,
+    selfScores,
+    suggestedGrade,
+    teacherId,
+  ]);
 
   const submitGoals = async () => {
     setSubmitting(true);
@@ -169,12 +173,35 @@ export default function EpoNotenPage() {
   return (
     <Box sx={epoNotenPageBgSx}>
       <Box sx={{ maxWidth: 960, mx: 'auto' }}>
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-          <IconButton onClick={() => navigate(-1)} aria-label="Zurück">
-            <ArrowBackIcon />
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={0.5}
+          sx={{ mb: 1, minHeight: 36 }}
+        >
+          <IconButton
+            onClick={() => navigate(-1)}
+            aria-label="Zurück"
+            size="small"
+            sx={{ p: 0.5, ml: -0.5 }}
+          >
+            <ArrowBackIcon sx={{ fontSize: 20 }} />
           </IconButton>
-          <Typography variant="h5" sx={{ fontWeight: 800, color: epoNotenPalette.primary }}>
-            EPO-Noten · Epochale Mitarbeit
+          <Typography
+            variant="body1"
+            sx={{
+              fontWeight: 800,
+              color: epoNotenPalette.primary,
+              fontSize: '0.95rem',
+              lineHeight: 1.2,
+              flex: 1,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            EPO-Noten
           </Typography>
         </Stack>
 
@@ -182,10 +209,10 @@ export default function EpoNotenPage() {
           <EpoNotenTeacherView />
         ) : loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-            <CircularProgress />
+            <CircularProgress size={28} />
           </Box>
         ) : (
-          <Stack spacing={2}>
+          <Stack spacing={1.25}>
             {error && <Alert severity="error">{error}</Alert>}
 
             {sessions.length === 0 ? (
@@ -198,6 +225,7 @@ export default function EpoNotenPage() {
                     fullWidth
                     value={roundMeta?.id || selectedRoundId}
                     onChange={(e) => onSelectRound(String(e.target.value))}
+                    sx={{ fontSize: '0.85rem' }}
                   >
                     {sessions.map((s) => (
                       <MenuItem key={`${s.id}-${s.groupId}`} value={s.id}>
@@ -208,86 +236,51 @@ export default function EpoNotenPage() {
                 )}
 
                 {roundMeta && (
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
                     {roundMeta.title} · {roundMeta.date} · {roundMeta.groupName}
                   </Typography>
                 )}
 
-                {phase === 'self' && (
-                  <Card sx={epoNotenCardSx}>
-                    <CardContent>
-                      <Stack spacing={2}>
-                        <Typography variant="h6">Deine Selbsteinschätzung</Typography>
-                        <TextField
-                          label="Notenvorschlag für deine aktuelle EPO-Note"
-                          value={suggestedGrade}
-                          onChange={(e) => setSuggestedGrade(e.target.value)}
-                          disabled={!canEditSelf}
-                          fullWidth
-                        />
-                        <TextField
-                          label="Kurze Begründung"
-                          value={justification}
-                          onChange={(e) => setJustification(e.target.value)}
-                          disabled={!canEditSelf}
-                          multiline
-                          minRows={3}
-                          fullWidth
-                        />
-                        <EpoNotenCategoryGrid
-                          categories={EPO_NOTEN_STUDENT_CATEGORIES}
-                          scores={selfScores}
-                          onChange={setSelfScores}
-                          readOnly={!canEditSelf}
-                        />
-                        <Typography variant="body2">
-                          Gesamtpunktzahl: <strong>{totalSelf}</strong>
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                          <TableMini />
-                          <TextField
-                            label="Note aus Tabelle"
-                            value={selfGradeFromTable}
-                            onChange={(e) => setSelfGradeFromTable(e.target.value)}
-                            disabled={!canEditSelf}
-                            sx={{ minWidth: 140 }}
-                          />
-                        </Box>
-                        {canEditSelf && (
-                          <Button variant="contained" onClick={submitSelf} disabled={submitting}>
-                            Abgeben
-                          </Button>
-                        )}
-                      </Stack>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {phase === 'wait' && (
-                  <Alert severity="success">
-                    Deine Selbsteinschätzung ist abgegeben. Warte auf die Bewertung deiner Lehrkraft.
-                  </Alert>
+                {(phase === 'self' || phase === 'wait') && (
+                  <EpoNotenStudentSelfWizard
+                    locked={phase === 'wait' || !canEditSelf}
+                    submitting={submitting}
+                    suggestedGrade={suggestedGrade}
+                    justification={justification}
+                    selfScores={selfScores}
+                    selfGradeFromTable={selfGradeFromTable}
+                    onSuggestedGradeChange={setSuggestedGrade}
+                    onJustificationChange={setJustification}
+                    onSelfScoresChange={setSelfScores}
+                    onSelfGradeFromTableChange={setSelfGradeFromTable}
+                    onSubmit={submitSelf}
+                    startAtDone={phase === 'wait'}
+                  />
                 )}
 
                 {(phase === 'goals' || phase === 'done') && myEntry && (
                   <>
-                    <Card sx={epoNotenCardSx}>
-                      <CardContent>
-                        <Typography variant="h6" sx={{ mb: 2 }}>Einschätzung deiner Lehrkraft</Typography>
+                    <Box sx={epoNotenCardSx}>
+                      <Box sx={{ p: 1.5 }}>
+                        <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 800 }}>
+                          Einschätzung deiner Lehrkraft
+                        </Typography>
                         <EpoNotenCategoryGrid
                           categories={EPO_NOTEN_TEACHER_CATEGORIES}
                           scores={normalizeCategoryScores(myEntry.teacherScores)}
                           readOnly
                         />
-                        <Typography variant="h5" sx={{ mt: 2, fontWeight: 800, color: epoNotenPalette.accent }}>
+                        <Typography variant="h6" sx={{ mt: 1.5, fontWeight: 800, color: epoNotenPalette.accent }}>
                           Deine EPO-Note: {myEntry.teacherGrade || '—'}
                         </Typography>
-                      </CardContent>
-                    </Card>
+                      </Box>
+                    </Box>
 
-                    <Card sx={epoNotenCardSx}>
-                      <CardContent>
-                        <Typography variant="h6" sx={{ mb: 2 }}>Dein Ziel für den nächsten Zeitraum</Typography>
+                    <Box sx={epoNotenCardSx}>
+                      <Box sx={{ p: 1.5 }}>
+                        <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 800 }}>
+                          Dein Ziel für den nächsten Zeitraum
+                        </Typography>
                         <TextField
                           label="Ein konkretes Ziel"
                           value={goal}
@@ -296,7 +289,8 @@ export default function EpoNotenPage() {
                           multiline
                           minRows={2}
                           fullWidth
-                          sx={{ mb: 2 }}
+                          size="small"
+                          sx={{ mb: 1.5 }}
                         />
                         <TextField
                           label="Eine konkrete Handlung dazu"
@@ -306,17 +300,22 @@ export default function EpoNotenPage() {
                           multiline
                           minRows={2}
                           fullWidth
+                          size="small"
                         />
                         {canEditGoals && phase === 'goals' && (
-                          <Button sx={{ mt: 2 }} variant="contained" onClick={submitGoals} disabled={submitting}>
-                            Ziele speichern
-                          </Button>
+                          <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'flex-end' }}>
+                            <Button size="small" variant="contained" onClick={() => void submitGoals()} disabled={submitting}>
+                              Ziele speichern
+                            </Button>
+                          </Box>
                         )}
                         {phase === 'done' && (
-                          <Alert sx={{ mt: 2 }} severity="info">Deine Ziele sind gespeichert und bleiben hier sichtbar.</Alert>
+                          <Alert sx={{ mt: 1.5 }} severity="info">
+                            Deine Ziele sind gespeichert und bleiben hier sichtbar.
+                          </Alert>
                         )}
-                      </CardContent>
-                    </Card>
+                      </Box>
+                    </Box>
                   </>
                 )}
               </>
@@ -324,19 +323,6 @@ export default function EpoNotenPage() {
           </Stack>
         )}
       </Box>
-    </Box>
-  );
-}
-
-function TableMini() {
-  return (
-    <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1, minWidth: 120 }}>
-      <Typography variant="caption" sx={{ fontWeight: 700 }}>Punkte → Note</Typography>
-      {EPO_NOTEN_POINTS_TO_GRADE.map((row) => (
-        <Typography key={row.minPoints} variant="caption" display="block">
-          ≥ {row.minPoints}: {row.grade}
-        </Typography>
-      ))}
     </Box>
   );
 }

@@ -724,7 +724,10 @@ export class EpoNotenController {
 
       const selfScores = normalizeScores(req.body?.selfScores);
       const total = sumScores(selfScores);
-      const selfGradeFromTable = gradeFromTotalPoints(total);
+      const selfGradeFromTable =
+        typeof req.body?.selfGradeFromTable === 'string' && req.body.selfGradeFromTable.trim()
+          ? req.body.selfGradeFromTable.trim()
+          : gradeFromTotalPoints(total);
 
       const entry: EpoNotenEntry = {
         studentId: user.id,

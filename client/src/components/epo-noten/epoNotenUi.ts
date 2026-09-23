@@ -1,8 +1,8 @@
 export const epoNotenPageBgSx = {
   minHeight: '100vh',
   bgcolor: '#f3f6fb',
-  py: { xs: 1.5, sm: 2.5 },
-  px: { xs: 1, sm: 2 },
+  py: { xs: 0.75, sm: 1.25 },
+  px: { xs: 0.75, sm: 1.25 },
 };
 
 export const epoNotenCardSx = {
