@@ -10,7 +10,6 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { EpoNotenCategoryGrid } from './EpoNotenCategoryGrid';
 import { EpoNotenGradeTable } from './EpoNotenGradeTable';
 import {
@@ -112,8 +111,8 @@ export function EpoNotenStudentSelfWizard({
   useEffect(() => {
     if (!gradeVisible) return;
     const t = window.setTimeout(() => {
-      gradeAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 150);
+      gradeAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 200);
     return () => window.clearTimeout(t);
   }, [gradeVisible]);
 
@@ -177,10 +176,11 @@ export function EpoNotenStudentSelfWizard({
 
   const evaluationPoints = step === 'done' ? totalTarget : animTotal;
   const evaluationGrade = gradeForPoints(evaluationPoints);
+  const evaluationPhase = tableVisible || gradeVisible || step === 'done';
 
   return (
     <Card sx={epoNotenCardSx}>
-      <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+      <CardContent sx={{ p: { xs: 2, sm: 2.75 }, '&:last-child': { pb: { xs: 2, sm: 2.75 } } }}>
         <Stack spacing={1.5}>
           <Typography variant="subtitle1" sx={epoNotenSectionTitleSx}>
             Deine Selbsteinschätzung
@@ -225,30 +225,32 @@ export function EpoNotenStudentSelfWizard({
                     readOnly={readOnly || step !== 2}
                   />
 
-                  <Box sx={{ textAlign: 'right', mt: 1.25, pr: 0.5 }}>
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      Gesamtpunktzahl
-                    </Typography>
-                    <Typography
-                      variant="h3"
-                      sx={{
-                        ...epoNotenBigNumberSx,
-                        fontSize: { xs: '2rem', sm: '2.35rem' },
-                        transition: 'transform 0.2s ease',
-                        transform: animRunning ? 'scale(1.05)' : 'scale(1)',
-                      }}
-                    >
-                      {pointsShown === null ? '—' : pointsShown}
-                    </Typography>
-                    {step === 2 && !allCategoriesSelected(selfScores) && (
-                      <Typography variant="caption" color="text.secondary">
-                        In jeder Zeile einen Wert wählen
+                  {!evaluationPhase && (
+                    <Box sx={{ textAlign: 'right', mt: 1.5, pr: 0.5 }}>
+                      <Typography variant="body2" color="text.secondary" display="block" sx={{ fontWeight: 600 }}>
+                        Gesamtpunktzahl
                       </Typography>
-                    )}
-                  </Box>
+                      <Typography
+                        variant="h2"
+                        sx={{
+                          ...epoNotenBigNumberSx,
+                          fontSize: { xs: '2.35rem', sm: '2.75rem' },
+                          transition: 'transform 0.2s ease',
+                          transform: animRunning ? 'scale(1.05)' : 'scale(1)',
+                        }}
+                      >
+                        {pointsShown === null ? '—' : pointsShown}
+                      </Typography>
+                      {step === 2 && !allCategoriesSelected(selfScores) && (
+                        <Typography variant="body2" color="text.secondary">
+                          In jeder Zeile einen Wert wählen
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
 
                   <Collapse in={tableVisible}>
-                    <Box ref={tableAnchorRef} sx={{ mt: 2, width: '100%' }}>
+                    <Box ref={tableAnchorRef} sx={{ mt: 2, width: '100%', scrollMarginTop: 48 }}>
                       <EpoNotenGradeTable
                         highlightMinPoints={
                           highlightMin ?? (step === 'done' ? minPointsThresholdForTotal(totalTarget) : null)
@@ -259,37 +261,49 @@ export function EpoNotenStudentSelfWizard({
                   </Collapse>
 
                   <Collapse in={gradeVisible || step === 'done'}>
-                    <Stack
+                    <Box
                       ref={gradeAnchorRef}
-                      direction="row"
-                      alignItems="center"
-                      justifyContent="flex-end"
-                      spacing={0.75}
-                      sx={{ mt: 1.5, pr: 0.5, scrollMarginTop: 24 }}
+                      sx={{
+                        mt: 2.5,
+                        textAlign: 'right',
+                        pr: 0.5,
+                        scrollMarginTop: 48,
+                        scrollMarginBottom: 140,
+                      }}
                     >
-                      <ArrowDownwardIcon sx={{ color: epoNotenPalette.accent, fontSize: 28 }} />
-                      <Box sx={{ textAlign: 'right' }}>
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          Note aus Tabelle
+                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                        Gesamtpunktzahl:{' '}
+                        <Typography component="span" variant="body2" sx={{ fontWeight: 800, color: epoNotenPalette.textPrimary }}>
+                          {evaluationPoints}
                         </Typography>
-                        <Typography
-                          variant="h4"
-                          sx={{
-                            fontWeight: 900,
-                            color: epoNotenPalette.accent,
-                            lineHeight: 1.1,
-                            animation: gradeVisible ? 'epoGradePop 0.45s ease' : 'none',
-                            '@keyframes epoGradePop': {
-                              '0%': { transform: 'scale(0.88)', opacity: 0.35 },
-                              '100%': { transform: 'scale(1)', opacity: 1 },
-                            },
-                          }}
-                        >
-                          {evaluationGrade}
-                        </Typography>
-                      </Box>
-                    </Stack>
+                      </Typography>
+                      <Typography
+                        variant="body1"
+                        color="text.secondary"
+                        sx={{ mt: 2, fontWeight: 700, fontSize: '1rem' }}
+                      >
+                        Note aus Tabelle
+                      </Typography>
+                      <Typography
+                        component="p"
+                        sx={{
+                          fontWeight: 900,
+                          color: epoNotenPalette.accent,
+                          lineHeight: 1.05,
+                          fontSize: { xs: '3.25rem', sm: '4rem' },
+                          mt: 0.5,
+                          animation: gradeVisible ? 'epoGradePop 0.45s ease' : 'none',
+                          '@keyframes epoGradePop': {
+                            '0%': { transform: 'scale(0.88)', opacity: 0.35 },
+                            '100%': { transform: 'scale(1)', opacity: 1 },
+                          },
+                        }}
+                      >
+                        {evaluationGrade}
+                      </Typography>
+                    </Box>
                   </Collapse>
+                  {(gradeVisible || step === 'done') && <Box sx={{ height: { xs: 100, sm: 140 } }} aria-hidden />}
                 </Stack>
               )}
             </Box>

@@ -21,6 +21,7 @@ import {
   epoNotenCardSx,
   epoNotenKidTextFieldSx,
   epoNotenPageBgSx,
+  epoNotenPageShellSx,
   epoNotenPalette,
 } from '../components/epo-noten/epoNotenUi';
 import {
@@ -208,7 +209,7 @@ export default function EpoNotenPage() {
 
   return (
     <Box sx={epoNotenPageBgSx}>
-      <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+      <Box sx={epoNotenPageShellSx}>
         <Stack
           direction="row"
           alignItems="center"
@@ -265,8 +266,37 @@ export default function EpoNotenPage() {
               <EpoNotenStudentRoundList sessions={sessions} onSelect={openRound} />
             ) : (
               <>
+                {(() => {
+                  const current = sessions.find((s) => s.id === (roundMeta?.id || selectedRoundId));
+                  if (current?.isArchived) {
+                    return (
+                      <Alert severity="info" sx={{ py: 0.75 }}>
+                        Diese ältere Runde ist abgeschlossen — nur noch ansehen.
+                      </Alert>
+                    );
+                  }
+                  if (current?.actionRequired) {
+                    return (
+                      <Alert
+                        severity="warning"
+                        sx={{
+                          py: 0.75,
+                          fontWeight: 700,
+                          animation: 'epoDetailOpen 1.1s ease-in-out infinite',
+                          '@keyframes epoDetailOpen': {
+                            '0%, 100%': { boxShadow: 'inset 0 0 0 0 rgba(245, 124, 0, 0)' },
+                            '50%': { boxShadow: 'inset 0 0 0 2px rgba(245, 124, 0, 0.45)' },
+                          },
+                        }}
+                      >
+                        Hier ist noch etwas offen — bitte ausfüllen und abschicken.
+                      </Alert>
+                    );
+                  }
+                  return null;
+                })()}
                 {roundMeta && (
-                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
                     {roundMeta.title} · {roundMeta.date} · {roundMeta.groupName}
                   </Typography>
                 )}

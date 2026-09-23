@@ -19,7 +19,13 @@ export const epoNotenPageBgSx = {
   minHeight: '100vh',
   bgcolor: epoNotenPalette.background,
   py: { xs: 0.75, sm: 1.25 },
-  px: { xs: 0.75, sm: 1.25 },
+  px: { xs: 1, sm: 2 },
+};
+
+export const epoNotenPageShellSx = {
+  maxWidth: 1080,
+  mx: 'auto',
+  width: '100%',
 };
 
 export const epoNotenCardSx = {
@@ -35,7 +41,8 @@ export const epoNotenKidTextFieldSx = {
   '& .MuiOutlinedInput-root': {
     borderRadius: 2.5,
     bgcolor: '#fafcff',
-    fontSize: '1.05rem',
+    fontSize: '1.12rem',
+    py: 0.35,
     '& fieldset': {
       borderWidth: 2,
       borderColor: 'rgba(25, 118, 210, 0.35)',

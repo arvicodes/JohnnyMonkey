@@ -2119,10 +2119,20 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const excursionProtocolNeedsAttention = excursionProtocolPendingCount > 0;
 
   const [epoNotenSessions, setEpoNotenSessions] = useState<
-    Array<{ id: string; title: string; needsSelfAssessment: boolean; needsGoals: boolean }>
+    Array<{
+      id: string;
+      title: string;
+      needsSelfAssessment: boolean;
+      needsGoals: boolean;
+      actionRequired?: boolean;
+      isActive?: boolean;
+      isArchived?: boolean;
+    }>
   >([]);
   const epoNotenPublishedForStudent = epoNotenSessions.length > 0;
-  const epoNotenPendingCount = epoNotenSessions.filter((s) => s.needsSelfAssessment || s.needsGoals).length;
+  const epoNotenPendingCount = epoNotenSessions.filter(
+    (s) => s.actionRequired ?? (s.needsSelfAssessment || s.needsGoals),
+  ).length;
   const epoNotenNeedsAttention = epoNotenPendingCount > 0;
 
   /** Veröffentlichte Ankündigungen (schulweit, nicht gruppenspezifisch) */
@@ -2513,6 +2523,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             title: typeof s.title === 'string' ? s.title : 'EPO',
             needsSelfAssessment: Boolean(s.needsSelfAssessment),
             needsGoals: Boolean(s.needsGoals),
+            actionRequired: Boolean(s.actionRequired),
+            isActive: Boolean(s.isActive),
+            isArchived: Boolean(s.isArchived),
           }))
           .filter((s) => s.id);
         setEpoNotenSessions(sessions);

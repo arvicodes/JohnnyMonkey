@@ -277,6 +277,7 @@ type ResolvedRound = {
   payload: EpoNotenRoundPayload;
   groupId: string;
   groupName: string;
+  isActiveForGroup: boolean;
 };
 
 const resolveStudentRounds = async (studentId: string): Promise<ResolvedRound[]> => {
@@ -324,6 +325,9 @@ const resolveStudentRounds = async (studentId: string): Promise<ResolvedRound[]>
         if (seen.has(key)) continue;
         seen.add(key);
 
+        const isActiveForGroup =
+          Boolean(payload.publishedAt) && index.activeByGroup[g.id] === meta.id;
+
         results.push({
           teacherId,
           teacherName: g.teacher.name,
@@ -331,6 +335,7 @@ const resolveStudentRounds = async (studentId: string): Promise<ResolvedRound[]>
           payload,
           groupId: g.id,
           groupName: g.name,
+          isActiveForGroup,
         });
       }
     }
@@ -357,9 +362,13 @@ const roundStats = (round: EpoNotenRoundPayload) => {
 const studentSessionDto = (resolved: ResolvedRound, studentId: string) => {
   const entry = findEntry(resolved.payload, studentId);
   const published = Boolean(resolved.payload.publishedAt);
+  const isActive = resolved.isActiveForGroup;
   const teacherReleased = Boolean(entry?.teacherReleasedAt);
   const studentSubmitted = Boolean(entry?.studentSubmittedAt);
   const goalsSubmitted = Boolean(entry?.goalsSubmittedAt);
+  const needsSelfAssessment = isActive && published && !studentSubmitted;
+  const needsGoals = isActive && teacherReleased && !goalsSubmitted;
+  const actionRequired = needsSelfAssessment || needsGoals;
   return {
     id: resolved.roundId,
     title: resolved.payload.title,
@@ -367,11 +376,14 @@ const studentSessionDto = (resolved: ResolvedRound, studentId: string) => {
     groupId: resolved.groupId,
     groupName: resolved.groupName,
     publishedAt: resolved.payload.publishedAt,
+    isActive,
+    isArchived: !isActive,
+    actionRequired,
     teacherReleased,
     studentSubmitted,
     goalsSubmitted,
-    needsSelfAssessment: published && !studentSubmitted,
-    needsGoals: teacherReleased && !goalsSubmitted,
+    needsSelfAssessment,
+    needsGoals,
   };
 };
 
@@ -659,8 +671,11 @@ export class EpoNotenController {
 
         const myEntry = findEntry(resolved.payload, user.id);
         const canEditSelf =
-          Boolean(resolved.payload.publishedAt) && !myEntry?.teacherReleasedAt;
-        const canEditGoals = Boolean(myEntry?.teacherReleasedAt);
+          resolved.isActiveForGroup &&
+          Boolean(resolved.payload.publishedAt) &&
+          !myEntry?.teacherReleasedAt;
+        const canEditGoals =
+          resolved.isActiveForGroup && Boolean(myEntry?.teacherReleasedAt) && !myEntry?.goalsSubmittedAt;
 
         return res.json({
           sessions: all.map((r) => studentSessionDto(r, user.id)),
@@ -712,6 +727,11 @@ export class EpoNotenController {
         }
         teacherId = first.teacherId;
         roundId = first.roundId;
+      }
+
+      const resolvedRound = allRounds.find((r) => r.roundId === roundId && r.teacherId === teacherId);
+      if (!resolvedRound?.isActiveForGroup) {
+        return res.status(403).json({ error: 'Diese EPO-Runde ist nicht mehr aktiv' });
       }
 
       const payload = await loadRound(teacherId, roundId);

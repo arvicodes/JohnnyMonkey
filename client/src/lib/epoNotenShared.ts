@@ -111,6 +111,10 @@ export type EpoNotenStudentSession = {
   groupId: string;
   groupName: string;
   publishedAt: string | null;
+  /** Aktuell freigeschaltete Runde für diese Gruppe */
+  isActive: boolean;
+  isArchived: boolean;
+  actionRequired: boolean;
   teacherReleased: boolean;
   studentSubmitted: boolean;
   goalsSubmitted: boolean;
