@@ -37,6 +37,7 @@ import StorySiteBuilderPage from './pages/StorySiteBuilderPage';
 import StorySiteOverviewPage from './pages/StorySiteOverviewPage';
 import StorySitePublicPreviewPage from './pages/StorySitePublicPreviewPage';
 import ExcursionProtocolPage from './pages/ExcursionProtocolPage';
+import EpoNotenPage from './pages/EpoNotenPage';
 import AnnouncementsPage from './pages/AnnouncementsPage';
 import AnnouncementFlyerPage from './pages/AnnouncementFlyerPage';
 import FlyerStudioPage from './pages/FlyerStudioPage';
@@ -359,6 +360,7 @@ function AppContent() {
         <Route path="/entry-ticket" element={<EntryTicketPage />} />
         <Route path="/exit-ticket" element={<ExitTicketPage />} />
         <Route path="/protokoll" element={<ExcursionProtocolPage />} />
+        <Route path="/epo-noten" element={<EpoNotenPage />} />
         <Route path="/ankuendigungen" element={<AnnouncementsPage />} />
         <Route path="/ankuendigungen/schuelervorschau" element={<AnnouncementStudentPreviewPage />} />
         <Route path="/ankuendigungen/flyer/:folderSlug" element={<AnnouncementFlyerPage />} />

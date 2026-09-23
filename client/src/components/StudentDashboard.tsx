@@ -2118,6 +2118,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const excursionProtocolPendingCount = excursionProtocolSessions.filter((s) => !s.studentSubmitted).length;
   const excursionProtocolNeedsAttention = excursionProtocolPendingCount > 0;
 
+  const [epoNotenSessions, setEpoNotenSessions] = useState<
+    Array<{ id: string; title: string; needsSelfAssessment: boolean; needsGoals: boolean }>
+  >([]);
+  const epoNotenPublishedForStudent = epoNotenSessions.length > 0;
+  const epoNotenPendingCount = epoNotenSessions.filter((s) => s.needsSelfAssessment || s.needsGoals).length;
+  const epoNotenNeedsAttention = epoNotenPendingCount > 0;
+
   /** Veröffentlichte Ankündigungen (schulweit, nicht gruppenspezifisch) */
   const [announcementSessions, setAnnouncementSessions] = useState<AnnouncementDashboardSession[]>([]);
   const announcementPublishedForStudent = announcementSessions.length > 0;
@@ -2470,6 +2477,47 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         setExcursionProtocolSessions(sessions);
       } catch {
         /* Polling: Server kurz nicht erreichbar */
+      }
+    };
+    void tick();
+    const id = window.setInterval(() => void tick(), 5000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void tick();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const res = await apiGetSafe('/api/epo-noten/current');
+        if (!res?.ok) return;
+        let data: { sessions?: unknown } = {};
+        try {
+          data = (await res.json()) as typeof data;
+        } catch {
+          return;
+        }
+        if (cancelled) return;
+        const rawSessions = Array.isArray(data.sessions) ? data.sessions : [];
+        const sessions = rawSessions
+          .filter((s): s is Record<string, unknown> => Boolean(s) && typeof s === 'object')
+          .map((s) => ({
+            id: typeof s.id === 'string' ? s.id : '',
+            title: typeof s.title === 'string' ? s.title : 'EPO',
+            needsSelfAssessment: Boolean(s.needsSelfAssessment),
+            needsGoals: Boolean(s.needsGoals),
+          }))
+          .filter((s) => s.id);
+        setEpoNotenSessions(sessions);
+      } catch {
+        /* Polling */
       }
     };
     void tick();
@@ -5894,6 +5942,85 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                       }}
                     >
                       {excursionProtocolPendingCount}
+                    </Box>
+                  )}
+                </Box>
+                <Box sx={{ position: 'relative' }}>
+                  <Tooltip
+                    title={
+                      epoNotenPublishedForStudent
+                        ? epoNotenNeedsAttention
+                          ? `${epoNotenPendingCount} EPO-Aufgabe${epoNotenPendingCount === 1 ? '' : 'n'} offen`
+                          : 'Zu den EPO-Noten'
+                        : 'EPO-Noten (aktiv sobald freigegeben)'
+                    }
+                  >
+                    <span>
+                      <IconButton
+                        disabled={!epoNotenPublishedForStudent}
+                        onClick={() => navigate('/epo-noten')}
+                        sx={{
+                          p: 0,
+                          minWidth: 44,
+                          width: 44,
+                          height: 44,
+                          borderRadius: 1.4,
+                          border: epoNotenPublishedForStudent
+                            ? '2px solid rgba(46, 125, 50, 0.55)'
+                            : '2px solid rgba(46, 125, 50, 0.35)',
+                          background: epoNotenPublishedForStudent
+                            ? 'linear-gradient(135deg, #66bb6a 0%, #2e7d32 100%)'
+                            : 'linear-gradient(135deg, #a5d6a7 0%, #2e7d32 100%)',
+                          color: 'white',
+                          boxShadow: epoNotenPublishedForStudent ? '0 2px 8px rgba(46, 125, 50, 0.35)' : 'none',
+                          ...(epoNotenNeedsAttention && {
+                            animation: 'epoNotenBtnPulse 1.35s ease-in-out infinite',
+                            '@keyframes epoNotenBtnPulse': {
+                              '0%, 100%': { boxShadow: '0 0 0 0 rgba(46, 125, 50, 0.55)' },
+                              '50%': { boxShadow: '0 0 0 7px rgba(46, 125, 50, 0)' },
+                            },
+                          }),
+                          '&:hover': {
+                            transform: 'scale(1.05)',
+                            borderColor: 'rgba(46, 125, 50, 0.75)',
+                            boxShadow: '0 4px 12px rgba(46, 125, 50, 0.45)',
+                          },
+                          '&.Mui-disabled': {
+                            opacity: 0.45,
+                            background: 'linear-gradient(135deg, #9e9e9e 0%, #757575 100%)',
+                            borderColor: 'rgba(0,0,0,0.12)',
+                            color: 'rgba(255,255,255,0.9)',
+                            animation: 'none',
+                          },
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <GradeIcon sx={{ fontSize: 22 }} />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                  {epoNotenNeedsAttention && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: -4,
+                        right: -4,
+                        minWidth: 16,
+                        height: 16,
+                        px: 0.35,
+                        borderRadius: 999,
+                        bgcolor: '#d32f2f',
+                        color: '#fff',
+                        fontSize: '0.62rem',
+                        fontWeight: 800,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '2px solid #f8f9fa',
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      {epoNotenPendingCount}
                     </Box>
                   )}
                 </Box>

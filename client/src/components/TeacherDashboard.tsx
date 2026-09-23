@@ -16301,6 +16301,29 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                 >
                   <AssignmentIcon sx={{ fontSize: 18 }} />
                 </IconButton>
+                <IconButton
+                  onClick={() => navigate('/epo-noten')}
+                  sx={{
+                    p: 0.5,
+                    minWidth: 32,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 1.4,
+                    border: '2px solid rgba(46, 125, 50, 0.45)',
+                    background: 'linear-gradient(135deg, #66bb6a 0%, #2e7d32 100%)',
+                    color: 'white',
+                    boxShadow: '0 2px 8px rgba(46, 125, 50, 0.32)',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                      borderColor: 'rgba(46, 125, 50, 0.75)',
+                      boxShadow: '0 4px 12px rgba(46, 125, 50, 0.42)',
+                    },
+                    transition: 'all 0.2s ease',
+                  }}
+                  title="EPO-Noten — Selbsteinschätzung & Bewertung"
+                >
+                  <GradeIcon sx={{ fontSize: 18 }} />
+                </IconButton>
                 {/* Ankündigungen & Vordrucke (für alle) */}
                 <IconButton
                   onClick={() => navigate('/ankuendigungen')}
