@@ -21,6 +21,9 @@ type ExamBeacon = {
   lessonPath?: string;
   beaconId: string;
   updatedAt?: string;
+  versionLetters?: string[];
+  versionPaths?: Record<string, string>;
+  baseFilePath?: string;
 };
 
 const POLL_MS = 1500;
@@ -95,7 +98,14 @@ export default function StudentLiveExamAlert({ userId }: { userId: string }) {
     setVersionsLoading(true);
     void (async () => {
       try {
-        const meta = await fetchExamVersionLetters(beacon.filePath);
+        const meta =
+          beacon.versionLetters && beacon.versionLetters.length > 0
+            ? {
+                letters: beacon.versionLetters,
+                paths: beacon.versionPaths || {},
+                baseFilePath: beacon.baseFilePath || beacon.filePath,
+              }
+            : await fetchExamVersionLetters(beacon.filePath);
         if (cancelled) return;
         setVersionLetters(meta.letters);
         setVersionPaths(meta.paths);
@@ -113,8 +123,10 @@ export default function StudentLiveExamAlert({ userId }: { userId: string }) {
         }
       } catch {
         if (!cancelled) {
-          setVersionLetters(['A']);
-          setChosenLetter('A');
+          setVersionLetters(beacon.versionLetters?.length ? beacon.versionLetters : ['A']);
+          const letters = beacon.versionLetters?.length ? beacon.versionLetters : ['A'];
+          if (letters.length <= 1) setChosenLetter('A');
+          else setChosenLetter(null);
         }
       } finally {
         if (!cancelled) setVersionsLoading(false);

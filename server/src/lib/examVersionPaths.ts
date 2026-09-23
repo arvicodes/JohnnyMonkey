@@ -49,6 +49,26 @@ export function mergeExamVersionLetters(metaLetters: string[], baseFullPath: str
   return merged.sort();
 }
 
+/** A/B/C-Metadaten für eine Prüfungsfamilie (gleiche Pfadlogik wie StorageManager.readFile). */
+export function buildExamVersionInfo(
+  anyVariantGitPath: string,
+  resolveFullFromGit: (gitPath: string) => string | null,
+): { letters: string[]; paths: Record<string, string>; baseFilePath: string } {
+  const baseGit = gitPathVariant(anyVariantGitPath.replace(/\\/g, '/'), 'A');
+  const baseFull = resolveFullFromGit(baseGit);
+  if (!baseFull || !fs.existsSync(baseFull)) {
+    return { letters: ['A'], paths: { A: baseGit }, baseFilePath: baseGit };
+  }
+  const html = readExamHtmlFullPath(baseFull);
+  const meta = parseExamVersionsMeta(html);
+  const letters = mergeExamVersionLetters(meta.letters, baseFull);
+  const paths: Record<string, string> = {};
+  for (const letter of letters) {
+    paths[letter] = gitPathVariant(baseGit, letter);
+  }
+  return { letters, paths, baseFilePath: baseGit };
+}
+
 export function parseExamVersionsMeta(html: string): ExamVersionsMeta {
   const m = html.match(EXAM_VERSIONS_META_RE);
   if (!m) return { letters: defaultExamVersionLetters() };

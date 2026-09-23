@@ -16,6 +16,7 @@ import { convert } from 'libreoffice-convert';
 import {
   applyVersionsToExamHtml,
   baseStemFromStem,
+  buildExamVersionInfo,
   defaultExamVersionLetters,
   fileStemFromName,
   gitPathVariant,
@@ -24,7 +25,6 @@ import {
   parseExamVersionsMeta,
   patchKaKeyInHtml,
   readExamHtmlFullPath,
-  resolveFullPathFromGitIntern,
   variantStem,
   versionLetterFromStem,
   writeExamHtmlFullPath,
@@ -3716,8 +3716,8 @@ ${aiContent.optionsHTML}
     return gitPathVariant(p, 'A');
   }
 
-  private static fullPathForGitExam(filePath: string): string {
-    return resolveFullPathFromGitIntern(filePath, DEV_PROJECT_ROOT);
+  private static fullPathForGitExam(filePath: string): string | null {
+    return StorageManager.resolveFilePath(filePath);
   }
 
   /** Versionen einer Prüfung (A = Basisdatei, B/C = Kopien __B / __C). */
@@ -3727,23 +3727,16 @@ ${aiContent.optionsHTML}
       if (!filePath || typeof filePath !== 'string') {
         return res.status(400).json({ error: 'filePath ist erforderlich' });
       }
-      const baseGit = FileSystemPathController.resolveExamGitBasePath(filePath);
-      const baseFull = FileSystemPathController.fullPathForGitExam(baseGit);
-      if (!fs.existsSync(baseFull)) {
+      const info = buildExamVersionInfo(filePath, (p) => StorageManager.resolveFilePath(p));
+      const baseFull = StorageManager.resolveFilePath(info.baseFilePath);
+      if (!baseFull || !fs.existsSync(baseFull)) {
         return res.status(404).json({ error: 'Prüfungsdatei nicht gefunden' });
-      }
-      const html = readExamHtmlFullPath(baseFull);
-      const meta = parseExamVersionsMeta(html);
-      const letters = mergeExamVersionLetters(meta.letters, baseFull);
-      const paths: Record<string, string> = {};
-      for (const letter of letters) {
-        paths[letter] = gitPathVariant(baseGit, letter);
       }
       res.json({
         success: true,
-        baseFilePath: baseGit,
-        letters,
-        paths,
+        baseFilePath: info.baseFilePath,
+        letters: info.letters,
+        paths: info.paths,
       });
     } catch (error) {
       console.error('getExaminationVersions:', error);
@@ -3763,7 +3756,7 @@ ${aiContent.optionsHTML}
       }
       const baseGit = FileSystemPathController.resolveExamGitBasePath(filePath);
       const baseFull = FileSystemPathController.fullPathForGitExam(baseGit);
-      if (!fs.existsSync(baseFull)) {
+      if (!baseFull || !fs.existsSync(baseFull)) {
         return res.status(404).json({ error: 'Basis-Prüfung (A) nicht gefunden' });
       }
       const baseHtml = readExamHtmlFullPath(baseFull);
@@ -3792,7 +3785,7 @@ ${aiContent.optionsHTML}
         if (L === 'A' || L === letter) continue;
         const vGit = gitPathVariant(baseGit, L);
         const vFull = FileSystemPathController.fullPathForGitExam(vGit);
-        if (!fs.existsSync(vFull)) continue;
+        if (!vFull || !fs.existsSync(vFull)) continue;
         const vHtml = readExamHtmlFullPath(vFull);
         writeExamHtmlFullPath(vFull, applyVersionsToExamHtml(vHtml, nextLetters, L));
       }
@@ -3820,7 +3813,7 @@ ${aiContent.optionsHTML}
       }
       const baseGit = FileSystemPathController.resolveExamGitBasePath(filePath);
       const baseFull = FileSystemPathController.fullPathForGitExam(baseGit);
-      if (!fs.existsSync(baseFull)) {
+      if (!baseFull || !fs.existsSync(baseFull)) {
         return res.status(404).json({ error: 'Basis-Prüfung nicht gefunden' });
       }
       const baseHtml = readExamHtmlFullPath(baseFull);
@@ -3830,14 +3823,14 @@ ${aiContent.optionsHTML}
       }
       const nextLetters = meta.letters.filter((l) => l !== letter);
       const variantFull = FileSystemPathController.fullPathForGitExam(gitPathVariant(baseGit, letter));
-      if (fs.existsSync(variantFull)) {
+      if (variantFull && fs.existsSync(variantFull)) {
         fs.unlinkSync(variantFull);
       }
       writeExamHtmlFullPath(baseFull, applyVersionsToExamHtml(baseHtml, nextLetters, 'A'));
       for (const L of nextLetters) {
         if (L === 'A') continue;
         const vFull = FileSystemPathController.fullPathForGitExam(gitPathVariant(baseGit, L));
-        if (!fs.existsSync(vFull)) continue;
+        if (!vFull || !fs.existsSync(vFull)) continue;
         const vHtml = readExamHtmlFullPath(vFull);
         writeExamHtmlFullPath(vFull, applyVersionsToExamHtml(vHtml, nextLetters, L));
       }

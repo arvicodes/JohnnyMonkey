@@ -22,6 +22,8 @@ import {
   folderPathsEquivalent,
   toPortableFolderRef,
 } from '../utils/folderPathMatch';
+import { buildExamVersionInfo } from '../lib/examVersionPaths';
+import { StorageManager } from '../utils/storageManager';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -636,14 +638,20 @@ router.get('/exam-beacon/student-poll', async (req: Request, res: Response) => {
       orderBy: { updatedAt: 'desc' },
     });
     return res.json({
-      beacons: rows.map((r) => ({
-        groupId: r.groupId,
-        groupName: r.group.name,
-        filePath: r.filePath,
-        lessonPath: r.lessonPath,
-        beaconId: r.beaconId,
-        updatedAt: r.updatedAt,
-      })),
+      beacons: rows.map((r) => {
+        const versionInfo = buildExamVersionInfo(r.filePath, (p) => StorageManager.resolveFilePath(p));
+        return {
+          groupId: r.groupId,
+          groupName: r.group.name,
+          filePath: r.filePath,
+          lessonPath: r.lessonPath,
+          beaconId: r.beaconId,
+          updatedAt: r.updatedAt,
+          versionLetters: versionInfo.letters,
+          versionPaths: versionInfo.paths,
+          baseFilePath: versionInfo.baseFilePath,
+        };
+      }),
     });
   } catch (e: any) {
     console.error('exam-beacon/student-poll:', e);

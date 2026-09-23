@@ -10,6 +10,8 @@ const pdf_parse_1 = __importDefault(require("pdf-parse"));
 const webUntisStudentList_1 = require("../utils/webUntisStudentList");
 const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const folderPathMatch_1 = require("../utils/folderPathMatch");
+const examVersionPaths_1 = require("../lib/examVersionPaths");
+const storageManager_1 = require("../utils/storageManager");
 const router = (0, express_1.Router)();
 const prisma = new client_1.PrismaClient();
 const webUntisUpload = (0, multer_1.default)({
@@ -603,14 +605,20 @@ router.get('/exam-beacon/student-poll', async (req, res) => {
             orderBy: { updatedAt: 'desc' },
         });
         return res.json({
-            beacons: rows.map((r) => ({
-                groupId: r.groupId,
-                groupName: r.group.name,
-                filePath: r.filePath,
-                lessonPath: r.lessonPath,
-                beaconId: r.beaconId,
-                updatedAt: r.updatedAt,
-            })),
+            beacons: rows.map((r) => {
+                const versionInfo = (0, examVersionPaths_1.buildExamVersionInfo)(r.filePath, (p) => storageManager_1.StorageManager.resolveFilePath(p));
+                return {
+                    groupId: r.groupId,
+                    groupName: r.group.name,
+                    filePath: r.filePath,
+                    lessonPath: r.lessonPath,
+                    beaconId: r.beaconId,
+                    updatedAt: r.updatedAt,
+                    versionLetters: versionInfo.letters,
+                    versionPaths: versionInfo.paths,
+                    baseFilePath: versionInfo.baseFilePath,
+                };
+            }),
         });
     }
     catch (e) {

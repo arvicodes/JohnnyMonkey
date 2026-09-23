@@ -8,6 +8,7 @@ exports.normalizeVersionLetter = normalizeVersionLetter;
 exports.defaultExamVersionLetters = defaultExamVersionLetters;
 exports.discoverExamVersionLettersNextToBase = discoverExamVersionLettersNextToBase;
 exports.mergeExamVersionLetters = mergeExamVersionLetters;
+exports.buildExamVersionInfo = buildExamVersionInfo;
 exports.parseExamVersionsMeta = parseExamVersionsMeta;
 exports.writeExamVersionsMeta = writeExamVersionsMeta;
 exports.syncExamVersionLettersJs = syncExamVersionLettersJs;
@@ -71,6 +72,22 @@ function mergeExamVersionLetters(metaLetters, baseFullPath) {
     if (!merged.includes('A'))
         merged.unshift('A');
     return merged.sort();
+}
+/** A/B/C-Metadaten für eine Prüfungsfamilie (gleiche Pfadlogik wie StorageManager.readFile). */
+function buildExamVersionInfo(anyVariantGitPath, resolveFullFromGit) {
+    const baseGit = gitPathVariant(anyVariantGitPath.replace(/\\/g, '/'), 'A');
+    const baseFull = resolveFullFromGit(baseGit);
+    if (!baseFull || !fs_1.default.existsSync(baseFull)) {
+        return { letters: ['A'], paths: { A: baseGit }, baseFilePath: baseGit };
+    }
+    const html = readExamHtmlFullPath(baseFull);
+    const meta = parseExamVersionsMeta(html);
+    const letters = mergeExamVersionLetters(meta.letters, baseFull);
+    const paths = {};
+    for (const letter of letters) {
+        paths[letter] = gitPathVariant(baseGit, letter);
+    }
+    return { letters, paths, baseFilePath: baseGit };
 }
 function parseExamVersionsMeta(html) {
     const m = html.match(exports.EXAM_VERSIONS_META_RE);

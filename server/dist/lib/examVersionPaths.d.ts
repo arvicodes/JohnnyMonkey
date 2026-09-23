@@ -8,6 +8,12 @@ export declare function defaultExamVersionLetters(): string[];
 /** Varianten-Dateien im gleichen Ordner (…__B.html) neben der Basis-Datei A. */
 export declare function discoverExamVersionLettersNextToBase(baseFullPath: string): string[];
 export declare function mergeExamVersionLetters(metaLetters: string[], baseFullPath: string): string[];
+/** A/B/C-Metadaten für eine Prüfungsfamilie (gleiche Pfadlogik wie StorageManager.readFile). */
+export declare function buildExamVersionInfo(anyVariantGitPath: string, resolveFullFromGit: (gitPath: string) => string | null): {
+    letters: string[];
+    paths: Record<string, string>;
+    baseFilePath: string;
+};
 export declare function parseExamVersionsMeta(html: string): ExamVersionsMeta;
 export declare function writeExamVersionsMeta(html: string, letters: string[]): string;
 export declare function syncExamVersionLettersJs(html: string, letters: string[]): string;

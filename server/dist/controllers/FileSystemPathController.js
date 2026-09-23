@@ -3181,7 +3181,7 @@ ${aiContent.optionsHTML}
         return (0, examVersionPaths_1.gitPathVariant)(p, 'A');
     }
     static fullPathForGitExam(filePath) {
-        return (0, examVersionPaths_1.resolveFullPathFromGitIntern)(filePath, DEV_PROJECT_ROOT);
+        return storageManager_1.StorageManager.resolveFilePath(filePath);
     }
     /** Versionen einer Prüfung (A = Basisdatei, B/C = Kopien __B / __C). */
     static async getExaminationVersions(req, res) {
@@ -3190,23 +3190,16 @@ ${aiContent.optionsHTML}
             if (!filePath || typeof filePath !== 'string') {
                 return res.status(400).json({ error: 'filePath ist erforderlich' });
             }
-            const baseGit = FileSystemPathController.resolveExamGitBasePath(filePath);
-            const baseFull = FileSystemPathController.fullPathForGitExam(baseGit);
-            if (!fs_1.default.existsSync(baseFull)) {
+            const info = (0, examVersionPaths_1.buildExamVersionInfo)(filePath, (p) => storageManager_1.StorageManager.resolveFilePath(p));
+            const baseFull = storageManager_1.StorageManager.resolveFilePath(info.baseFilePath);
+            if (!baseFull || !fs_1.default.existsSync(baseFull)) {
                 return res.status(404).json({ error: 'Prüfungsdatei nicht gefunden' });
-            }
-            const html = (0, examVersionPaths_1.readExamHtmlFullPath)(baseFull);
-            const meta = (0, examVersionPaths_1.parseExamVersionsMeta)(html);
-            const letters = (0, examVersionPaths_1.mergeExamVersionLetters)(meta.letters, baseFull);
-            const paths = {};
-            for (const letter of letters) {
-                paths[letter] = (0, examVersionPaths_1.gitPathVariant)(baseGit, letter);
             }
             res.json({
                 success: true,
-                baseFilePath: baseGit,
-                letters,
-                paths,
+                baseFilePath: info.baseFilePath,
+                letters: info.letters,
+                paths: info.paths,
             });
         }
         catch (error) {
@@ -3226,7 +3219,7 @@ ${aiContent.optionsHTML}
             }
             const baseGit = FileSystemPathController.resolveExamGitBasePath(filePath);
             const baseFull = FileSystemPathController.fullPathForGitExam(baseGit);
-            if (!fs_1.default.existsSync(baseFull)) {
+            if (!baseFull || !fs_1.default.existsSync(baseFull)) {
                 return res.status(404).json({ error: 'Basis-Prüfung (A) nicht gefunden' });
             }
             const baseHtml = (0, examVersionPaths_1.readExamHtmlFullPath)(baseFull);
@@ -3251,7 +3244,7 @@ ${aiContent.optionsHTML}
                     continue;
                 const vGit = (0, examVersionPaths_1.gitPathVariant)(baseGit, L);
                 const vFull = FileSystemPathController.fullPathForGitExam(vGit);
-                if (!fs_1.default.existsSync(vFull))
+                if (!vFull || !fs_1.default.existsSync(vFull))
                     continue;
                 const vHtml = (0, examVersionPaths_1.readExamHtmlFullPath)(vFull);
                 (0, examVersionPaths_1.writeExamHtmlFullPath)(vFull, (0, examVersionPaths_1.applyVersionsToExamHtml)(vHtml, nextLetters, L));
@@ -3279,7 +3272,7 @@ ${aiContent.optionsHTML}
             }
             const baseGit = FileSystemPathController.resolveExamGitBasePath(filePath);
             const baseFull = FileSystemPathController.fullPathForGitExam(baseGit);
-            if (!fs_1.default.existsSync(baseFull)) {
+            if (!baseFull || !fs_1.default.existsSync(baseFull)) {
                 return res.status(404).json({ error: 'Basis-Prüfung nicht gefunden' });
             }
             const baseHtml = (0, examVersionPaths_1.readExamHtmlFullPath)(baseFull);
@@ -3289,7 +3282,7 @@ ${aiContent.optionsHTML}
             }
             const nextLetters = meta.letters.filter((l) => l !== letter);
             const variantFull = FileSystemPathController.fullPathForGitExam((0, examVersionPaths_1.gitPathVariant)(baseGit, letter));
-            if (fs_1.default.existsSync(variantFull)) {
+            if (variantFull && fs_1.default.existsSync(variantFull)) {
                 fs_1.default.unlinkSync(variantFull);
             }
             (0, examVersionPaths_1.writeExamHtmlFullPath)(baseFull, (0, examVersionPaths_1.applyVersionsToExamHtml)(baseHtml, nextLetters, 'A'));
@@ -3297,7 +3290,7 @@ ${aiContent.optionsHTML}
                 if (L === 'A')
                     continue;
                 const vFull = FileSystemPathController.fullPathForGitExam((0, examVersionPaths_1.gitPathVariant)(baseGit, L));
-                if (!fs_1.default.existsSync(vFull))
+                if (!vFull || !fs_1.default.existsSync(vFull))
                     continue;
                 const vHtml = (0, examVersionPaths_1.readExamHtmlFullPath)(vFull);
                 (0, examVersionPaths_1.writeExamHtmlFullPath)(vFull, (0, examVersionPaths_1.applyVersionsToExamHtml)(vHtml, nextLetters, L));

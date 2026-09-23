@@ -67,11 +67,13 @@ export async function fetchExamVersionLetters(baseFilePath: string): Promise<{
   baseFilePath: string;
 }> {
   const queryPath = examBaseGitPath(baseFilePath);
+  const loginCode = localStorage.getItem('loginCode')?.trim();
   const res = await fetch(
     `/api/file-system-paths/get-examination-versions?filePath=${encodeURIComponent(queryPath)}`,
+    loginCode ? { headers: { 'x-login-code': loginCode } } : undefined,
   );
   if (!res.ok) {
-    return { letters: ['A'], paths: { A: queryPath }, baseFilePath: queryPath };
+    throw new Error(`Versionen konnten nicht geladen werden (${res.status})`);
   }
   const data = (await res.json()) as {
     letters?: string[];
