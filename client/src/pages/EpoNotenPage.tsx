@@ -76,9 +76,8 @@ export default function EpoNotenPage() {
     setSelfScores(
       entry?.selfScores?.length ? normalizeCategoryScores(entry.selfScores) : emptyCategoryScores(),
     );
-    setSelfGradeFromTable(
-      entry?.selfGradeFromTable || gradeFromTotalPoints(sumCategoryScores(entry?.selfScores)),
-    );
+    const pts = sumCategoryScores(entry?.selfScores);
+    setSelfGradeFromTable(entry?.selfScores?.length ? gradeFromTotalPoints(pts) : '');
     setGoal(entry?.goal || '');
     setGoalAction(entry?.goalAction || '');
   }, []);
