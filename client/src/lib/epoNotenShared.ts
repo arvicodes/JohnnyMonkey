@@ -37,22 +37,42 @@ export const EPO_NOTEN_POINTS_TO_GRADE: { minPoints: number; grade: string }[] =
 
 export function sumCategoryScores(scores: number[] | undefined | null): number {
   if (!Array.isArray(scores)) return 0;
-  return scores.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
+  return scores.reduce((a, b) => a + (Number.isFinite(b) && b >= 0 ? b : 0), 0);
 }
+
+export function allCategoriesSelected(scores: number[] | undefined | null): boolean {
+  if (!Array.isArray(scores) || scores.length < EPO_NOTEN_CATEGORY_COUNT) return false;
+  return scores.every((s) => Number.isFinite(s) && s >= 0 && s <= 3);
+}
+
+export function emptyCategoryScores(): number[] {
+  return Array.from({ length: EPO_NOTEN_CATEGORY_COUNT }, () => -1);
+}
+
+const pointsGradeRowsDesc = () =>
+  [...EPO_NOTEN_POINTS_TO_GRADE].sort((a, b) => b.minPoints - a.minPoints);
 
 export function gradeFromTotalPoints(total: number): string {
   const t = Math.max(0, Math.min(15, Math.round(total)));
-  for (const row of EPO_NOTEN_POINTS_TO_GRADE) {
+  for (const row of pointsGradeRowsDesc()) {
     if (t >= row.minPoints) return row.grade;
   }
   return '5';
+}
+
+export function minPointsThresholdForTotal(total: number): number {
+  const t = Math.max(0, Math.min(15, Math.round(total)));
+  for (const row of pointsGradeRowsDesc()) {
+    if (t >= row.minPoints) return row.minPoints;
+  }
+  return 0;
 }
 
 export function normalizeCategoryScores(raw: unknown): number[] {
   const base = Array.isArray(raw) ? raw : [];
   return Array.from({ length: EPO_NOTEN_CATEGORY_COUNT }, (_, i) => {
     const n = Number(base[i]);
-    if (!Number.isFinite(n)) return 0;
+    if (!Number.isFinite(n) || n < 0) return -1;
     return Math.min(3, Math.max(0, Math.round(n)));
   });
 }

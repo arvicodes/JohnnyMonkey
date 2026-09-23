@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
-import { EPO_NOTEN_POINTS_TO_GRADE } from '../../lib/epoNotenShared';
+import { EPO_NOTEN_POINTS_TO_GRADE, minPointsThresholdForTotal } from '../../lib/epoNotenShared';
 
 type Props = {
   highlightMinPoints?: number | null;
@@ -76,10 +76,7 @@ export function EpoNotenGradeTable({ highlightMinPoints, pulseGrade }: Props) {
   );
 }
 
+/** @deprecated use minPointsThresholdForTotal from epoNotenShared */
 export function minPointsForTotal(total: number): number {
-  const t = Math.max(0, Math.min(15, Math.round(total)));
-  for (const row of EPO_NOTEN_POINTS_TO_GRADE) {
-    if (t >= row.minPoints) return row.minPoints;
-  }
-  return 0;
+  return minPointsThresholdForTotal(total);
 }

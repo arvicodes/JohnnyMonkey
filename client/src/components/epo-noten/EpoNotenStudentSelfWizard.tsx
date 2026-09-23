@@ -11,12 +11,13 @@ import {
   Typography,
 } from '@mui/material';
 import { EpoNotenCategoryGrid } from './EpoNotenCategoryGrid';
-import { EpoNotenGradeTable, minPointsForTotal } from './EpoNotenGradeTable';
+import { EpoNotenGradeTable } from './EpoNotenGradeTable';
 import { epoNotenCardSx, epoNotenPalette } from './epoNotenUi';
 import {
   EPO_NOTEN_STUDENT_CATEGORIES,
   gradeFromTotalPoints,
-  normalizeCategoryScores,
+  minPointsThresholdForTotal,
+  allCategoriesSelected,
   sumCategoryScores,
 } from '../../lib/epoNotenShared';
 
@@ -67,7 +68,7 @@ export function EpoNotenStudentSelfWizard({
   useEffect(() => {
     if (step === 3 && locked) {
       setAnimTotal(totalTarget);
-      setHighlightMin(minPointsForTotal(totalTarget));
+      setHighlightMin(minPointsThresholdForTotal(totalTarget));
       setAnimGrade(selfGradeFromTable || computedGrade);
     }
   }, [step, locked, totalTarget, selfGradeFromTable, computedGrade]);
@@ -87,7 +88,7 @@ export function EpoNotenStudentSelfWizard({
     setHighlightMin(null);
     setAnimGrade(null);
 
-    const scores = normalizeCategoryScores(selfScores);
+    const scores = selfScores.map((s) => Math.min(3, Math.max(0, Math.round(s))));
     let running = 0;
     for (let i = 0; i < scores.length; i += 1) {
       await new Promise((r) => setTimeout(r, 380));
@@ -96,7 +97,7 @@ export function EpoNotenStudentSelfWizard({
     }
     await new Promise((r) => setTimeout(r, 450));
 
-    const minPts = minPointsForTotal(running);
+    const minPts = minPointsThresholdForTotal(running);
     setHighlightMin(minPts);
     await new Promise((r) => setTimeout(r, 600));
     const g = gradeFromTotalPoints(running);
@@ -137,7 +138,7 @@ export function EpoNotenStudentSelfWizard({
   };
 
   const canNextStep1 = suggestedGrade.trim().length > 0 && justification.trim().length > 0;
-  const canNextStep2 = !animRunning;
+  const canNextStep2 = !animRunning && allCategoriesSelected(selfScores);
 
   return (
     <Card sx={epoNotenCardSx}>
@@ -181,12 +182,25 @@ export function EpoNotenStudentSelfWizard({
           >
             <Box sx={{ pt: step === 2 || step === 3 || step === 'done' ? 1 : 0 }}>
               {(step === 2 || step === 3 || step === 'done') && (
-                <EpoNotenCategoryGrid
-                  categories={EPO_NOTEN_STUDENT_CATEGORIES}
-                  scores={selfScores}
-                  onChange={onSelfScoresChange}
-                  readOnly={readOnly || step !== 2}
-                />
+                <>
+                  <EpoNotenCategoryGrid
+                    categories={EPO_NOTEN_STUDENT_CATEGORIES}
+                    scores={selfScores}
+                    onChange={onSelfScoresChange}
+                    readOnly={readOnly || step !== 2}
+                  />
+                  {step === 2 && (
+                    <Typography variant="body2" sx={{ mt: 1, fontWeight: 700 }}>
+                      Gesamtpunktzahl:{' '}
+                      {allCategoriesSelected(selfScores) ? totalTarget : '—'}{' '}
+                      {!allCategoriesSelected(selfScores) && (
+                        <Typography component="span" variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                          (in jeder Zeile einen Wert wählen)
+                        </Typography>
+                      )}
+                    </Typography>
+                  )}
+                </>
               )}
             </Box>
           </Collapse>
@@ -210,7 +224,7 @@ export function EpoNotenStudentSelfWizard({
                   </Typography>
                 </Box>
                 <EpoNotenGradeTable
-                  highlightMinPoints={step === 'done' ? minPointsForTotal(totalTarget) : highlightMin}
+                  highlightMinPoints={step === 'done' ? minPointsThresholdForTotal(totalTarget) : highlightMin}
                   pulseGrade={step === 'done' ? selfGradeFromTable || computedGrade : animGrade}
                 />
                 <Box>
@@ -239,11 +253,7 @@ export function EpoNotenStudentSelfWizard({
           {step === 'done' && (
             <Alert severity="success" sx={{ py: 0.5 }}>
               <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                Das ist deine Selbsteinschätzung.
-              </Typography>
-              <Typography variant="body2">
-                Warte auf die Einschätzung deiner Lehrkraft — du kannst die Schritte noch ansehen, aber nichts mehr
-                ändern.
+                Das ist deine Selbsteinschätzung. Warte auf die Einschätzung deiner Lehrkraft.
               </Typography>
             </Alert>
           )}
@@ -271,32 +281,6 @@ export function EpoNotenStudentSelfWizard({
             </Stack>
           )}
 
-          {locked && step !== 'done' && (
-            <Button size="small" onClick={() => setStep('done')} sx={{ alignSelf: 'flex-end' }}>
-              Zur Übersicht
-            </Button>
-          )}
-
-          {step === 'done' && locked && (
-            <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => {
-                  setShowCategories(false);
-                  setStep(1);
-                }}
-              >
-                Ansehen (Schritt 1)
-              </Button>
-              <Button size="small" variant="outlined" onClick={() => { setShowCategories(true); setStep(2); }}>
-                Ansehen (Kategorien)
-              </Button>
-              <Button size="small" variant="outlined" onClick={() => setStep(3)}>
-                Ansehen (Punkte & Note)
-              </Button>
-            </Stack>
-          )}
         </Stack>
       </CardContent>
     </Card>

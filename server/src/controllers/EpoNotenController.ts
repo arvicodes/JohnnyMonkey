@@ -11,23 +11,25 @@ const groupActivePath = (groupId: string) => `__epo_noten_g_${groupId}__`;
 
 const CATEGORY_COUNT = 5;
 
+const GRADE_TABLE: { minPoints: number; grade: string }[] = [
+  { minPoints: 14, grade: '1' },
+  { minPoints: 13, grade: '1−' },
+  { minPoints: 12, grade: '2+' },
+  { minPoints: 11, grade: '2' },
+  { minPoints: 10, grade: '2−' },
+  { minPoints: 9, grade: '3+' },
+  { minPoints: 8, grade: '3' },
+  { minPoints: 7, grade: '3−' },
+  { minPoints: 6, grade: '4+' },
+  { minPoints: 5, grade: '4' },
+  { minPoints: 4, grade: '4−' },
+  { minPoints: 3, grade: '5+' },
+  { minPoints: 0, grade: '5' },
+];
+
 const gradeFromTotalPoints = (total: number): string => {
   const t = Math.max(0, Math.min(15, Math.round(total)));
-  const table: { minPoints: number; grade: string }[] = [
-    { minPoints: 14, grade: '1' },
-    { minPoints: 13, grade: '1−' },
-    { minPoints: 12, grade: '2+' },
-    { minPoints: 11, grade: '2' },
-    { minPoints: 10, grade: '2−' },
-    { minPoints: 9, grade: '3+' },
-    { minPoints: 8, grade: '3' },
-    { minPoints: 7, grade: '3−' },
-    { minPoints: 6, grade: '4+' },
-    { minPoints: 5, grade: '4' },
-    { minPoints: 4, grade: '4−' },
-    { minPoints: 3, grade: '5+' },
-    { minPoints: 0, grade: '5' },
-  ];
+  const table = [...GRADE_TABLE].sort((a, b) => b.minPoints - a.minPoints);
   for (const row of table) {
     if (t >= row.minPoints) return row.grade;
   }

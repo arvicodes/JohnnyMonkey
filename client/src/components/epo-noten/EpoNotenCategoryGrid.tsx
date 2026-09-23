@@ -56,6 +56,7 @@ export function EpoNotenCategoryGrid({ categories, scores, onChange, readOnly, l
                 <TableCell key={p} align="center" padding="checkbox">
                   <Radio
                     size="small"
+                    name={`epo-noten-cat-${i}`}
                     checked={scores[i] === p}
                     onChange={() => setScore(i, p)}
                     disabled={readOnly}

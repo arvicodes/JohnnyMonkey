@@ -6,16 +6,16 @@ import {
   Button,
   CircularProgress,
   IconButton,
-  MenuItem,
-  Select,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import CloseIcon from '@mui/icons-material/Close';
 import { apiGetSafe, apiPost } from '../lib/api';
 import { EpoNotenTeacherView } from '../components/epo-noten/EpoNotenTeacherView';
 import { EpoNotenCategoryGrid } from '../components/epo-noten/EpoNotenCategoryGrid';
+import { EpoNotenStudentRoundList } from '../components/epo-noten/EpoNotenStudentRoundList';
 import { EpoNotenStudentSelfWizard } from '../components/epo-noten/EpoNotenStudentSelfWizard';
 import { epoNotenCardSx, epoNotenPageBgSx, epoNotenPalette } from '../components/epo-noten/epoNotenUi';
 import {
@@ -23,6 +23,7 @@ import {
   type EpoNotenEntry,
   type EpoNotenStudentSession,
   gradeFromTotalPoints,
+  emptyCategoryScores,
   normalizeCategoryScores,
   sumCategoryScores,
 } from '../lib/epoNotenShared';
@@ -35,6 +36,13 @@ function detectIsTeacher(): boolean {
   return Boolean(teacherId);
 }
 
+const compactIconBtn = {
+  p: 0.25,
+  minWidth: 28,
+  width: 28,
+  height: 28,
+};
+
 export default function EpoNotenPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -45,24 +53,29 @@ export default function EpoNotenPage() {
   const [error, setError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<EpoNotenStudentSession[]>([]);
   const [myEntry, setMyEntry] = useState<EpoNotenEntry | null>(null);
-  const [roundMeta, setRoundMeta] = useState<{ id: string; title: string; date: string; groupName: string } | null>(null);
+  const [roundMeta, setRoundMeta] = useState<{ id: string; title: string; date: string; groupName: string } | null>(
+    null,
+  );
   const [canEditSelf, setCanEditSelf] = useState(false);
   const [canEditGoals, setCanEditGoals] = useState(false);
   const [teacherId, setTeacherId] = useState('');
 
   const [suggestedGrade, setSuggestedGrade] = useState('');
   const [justification, setJustification] = useState('');
-  const [selfScores, setSelfScores] = useState(normalizeCategoryScores([]));
+  const [selfScores, setSelfScores] = useState(emptyCategoryScores());
   const [selfGradeFromTable, setSelfGradeFromTable] = useState('');
   const [goal, setGoal] = useState('');
   const [goalAction, setGoalAction] = useState('');
 
   const selectedRoundId = searchParams.get('roundId') || '';
+  const showStudentList = !isTeacher && !selectedRoundId;
 
   const populateFromEntry = useCallback((entry: EpoNotenEntry | null) => {
     setSuggestedGrade(entry?.suggestedGrade || '');
     setJustification(entry?.justification || '');
-    setSelfScores(normalizeCategoryScores(entry?.selfScores));
+    setSelfScores(
+      entry?.selfScores?.length ? normalizeCategoryScores(entry.selfScores) : emptyCategoryScores(),
+    );
     setSelfGradeFromTable(
       entry?.selfGradeFromTable || gradeFromTotalPoints(sumCategoryScores(entry?.selfScores)),
     );
@@ -80,34 +93,53 @@ export default function EpoNotenPage() {
       const data = await res.json();
       const list = Array.isArray(data.sessions) ? (data.sessions as EpoNotenStudentSession[]) : [];
       setSessions(list);
-      setMyEntry((data.myEntry as EpoNotenEntry) || null);
-      setCanEditSelf(Boolean(data.canEditSelf));
-      setCanEditGoals(Boolean(data.canEditGoals));
-      setTeacherId(typeof data.teacherId === 'string' ? data.teacherId : '');
-      if (data.round && typeof data.round === 'object') {
-        const r = data.round as { id: string; title: string; date: string; groupName: string };
-        setRoundMeta(r);
-        if (!selectedRoundId && r.id) {
-          setSearchParams({ roundId: r.id }, { replace: true });
+
+      if (selectedRoundId) {
+        setMyEntry((data.myEntry as EpoNotenEntry) || null);
+        setCanEditSelf(Boolean(data.canEditSelf));
+        setCanEditGoals(Boolean(data.canEditGoals));
+        setTeacherId(typeof data.teacherId === 'string' ? data.teacherId : '');
+        if (data.round && typeof data.round === 'object') {
+          const r = data.round as { id: string; title: string; date: string; groupName: string };
+          setRoundMeta(r);
+        } else {
+          const fromList = list.find((s) => s.id === selectedRoundId);
+          if (fromList) {
+            setRoundMeta({
+              id: fromList.id,
+              title: fromList.title,
+              date: fromList.date,
+              groupName: fromList.groupName,
+            });
+          }
         }
+        populateFromEntry((data.myEntry as EpoNotenEntry) || null);
+      } else {
+        setMyEntry(null);
+        setRoundMeta(null);
       }
-      populateFromEntry((data.myEntry as EpoNotenEntry) || null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
     } finally {
       setLoading(false);
     }
-  }, [populateFromEntry, selectedRoundId, setSearchParams]);
+  }, [populateFromEntry, selectedRoundId]);
 
   useEffect(() => {
     if (!isTeacher) loadStudent();
   }, [isTeacher, loadStudent, selectedRoundId]);
 
-  const onSelectRound = (id: string) => {
+  const openRound = (id: string) => {
     setSearchParams({ roundId: id });
   };
 
+  const backToList = () => {
+    setSearchParams({});
+  };
+
   const submitSelf = useCallback(async () => {
+    const total = sumCategoryScores(selfScores);
+    const gradeTable = gradeFromTotalPoints(total);
     setSubmitting(true);
     setError(null);
     try {
@@ -117,12 +149,13 @@ export default function EpoNotenPage() {
         suggestedGrade,
         justification,
         selfScores,
-        selfGradeFromTable: selfGradeFromTable || gradeFromTotalPoints(sumCategoryScores(selfScores)),
+        selfGradeFromTable: gradeTable,
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Speichern fehlgeschlagen');
       }
+      setSelfGradeFromTable(gradeTable);
       await loadStudent();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
@@ -135,7 +168,6 @@ export default function EpoNotenPage() {
     loadStudent,
     roundMeta?.id,
     selectedRoundId,
-    selfGradeFromTable,
     selfScores,
     suggestedGrade,
     teacherId,
@@ -176,33 +208,41 @@ export default function EpoNotenPage() {
         <Stack
           direction="row"
           alignItems="center"
-          spacing={0.5}
-          sx={{ mb: 1, minHeight: 36 }}
+          justifyContent="space-between"
+          sx={{ mb: 1, minHeight: 32 }}
         >
-          <IconButton
-            onClick={() => navigate(-1)}
-            aria-label="Zurück"
-            size="small"
-            sx={{ p: 0.5, ml: -0.5 }}
-          >
-            <ArrowBackIcon sx={{ fontSize: 20 }} />
-          </IconButton>
+          {!isTeacher && selectedRoundId ? (
+            <IconButton onClick={backToList} aria-label="Zur Liste" size="small" sx={{ ...compactIconBtn, ml: -0.25 }}>
+              <ArrowBackIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          ) : (
+            <Box sx={{ width: 28 }} />
+          )}
           <Typography
-            variant="body1"
+            variant="body2"
             sx={{
               fontWeight: 800,
               color: epoNotenPalette.primary,
-              fontSize: '0.95rem',
-              lineHeight: 1.2,
+              fontSize: '0.88rem',
               flex: 1,
+              textAlign: 'center',
               minWidth: 0,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+              px: 0.5,
             }}
           >
             EPO-Noten
           </Typography>
+          <IconButton
+            onClick={() => navigate('/')}
+            aria-label="Schließen"
+            size="small"
+            sx={{ ...compactIconBtn, mr: -0.25 }}
+          >
+            <CloseIcon sx={{ fontSize: 18 }} />
+          </IconButton>
         </Stack>
 
         {isTeacher ? (
@@ -217,24 +257,10 @@ export default function EpoNotenPage() {
 
             {sessions.length === 0 ? (
               <Alert severity="info">Sobald deine Lehrkraft eine EPO-Runde freischaltet, erscheint sie hier.</Alert>
+            ) : showStudentList ? (
+              <EpoNotenStudentRoundList sessions={sessions} onSelect={openRound} />
             ) : (
               <>
-                {sessions.length > 1 && (
-                  <Select
-                    size="small"
-                    fullWidth
-                    value={roundMeta?.id || selectedRoundId}
-                    onChange={(e) => onSelectRound(String(e.target.value))}
-                    sx={{ fontSize: '0.85rem' }}
-                  >
-                    {sessions.map((s) => (
-                      <MenuItem key={`${s.id}-${s.groupId}`} value={s.id}>
-                        {s.title} ({s.groupName})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                )}
-
                 {roundMeta && (
                   <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
                     {roundMeta.title} · {roundMeta.date} · {roundMeta.groupName}
