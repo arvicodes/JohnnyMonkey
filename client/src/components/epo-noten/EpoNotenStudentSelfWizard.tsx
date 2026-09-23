@@ -13,7 +13,13 @@ import {
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { EpoNotenCategoryGrid } from './EpoNotenCategoryGrid';
 import { EpoNotenGradeTable } from './EpoNotenGradeTable';
-import { epoNotenCardSx, epoNotenPalette } from './epoNotenUi';
+import {
+  epoNotenBigNumberSx,
+  epoNotenCardSx,
+  epoNotenKidTextFieldSx,
+  epoNotenPalette,
+  epoNotenSectionTitleSx,
+} from './epoNotenUi';
 import {
   EPO_NOTEN_STUDENT_CATEGORIES,
   gradeFromTotalPoints,
@@ -60,6 +66,8 @@ export function EpoNotenStudentSelfWizard({
   const [gradeVisible, setGradeVisible] = useState(false);
   const [animRunning, setAnimRunning] = useState(false);
   const submitStarted = useRef(false);
+  const tableAnchorRef = useRef<HTMLDivElement | null>(null);
+  const gradeAnchorRef = useRef<HTMLDivElement | null>(null);
 
   const totalTarget = sumCategoryScores(selfScores);
   const readOnly = locked || step === 'done' || animRunning;
@@ -92,6 +100,22 @@ export function EpoNotenStudentSelfWizard({
       submitStarted.current = true;
     }
   }, [startAtDone]);
+
+  useEffect(() => {
+    if (!tableVisible) return;
+    const t = window.setTimeout(() => {
+      tableAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [tableVisible]);
+
+  useEffect(() => {
+    if (!gradeVisible) return;
+    const t = window.setTimeout(() => {
+      gradeAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+    return () => window.clearTimeout(t);
+  }, [gradeVisible]);
 
   const runCalculationAnimation = useCallback(async () => {
     if (locked) return;
@@ -158,7 +182,7 @@ export function EpoNotenStudentSelfWizard({
     <Card sx={epoNotenCardSx}>
       <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
         <Stack spacing={1.5}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 800, fontSize: '1.05rem' }}>
+          <Typography variant="subtitle1" sx={epoNotenSectionTitleSx}>
             Deine Selbsteinschätzung
             {step !== 'done' && step !== 3 && (
               <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
@@ -175,7 +199,7 @@ export function EpoNotenStudentSelfWizard({
                 onChange={(e) => onSuggestedGradeChange(e.target.value)}
                 disabled={readOnly}
                 fullWidth
-                size="small"
+                sx={epoNotenKidTextFieldSx}
               />
               <TextField
                 label="Kurze Begründung"
@@ -183,9 +207,9 @@ export function EpoNotenStudentSelfWizard({
                 onChange={(e) => onJustificationChange(e.target.value)}
                 disabled={readOnly}
                 multiline
-                minRows={2}
+                minRows={3}
                 fullWidth
-                size="small"
+                sx={epoNotenKidTextFieldSx}
               />
             </Stack>
           )}
@@ -206,12 +230,10 @@ export function EpoNotenStudentSelfWizard({
                       Gesamtpunktzahl
                     </Typography>
                     <Typography
-                      variant="h4"
+                      variant="h3"
                       sx={{
-                        fontWeight: 900,
-                        color: epoNotenPalette.primary,
-                        fontVariantNumeric: 'tabular-nums',
-                        lineHeight: 1.1,
+                        ...epoNotenBigNumberSx,
+                        fontSize: { xs: '2rem', sm: '2.35rem' },
                         transition: 'transform 0.2s ease',
                         transform: animRunning ? 'scale(1.05)' : 'scale(1)',
                       }}
@@ -226,7 +248,7 @@ export function EpoNotenStudentSelfWizard({
                   </Box>
 
                   <Collapse in={tableVisible}>
-                    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                    <Box ref={tableAnchorRef} sx={{ mt: 2, width: '100%' }}>
                       <EpoNotenGradeTable
                         highlightMinPoints={
                           highlightMin ?? (step === 'done' ? minPointsThresholdForTotal(totalTarget) : null)
@@ -238,11 +260,12 @@ export function EpoNotenStudentSelfWizard({
 
                   <Collapse in={gradeVisible || step === 'done'}>
                     <Stack
+                      ref={gradeAnchorRef}
                       direction="row"
                       alignItems="center"
                       justifyContent="flex-end"
                       spacing={0.75}
-                      sx={{ mt: 1.5, pr: 0.5 }}
+                      sx={{ mt: 1.5, pr: 0.5, scrollMarginTop: 24 }}
                     >
                       <ArrowDownwardIcon sx={{ color: epoNotenPalette.accent, fontSize: 28 }} />
                       <Box sx={{ textAlign: 'right' }}>

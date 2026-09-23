@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import type { EpoNotenStudentSession } from '../../lib/epoNotenShared';
-import { epoNotenCardSx } from './epoNotenUi';
+import { epoNotenCardSx, epoNotenPalette, epoNotenSectionTitleSx } from './epoNotenUi';
 
 function formatRoundDate(date: string): string {
   if (!date) return '—';
@@ -41,12 +41,20 @@ export function EpoNotenStudentRoundList({ sessions, onSelect }: Props) {
 
   return (
     <Box sx={epoNotenCardSx}>
-      <Typography variant="subtitle2" sx={{ px: 1.5, pt: 1.25, pb: 0.5, fontWeight: 800 }}>
+      <Typography variant="subtitle2" sx={{ px: 1.5, pt: 1.25, pb: 0.5, ...epoNotenSectionTitleSx }}>
         Deine EPO-Runden
       </Typography>
       <List dense disablePadding>
         {sorted.map((s) => (
-          <ListItemButton key={`${s.id}-${s.groupId}`} onClick={() => onSelect(s.id)} sx={{ py: 1 }}>
+          <ListItemButton
+            key={`${s.id}-${s.groupId}`}
+            onClick={() => onSelect(s.id)}
+            sx={{
+              py: 1.25,
+              borderBottom: `1px solid ${epoNotenPalette.border}`,
+              '&:last-child': { borderBottom: 0 },
+            }}
+          >
             <ListItemText
               primary={s.title}
               secondary={`${formatRoundDate(s.date)} · ${s.groupName}`}

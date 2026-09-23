@@ -12,6 +12,7 @@ router.post('/:id/publish', EpoNotenController.publishById);
 router.post('/:id/unpublish', EpoNotenController.unpublishById);
 router.put('/:id/teacher/:studentId', EpoNotenController.saveTeacherEntry);
 router.post('/:id/release', EpoNotenController.releaseToStudents);
+router.post('/:id/reset-all', EpoNotenController.resetAllEntries);
 router.post('/submit-self', EpoNotenController.submitSelf);
 router.post('/submit-goals', EpoNotenController.submitGoals);
 router.delete('/:id', EpoNotenController.remove);

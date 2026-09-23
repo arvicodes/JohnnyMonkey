@@ -25,6 +25,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PublishIcon from '@mui/icons-material/Publish';
 import UnpublishedIcon from '@mui/icons-material/Unpublished';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { apiDelete, apiGetSafe, apiPost, apiPut } from '../../lib/api';
 import {
   EPO_NOTEN_TEACHER_CATEGORIES,
@@ -267,6 +268,32 @@ export function EpoNotenTeacherView() {
     await loadList();
   };
 
+  const resetAllStudents = async () => {
+    if (!round) return;
+    if (
+      !window.confirm(
+        'Alle Einträge dieser Runde zurücksetzen? SuS können ihre Selbsteinschätzung dann erneut ausfüllen.',
+      )
+    ) {
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await apiPost(`/api/epo-noten/${round.id}/reset-all`, {});
+      if (!res?.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(typeof err.error === 'string' ? err.error : 'Zurücksetzen fehlgeschlagen');
+      }
+      setSelectedStudentId('');
+      await loadDetail(round.id);
+      await loadList();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Fehler');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const removeRound = async () => {
     if (!round || !window.confirm('Diese EPO-Runde wirklich löschen?')) return;
     await apiPost(`/api/epo-noten/${round.id}/unpublish`, {});
@@ -397,6 +424,17 @@ export function EpoNotenTeacherView() {
                   </List>
                   <Button fullWidth sx={{ mt: 1 }} variant="outlined" onClick={releaseAll} disabled={saving}>
                     Alle bewerteten freigeben
+                  </Button>
+                  <Button
+                    fullWidth
+                    sx={{ mt: 0.75 }}
+                    variant="outlined"
+                    color="warning"
+                    startIcon={<RestartAltIcon />}
+                    onClick={resetAllStudents}
+                    disabled={saving}
+                  >
+                    Alle SuS zurücksetzen
                   </Button>
                 </Box>
 

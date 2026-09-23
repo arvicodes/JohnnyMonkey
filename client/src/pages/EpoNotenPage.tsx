@@ -17,7 +17,12 @@ import { EpoNotenTeacherView } from '../components/epo-noten/EpoNotenTeacherView
 import { EpoNotenCategoryGrid } from '../components/epo-noten/EpoNotenCategoryGrid';
 import { EpoNotenStudentRoundList } from '../components/epo-noten/EpoNotenStudentRoundList';
 import { EpoNotenStudentSelfWizard } from '../components/epo-noten/EpoNotenStudentSelfWizard';
-import { epoNotenCardSx, epoNotenPageBgSx, epoNotenPalette } from '../components/epo-noten/epoNotenUi';
+import {
+  epoNotenCardSx,
+  epoNotenKidTextFieldSx,
+  epoNotenPageBgSx,
+  epoNotenPalette,
+} from '../components/epo-noten/epoNotenUi';
 import {
   EPO_NOTEN_TEACHER_CATEGORIES,
   type EpoNotenEntry,
@@ -314,8 +319,7 @@ export default function EpoNotenPage() {
                           multiline
                           minRows={2}
                           fullWidth
-                          size="small"
-                          sx={{ mb: 1.5 }}
+                          sx={{ mb: 1.5, ...epoNotenKidTextFieldSx }}
                         />
                         <TextField
                           label="Eine konkrete Handlung dazu"
@@ -323,9 +327,9 @@ export default function EpoNotenPage() {
                           onChange={(e) => setGoalAction(e.target.value)}
                           disabled={!canEditGoals || phase === 'done'}
                           multiline
-                          minRows={2}
+                          minRows={3}
                           fullWidth
-                          size="small"
+                          sx={epoNotenKidTextFieldSx}
                         />
                         {canEditGoals && phase === 'goals' && (
                           <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'flex-end' }}>

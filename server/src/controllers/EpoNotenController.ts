@@ -886,4 +886,26 @@ export class EpoNotenController {
       return res.status(500).json({ error: 'Fehler bei der Freigabe' });
     }
   }
+
+  /** Lehrkraft: alle Einträge dieser Runde löschen (SuS können neu starten) */
+  static async resetAllEntries(req: Request, res: Response) {
+    try {
+      const user = await getUserByLoginCode(req);
+      if (!user) return res.status(401).json({ error: 'Nicht angemeldet' });
+      if (user.role !== 'TEACHER') return res.status(403).json({ error: 'Nur Lehrkräfte' });
+
+      const roundId = String(req.params.id || '').trim();
+      const payload = await loadRound(user.id, roundId);
+      if (!payload) return res.status(404).json({ error: 'Runde nicht gefunden' });
+
+      const removed = payload.entries.length;
+      payload.entries = [];
+      await saveRound(user.id, payload);
+
+      return res.json({ success: true, removedCount: removed });
+    } catch (error) {
+      console.error('EpoNoten resetAllEntries error:', error);
+      return res.status(500).json({ error: 'Fehler beim Zurücksetzen' });
+    }
+  }
 }
