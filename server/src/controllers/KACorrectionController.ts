@@ -6,6 +6,7 @@ import {
   parseExamAnswerKey,
   readExamHtml,
   replaceCorrectAnswersInHtml,
+  replaceExamTaskPointsInHtml,
   writeExamHtml,
 } from '../utils/examAutoPoints';
 import { examGradeNumericFromPoints } from '../utils/examGradeNumeric';
@@ -1479,16 +1480,30 @@ export class KACorrectionController {
       const teacher = await requireTeacher(req);
       if (!teacher) return res.status(403).json({ error: 'Nur Lehrer' });
 
-      const { kaFilePath, answers } = req.body as {
+      const { kaFilePath, answers, taskPoints } = req.body as {
         kaFilePath?: string;
         answers?: Record<string, string | string[] | number>;
+        taskPoints?: Record<string, number | string>;
       };
-      if (!kaFilePath || !answers) {
-        return res.status(400).json({ error: 'kaFilePath und answers sind erforderlich' });
+      if (!kaFilePath || (!answers && !taskPoints)) {
+        return res.status(400).json({ error: 'kaFilePath und answers oder taskPoints sind erforderlich' });
       }
 
       const html = readExamHtml(kaFilePath);
-      const updatedHtml = replaceCorrectAnswersInHtml(html, answers);
+      let updatedHtml = html;
+      if (answers && Object.keys(answers).length > 0) {
+        updatedHtml = replaceCorrectAnswersInHtml(updatedHtml, answers);
+      }
+      if (taskPoints && Object.keys(taskPoints).length > 0) {
+        const normalized: Record<string, number> = {};
+        Object.entries(taskPoints).forEach(([k, v]) => {
+          const n = Math.max(0, Math.round(Number(v) || 0));
+          if (n > 0) normalized[k] = n;
+        });
+        if (Object.keys(normalized).length > 0) {
+          updatedHtml = replaceExamTaskPointsInHtml(updatedHtml, normalized);
+        }
+      }
       writeExamHtml(kaFilePath, updatedHtml);
       const count = await KACorrectionController.recalculateAllForExam(kaFilePath);
       res.json({ success: true, recalculated: count });

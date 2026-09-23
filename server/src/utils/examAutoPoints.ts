@@ -7,9 +7,114 @@ const examHtmlBasenameCache = new Map<string, string>();
 export type ExamAnswerKey = {
   answers: Record<string, string | string[] | number>;
   points: Record<string, number>;
+  taskPoints: Record<string, number>;
   maxPoints: number;
   isGeometry: boolean;
 };
+
+export function parseExamTaskPointsFromHtml(html: string): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!html) return out;
+
+  const blockRe =
+    /<!--\s*Aufgabe\s+(\d+)\s*[^>]*-->[\s\S]*?<div class="task-number">[\s\S]*?\((\d+)\s*Punkte\)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = blockRe.exec(html)) !== null) {
+    out[m[1]] = parseInt(m[2], 10) || 0;
+  }
+
+  if (Object.keys(out).length === 0) {
+    const alt = /<div class="task-number">\s*Aufgabe\s+(\d+)\s*\((\d+)\s*Punkte\)/gi;
+    while ((m = alt.exec(html)) !== null) {
+      out[m[1]] = parseInt(m[2], 10) || 0;
+    }
+  }
+  return out;
+}
+
+export function buildFieldPointsFromTaskPoints(
+  answers: Record<string, string | string[] | number>,
+  taskPoints: Record<string, number>,
+  isGeometry: boolean,
+): Record<string, number> {
+  const fieldsByTask: Record<string, string[]> = {};
+  for (const id of Object.keys(answers)) {
+    const tm = id.match(/^a(\d+)/i);
+    if (!tm) continue;
+    const taskNum = tm[1];
+    if (!fieldsByTask[taskNum]) fieldsByTask[taskNum] = [];
+    fieldsByTask[taskNum].push(id);
+  }
+
+  const points: Record<string, number> = {};
+  for (const [taskNum, fields] of Object.entries(fieldsByTask)) {
+    const sorted = [...fields].sort();
+    const n = sorted.length;
+    if (!n) continue;
+    const taskMax = taskPoints[taskNum];
+    if (taskMax != null && taskMax > 0) {
+      const per = taskMax / n;
+      sorted.forEach((id) => {
+        points[id] = per;
+      });
+    } else {
+      sorted.forEach((id) => {
+        points[id] = isGeometry && /_[xy]$/.test(id) ? 0.25 : 1;
+      });
+    }
+  }
+  return points;
+}
+
+function sumTaskPointsMap(taskPoints: Record<string, number>): number {
+  return Object.values(taskPoints).reduce((s, v) => s + (Number(v) || 0), 0);
+}
+
+export function updateExamTotalPointsInHtml(html: string, total: number): string {
+  const safe = Math.max(0, Math.round(total));
+  let next = html.replace(
+    /return \{ achieved: achievedPoints, total: \d+ \};/,
+    `return { achieved: achievedPoints, total: ${safe} };`,
+  );
+  next = next.replace(
+    /<span id="totalPoints">[^<]*<\/span>/,
+    `<span id="totalPoints">${safe}</span>`,
+  );
+  return next;
+}
+
+export function replaceExamTaskPointsInHtml(
+  html: string,
+  updates: Record<string, number>,
+): string {
+  if (!Object.keys(updates).length) return html;
+
+  const replaced = html.replace(
+    /(<!--\s*Aufgabe\s+(\d+)\s*[^>]*-->)([\s\S]*?)(?=\n\s*<!--\s*Aufgabe\s+\d+|\n\s*<div class="footer">|\n\s*<div class="submit-section">|$)/gi,
+    (full, comment, taskNumStr, body) => {
+      const pts = updates[taskNumStr];
+      if (pts === undefined) return full;
+      const n = Math.max(0, Math.round(Number(pts) || 0));
+      let nextBody = body.replace(
+        /(<div class="task-number">[\s\S]*?<span[^>]*>)\(\d+\s*Punkte\)(<\/span>)/i,
+        `$1(${n} Punkte)$2`,
+      );
+      nextBody = nextBody.replace(
+        /(<div class="task-number">\s*Aufgabe\s+\d+\s*)\(\d+\s*Punkte\)/i,
+        `$1(${n} Punkte)`,
+      );
+      nextBody = nextBody.replace(
+        /(<div class="points">)\d+(\s*Punkte<\/div>)/i,
+        `$1${n}$2`,
+      );
+      return comment + nextBody;
+    },
+  );
+
+  const taskPoints = parseExamTaskPointsFromHtml(replaced);
+  const total = sumTaskPointsMap(taskPoints);
+  return total > 0 ? updateExamTotalPointsInHtml(replaced, total) : replaced;
+}
 
 function normalizeLoose(raw: unknown): string {
   if (raw === null || raw === undefined) return '';
@@ -43,7 +148,13 @@ export function examAnswerMatches(expected: unknown, student: unknown): boolean 
 }
 
 export function parseExamAnswerKey(html: string): ExamAnswerKey {
-  const empty: ExamAnswerKey = { answers: {}, points: {}, maxPoints: 0, isGeometry: false };
+  const empty: ExamAnswerKey = {
+    answers: {},
+    points: {},
+    taskPoints: {},
+    maxPoints: 0,
+    isGeometry: false,
+  };
   if (!html) return empty;
 
   const blockMatch = html.match(/const\s+correctAnswers\s*=\s*(\{[\s\S]*?\});/);
@@ -71,16 +182,16 @@ export function parseExamAnswerKey(html: string): ExamAnswerKey {
 
   const keys = Object.keys(answers);
   const isGeometry = keys.some((k) => /_[xy]$/.test(k));
-  const points: Record<string, number> = {};
-  keys.forEach((k) => {
-    points[k] = isGeometry && /_[xy]$/.test(k) ? 0.25 : 1;
-  });
+  const taskPoints = parseExamTaskPointsFromHtml(html);
+  const points = buildFieldPointsFromTaskPoints(answers, taskPoints, isGeometry);
 
   const totalMatch = html.match(/id="totalPoints"[^>]*>(\d+)/);
   const maxFromHtml = totalMatch ? parseInt(totalMatch[1], 10) : 0;
-  const maxPoints = maxFromHtml || keys.reduce((s, k) => s + (points[k] || 0), 0);
+  const maxFromTasks = sumTaskPointsMap(taskPoints);
+  const maxFromFields = keys.reduce((s, k) => s + (points[k] || 0), 0);
+  const maxPoints = maxFromTasks || maxFromHtml || maxFromFields;
 
-  return { answers, points, maxPoints, isGeometry };
+  return { answers, points, taskPoints, maxPoints, isGeometry };
 }
 
 function findExamHtmlByBasename(basename: string): string | null {

@@ -1211,25 +1211,6 @@
             position: relative;
             width: 100%;
             line-height: 0;
-            aspect-ratio: var(--nl-aspect, 15);
-            min-height: 72px;
-            background: #f7f7f7;
-        }
-        .exam-nl-visual.exam-nl-visual--broken::after {
-            content: 'Zahlenstrahl-Bild konnte nicht geladen werden. Bitte Seite neu laden oder die Lehrkraft informieren.';
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 12px;
-            font-size: 13px;
-            line-height: 1.4;
-            color: #b71c1c;
-            text-align: center;
-            background: #fff3f3;
-            border: 1px dashed #e57373;
-            z-index: 1;
         }
         .exam-nl-img {
             display: block;
@@ -1246,11 +1227,6 @@
             height: 100%;
             cursor: crosshair;
             line-height: normal;
-            touch-action: manipulation;
-        }
-        .exam-nl-place-chip {
-            touch-action: manipulation;
-            cursor: pointer;
         }
         .exam-nl-overlay.exam-nl-overlay--place-mode { cursor: copy; }
         .exam-nl-hit {
@@ -1589,16 +1565,15 @@
 <div class="exam-subsection" data-sub-kind="one-line" data-sub-id="k4-b" data-exam-spec="%7B%22id%22%3A%22k4-b%22%2C%22letter%22%3A%22B%22%2C%22title%22%3A%22Berechne%20die%20Differenz%20vom%20schnellsten%20zum%20Langsamsten%20Lebewesen%3A%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22%22%2C%22solution%22%3A%22160%22%2C%22answerId%22%3A%22a4b%22%2C%22suffix%22%3A%22km%2Fh%22%7D"><div class="exam-subsection-title"><span class="item-label">B)</span> Berechne die Differenz vom schnellsten zum Langsamsten Lebewesen:</div><div class="item input-group full-width" style="margin-top:4px;"><input type="text" id="a4b" class="blank-wide" autocomplete="off"> <span>km/h</span></div></div>
 <div class="exam-subsection" data-sub-kind="paragraph" data-sub-id="k4-c-t" data-exam-spec="%7B%22id%22%3A%22k4-c-t%22%2C%22letter%22%3A%22C%22%2C%22title%22%3A%22Auf%20dem%20Zahlenstrahl%20sind%20bereits%20einige%20Geschwindigkeiten%20durch%20Pfeile%20markiert.%20Lies%20die%20markierten%20Geschwindigkeiten%20ab.%20Trage%20anschlie%C3%9Fend%20auf%20demselben%20Zahlenstrahl%20die%20Geschwindigkeiten%20von%20Pferd%20und%20Biene%20ein%20und%20beschrifte%20die%20Punkte%20mit%20den%20passenden%20Namen.%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22paragraph%22%2C%22text%22%3A%22%22%7D"><div class="exam-subsection-title"><span class="item-label">C)</span> Auf dem Zahlenstrahl sind bereits einige Geschwindigkeiten durch Pfeile markiert. Lies die markierten Geschwindigkeiten ab. Trage anschließend auf demselben Zahlenstrahl die Geschwindigkeiten von Pferd und Biene ein und beschrifte die Punkte mit den passenden Namen.</div></div>
 <div class="exam-subsection" data-sub-kind="number-line" data-sub-id="k4-c-nl" data-exam-spec="%7B%22id%22%3A%22k4-c-nl%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22number-line%22%2C%22hint%22%3A%22Klicke%20auf%20einen%20roten%20Pfeil%20und%20trage%20die%20abgelesene%20Geschwindigkeit%20ein.%20W%C3%A4hle%20%E2%80%9EPferd%E2%80%9C%20oder%20%E2%80%9EBiene%E2%80%9C%2C%20klicke%20auf%20den%20Zahlenstrahl%20und%20beschrifte%20den%20Punkt.%22%2C%22min%22%3A0%2C%22max%22%3A72%2C%22step%22%3A4%2C%22bg%22%3A%22%2Fapi%2Ffile-system-paths%2Fread-image%3FfilePath%3Dgit-intern%252FMathe%252FKlasse%25205%252FKap%25201%2520-%2520Nat%25C3%25BCrliche%2520Zahlen%2520und%2520Gr%25C3%25B6%25C3%259Fen%252FKA1-Druckmaterial%252Fimage5.jpeg%22%2C%22bgAspect%22%3A14.697247706422019%2C%22fixedTopPct%22%3A2.5%2C%22pinAxisTopPct%22%3A47%2C%22axis%22%3A%5B%7B%22value%22%3A0%2C%22pct%22%3A0.37%7D%2C%7B%22value%22%3A24%2C%22pct%22%3A29%7D%2C%7B%22value%22%3A48%2C%22pct%22%3A58.1%7D%2C%7B%22value%22%3A72%2C%22pct%22%3A87.1%7D%5D%2C%22fixed%22%3A%5B%7B%22value%22%3A12%2C%22answerId%22%3A%22a4c1%22%2C%22solution%22%3A%2212%22%2C%22positionPct%22%3A9.99%7D%2C%7B%22value%22%3A24%2C%22answerId%22%3A%22a4c2%22%2C%22solution%22%3A%2224%22%2C%22positionPct%22%3A31.84%7D%2C%7B%22value%22%3A63%2C%22answerId%22%3A%22a4c3%22%2C%22solution%22%3A%2263%22%2C%22positionPct%22%3A65.92%7D%5D%2C%22chips%22%3A%5B%7B%22label%22%3A%22Pferd%22%2C%22value%22%3A70%2C%22answerId%22%3A%22a4c4%22%2C%22solution%22%3A%2270%22%7D%2C%7B%22label%22%3A%22Biene%22%2C%22value%22%3A20%2C%22answerId%22%3A%22a4c5%22%2C%22solution%22%3A%2220%22%7D%5D%7D"><div class="exam-number-line-interactive"
-                 style="--nl-fixed-top:2.5%;--nl-pin-axis:47%;--nl-aspect:14.697247706422019"
+                 style="--nl-fixed-top:2.5%;--nl-pin-axis:47%"
                  data-min="0" data-max="72" data-step="4"
                  data-fixed="12:a4c1:9.99,24:a4c2:31.84,63:a4c3:65.92"
-                 data-chips="Pferd:70:a4c4,Biene:20:a4c5" data-axis="0:0.37,24:29,48:58.1,72:87.1" data-bg-aspect="14.697247706422019"
-                 data-bg="/api/file-system-paths/read-image?filePath=git-intern%2FMathe%2FKlasse%205%2FKap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen%2FKA1-Druckmaterial%2Fimage5.jpeg">
+                 data-chips="Pferd:70:a4c4,Biene:20:a4c5" data-axis="0:0.37,24:29,48:58.1,72:87.1" data-bg-aspect="14.697247706422019">
                 <p class="exam-sort-hint">Klicke auf einen roten Pfeil und trage die abgelesene Geschwindigkeit ein. Wähle „Pferd“ oder „Biene“, klicke auf den Zahlenstrahl und beschrifte den Punkt.</p>
                 <div class="exam-nl-chip-bar"><button type="button" class="exam-sort-chip exam-nl-place-chip" data-label="Pferd">Pferd</button><button type="button" class="exam-sort-chip exam-nl-place-chip" data-label="Biene">Biene</button></div>
                 <div class="exam-nl-stage">
                   <div class="exam-nl-visual">
-                    <img class="exam-nl-img" src="/api/file-system-paths/read-image?filePath=git-intern%2FMathe%2FKlasse%205%2FKap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen%2FKA1-Druckmaterial%2Fimage5.jpeg" alt="Zahlenstrahl" draggable="false" loading="eager" decoding="async">
+                    <img class="exam-nl-img" src="/api/file-system-paths/read-image?filePath=git-intern%2FMathe%2FKlasse%205%2FKap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen%2FKA1-Druckmaterial%2Fimage5.jpeg" alt="Zahlenstrahl" draggable="false" loading="lazy">
                     <div class="exam-nl-overlay" role="application" aria-label="Zahlenstrahl interaktiv"></div>
                   </div>
                 </div>
@@ -1606,16 +1581,15 @@
             </div></div>
 <div class="exam-subsection" data-sub-kind="paragraph" data-sub-id="k4-d-t" data-exam-spec="%7B%22id%22%3A%22k4-d-t%22%2C%22letter%22%3A%22D%22%2C%22title%22%3A%22Im%20Tierpark%20wird%20gez%C3%A4hlt%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22paragraph%22%2C%22text%22%3A%22Im%20Tierpark%20wurden%20an%20mehreren%20Tagen%20die%20Besucherzahlen%20notiert.%20Auf%20dem%20Zahlenstrahl%20sind%20einige%20Besucherzahlen%20bereits%20durch%20rote%20Pfeile%20markiert.%20Lies%20die%20markierten%20Zahlen%20ab.%20Trage%20au%C3%9Ferdem%20die%20Besucherzahlen%20von%20gestern%20(52%20400)%20und%20von%20heute%20(54%20640)%20auch%20in%20den%20Zahlenstrahl%20ein.%22%7D"><div class="exam-subsection-title"><span class="item-label">D)</span> Im Tierpark wird gezählt</div><p>Im Tierpark wurden an mehreren Tagen die Besucherzahlen notiert. Auf dem Zahlenstrahl sind einige Besucherzahlen bereits durch rote Pfeile markiert. Lies die markierten Zahlen ab. Trage außerdem die Besucherzahlen von gestern (52 400) und von heute (54 640) auch in den Zahlenstrahl ein.</p></div>
 <div class="exam-subsection" data-sub-kind="number-line" data-sub-id="k4-d-nl" data-exam-spec="%7B%22id%22%3A%22k4-d-nl%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22number-line%22%2C%22hint%22%3A%22Klicke%20auf%20einen%20roten%20Pfeil%20und%20trage%20die%20Besucherzahl%20ein.%20W%C3%A4hle%20%E2%80%9Egestern%E2%80%9C%20oder%20%E2%80%9Eheute%E2%80%9C%2C%20klicke%20auf%20den%20Zahlenstrahl%20und%20beschrifte%20den%20Punkt.%22%2C%22min%22%3A50000%2C%22max%22%3A56000%2C%22step%22%3A20%2C%22bg%22%3A%22%2Fapi%2Ffile-system-paths%2Fread-image%3FfilePath%3Dgit-intern%252FMathe%252FKlasse%25205%252FKap%25201%2520-%2520Nat%25C3%25BCrliche%2520Zahlen%2520und%2520Gr%25C3%25B6%25C3%259Fen%252FKA1-Druckmaterial%252Fimage6.jpeg%22%2C%22bgAspect%22%3A15.17142857142857%2C%22fixedTopPct%22%3A2.5%2C%22pinAxisTopPct%22%3A47%2C%22axis%22%3A%5B%7B%22value%22%3A50000%2C%22pct%22%3A6.6%7D%2C%7B%22value%22%3A52000%2C%22pct%22%3A43.8%7D%2C%7B%22value%22%3A54000%2C%22pct%22%3A80.7%7D%2C%7B%22value%22%3A56000%2C%22pct%22%3A97.5%7D%5D%2C%22fixed%22%3A%5B%7B%22value%22%3A50800%2C%22answerId%22%3A%22a4d1%22%2C%22solution%22%3A%2250800%22%2C%22positionPct%22%3A17.26%7D%2C%7B%22value%22%3A52600%2C%22answerId%22%3A%22a4d2%22%2C%22solution%22%3A%2252600%22%2C%22positionPct%22%3A60.95%7D%2C%7B%22value%22%3A54300%2C%22answerId%22%3A%22a4d3%22%2C%22solution%22%3A%2254300%22%2C%22positionPct%22%3A81.61%7D%5D%2C%22chips%22%3A%5B%7B%22label%22%3A%22gestern%22%2C%22value%22%3A52400%2C%22answerId%22%3A%22a4d4%22%2C%22solution%22%3A%2252400%22%2C%22display%22%3A%22gestern%20(52%20400)%22%7D%2C%7B%22label%22%3A%22heute%22%2C%22value%22%3A54640%2C%22answerId%22%3A%22a4d5%22%2C%22solution%22%3A%2254640%22%2C%22display%22%3A%22heute%20(54%20640)%22%7D%5D%7D"><div class="exam-number-line-interactive"
-                 style="--nl-fixed-top:2.5%;--nl-pin-axis:47%;--nl-aspect:15.17142857142857"
+                 style="--nl-fixed-top:2.5%;--nl-pin-axis:47%"
                  data-min="50000" data-max="56000" data-step="20"
                  data-fixed="50800:a4d1:17.26,52600:a4d2:60.95,54300:a4d3:81.61"
-                 data-chips="gestern:52400:a4d4,heute:54640:a4d5" data-axis="50000:6.6,52000:43.8,54000:80.7,56000:97.5" data-bg-aspect="15.17142857142857"
-                 data-bg="/api/file-system-paths/read-image?filePath=git-intern%2FMathe%2FKlasse%205%2FKap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen%2FKA1-Druckmaterial%2Fimage6.jpeg">
+                 data-chips="gestern:52400:a4d4,heute:54640:a4d5" data-axis="50000:6.6,52000:43.8,54000:80.7,56000:97.5" data-bg-aspect="15.17142857142857">
                 <p class="exam-sort-hint">Klicke auf einen roten Pfeil und trage die Besucherzahl ein. Wähle „gestern“ oder „heute“, klicke auf den Zahlenstrahl und beschrifte den Punkt.</p>
                 <div class="exam-nl-chip-bar"><button type="button" class="exam-sort-chip exam-nl-place-chip" data-label="gestern">gestern (52 400)</button><button type="button" class="exam-sort-chip exam-nl-place-chip" data-label="heute">heute (54 640)</button></div>
                 <div class="exam-nl-stage">
                   <div class="exam-nl-visual">
-                    <img class="exam-nl-img" src="/api/file-system-paths/read-image?filePath=git-intern%2FMathe%2FKlasse%205%2FKap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen%2FKA1-Druckmaterial%2Fimage6.jpeg" alt="Zahlenstrahl" draggable="false" loading="eager" decoding="async">
+                    <img class="exam-nl-img" src="/api/file-system-paths/read-image?filePath=git-intern%2FMathe%2FKlasse%205%2FKap%201%20-%20Nat%C3%BCrliche%20Zahlen%20und%20Gr%C3%B6%C3%9Fen%2FKA1-Druckmaterial%2Fimage6.jpeg" alt="Zahlenstrahl" draggable="false" loading="lazy">
                     <div class="exam-nl-overlay" role="application" aria-label="Zahlenstrahl interaktiv"></div>
                   </div>
                 </div>
@@ -2366,43 +2340,43 @@
             a1b: ['67000', '67 000', '67.000'],
             a1c: ['2481630', '2 481 630', '2.481.630'],
             a1d: ['2481600', '2 481 600', '2.481.600'],
-            a1e: ['<'],
-            a1f: ['>'],
-            a1g: ['<'],
-            a1h: ['389, 391, 399, 589', '389,391,399,589', '389391399589', '389 391 399 589', '389.391.399.589', '389; 391; 399; 589'],
+            a1e: '<',
+            a1f: '>',
+            a1g: '<',
+            a1h: ['389 391 399 589', '389, 391, 399, 589', '389; 391; 399; 589'],
             a1i: ['neunhundertachtzehnmilliardensiebenundzwanzigmillionensechshundertvierundfünfzigtausendfünfundfünfzig', 'neunhundertachtzehnmilliardensiebenundzwanzigmillionensechshundertvierundfuenfzigtausendfuenfundfuenfzig'],
             a1k: ['9011110000', '9 011 110 000', '9.011.110.000'],
             a1m: ['99999', '99 999', '99.999'],
-            a1n: ['1'],
+            a1n: 1,
             a1o: ['unbeschränkt', 'unbeschraenkt', 'unendlich'],
             a1p: ['Ziffern', 'Ziffer'],
-            a1q: ['Element'],
+            a1q: 'Element',
             a2a: ['25.10.1881', '25.10.1 881'],
             a2b: ['15.4.1452', '15.4.1 452'],
-            a2c: ['XXXII'],
-            a2e: ['XXXIII'],
-            a2d: ['32'],
-            a2h: ['33'],
-            a3a: ['66'],
+            a2c: 'XXXII',
+            a2e: 'XXXIII',
+            a2d: 32,
+            a2h: 33,
+            a3a: 66,
             a3b: ['30.11.2010', '30.11.2 010'],
-            a3c: ['0, 1, 2, 3, 4, 5, 6, 7', '0,1,2,3,4,5,6,7', '01234567', '01 234 567', '01.234.567', '0; 1; 2; 3; 4; 5; 6; 7', '0 1 2 3 4 5 6 7'],
-            a3e1: ['0'],
-            a3e2: ['0'],
-            a3e3: ['1'],
-            a3e4: ['4'],
-            a3d: ['13'],
-            a4a: ['180'],
-            a4b: ['160'],
-            a4c1: ['12'],
-            a4c2: ['24'],
-            a4c3: ['63'],
-            a4c4: ['70'],
-            a4c5: ['20'],
+            a3c: ['0', '1', '2', '3', '4', '5', '6', '7', '0', '1', '2', '3', '4', '5', '6', '7', '01234567', '01 234 567', '01.234.567', '0; 1; 2; 3; 4; 5; 6; 7', '0 1 2 3 4 5 6 7'],
+            a3e1: 0,
+            a3e2: 0,
+            a3e3: 1,
+            a3e4: 4,
+            a3d: 13,
+            a4a: 180,
+            a4b: 160,
+            a4c1: 12,
+            a4c2: 24,
+            a4c3: 63,
+            a4c4: 70,
+            a4c5: 20,
             a4d1: ['50800', '50 800', '50.800'],
             a4d2: ['52600', '52 600', '52.600'],
             a4d3: ['54300', '54 300', '54.300'],
             a4d4: ['52400', '52 400', '52.400'],
-            a4d5: ['54640', '54 640', '54.640'],
+            a4d5: ['54640', '54 640', '54.640']
         };
 
         function getAnswerValue(id) {
@@ -2520,7 +2494,6 @@
 
 
 
-
         function setupExamNumberLines() {
             document.querySelectorAll('.exam-number-line-interactive').forEach(function (root) {
                 if (root.getAttribute('data-nl-init') === '1') return;
@@ -2551,15 +2524,6 @@
                     }
                 }
                 if (!overlay) return;
-
-                var visual = root.querySelector('.exam-nl-visual');
-                var imgEl = root.querySelector('.exam-nl-img');
-                if (imgEl) {
-                    imgEl.loading = 'eager';
-                    imgEl.addEventListener('error', function () {
-                        if (visual) visual.classList.add('exam-nl-visual--broken');
-                    });
-                }
 
                 function parseAxis() {
                     var raw = root.getAttribute('data-axis') || '';
@@ -2715,20 +2679,13 @@
                     if (on) overlay.classList.add('exam-nl-overlay--place-mode');
                     else overlay.classList.remove('exam-nl-overlay--place-mode');
                 }
-                function selectPlaceChip(btn) {
-                    selectedLabel = btn.getAttribute('data-label');
-                    root.querySelectorAll('.exam-nl-place-chip').forEach(function (b) { b.classList.remove('exam-sort-chip-selected'); });
-                    btn.classList.add('exam-sort-chip-selected');
-                    setPlaceMode(true);
-                }
                 root.querySelectorAll('.exam-nl-place-chip').forEach(function (btn) {
                     btn.addEventListener('click', function (e) {
                         e.preventDefault();
-                        selectPlaceChip(btn);
-                    });
-                    btn.addEventListener('touchend', function (e) {
-                        e.preventDefault();
-                        selectPlaceChip(btn);
+                        selectedLabel = btn.getAttribute('data-label');
+                        root.querySelectorAll('.exam-nl-place-chip').forEach(function (b) { b.classList.remove('exam-sort-chip-selected'); });
+                        btn.classList.add('exam-sort-chip-selected');
+                        setPlaceMode(true);
                     });
                 });
 
@@ -2778,7 +2735,7 @@
                     enablePinDrag(pin, label);
                 }
 
-                function tryPlacePinFromPointer(e) {
+                overlay.addEventListener('click', function (e) {
                     if (e.target.closest('.exam-nl-hit') || e.target.closest('.exam-nl-fixed-input') || e.target.closest('.exam-nl-fixed-value') || e.target.closest('.exam-nl-pin')) return;
                     if (!selectedLabel) return;
                     var pct = overlayPctFromEvent(e);
@@ -2786,16 +2743,9 @@
                     selectedLabel = null;
                     setPlaceMode(false);
                     root.querySelectorAll('.exam-nl-place-chip').forEach(function (b) { b.classList.remove('exam-sort-chip-selected'); });
-                }
-                overlay.addEventListener('click', tryPlacePinFromPointer);
-                overlay.addEventListener('touchend', function (e) {
-                    if (!selectedLabel) return;
-                    e.preventDefault();
-                    tryPlacePinFromPointer(e);
                 });
             });
         }
-
 
 
 

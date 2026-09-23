@@ -3,9 +3,64 @@
 export type ExamAnswerKey = {
   answers: Record<string, string | string[] | number>;
   points: Record<string, number>;
+  taskPoints: Record<string, number>;
   maxPoints: number;
   isGeometry: boolean;
 };
+
+export function parseExamTaskPointsFromHtml(html: string): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!html) return out;
+
+  const blockRe =
+    /<!--\s*Aufgabe\s+(\d+)\s*[^>]*-->[\s\S]*?<div class="task-number">[\s\S]*?\((\d+)\s*Punkte\)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = blockRe.exec(html)) !== null) {
+    out[m[1]] = parseInt(m[2], 10) || 0;
+  }
+
+  if (Object.keys(out).length === 0) {
+    const alt = /<div class="task-number">\s*Aufgabe\s+(\d+)\s*\((\d+)\s*Punkte\)/gi;
+    while ((m = alt.exec(html)) !== null) {
+      out[m[1]] = parseInt(m[2], 10) || 0;
+    }
+  }
+  return out;
+}
+
+function buildFieldPointsFromTaskPoints(
+  answers: Record<string, string | string[] | number>,
+  taskPoints: Record<string, number>,
+  isGeometry: boolean,
+): Record<string, number> {
+  const fieldsByTask: Record<string, string[]> = {};
+  for (const id of Object.keys(answers)) {
+    const tm = id.match(/^a(\d+)/i);
+    if (!tm) continue;
+    const taskNum = tm[1];
+    if (!fieldsByTask[taskNum]) fieldsByTask[taskNum] = [];
+    fieldsByTask[taskNum].push(id);
+  }
+
+  const points: Record<string, number> = {};
+  for (const [taskNum, fields] of Object.entries(fieldsByTask)) {
+    const sorted = [...fields].sort();
+    const n = sorted.length;
+    if (!n) continue;
+    const taskMax = taskPoints[taskNum];
+    if (taskMax != null && taskMax > 0) {
+      const per = taskMax / n;
+      sorted.forEach((id) => {
+        points[id] = per;
+      });
+    } else {
+      sorted.forEach((id) => {
+        points[id] = isGeometry && /_[xy]$/.test(id) ? 0.25 : 1;
+      });
+    }
+  }
+  return points;
+}
 
 function normalizeLoose(raw: unknown): string {
   if (raw === null || raw === undefined) return '';
@@ -45,7 +100,13 @@ export function examAnswerMatches(expected: unknown, student: unknown): boolean 
 }
 
 export function parseExamAnswerKey(html: string): ExamAnswerKey {
-  const empty: ExamAnswerKey = { answers: {}, points: {}, maxPoints: 0, isGeometry: false };
+  const empty: ExamAnswerKey = {
+    answers: {},
+    points: {},
+    taskPoints: {},
+    maxPoints: 0,
+    isGeometry: false,
+  };
   if (!html) return empty;
 
   const blockMatch = html.match(/const\s+correctAnswers\s*=\s*(\{[\s\S]*?\});/);
@@ -73,16 +134,16 @@ export function parseExamAnswerKey(html: string): ExamAnswerKey {
 
   const keys = Object.keys(answers);
   const isGeometry = keys.some((k) => /_[xy]$/.test(k));
-  const points: Record<string, number> = {};
-  keys.forEach((k) => {
-    points[k] = isGeometry && /_[xy]$/.test(k) ? 0.25 : 1;
-  });
+  const taskPoints = parseExamTaskPointsFromHtml(html);
+  const points = buildFieldPointsFromTaskPoints(answers, taskPoints, isGeometry);
 
   const totalMatch = html.match(/id="totalPoints"[^>]*>(\d+)/);
   const maxFromHtml = totalMatch ? parseInt(totalMatch[1], 10) : 0;
-  const maxPoints = maxFromHtml || keys.reduce((s, k) => s + (points[k] || 0), 0);
+  const maxFromTasks = Object.values(taskPoints).reduce((s, v) => s + (Number(v) || 0), 0);
+  const maxFromFields = keys.reduce((s, k) => s + (points[k] || 0), 0);
+  const maxPoints = maxFromTasks || maxFromHtml || maxFromFields;
 
-  return { answers, points, maxPoints, isGeometry };
+  return { answers, points, taskPoints, maxPoints, isGeometry };
 }
 
 /** Sortierung a1a, a1b, … a3a, a3b, a3c, a3d (nicht a3c vor a3a). */
