@@ -821,17 +821,19 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
     const axisAttrHtml = axisAttr ? ` data-axis="${escapeHtml(axisAttr)}"` : '';
     const fixedTop = sub.fixedTopPct ?? 3;
     const pinAxis = sub.pinAxisTopPct ?? 47;
-    const nlStyle = `--nl-fixed-top:${fixedTop}%;--nl-pin-axis:${pinAxis}%`;
+    const aspectCss = sub.bgAspect ? `--nl-aspect:${sub.bgAspect}` : '';
+    const nlStyle = `--nl-fixed-top:${fixedTop}%;--nl-pin-axis:${pinAxis}%${aspectCss ? `;${aspectCss}` : ''}`;
     body = `<div class="exam-number-line-interactive"
                  style="${nlStyle}"
                  data-min="${sub.min}" data-max="${sub.max}" data-step="${sub.step}"
                  data-fixed="${escapeHtml(fixedAttr)}"
-                 data-chips="${escapeHtml(chipsAttr)}"${axisAttrHtml}${aspectAttr}>
+                 data-chips="${escapeHtml(chipsAttr)}"${axisAttrHtml}${aspectAttr}
+                 data-bg="${escapeHtml(sub.bg)}">
                 <p class="exam-sort-hint">${escapeHtml(sub.hint)}</p>
                 <div class="exam-nl-chip-bar">${chipButtons}</div>
                 <div class="exam-nl-stage">
                   <div class="exam-nl-visual">
-                    <img class="exam-nl-img" src="${escapeHtml(sub.bg)}" alt="Zahlenstrahl" draggable="false" loading="lazy">
+                    <img class="exam-nl-img" src="${escapeHtml(sub.bg)}" alt="Zahlenstrahl" draggable="false" loading="eager" decoding="async">
                     <div class="exam-nl-overlay" role="application" aria-label="Zahlenstrahl interaktiv"></div>
                   </div>
                 </div>

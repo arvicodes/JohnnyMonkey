@@ -346,6 +346,25 @@ export const EXAM_NUMBER_LINE_CSS = `
             position: relative;
             width: 100%;
             line-height: 0;
+            aspect-ratio: var(--nl-aspect, 15);
+            min-height: 72px;
+            background: #f7f7f7;
+        }
+        .exam-nl-visual.exam-nl-visual--broken::after {
+            content: 'Zahlenstrahl-Bild konnte nicht geladen werden. Bitte Seite neu laden oder die Lehrkraft informieren.';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #b71c1c;
+            text-align: center;
+            background: #fff3f3;
+            border: 1px dashed #e57373;
+            z-index: 1;
         }
         .exam-nl-img {
             display: block;
@@ -362,6 +381,11 @@ export const EXAM_NUMBER_LINE_CSS = `
             height: 100%;
             cursor: crosshair;
             line-height: normal;
+            touch-action: manipulation;
+        }
+        .exam-nl-place-chip {
+            touch-action: manipulation;
+            cursor: pointer;
         }
         .exam-nl-overlay.exam-nl-overlay--place-mode { cursor: copy; }
         .exam-nl-hit {
@@ -484,6 +508,15 @@ export const EXAM_NUMBER_LINE_JS = `
                     }
                 }
                 if (!overlay) return;
+
+                var visual = root.querySelector('.exam-nl-visual');
+                var imgEl = root.querySelector('.exam-nl-img');
+                if (imgEl) {
+                    imgEl.loading = 'eager';
+                    imgEl.addEventListener('error', function () {
+                        if (visual) visual.classList.add('exam-nl-visual--broken');
+                    });
+                }
 
                 function parseAxis() {
                     var raw = root.getAttribute('data-axis') || '';
@@ -639,13 +672,20 @@ export const EXAM_NUMBER_LINE_JS = `
                     if (on) overlay.classList.add('exam-nl-overlay--place-mode');
                     else overlay.classList.remove('exam-nl-overlay--place-mode');
                 }
+                function selectPlaceChip(btn) {
+                    selectedLabel = btn.getAttribute('data-label');
+                    root.querySelectorAll('.exam-nl-place-chip').forEach(function (b) { b.classList.remove('exam-sort-chip-selected'); });
+                    btn.classList.add('exam-sort-chip-selected');
+                    setPlaceMode(true);
+                }
                 root.querySelectorAll('.exam-nl-place-chip').forEach(function (btn) {
                     btn.addEventListener('click', function (e) {
                         e.preventDefault();
-                        selectedLabel = btn.getAttribute('data-label');
-                        root.querySelectorAll('.exam-nl-place-chip').forEach(function (b) { b.classList.remove('exam-sort-chip-selected'); });
-                        btn.classList.add('exam-sort-chip-selected');
-                        setPlaceMode(true);
+                        selectPlaceChip(btn);
+                    });
+                    btn.addEventListener('touchend', function (e) {
+                        e.preventDefault();
+                        selectPlaceChip(btn);
                     });
                 });
 
@@ -695,7 +735,7 @@ export const EXAM_NUMBER_LINE_JS = `
                     enablePinDrag(pin, label);
                 }
 
-                overlay.addEventListener('click', function (e) {
+                function tryPlacePinFromPointer(e) {
                     if (e.target.closest('.exam-nl-hit') || e.target.closest('.exam-nl-fixed-input') || e.target.closest('.exam-nl-fixed-value') || e.target.closest('.exam-nl-pin')) return;
                     if (!selectedLabel) return;
                     var pct = overlayPctFromEvent(e);
@@ -703,6 +743,12 @@ export const EXAM_NUMBER_LINE_JS = `
                     selectedLabel = null;
                     setPlaceMode(false);
                     root.querySelectorAll('.exam-nl-place-chip').forEach(function (b) { b.classList.remove('exam-sort-chip-selected'); });
+                }
+                overlay.addEventListener('click', tryPlacePinFromPointer);
+                overlay.addEventListener('touchend', function (e) {
+                    if (!selectedLabel) return;
+                    e.preventDefault();
+                    tryPlacePinFromPointer(e);
                 });
             });
         }
