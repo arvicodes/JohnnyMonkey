@@ -3,6 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.parseExamTaskPointsFromHtml = parseExamTaskPointsFromHtml;
+exports.buildFieldPointsFromTaskPoints = buildFieldPointsFromTaskPoints;
+exports.updateExamTotalPointsInHtml = updateExamTotalPointsInHtml;
+exports.replaceExamTaskPointsInHtml = replaceExamTaskPointsInHtml;
 exports.examAnswerMatches = examAnswerMatches;
 exports.parseExamAnswerKey = parseExamAnswerKey;
 exports.resolveExamHtmlPath = resolveExamHtmlPath;
@@ -15,6 +19,81 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const storageManager_1 = require("./storageManager");
 const examHtmlBasenameCache = new Map();
+function parseExamTaskPointsFromHtml(html) {
+    const out = {};
+    if (!html)
+        return out;
+    const blockRe = /<!--\s*Aufgabe\s+(\d+)\s*[^>]*-->[\s\S]*?<div class="task-number">[\s\S]*?\((\d+)\s*Punkte\)/gi;
+    let m;
+    while ((m = blockRe.exec(html)) !== null) {
+        out[m[1]] = parseInt(m[2], 10) || 0;
+    }
+    if (Object.keys(out).length === 0) {
+        const alt = /<div class="task-number">\s*Aufgabe\s+(\d+)\s*\((\d+)\s*Punkte\)/gi;
+        while ((m = alt.exec(html)) !== null) {
+            out[m[1]] = parseInt(m[2], 10) || 0;
+        }
+    }
+    return out;
+}
+function buildFieldPointsFromTaskPoints(answers, taskPoints, isGeometry) {
+    const fieldsByTask = {};
+    for (const id of Object.keys(answers)) {
+        const tm = id.match(/^a(\d+)/i);
+        if (!tm)
+            continue;
+        const taskNum = tm[1];
+        if (!fieldsByTask[taskNum])
+            fieldsByTask[taskNum] = [];
+        fieldsByTask[taskNum].push(id);
+    }
+    const points = {};
+    for (const [taskNum, fields] of Object.entries(fieldsByTask)) {
+        const sorted = [...fields].sort();
+        const n = sorted.length;
+        if (!n)
+            continue;
+        const taskMax = taskPoints[taskNum];
+        if (taskMax != null && taskMax > 0) {
+            const per = taskMax / n;
+            sorted.forEach((id) => {
+                points[id] = per;
+            });
+        }
+        else {
+            sorted.forEach((id) => {
+                points[id] = isGeometry && /_[xy]$/.test(id) ? 0.25 : 1;
+            });
+        }
+    }
+    return points;
+}
+function sumTaskPointsMap(taskPoints) {
+    return Object.values(taskPoints).reduce((s, v) => s + (Number(v) || 0), 0);
+}
+function updateExamTotalPointsInHtml(html, total) {
+    const safe = Math.max(0, Math.round(total));
+    let next = html.replace(/return \{ achieved: achievedPoints, total: \d+ \};/, `return { achieved: achievedPoints, total: ${safe} };`);
+    next = next.replace(/<span id="totalPoints">[^<]*<\/span>/, `<span id="totalPoints">${safe}</span>`);
+    return next;
+}
+function replaceExamTaskPointsInHtml(html, updates) {
+    if (!Object.keys(updates).length)
+        return html;
+    const replaced = html.replace(/(<!--\s*Aufgabe\s+(\d+)\s*[^>]*-->)([\s\S]*?)(?=\n\s*<!--\s*Aufgabe\s+\d+|\n\s*<div class="footer">|\n\s*<div class="submit-section">|$)/gi, (full, comment, taskNumStr, body) => {
+        const pts = updates[taskNumStr];
+        if (pts === undefined)
+            return full;
+        const n = Math.max(0, Math.round(Number(pts) || 0));
+        let nextBody = body.replace(/(<div class="task-number">[\s\S]*?<span[^>]*>)\(\d+\s*Punkte\)(<\/span>)/i, `$1(${n} Punkte)$2`);
+        nextBody = nextBody.replace(/(<div class="task-number">\s*Aufgabe\s+\d+\s*)\(\d+\s*Punkte\)/i, `$1(${n} Punkte)`);
+        nextBody = nextBody.replace(/(<div class="points">)\d+(\s*Punkte<\/div>)/i, `$1${n}$2`);
+        return comment + nextBody;
+    });
+    const taskPoints = parseExamTaskPointsFromHtml(replaced);
+    const total = sumTaskPointsMap(taskPoints);
+    return total > 0 ? updateExamTotalPointsInHtml(replaced, total) : replaced;
+}
 function normalizeLoose(raw) {
     if (raw === null || raw === undefined)
         return '';
@@ -51,7 +130,13 @@ function examAnswerMatches(expected, student) {
 }
 function parseExamAnswerKey(html) {
     var _a, _b;
-    const empty = { answers: {}, points: {}, maxPoints: 0, isGeometry: false };
+    const empty = {
+        answers: {},
+        points: {},
+        taskPoints: {},
+        maxPoints: 0,
+        isGeometry: false,
+    };
     if (!html)
         return empty;
     const blockMatch = html.match(/const\s+correctAnswers\s*=\s*(\{[\s\S]*?\});/);
@@ -80,14 +165,14 @@ function parseExamAnswerKey(html) {
     }
     const keys = Object.keys(answers);
     const isGeometry = keys.some((k) => /_[xy]$/.test(k));
-    const points = {};
-    keys.forEach((k) => {
-        points[k] = isGeometry && /_[xy]$/.test(k) ? 0.25 : 1;
-    });
+    const taskPoints = parseExamTaskPointsFromHtml(html);
+    const points = buildFieldPointsFromTaskPoints(answers, taskPoints, isGeometry);
     const totalMatch = html.match(/id="totalPoints"[^>]*>(\d+)/);
     const maxFromHtml = totalMatch ? parseInt(totalMatch[1], 10) : 0;
-    const maxPoints = maxFromHtml || keys.reduce((s, k) => s + (points[k] || 0), 0);
-    return { answers, points, maxPoints, isGeometry };
+    const maxFromTasks = sumTaskPointsMap(taskPoints);
+    const maxFromFields = keys.reduce((s, k) => s + (points[k] || 0), 0);
+    const maxPoints = maxFromTasks || maxFromHtml || maxFromFields;
+    return { answers, points, taskPoints, maxPoints, isGeometry };
 }
 function findExamHtmlByBasename(basename) {
     const want = (basename || '').trim().toLowerCase();

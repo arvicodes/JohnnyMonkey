@@ -153,16 +153,17 @@ log "==> Upload Release assets ($REPO / deploy-prebuilt)"
 HAS_MAT=0
 [[ -n "$MAT_TAR" ]] && HAS_MAT=1
 export HAS_MAT
-# delete old
-gh_api "https://api.github.com/repos/$REPO/releases/tags/deploy-prebuilt" \
+# delete old (Release-ID — Tag-Lookup kann veraltete Asset-IDs liefern)
+gh_api "https://api.github.com/repos/$REPO/releases/$RELEASE_ID/assets?per_page=100" \
   | python3 -c '
 import sys,json,os
 r=json.load(sys.stdin)
+assets=r if isinstance(r,list) else r.get("assets",[])
 names={"jm-app-prebuilt.tar.gz","backup_latest.db"}
 if os.environ.get("HAS_MAT")=="1":
   names.add("jm-mat-update.tar.gz")
-for a in r.get("assets",[]):
-  if a["name"] in names:
+for a in assets:
+  if a.get("name") in names:
     print(a["id"])
 ' > /tmp/jm_del_assets.txt
 while read -r id; do

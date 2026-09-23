@@ -1336,12 +1336,26 @@ class KACorrectionController {
             const teacher = await requireTeacher(req);
             if (!teacher)
                 return res.status(403).json({ error: 'Nur Lehrer' });
-            const { kaFilePath, answers } = req.body;
-            if (!kaFilePath || !answers) {
-                return res.status(400).json({ error: 'kaFilePath und answers sind erforderlich' });
+            const { kaFilePath, answers, taskPoints } = req.body;
+            if (!kaFilePath || (!answers && !taskPoints)) {
+                return res.status(400).json({ error: 'kaFilePath und answers oder taskPoints sind erforderlich' });
             }
             const html = (0, examAutoPoints_1.readExamHtml)(kaFilePath);
-            const updatedHtml = (0, examAutoPoints_1.replaceCorrectAnswersInHtml)(html, answers);
+            let updatedHtml = html;
+            if (answers && Object.keys(answers).length > 0) {
+                updatedHtml = (0, examAutoPoints_1.replaceCorrectAnswersInHtml)(updatedHtml, answers);
+            }
+            if (taskPoints && Object.keys(taskPoints).length > 0) {
+                const normalized = {};
+                Object.entries(taskPoints).forEach(([k, v]) => {
+                    const n = Math.max(0, Math.round(Number(v) || 0));
+                    if (n > 0)
+                        normalized[k] = n;
+                });
+                if (Object.keys(normalized).length > 0) {
+                    updatedHtml = (0, examAutoPoints_1.replaceExamTaskPointsInHtml)(updatedHtml, normalized);
+                }
+            }
             (0, examAutoPoints_1.writeExamHtml)(kaFilePath, updatedHtml);
             const count = await KACorrectionController.recalculateAllForExam(kaFilePath);
             res.json({ success: true, recalculated: count });
