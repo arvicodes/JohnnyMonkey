@@ -310,13 +310,13 @@ const resolveStudentRounds = async (studentId: string): Promise<ResolvedRound[]>
         if (!payload.groupIds.includes(g.id)) continue;
 
         const entry = findEntry(payload, studentId);
-        const active = index.activeByGroup[g.id] === meta.id && Boolean(payload.publishedAt);
         const hasHistory =
           Boolean(entry?.studentSubmittedAt) ||
           Boolean(entry?.teacherReleasedAt) ||
           Boolean(entry?.goalsSubmittedAt);
+        const publishedForGroup = Boolean(payload.publishedAt) && payload.groupIds.includes(g.id);
 
-        if (!active && !hasHistory) continue;
+        if (!publishedForGroup && !hasHistory) continue;
 
         const key = `${meta.id}:${g.id}`;
         if (seen.has(key)) continue;
@@ -536,11 +536,13 @@ export class EpoNotenController {
       const ownedIds = new Set(owned.map((g) => g.id));
 
       let groupIds = existing.groupIds;
-      if (Array.isArray(req.body?.groupIds)) {
+      if (Array.isArray(req.body?.groupIds) && req.body.groupIds.length > 0) {
         groupIds = (req.body.groupIds as string[]).map((g) => String(g).trim()).filter((id) => ownedIds.has(id));
       }
       if (groupIds.length === 0) {
-        return res.status(400).json({ error: 'Mindestens eine Lerngruppe auswählen' });
+        return res.status(400).json({
+          error: 'Mindestens eine Lerngruppe auswählen (Häkchen bei der Gruppe setzen, dann freischalten).',
+        });
       }
 
       const publishedAt = new Date().toISOString();

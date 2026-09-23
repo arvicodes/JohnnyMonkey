@@ -67,6 +67,7 @@ export function EpoNotenTeacherView() {
   const [newTitle, setNewTitle] = useState('EPO 1');
   const [newDate, setNewDate] = useState(new Date().toISOString().slice(0, 10));
   const [newGroupIds, setNewGroupIds] = useState<string[]>([]);
+  const [publishOnCreate, setPublishOnCreate] = useState(true);
 
   const loadList = useCallback(async () => {
     const res = await apiGetSafe('/api/epo-noten/list');
@@ -139,11 +140,26 @@ export function EpoNotenTeacherView() {
         date: newDate,
         groupIds: newGroupIds,
       });
-      if (!res?.ok) throw new Error('Erstellen fehlgeschlagen');
+      if (!res?.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(typeof err.error === 'string' ? err.error : 'Erstellen fehlgeschlagen');
+      }
       const data = await res.json();
+      const newId = data.round?.id as string | undefined;
+      if (newId && publishOnCreate && newGroupIds.length > 0) {
+        const pub = await apiPost(`/api/epo-noten/${newId}/publish`, { groupIds: newGroupIds });
+        if (!pub?.ok) {
+          const err = await pub.json().catch(() => ({}));
+          throw new Error(
+            typeof err.error === 'string'
+              ? err.error
+              : 'Runde angelegt, aber Freischaltung fehlgeschlagen — bitte „Für Lerngruppe freischalten“ klicken.',
+          );
+        }
+      }
       setCreateOpen(false);
       await loadList();
-      if (data.round?.id) setSelectedId(data.round.id);
+      if (newId) setSelectedId(newId);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
     } finally {
@@ -157,10 +173,19 @@ export function EpoNotenTeacherView() {
 
   const publish = async () => {
     if (!round) return;
+    if (round.groupIds.length === 0) {
+      setError('Bitte zuerst mindestens eine Lerngruppe ankreuzen (z. B. Klasse 5a).');
+      return;
+    }
     setSaving(true);
     try {
-      const res = await apiPost(`/api/epo-noten/${round.id}/publish`, { groupIds: round.groupIds });
-      if (!res?.ok) throw new Error('Freigabe fehlgeschlagen');
+      const res = await apiPost(`/api/epo-noten/${round.id}/publish`, {
+        groupIds: round.groupIds.length > 0 ? round.groupIds : undefined,
+      });
+      if (!res?.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(typeof err.error === 'string' ? err.error : 'Freigabe fehlgeschlagen');
+      }
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
@@ -231,9 +256,15 @@ export function EpoNotenTeacherView() {
 
   const updateRoundGroups = async (groupIds: string[]) => {
     if (!round) return;
+    setRound({ ...round, groupIds });
     const res = await apiPut(`/api/epo-noten/${round.id}`, { groupIds });
-    if (!res?.ok) return;
-    await refresh();
+    if (!res?.ok) {
+      setError('Lerngruppen konnten nicht gespeichert werden');
+      await loadDetail(round.id);
+      return;
+    }
+    await loadDetail(round.id);
+    await loadList();
   };
 
   const removeRound = async () => {
@@ -289,6 +320,17 @@ export function EpoNotenTeacherView() {
         <Card sx={epoNotenCardSx}>
           <CardContent>
             <Stack spacing={2}>
+              {!round.publishedAt && round.groupIds.length > 0 && (
+                <Alert severity="warning" variant="filled">
+                  Die Runde ist der Lerngruppe zugeordnet, aber für Schüler noch <strong>nicht sichtbar</strong>.
+                  Klicke auf „Für Lerngruppe freischalten“.
+                </Alert>
+              )}
+              {!round.publishedAt && round.groupIds.length === 0 && (
+                <Alert severity="info">
+                  Wähle mindestens eine Lerngruppe (Häkchen) und schalte die Runde dann für SuS frei.
+                </Alert>
+              )}
               <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1}>
                 <Typography variant="h6" sx={{ fontWeight: 700 }}>{round.title}</Typography>
                 <Box sx={{ flex: 1 }} />
@@ -440,6 +482,16 @@ export function EpoNotenTeacherView() {
                 label={g.name}
               />
             ))}
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={publishOnCreate}
+                  onChange={(e) => setPublishOnCreate(e.target.checked)}
+                  disabled={newGroupIds.length === 0}
+                />
+              }
+              label="Direkt für SuS freischalten (empfohlen)"
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
