@@ -1882,8 +1882,15 @@
                 answers[name] = selected ? (selected.value || '') : '';
             });
             
-            // Berechne Punkte
-            const points = calculatePoints();
+            try {
+                localStorage.setItem('ka_draft_' + KA_KEY + '_' + (localStorage.getItem('studentId') || 'unknown'), JSON.stringify(answers));
+            } catch (e) {}
+            let points = { achieved: 0, total: 14 };
+            try {
+                points = calculatePoints();
+            } catch (e) {
+                console.error('Punkteberechnung fehlgeschlagen, Abgabe wird trotzdem gespeichert', e);
+            }
             
             // Sende Abgabe an Backend
             try {
@@ -1949,8 +1956,15 @@
                         answers[name] = selected ? (selected.value || '') : '';
                     });
                     
-                    // Berechne Punkte
-                    const points = calculatePoints();
+                    try {
+                        localStorage.setItem('ka_draft_' + KA_KEY + '_' + (localStorage.getItem('studentId') || 'unknown'), JSON.stringify(answers));
+                    } catch (e) {}
+                    let points = { achieved: 0, total: 14 };
+                    try {
+                        points = calculatePoints();
+                    } catch (e) {
+                        console.error('Punkteberechnung fehlgeschlagen, Abgabe wird trotzdem gespeichert', e);
+                    }
                     
                     // Sende Abgabe an Backend
                     try {
@@ -2072,8 +2086,14 @@
             return '';
         }
 
+        function acceptedList(v) {
+            if (Array.isArray(v)) return v;
+            if (v == null || v === '') return [];
+            return [String(v)];
+        }
+
         function isCorrect(id, value) {
-            const accepted = correctAnswers[id] || [];
+            const accepted = acceptedList(correctAnswers[id]);
             const n = normalizeAnswer(value);
             if (!n) return false;
             if (accepted.some(a => normalizeAnswer(a) === n)) return true;
@@ -2152,14 +2172,58 @@
         }
 
         // Event-Listener für alle Eingabefelder (NUR im Lehrer-Modus)
+        function draftStorageKey() {
+            return 'ka_draft_' + KA_KEY + '_' + (localStorage.getItem('studentId') || 'unknown');
+        }
+
+        function saveDraftFromDom() {
+            try {
+                const answers = {};
+                document.querySelectorAll('input[type="text"], textarea, input[type="number"]').forEach(input => {
+                    if (input.id) answers[input.id] = input.value || '';
+                });
+                const radioNames = new Set();
+                document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                    if (radio.name) radioNames.add(radio.name);
+                });
+                radioNames.forEach(name => {
+                    const selected = document.querySelector('input[name="' + name + '"]:checked');
+                    answers[name] = selected ? (selected.value || '') : '';
+                });
+                localStorage.setItem(draftStorageKey(), JSON.stringify(answers));
+            } catch (e) {}
+        }
+
+        function restoreDraftToDom() {
+            try {
+                const raw = localStorage.getItem(draftStorageKey());
+                if (!raw) return;
+                const answers = JSON.parse(raw);
+                Object.keys(answers).forEach(id => {
+                    const input = document.getElementById(id);
+                    if (input && (input.type === 'text' || input.type === 'number' || input.tagName === 'TEXTAREA')) {
+                        if (!input.value) input.value = answers[id] || '';
+                    }
+                    document.querySelectorAll('input[type="radio"][name="' + id + '"]').forEach(radio => {
+                        if (answers[id] && radio.value === answers[id]) radio.checked = true;
+                    });
+                });
+            } catch (e) {}
+        }
+
         function attachInputListeners() {
+            const allInputs = document.querySelectorAll('input[type="text"], textarea, input[type="number"]');
+            const allRadios = document.querySelectorAll('input[type="radio"]');
+            if (!isTeacher) {
+                restoreDraftToDom();
+                allInputs.forEach(input => input.addEventListener('input', saveDraftFromDom));
+                allRadios.forEach(radio => radio.addEventListener('change', saveDraftFromDom));
+            }
             // Nur im Lehrer-Modus Event-Listener hinzufügen
             if (isTeacher) {
-                const allInputs = document.querySelectorAll('input[type="text"], textarea, input[type="number"]');
                 allInputs.forEach(input => {
                     input.addEventListener('input', updatePointsDisplay);
                 });
-                const allRadios = document.querySelectorAll('input[type="radio"]');
                 allRadios.forEach(radio => {
                     radio.addEventListener('change', updatePointsDisplay);
                 });
