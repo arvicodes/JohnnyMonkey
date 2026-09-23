@@ -53,6 +53,8 @@ export declare class KACorrectionController {
     static createSubmissionForStudent(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /** Lehrer: Abgabe eines Schülers nachträglich ändern */
     static updateSubmissionAnswers(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /** Lehrer: eine Schüler-Abgabe löschen, damit neu bearbeitet werden kann. */
+    static resetOneSubmission(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /** Lehrer: Musterlösung (correctAnswers) in der Prüfungs-HTML ändern und neu bewerten */
     static updateAnswerKey(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /** Lehrer: Alle Abgaben einer Prüfung neu automatisch bewerten */

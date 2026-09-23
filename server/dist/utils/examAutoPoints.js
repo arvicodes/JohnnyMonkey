@@ -5,6 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseExamTaskPointsFromHtml = parseExamTaskPointsFromHtml;
 exports.buildFieldPointsFromTaskPoints = buildFieldPointsFromTaskPoints;
+exports.parseExamFieldPointsFromHtml = parseExamFieldPointsFromHtml;
+exports.replaceExamFieldPointsInHtml = replaceExamFieldPointsInHtml;
 exports.updateExamTotalPointsInHtml = updateExamTotalPointsInHtml;
 exports.replaceExamTaskPointsInHtml = replaceExamTaskPointsInHtml;
 exports.examAnswerMatches = examAnswerMatches;
@@ -67,6 +69,67 @@ function buildFieldPointsFromTaskPoints(answers, taskPoints, isGeometry) {
         }
     }
     return points;
+}
+function parseExamFieldPointsFromHtml(html) {
+    const m = html.match(/<!--\s*EXAM_FIELD_POINTS\s+(\{[\s\S]*?\})\s*-->/);
+    if (!m)
+        return {};
+    try {
+        const obj = JSON.parse(m[1]);
+        const out = {};
+        Object.entries(obj).forEach(([k, v]) => {
+            const n = Number(v);
+            if (Number.isFinite(n) && n >= 0)
+                out[k] = n;
+        });
+        return out;
+    }
+    catch {
+        return {};
+    }
+}
+function expandLegacyDateAnswers(answers, keyIds) {
+    const next = { ...answers };
+    keyIds.forEach((id) => {
+        var _a, _b;
+        const m = id.match(/^(a\d+[a-z])_(d|m|y)$/i);
+        if (!m)
+            return;
+        if (String((_a = next[id]) !== null && _a !== void 0 ? _a : '').trim())
+            return;
+        const legacy = String((_b = next[m[1]]) !== null && _b !== void 0 ? _b : '').trim();
+        const parts = legacy.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/);
+        if (!parts)
+            return;
+        const idx = m[2].toLowerCase() === 'd' ? 1 : m[2].toLowerCase() === 'm' ? 2 : 3;
+        next[id] = parts[idx];
+    });
+    return next;
+}
+function replaceExamFieldPointsInHtml(html, updates) {
+    const merged = { ...parseExamFieldPointsFromHtml(html) };
+    Object.entries(updates).forEach(([k, v]) => {
+        const n = Number(v);
+        if (!Number.isFinite(n) || n < 0)
+            return;
+        merged[k] = Math.round(n * 100) / 100;
+    });
+    const comment = `<!-- EXAM_FIELD_POINTS ${JSON.stringify(merged)} -->`;
+    let next = /<!--\s*EXAM_FIELD_POINTS\s+\{[\s\S]*?\}\s*-->/.test(html)
+        ? html.replace(/<!--\s*EXAM_FIELD_POINTS\s+\{[\s\S]*?\}\s*-->/, comment)
+        : html.replace(/<head>/i, `<head>\n    ${comment}`);
+    const byTask = {};
+    Object.entries(merged).forEach(([id, pts]) => {
+        const tm = id.match(/^a(\d+)/i);
+        if (!tm)
+            return;
+        byTask[tm[1]] = (byTask[tm[1]] || 0) + pts;
+    });
+    const taskPoints = {};
+    Object.entries(byTask).forEach(([task, sum]) => {
+        taskPoints[task] = Math.round(sum);
+    });
+    return replaceExamTaskPointsInHtml(next, taskPoints);
 }
 function sumTaskPointsMap(taskPoints) {
     return Object.values(taskPoints).reduce((s, v) => s + (Number(v) || 0), 0);
@@ -167,11 +230,18 @@ function parseExamAnswerKey(html) {
     const isGeometry = keys.some((k) => /_[xy]$/.test(k));
     const taskPoints = parseExamTaskPointsFromHtml(html);
     const points = buildFieldPointsFromTaskPoints(answers, taskPoints, isGeometry);
+    const explicit = parseExamFieldPointsFromHtml(html);
+    Object.entries(explicit).forEach(([k, v]) => {
+        if (answers[k] !== undefined)
+            points[k] = v;
+    });
     const totalMatch = html.match(/id="totalPoints"[^>]*>(\d+)/);
     const maxFromHtml = totalMatch ? parseInt(totalMatch[1], 10) : 0;
     const maxFromTasks = sumTaskPointsMap(taskPoints);
     const maxFromFields = keys.reduce((s, k) => s + (points[k] || 0), 0);
-    const maxPoints = maxFromTasks || maxFromHtml || maxFromFields;
+    const maxPoints = Object.keys(explicit).length
+        ? maxFromFields
+        : maxFromTasks || maxFromHtml || maxFromFields;
     return { answers, points, taskPoints, maxPoints, isGeometry };
 }
 function findExamHtmlByBasename(basename) {
@@ -292,7 +362,8 @@ function calculateAutoPoints(answers, key) {
 }
 /** Gesamtpunkte: pro Feld Override oder Auto; Geometrie behält Zusatz-Manualpunkte. */
 function computeSubmissionTotal(answersJson, key, corrections) {
-    const answers = JSON.parse(answersJson || '{}');
+    const rawAnswers = JSON.parse(answersJson || '{}');
+    const answers = expandLegacyDateAnswers(rawAnswers, Object.keys(key.answers));
     const autoPoints = calculateAutoPoints(answers, key);
     const corrMap = new Map(corrections.map((c) => [c.taskNumber, c]));
     if (key.isGeometry) {

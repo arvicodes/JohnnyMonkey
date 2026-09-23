@@ -1330,15 +1330,41 @@ class KACorrectionController {
             res.status(500).json({ error: 'Fehler beim Aktualisieren der Abgabe' });
         }
     }
+    /** Lehrer: eine Schüler-Abgabe löschen, damit neu bearbeitet werden kann. */
+    static async resetOneSubmission(req, res) {
+        var _a;
+        try {
+            const teacher = await requireTeacher(req);
+            if (!teacher)
+                return res.status(403).json({ error: 'Nur Lehrer' });
+            const { id } = req.params;
+            const submission = await prisma.kASubmission.findUnique({
+                where: { id },
+                include: { student: { select: { name: true } } },
+            });
+            if (!submission)
+                return res.status(404).json({ error: 'Abgabe nicht gefunden' });
+            await prisma.kASubmission.delete({ where: { id } });
+            res.json({
+                success: true,
+                studentName: ((_a = submission.student) === null || _a === void 0 ? void 0 : _a.name) || '',
+                message: 'Abgabe zurückgesetzt',
+            });
+        }
+        catch (error) {
+            console.error('Error resetting one submission:', error);
+            res.status(500).json({ error: 'Fehler beim Zurücksetzen der Abgabe' });
+        }
+    }
     /** Lehrer: Musterlösung (correctAnswers) in der Prüfungs-HTML ändern und neu bewerten */
     static async updateAnswerKey(req, res) {
         try {
             const teacher = await requireTeacher(req);
             if (!teacher)
                 return res.status(403).json({ error: 'Nur Lehrer' });
-            const { kaFilePath, answers, taskPoints } = req.body;
-            if (!kaFilePath || (!answers && !taskPoints)) {
-                return res.status(400).json({ error: 'kaFilePath und answers oder taskPoints sind erforderlich' });
+            const { kaFilePath, answers, taskPoints, fieldPoints } = req.body;
+            if (!kaFilePath || (!answers && !taskPoints && !fieldPoints)) {
+                return res.status(400).json({ error: 'kaFilePath und answers, taskPoints oder fieldPoints sind erforderlich' });
             }
             const html = (0, examAutoPoints_1.readExamHtml)(kaFilePath);
             let updatedHtml = html;
@@ -1352,8 +1378,19 @@ class KACorrectionController {
                     if (n > 0)
                         normalized[k] = n;
                 });
-                if (Object.keys(normalized).length > 0) {
+                if (Object.keys(normalized).length > 0 && !fieldPoints) {
                     updatedHtml = (0, examAutoPoints_1.replaceExamTaskPointsInHtml)(updatedHtml, normalized);
+                }
+            }
+            if (fieldPoints && Object.keys(fieldPoints).length > 0) {
+                const normalizedFields = {};
+                Object.entries(fieldPoints).forEach(([k, v]) => {
+                    const n = Number(v);
+                    if (Number.isFinite(n) && n >= 0)
+                        normalizedFields[k] = n;
+                });
+                if (Object.keys(normalizedFields).length > 0) {
+                    updatedHtml = (0, examAutoPoints_1.replaceExamFieldPointsInHtml)(updatedHtml, normalizedFields);
                 }
             }
             (0, examAutoPoints_1.writeExamHtml)(kaFilePath, updatedHtml);

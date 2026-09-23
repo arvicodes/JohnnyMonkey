@@ -7,6 +7,8 @@ export type ExamAnswerKey = {
 };
 export declare function parseExamTaskPointsFromHtml(html: string): Record<string, number>;
 export declare function buildFieldPointsFromTaskPoints(answers: Record<string, string | string[] | number>, taskPoints: Record<string, number>, isGeometry: boolean): Record<string, number>;
+export declare function parseExamFieldPointsFromHtml(html: string): Record<string, number>;
+export declare function replaceExamFieldPointsInHtml(html: string, updates: Record<string, number>): string;
 export declare function updateExamTotalPointsInHtml(html: string, total: number): string;
 export declare function replaceExamTaskPointsInHtml(html: string, updates: Record<string, number>): string;
 export declare function examAnswerMatches(expected: unknown, student: unknown): boolean;

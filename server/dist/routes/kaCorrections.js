@@ -38,5 +38,6 @@ router.post('/release-all', KACorrectionController_1.KACorrectionController.rele
 // Freigabestatus für eine Klassenarbeit prüfen (nur für Lehrer)
 router.get('/release-status', KACorrectionController_1.KACorrectionController.getReleaseStatus);
 router.patch('/submissions/:id/exam-version', KACorrectionController_1.KACorrectionController.updateSubmissionExamVersion);
+router.post('/submissions/:id/reset', KACorrectionController_1.KACorrectionController.resetOneSubmission);
 exports.default = router;
 //# sourceMappingURL=kaCorrections.js.map
