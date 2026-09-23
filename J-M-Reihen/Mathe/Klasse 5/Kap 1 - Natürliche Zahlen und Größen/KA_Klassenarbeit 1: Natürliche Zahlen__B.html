@@ -1164,6 +1164,9 @@
         .exam-life-dates-cards { display: flex; flex-direction: column; gap: 10px; }
         .exam-life-dates-cards-only { display: flex; flex-wrap: wrap; gap: 10px; }
         .exam-life-dates-cards-only .exam-life-date-card { flex: 1 1 220px; }
+        .exam-life-date-parts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+        .exam-life-date-part { display: flex; flex-direction: column; gap: 2px; font-size: 12px; font-weight: 700; }
+        .exam-life-date-part .blank-tiny { width: 4.2em; }
         .exam-life-date-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; background: #fafafa; }
         .exam-life-date-name { font-weight: bold; margin: 0 0 4px; font-size: 14px; }
         .exam-life-date-roman { font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px; line-height: 1.35; color: #333; }
@@ -1517,18 +1520,21 @@
 <div class="exam-subsection" data-sub-kind="life-dates" data-sub-id="k2-a" data-exam-spec="%7B%22id%22%3A%22k2-a%22%2C%22letter%22%3A%22A%22%2C%22title%22%3A%22%C3%9Cbersetze%20die%20Lebensdaten.%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22life-dates%22%2C%22entries%22%3A%5B%7B%22heading%22%3A%22Pablo%20Picasso%22%2C%22lines%22%3A%22*%20XXV.X.%20MDCCCLXXXI%22%2C%22answerId%22%3A%22a2a%22%2C%22solution%22%3A%2225.10.1881%22%2C%22inputLabel%22%3A%22in%20Arabischen%20Ziffern%22%7D%2C%7B%22heading%22%3A%22Leonardo%20da%20Vinci%22%2C%22lines%22%3A%22*16.5.1451%22%2C%22answerId%22%3A%22a2b%22%2C%22solution%22%3A%2216.5.1451%22%2C%22inputLabel%22%3A%22Mit%20r%C3%B6mischen%20Zahlzeichen%22%7D%5D%7D"><div class="exam-subsection-title"><span class="item-label">A)</span> Übersetze die Lebensdaten.</div><div class="exam-life-dates exam-life-dates-cards-only"><div class="exam-life-date-card">
 <p class="exam-life-date-name">Pablo Picasso</p>
 <p class="exam-life-date-roman">* XXV.X. MDCCCLXXXI</p>
-<label class="exam-life-date-label" for="a2a">in Arabischen Ziffern</label>
-<input type="text" id="a2a" class="blank-wide exam-life-date-input" autocomplete="off" aria-label="Pablo Picasso">
+<p class="exam-life-date-label">in Arabischen Ziffern</p>
+<div class="exam-life-date-parts"><label class="exam-life-date-part"><span>Tag</span><input type="text" id="a2a_d" class="blank-tiny exam-life-date-input" autocomplete="off" inputmode="numeric" aria-label="Pablo Picasso Tag"></label><label class="exam-life-date-part"><span>Monat</span><input type="text" id="a2a_m" class="blank-tiny exam-life-date-input" autocomplete="off" inputmode="numeric" aria-label="Pablo Picasso Monat"></label><label class="exam-life-date-part"><span>Jahr</span><input type="text" id="a2a_y" class="blank-tiny exam-life-date-input" autocomplete="off" inputmode="numeric" aria-label="Pablo Picasso Jahr"></label></div>
 </div><div class="exam-life-date-card">
 <p class="exam-life-date-name">Leonardo da Vinci</p>
 <p class="exam-life-date-roman">*16.5.1451</p>
+
 <label class="exam-life-date-label" for="a2b">Mit römischen Zahlzeichen</label>
 <input type="text" id="a2b" class="blank-wide exam-life-date-input" autocomplete="off" aria-label="Leonardo da Vinci">
 </div></div></div>
 <div class="exam-subsection" data-sub-kind="roman-table" data-sub-id="k2-b" data-exam-spec="%7B%22id%22%3A%22k2-b%22%2C%22letter%22%3A%22B%22%2C%22title%22%3A%22F%C3%BClle%20die%20L%C3%BCcken%20wie%20im%20unten%20stehenden%20Beispiel%20aus.%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22roman-table%22%2C%22layout%22%3A%22triple-grid%22%2C%22examples%22%3A%5B%7B%22roman%22%3A%22XXIX%22%2C%22decimal%22%3A%2229%22%7D%2C%7B%22roman%22%3A%22XXX%22%2C%22decimal%22%3A%2230%22%7D%2C%7B%22roman%22%3A%22XXXI%22%2C%22decimal%22%3A%2231%22%7D%5D%2C%22gridRows%22%3A%5B%7B%22cells%22%3A%5B%7B%22kind%22%3A%22input-roman%22%2C%22answerId%22%3A%22a2c%22%2C%22solution%22%3A%22XXXII%22%7D%2C%7B%22kind%22%3A%22input-roman%22%2C%22answerId%22%3A%22a2f%22%2C%22solution%22%3A%22XL%22%7D%2C%7B%22kind%22%3A%22decimal%22%2C%22text%22%3A%2240%22%7D%5D%7D%2C%7B%22cells%22%3A%5B%7B%22kind%22%3A%22roman%22%2C%22text%22%3A%22XCIV%22%7D%2C%7B%22kind%22%3A%22input-decimal%22%2C%22answerId%22%3A%22a2d%22%2C%22solution%22%3A%2232%22%7D%2C%7B%22kind%22%3A%22input-decimal%22%2C%22answerId%22%3A%22a2h%22%2C%22solution%22%3A%2233%22%7D%5D%7D%5D%7D"><div class="exam-subsection-title"><span class="item-label">B)</span> Fülle die Lücken wie im unten stehenden Beispiel aus.</div><table class="grade-table exam-roman-table exam-roman-triple-grid" aria-label="Römische Zahlen"><tbody><tr class="exam-roman-example-row"><td class="exam-roman-grid-cell"><div class="exam-roman-cell-pair"><span class="exam-roman-grid-rom exam-roman-grid-slot">XXIX</span><span class="exam-roman-grid-dec exam-roman-grid-slot">29</span></div></td><td class="exam-roman-grid-cell"><div class="exam-roman-cell-pair"><span class="exam-roman-grid-rom exam-roman-grid-slot">XXX</span><span class="exam-roman-grid-dec exam-roman-grid-slot">30</span></div></td><td class="exam-roman-grid-cell"><div class="exam-roman-cell-pair"><span class="exam-roman-grid-rom exam-roman-grid-slot">XXXI</span><span class="exam-roman-grid-dec exam-roman-grid-slot">31</span></div></td></tr><tr><td class="exam-roman-grid-cell"><div class="exam-roman-grid-single-cell"><input type="text" id="a2c" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"></div></td><td class="exam-roman-grid-cell"><div class="exam-roman-grid-single-cell"><input type="text" id="a2f" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"></div></td><td class="exam-roman-grid-cell"><div class="exam-roman-grid-single-cell"><span class="exam-roman-grid-dec exam-roman-grid-slot">40</span></div></td></tr><tr><td class="exam-roman-grid-cell"><div class="exam-roman-grid-single-cell"><span class="exam-roman-grid-rom exam-roman-grid-slot">XCIV</span></div></td><td class="exam-roman-grid-cell"><div class="exam-roman-grid-single-cell"><input type="text" id="a2d" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"></div></td><td class="exam-roman-grid-cell"><div class="exam-roman-grid-single-cell"><input type="text" id="a2h" class="blank-tiny exam-table-input exam-roman-grid-input" autocomplete="off"></div></td></tr></tbody></table></div>
             <div class="solution">
                 <h4>Musterlösung:</h4>
-                <p>A) Pablo Picasso <strong>25.10.1881 / 25.10.1 881</strong></p>
+                <p>A) Pablo Picasso Tag <strong>25</strong></p>
+                <p>A) Pablo Picasso Monat <strong>10</strong></p>
+                <p>A) Pablo Picasso Jahr <strong>1881 / 1 881 / 1.881</strong></p>
                 <p>A) Leonardo da Vinci <strong>16.5.1451 / 16.5.1 451</strong></p>
                 <p>B) <strong>XXXII</strong></p>
                 <p>B) <strong>XL</strong></p>
@@ -2377,7 +2383,9 @@
             a1o: ['unbeschränkt', 'unbeschraenkt', 'unendlich'],
             a1p: ['Ziffern', 'Ziffer'],
             a1q: ['Element'],
-            a2a: ['25.10.1881', '25.10.1 881'],
+            a2a_d: ['25'],
+            a2a_m: ['10'],
+            a2a_y: ['1881', '1 881', '1.881'],
             a2b: ['16.5.1451', '16.5.1 451'],
             a2c: ['XXXII'],
             a2f: ['XL'],
@@ -2506,6 +2514,7 @@
                 });
             }
         }
+
 
 
 
@@ -2795,6 +2804,7 @@
                 });
             });
         }
+
 
 
 

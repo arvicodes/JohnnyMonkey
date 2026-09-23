@@ -47,6 +47,7 @@ import {
   Visibility,
   Email,
   LocalHospital,
+  RestartAlt,
 } from '@mui/icons-material';
 import { teacherIdFromStorage } from '../lib/lessonExamBeacon';
 import { buildExamReviewedHtml } from '../lib/examReviewedView';
@@ -57,6 +58,7 @@ import DreierprobeModal from './DreierprobeModal';
 import {
   compareExamFieldIds,
   examAnswerMatches,
+  expandLegacyDateAnswers,
   formatExamCorrect,
   parseExamAnswerKey,
   sortExamAnswerFieldIds,
@@ -233,13 +235,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const [previewLoading, setPreviewLoading] = useState(false);
   const [examAnswers, setExamAnswers] = useState<Record<string, any>>({});
   const [examPoints, setExamPoints] = useState<Record<string, number>>({});
-  const [examTaskPoints, setExamTaskPoints] = useState<Record<string, number>>({});
   const [examMaxPoints, setExamMaxPoints] = useState(0);
   const [useGeometryTask3, setUseGeometryTask3] = useState(false);
   const [answerKeyOpen, setAnswerKeyOpen] = useState(false);
   const [answerKeyDraft, setAnswerKeyDraft] = useState<Record<string, string>>({});
-  const [taskPointsDraft, setTaskPointsDraft] = useState<Record<string, number>>({});
+  const [fieldPointsDraft, setFieldPointsDraft] = useState<Record<string, number>>({});
   const [answerKeySaving, setAnswerKeySaving] = useState(false);
+  const [resetStudentOpen, setResetStudentOpen] = useState(false);
+  const [resetStudentBusy, setResetStudentBusy] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
   const [answerEdits, setAnswerEdits] = useState<Record<string, string>>({});
   const [creatingManualSubmission, setCreatingManualSubmission] = useState(false);
@@ -295,7 +298,6 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         if (Object.keys(parsed.answers).length > 0) {
           setExamAnswers(parsed.answers);
           setExamPoints(parsed.points);
-          setExamTaskPoints(parsed.taskPoints);
           setExamMaxPoints(parsed.maxPoints);
           setUseGeometryTask3(parsed.isGeometry);
           return;
@@ -307,13 +309,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       if (/geometr/i.test(kaFilePath)) {
         setExamAnswers(GEOMETRY_ANSWERS);
         setExamPoints(GEOMETRY_POINTS);
-        setExamTaskPoints({});
         setExamMaxPoints(25);
         setUseGeometryTask3(true);
       } else {
         setExamAnswers({});
         setExamPoints({});
-        setExamTaskPoints({});
         setExamMaxPoints(0);
         setUseGeometryTask3(false);
       }
@@ -873,6 +873,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   // Hilfsfunktion: Formatiert taskId zu "A1 a" Format
   const formatTaskId = (taskId: string): string => {
     // Beispiel: "a1a" -> "A1 a", "a2b" -> "A2 b", "a3a_x" -> "A3 a x"
+    const datePart = taskId.match(/^a(\d+)([a-z])_(d|m|y)$/i);
+    if (datePart) {
+      const partLabel = datePart[3].toLowerCase() === 'd' ? 'Tag' : datePart[3].toLowerCase() === 'm' ? 'Monat' : 'Jahr';
+      return `A${datePart[1]} ${datePart[2].toLowerCase()} ${partLabel}`;
+    }
     const match = taskId.match(/^a(\d+)([a-z])(?:_([xy]))?$/);
     if (match) {
       const taskNum = match[1];
@@ -931,7 +936,15 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       Array<{ taskId: string; answer: any; isCorrect?: boolean; points?: number }>
     > = {};
 
+    const expanded = expandLegacyDateAnswers(answers, Object.keys(correctAnswers)) as Record<string, unknown>;
+    const legacyDateBases = new Set(
+      Object.keys(correctAnswers)
+        .map((id) => id.match(/^(a\d+[a-z])_(d|m|y)$/i)?.[1])
+        .filter((id): id is string => Boolean(id)),
+    );
+
     const addField = (taskId: string, answer: unknown) => {
+      if (legacyDateBases.has(taskId) && correctAnswers[taskId] === undefined) return;
       const taskMatch = taskId.match(/a(\d+)/);
       if (!taskMatch) return;
       const taskNum = taskMatch[1];
@@ -945,8 +958,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       });
     };
 
-    Object.entries(answers).forEach(([taskId, answer]) => addField(taskId, answer));
-    Object.keys(correctAnswers).forEach((taskId) => addField(taskId, answers[taskId]));
+    Object.entries(expanded).forEach(([taskId, answer]) => addField(taskId, answer));
+    Object.keys(correctAnswers).forEach((taskId) => addField(taskId, expanded[taskId]));
 
     Object.keys(grouped).forEach((taskNum) => {
       grouped[taskNum].sort((a, b) => compareExamFieldIds(a.taskId, b.taskId));
@@ -1212,17 +1225,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       Array.from(new Set([...Object.keys(examAnswers), ...Object.keys(draft)])),
     );
     const byTask = groupAnswerFieldIdsByTask(allIds);
-    const taskPts: Record<string, number> = {};
-    Object.entries(byTask).forEach(([taskNum, fields]) => {
-      const fromHtml = examTaskPoints[taskNum];
-      if (fromHtml != null && fromHtml > 0) {
-        taskPts[taskNum] = fromHtml;
-      } else {
-        taskPts[taskNum] = fields.reduce((s, id) => s + (examPoints[id] ?? 1), 0);
-      }
+    const fieldPts: Record<string, number> = {};
+    Object.values(byTask).forEach((fields) => {
+      fields.forEach((id) => {
+        fieldPts[id] = examPoints[id] ?? 1;
+      });
     });
     setAnswerKeyDraft(draft);
-    setTaskPointsDraft(taskPts);
+    setFieldPointsDraft(fieldPts);
     setAnswerKeyOpen(true);
   };
 
@@ -1244,7 +1254,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       const res = await fetch('/api/ka-corrections/answer-key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-login-code': loginCode },
-        body: JSON.stringify({ kaFilePath, answers: payload, taskPoints: taskPointsDraft }),
+        body: JSON.stringify({
+          kaFilePath,
+          answers: payload,
+          fieldPoints: fieldPointsDraft,
+        }),
       });
       if (!res.ok) throw new Error('Speichern fehlgeschlagen');
       const data = await res.json();
@@ -1257,7 +1271,6 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           const html = await htmlRes.text();
           const parsed = parseExamAnswerKey(html);
           setExamPoints(parsed.points);
-          setExamTaskPoints(parsed.taskPoints);
           setExamMaxPoints(parsed.maxPoints);
         }
       } catch {
@@ -1361,6 +1374,28 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       alert(e instanceof Error ? e.message : 'Krank-Status konnte nicht gespeichert werden');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const resetSelectedStudent = async () => {
+    if (!selectedSubmission) return;
+    const loginCode = localStorage.getItem('loginCode') || '';
+    setResetStudentBusy(true);
+    try {
+      const res = await fetch(`/api/ka-corrections/submissions/${selectedSubmission.id}/reset`, {
+        method: 'POST',
+        headers: { 'x-login-code': loginCode },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Zurücksetzen fehlgeschlagen');
+      const removedId = selectedSubmission.id;
+      setSubmissions((prev) => prev.filter((s) => s.id !== removedId));
+      setSelectedSubmission(null);
+      setResetStudentOpen(false);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Zurücksetzen fehlgeschlagen');
+    } finally {
+      setResetStudentBusy(false);
     }
   };
 
@@ -2849,6 +2884,22 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                           '&:hover': { bgcolor: '#bbdefb' },
                         }}
                       />
+                    </Tooltip>
+                    <Tooltip title="Abgabe dieses Schülers löschen, damit neu bearbeitet werden kann">
+                      <span>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="warning"
+                          startIcon={<RestartAlt sx={{ fontSize: 16 }} />}
+                          disabled={!selectedSubmission || resetStudentBusy}
+                          onClick={() => setResetStudentOpen(true)}
+                          tabIndex={-1}
+                          sx={{ fontSize: '0.72rem', py: 0.25, minHeight: 28 }}
+                        >
+                          Zurücksetzen
+                        </Button>
+                      </span>
                     </Tooltip>
                   </Box>
                   <FormControlLabel
@@ -4600,7 +4651,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
             Änderungen werden in der Prüfungs-HTML gespeichert und alle Abgaben neu bewertet. Punkte
-            pro Aufgabe werden auf die Teilfelder verteilt.
+            gelten je Teilaufgabe (jedes Antwortfeld).
           </Typography>
           {Object.keys(answerKeyFieldsByTask)
             .sort((a, b) => Number(a) - Number(b))
@@ -4616,34 +4667,37 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                     bgcolor: '#fafafa',
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700, flex: 1 }}>
-                      Aufgabe {taskNum}
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                    Aufgabe {taskNum}
+                    <Typography component="span" variant="caption" sx={{ ml: 1, color: '#666' }}>
+                      Summe {fieldIds.reduce((s, id) => s + (Number(fieldPointsDraft[id]) || 0), 0)} Punkte
                     </Typography>
-                    <TextField
-                      label="Punkte"
-                      type="number"
-                      size="small"
-                      value={taskPointsDraft[taskNum] ?? ''}
-                      onChange={(e) => {
-                        const n = Math.max(0, Number(e.target.value) || 0);
-                        setTaskPointsDraft((prev) => ({ ...prev, [taskNum]: n }));
-                      }}
-                      inputProps={{ min: 0, step: 1 }}
-                      sx={{ width: 110 }}
-                    />
-                  </Box>
+                  </Typography>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {fieldIds.map((taskId) => (
-                      <TextField
-                        key={taskId}
-                        label={taskId}
-                        size="small"
-                        value={answerKeyDraft[taskId] ?? ''}
-                        onChange={(e) =>
-                          setAnswerKeyDraft((prev) => ({ ...prev, [taskId]: e.target.value }))
-                        }
-                      />
+                      <Box key={taskId} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <TextField
+                          label={formatTaskId(taskId)}
+                          size="small"
+                          value={answerKeyDraft[taskId] ?? ''}
+                          onChange={(e) =>
+                            setAnswerKeyDraft((prev) => ({ ...prev, [taskId]: e.target.value }))
+                          }
+                          sx={{ flex: 1 }}
+                        />
+                        <TextField
+                          label="Punkte"
+                          type="number"
+                          size="small"
+                          value={fieldPointsDraft[taskId] ?? 1}
+                          onChange={(e) => {
+                            const n = Math.max(0, Number(e.target.value) || 0);
+                            setFieldPointsDraft((prev) => ({ ...prev, [taskId]: n }));
+                          }}
+                          inputProps={{ min: 0, step: 1 }}
+                          sx={{ width: 100 }}
+                        />
+                      </Box>
                     ))}
                   </Box>
                 </Box>
@@ -4714,6 +4768,30 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             />
           ) : null}
         </DialogContent>
+      </Dialog>
+
+      <Dialog open={resetStudentOpen} onClose={() => !resetStudentBusy && setResetStudentOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Schüler zurücksetzen?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            Die Abgabe von <strong>{submissionStudentName(selectedSubmission)}</strong> wird gelöscht.
+            Korrektur und Punkte dieser Person fallen weg. Nach einem Neuladen der Prüfung kann sie
+            erneut bearbeitet werden, solange die Zeit noch läuft.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResetStudentOpen(false)} disabled={resetStudentBusy}>
+            Abbrechen
+          </Button>
+          <Button
+            color="warning"
+            variant="contained"
+            disabled={resetStudentBusy || !selectedSubmission}
+            onClick={() => void resetSelectedStudent()}
+          >
+            {resetStudentBusy ? 'Lösche…' : 'Ja, zurücksetzen'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       <Dialog open={versionDialogOpen} onClose={() => setVersionDialogOpen(false)} maxWidth="xs" fullWidth>

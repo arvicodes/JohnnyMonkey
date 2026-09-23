@@ -28,6 +28,41 @@ export function parseExamTaskPointsFromHtml(html: string): Record<string, number
   return out;
 }
 
+export function parseExamFieldPointsFromHtml(html: string): Record<string, number> {
+  const m = html.match(/<!--\s*EXAM_FIELD_POINTS\s+(\{[\s\S]*?\})\s*-->/);
+  if (!m) return {};
+  try {
+    const obj = JSON.parse(m[1]) as Record<string, unknown>;
+    const out: Record<string, number> = {};
+    Object.entries(obj).forEach(([k, v]) => {
+      const n = Number(v);
+      if (Number.isFinite(n) && n >= 0) out[k] = n;
+    });
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/** Alte eine Zeile „25.10.1881“ auf a2a_d / a2a_m / a2a_y verteilen. */
+export function expandLegacyDateAnswers(
+  answers: Record<string, unknown>,
+  keyIds: string[],
+): Record<string, unknown> {
+  const next = { ...answers };
+  keyIds.forEach((id) => {
+    const m = id.match(/^(a\d+[a-z])_(d|m|y)$/i);
+    if (!m) return;
+    if (String(next[id] ?? '').trim()) return;
+    const legacy = String(next[m[1]] ?? '').trim();
+    const parts = legacy.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/);
+    if (!parts) return;
+    const idx = m[2].toLowerCase() === 'd' ? 1 : m[2].toLowerCase() === 'm' ? 2 : 3;
+    next[id] = parts[idx];
+  });
+  return next;
+}
+
 function buildFieldPointsFromTaskPoints(
   answers: Record<string, string | string[] | number>,
   taskPoints: Record<string, number>,
@@ -136,20 +171,26 @@ export function parseExamAnswerKey(html: string): ExamAnswerKey {
   const isGeometry = keys.some((k) => /_[xy]$/.test(k));
   const taskPoints = parseExamTaskPointsFromHtml(html);
   const points = buildFieldPointsFromTaskPoints(answers, taskPoints, isGeometry);
+  const explicit = parseExamFieldPointsFromHtml(html);
+  Object.entries(explicit).forEach(([k, v]) => {
+    if (answers[k] !== undefined) points[k] = v;
+  });
 
   const totalMatch = html.match(/id="totalPoints"[^>]*>(\d+)/);
   const maxFromHtml = totalMatch ? parseInt(totalMatch[1], 10) : 0;
   const maxFromTasks = Object.values(taskPoints).reduce((s, v) => s + (Number(v) || 0), 0);
   const maxFromFields = keys.reduce((s, k) => s + (points[k] || 0), 0);
-  const maxPoints = maxFromTasks || maxFromHtml || maxFromFields;
+  const maxPoints = Object.keys(explicit).length
+    ? maxFromFields
+    : maxFromTasks || maxFromHtml || maxFromFields;
 
   return { answers, points, taskPoints, maxPoints, isGeometry };
 }
 
 /** Sortierung a1a, a1b, … a3a, a3b, a3c, a3d (nicht a3c vor a3a). */
 export function compareExamFieldIds(a: string, b: string): number {
-  const ma = a.match(/^a(\d+)([a-z])?(_[xy])?$/i);
-  const mb = b.match(/^a(\d+)([a-z])?(_[xy])?$/i);
+  const ma = a.match(/^a(\d+)([a-z])?(?:_([a-z0-9]+))?$/i);
+  const mb = b.match(/^a(\d+)([a-z])?(?:_([a-z0-9]+))?$/i);
   if (ma && mb) {
     const na = Number(ma[1]);
     const nb = Number(mb[1]);

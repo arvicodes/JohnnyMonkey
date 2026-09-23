@@ -51,6 +51,7 @@ router.post('/release-all', KACorrectionController.releaseAllGrades);
 router.get('/release-status', KACorrectionController.getReleaseStatus);
 
 router.patch('/submissions/:id/exam-version', KACorrectionController.updateSubmissionExamVersion);
+router.post('/submissions/:id/reset', KACorrectionController.resetOneSubmission);
 
 export default router;
 

@@ -625,21 +625,46 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       .map((e) => {
         const id = fieldId(e, taskNumber, fieldIndex);
         if (!e.answerId) fieldIndex.n++;
-        const answers = parseSolutionAlternatives(e.solution, 'text');
-        fields.push({
-          id,
-          answers,
-          solutionHtml: `${escapeHtml(e.heading)} <strong>${solutionDisplayHtml(answers)}</strong>`,
-        });
         const lines = e.lines.includes('\n')
           ? e.lines.split('\n').map((ln) => escapeHtml(ln)).join('<br>')
           : escapeHtml(e.lines);
         const inputLabel = e.inputLabel?.trim() || 'Deutsche Lebensdaten (TT.MM.JJJJ)';
+        const dateParts =
+          !/röm/i.test(inputLabel) && e.solution.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/);
+        let inputs: string;
+        if (dateParts) {
+          const parts: { suffix: string; label: string; solution: string }[] = [
+            { suffix: 'd', label: 'Tag', solution: dateParts[1] },
+            { suffix: 'm', label: 'Monat', solution: dateParts[2] },
+            { suffix: 'y', label: 'Jahr', solution: dateParts[3] },
+          ];
+          inputs = `<div class="exam-life-date-parts">${parts
+            .map((part) => {
+              const partId = `${id}_${part.suffix}`;
+              const partAnswers = parseSolutionAlternatives(part.solution, 'number');
+              fields.push({
+                id: partId,
+                answers: partAnswers,
+                solutionHtml: `${escapeHtml(e.heading)} ${escapeHtml(part.label)} <strong>${solutionDisplayHtml(partAnswers)}</strong>`,
+              });
+              return `<label class="exam-life-date-part"><span>${escapeHtml(part.label)}</span><input type="text" id="${partId}" class="blank-tiny exam-life-date-input" autocomplete="off" inputmode="numeric" aria-label="${escapeHtml(e.heading)} ${escapeHtml(part.label)}"></label>`;
+            })
+            .join('')}</div>`;
+        } else {
+          const answers = parseSolutionAlternatives(e.solution, 'text');
+          fields.push({
+            id,
+            answers,
+            solutionHtml: `${escapeHtml(e.heading)} <strong>${solutionDisplayHtml(answers)}</strong>`,
+          });
+          inputs = `<label class="exam-life-date-label" for="${id}">${escapeHtml(inputLabel)}</label>
+<input type="text" id="${id}" class="blank-wide exam-life-date-input" autocomplete="off" aria-label="${escapeHtml(e.heading)}">`;
+        }
         return `<div class="exam-life-date-card">
 <p class="exam-life-date-name">${escapeHtml(e.heading)}</p>
 <p class="exam-life-date-roman">${lines}</p>
-<label class="exam-life-date-label" for="${id}">${escapeHtml(inputLabel)}</label>
-<input type="text" id="${id}" class="blank-wide exam-life-date-input" autocomplete="off" aria-label="${escapeHtml(e.heading)}">
+${dateParts ? `<p class="exam-life-date-label">${escapeHtml(inputLabel)}</p>` : ''}
+${inputs}
 </div>`;
       })
       .join('');

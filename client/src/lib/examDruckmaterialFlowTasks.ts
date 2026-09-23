@@ -299,6 +299,9 @@ export const EXAM_NUMBER_LINE_CSS = `
         .exam-life-dates-cards { display: flex; flex-direction: column; gap: 10px; }
         .exam-life-dates-cards-only { display: flex; flex-wrap: wrap; gap: 10px; }
         .exam-life-dates-cards-only .exam-life-date-card { flex: 1 1 220px; }
+        .exam-life-date-parts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+        .exam-life-date-part { display: flex; flex-direction: column; gap: 2px; font-size: 12px; font-weight: 700; }
+        .exam-life-date-part .blank-tiny { width: 4.2em; }
         .exam-life-date-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; background: #fafafa; }
         .exam-life-date-name { font-weight: bold; margin: 0 0 4px; font-size: 14px; }
         .exam-life-date-roman { font-family: Georgia, 'Times New Roman', serif; margin: 0 0 8px; line-height: 1.35; color: #333; }

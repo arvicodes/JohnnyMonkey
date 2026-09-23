@@ -6,6 +6,7 @@ import {
   parseExamAnswerKey,
   readExamHtml,
   replaceCorrectAnswersInHtml,
+  replaceExamFieldPointsInHtml,
   replaceExamTaskPointsInHtml,
   writeExamHtml,
 } from '../utils/examAutoPoints';
@@ -1474,19 +1475,45 @@ export class KACorrectionController {
     }
   }
 
+  /** Lehrer: eine Schüler-Abgabe löschen, damit neu bearbeitet werden kann. */
+  static async resetOneSubmission(req: Request, res: Response) {
+    try {
+      const teacher = await requireTeacher(req);
+      if (!teacher) return res.status(403).json({ error: 'Nur Lehrer' });
+
+      const { id } = req.params;
+      const submission = await prisma.kASubmission.findUnique({
+        where: { id },
+        include: { student: { select: { name: true } } },
+      });
+      if (!submission) return res.status(404).json({ error: 'Abgabe nicht gefunden' });
+
+      await prisma.kASubmission.delete({ where: { id } });
+      res.json({
+        success: true,
+        studentName: submission.student?.name || '',
+        message: 'Abgabe zurückgesetzt',
+      });
+    } catch (error) {
+      console.error('Error resetting one submission:', error);
+      res.status(500).json({ error: 'Fehler beim Zurücksetzen der Abgabe' });
+    }
+  }
+
   /** Lehrer: Musterlösung (correctAnswers) in der Prüfungs-HTML ändern und neu bewerten */
   static async updateAnswerKey(req: Request, res: Response) {
     try {
       const teacher = await requireTeacher(req);
       if (!teacher) return res.status(403).json({ error: 'Nur Lehrer' });
 
-      const { kaFilePath, answers, taskPoints } = req.body as {
+      const { kaFilePath, answers, taskPoints, fieldPoints } = req.body as {
         kaFilePath?: string;
         answers?: Record<string, string | string[] | number>;
         taskPoints?: Record<string, number | string>;
+        fieldPoints?: Record<string, number | string>;
       };
-      if (!kaFilePath || (!answers && !taskPoints)) {
-        return res.status(400).json({ error: 'kaFilePath und answers oder taskPoints sind erforderlich' });
+      if (!kaFilePath || (!answers && !taskPoints && !fieldPoints)) {
+        return res.status(400).json({ error: 'kaFilePath und answers, taskPoints oder fieldPoints sind erforderlich' });
       }
 
       const html = readExamHtml(kaFilePath);
@@ -1500,8 +1527,18 @@ export class KACorrectionController {
           const n = Math.max(0, Math.round(Number(v) || 0));
           if (n > 0) normalized[k] = n;
         });
-        if (Object.keys(normalized).length > 0) {
+        if (Object.keys(normalized).length > 0 && !fieldPoints) {
           updatedHtml = replaceExamTaskPointsInHtml(updatedHtml, normalized);
+        }
+      }
+      if (fieldPoints && Object.keys(fieldPoints).length > 0) {
+        const normalizedFields: Record<string, number> = {};
+        Object.entries(fieldPoints).forEach(([k, v]) => {
+          const n = Number(v);
+          if (Number.isFinite(n) && n >= 0) normalizedFields[k] = n;
+        });
+        if (Object.keys(normalizedFields).length > 0) {
+          updatedHtml = replaceExamFieldPointsInHtml(updatedHtml, normalizedFields);
         }
       }
       writeExamHtml(kaFilePath, updatedHtml);
