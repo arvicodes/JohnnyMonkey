@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Box,
@@ -148,6 +148,24 @@ export function EpoNotenTeacherView() {
   const totalTeacher = sumCategoryScores(teacherScores);
   const computedGrade = gradeFromTotalPoints(totalTeacher);
 
+  const skipRasterGradeSyncRef = useRef(false);
+
+  useEffect(() => {
+    if (!selectedStudent) return;
+    skipRasterGradeSyncRef.current = true;
+  }, [selectedStudent?.studentId]);
+
+  useEffect(() => {
+    if (!selectedStudent) return;
+    if (skipRasterGradeSyncRef.current) {
+      skipRasterGradeSyncRef.current = false;
+      return;
+    }
+    if (allCategoriesSelected(teacherScores)) {
+      setTeacherGrade(computedGrade);
+    }
+  }, [computedGrade, selectedStudent, teacherScores]);
+
   const handleCreate = async () => {
     setSaving(true);
     try {
@@ -226,9 +244,11 @@ export function EpoNotenTeacherView() {
 
   const persistTeacherEntry = async (grade: string) => {
     if (!round || !selectedStudentId) return false;
+    const resolvedGrade =
+      grade.trim() || (allCategoriesSelected(teacherScores) ? computedGrade : '');
     const res = await apiPut(`/api/epo-noten/${round.id}/teacher/${selectedStudentId}`, {
       teacherScores,
-      teacherGrade: grade,
+      teacherGrade: resolvedGrade,
     });
     if (!res?.ok) throw new Error('Speichern fehlgeschlagen');
     return true;
@@ -805,30 +825,25 @@ export function EpoNotenTeacherView() {
                               }}
                             >
                               <Typography sx={{ fontWeight: 800, fontSize: '0.75rem', mb: 0.75, color: epoNotenPalette.heading }}>
-                                Deine EPO-Note (eigenständig)
+                                EPO-Note
                               </Typography>
                               <TextField
-                                label="EPO-Note eintragen"
+                                label="EPO-Note"
                                 size="small"
                                 value={teacherGrade}
                                 onChange={(e) => setTeacherGrade(e.target.value)}
                                 placeholder="z. B. 2+ oder 3−"
                                 fullWidth
-                                helperText={`Nur Vorschlag aus Raster: ${totalTeacher} Punkte → ${computedGrade} (wird nicht automatisch übernommen)`}
+                                helperText={
+                                  allCategoriesSelected(teacherScores)
+                                    ? `Aus Raster: ${totalTeacher} Punkte → ${computedGrade} (wird automatisch gesetzt, du kannst anpassen)`
+                                    : `Raster noch unvollständig — Note manuell eintragen oder Raster vervollständigen`
+                                }
                                 sx={{
                                   '& .MuiInputBase-root': { fontSize: '0.95rem', fontWeight: 700 },
                                   '& .MuiInputLabel-root': { fontSize: '0.78rem' },
                                 }}
                               />
-                              <Button
-                                size="small"
-                                variant="text"
-                                onClick={() => setTeacherGrade(computedGrade)}
-                                disabled={saving || !allCategoriesSelected(teacherScores)}
-                                sx={{ mt: 0.35, px: 0, minHeight: 24, fontSize: '0.68rem', fontWeight: 700 }}
-                              >
-                                Vorschlag aus Raster übernehmen ({computedGrade})
-                              </Button>
                             </Box>
                         </Box>
 
