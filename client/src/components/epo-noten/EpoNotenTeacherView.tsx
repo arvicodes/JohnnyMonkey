@@ -456,56 +456,6 @@ export function EpoNotenTeacherView() {
     }
   };
 
-  const releaseOne = async () => {
-    if (!round || !selectedStudentId) return;
-    const scores = teacherScoresRef.current;
-    const grade =
-      teacherGradeRef.current.trim() ||
-      (allCategoriesSelected(scores) ? rasterResultFromTotal(selectedAssessmentMode, sumCategoryScores(scores)) : '');
-    if (!grade) {
-      setError('Bitte Raster oder Note/MSS-Punkte eintragen, bevor du freigibst.');
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      teacherScoresDirtyRef.current = true;
-      await saveTeacherDraftNow();
-      await teacherSaveChainRef.current;
-      const res = await apiPost(`/api/epo-noten/${round.id}/release`, { studentIds: [selectedStudentId] });
-      if (!res?.ok) throw new Error('Freigabe fehlgeschlagen');
-      await loadDetail(round.id);
-      await loadList();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const releaseAllInGroup = async (groupId: string) => {
-    if (!round) return;
-    const studentIds = students
-      .filter((s) => s.groupId === groupId && s.teacherGrade?.trim() && !s.teacherReleasedAt)
-      .map((s) => s.studentId);
-    if (studentIds.length === 0) {
-      setError('In diesem Kurs gibt es keine bewerteten SuS, die noch nicht freigegeben sind.');
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await apiPost(`/api/epo-noten/${round.id}/release`, { studentIds });
-      if (!res?.ok) throw new Error('Freigabe fehlgeschlagen');
-      await loadDetail(round.id);
-      await loadList();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const updateRoundGroups = async (groupIds: string[]) => {
     if (!round) return;
     try {
@@ -626,6 +576,53 @@ export function EpoNotenTeacherView() {
     ? groups.find((g) => g.id === activeCourseGroupId)?.name ?? ''
     : '';
 
+  const releasableCountInGroup = useCallback(
+    (groupId: string) => {
+      if (!round || groupId === '__other__') return 0;
+      const mode = assessmentModeForGroup(round, groupId);
+      return students.filter((s) => {
+        if (s.groupId !== groupId || s.teacherReleasedAt) return false;
+        return Boolean(teacherFormGradeFromEntry(s, mode).trim());
+      }).length;
+    },
+    [round, students],
+  );
+
+  const releaseAllInGroup = async (groupId: string) => {
+    if (!round || groupId === '__other__') return;
+    const groupName = groups.find((g) => g.id === groupId)?.name ?? 'Lerngruppe';
+    const n = releasableCountInGroup(groupId);
+    if (n === 0) {
+      setError(
+        `In „${groupName}“ gibt es keine fertigen Bewertungen, die noch nicht freigegeben sind (Raster vollständig ausfüllen).`,
+      );
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      teacherScoresDirtyRef.current = true;
+      await saveTeacherDraftNow();
+      await teacherSaveChainRef.current;
+      const res = await apiPost(`/api/epo-noten/${round.id}/release`, { groupId });
+      if (!res?.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(typeof err.error === 'string' ? err.error : 'Freigabe fehlgeschlagen');
+      }
+      const data = await res.json().catch(() => ({}));
+      const released = typeof data.releasedCount === 'number' ? data.releasedCount : n;
+      if (released === 0) {
+        setError('Es wurde niemand freigegeben — bitte Bewertungen speichern und Raster prüfen.');
+      }
+      await loadDetail(round.id);
+      await loadList();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Fehler');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading && rounds.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
@@ -636,13 +633,9 @@ export function EpoNotenTeacherView() {
 
   const selectedRoundMeta = rounds.find((r) => r.id === selectedId);
 
-  const canReleaseToStudent =
-    Boolean(selectedStudentId) &&
-    !selectedStudent?.teacherReleasedAt &&
-    Boolean(
-      teacherGrade.trim() ||
-        (allCategoriesSelected(teacherScores) && computedRasterResult),
-    );
+  const canReleaseGroup =
+    Boolean(selectedStudent?.groupId) &&
+    releasableCountInGroup(selectedStudent.groupId) > 0;
 
   return (
     <Stack
@@ -828,19 +821,19 @@ export function EpoNotenTeacherView() {
                     </span>
                   </Tooltip>
                 )}
-                <Tooltip title="Meine Bewertung freigeben (an ausgewählten SuS)">
+                <Tooltip title="Alle Bewertungen der Lerngruppe des gewählten SuS freigeben">
                   <span>
                     <IconButton
                       size="small"
-                      onClick={releaseOne}
-                      disabled={saving || !canReleaseToStudent}
-                      aria-label="Meine Bewertung freigeben"
+                      onClick={() => selectedStudent?.groupId && void releaseAllInGroup(selectedStudent.groupId)}
+                      disabled={saving || !canReleaseGroup}
+                      aria-label="Lerngruppe freigeben"
                       sx={{
                         ...epoNotenCompactIconBtnSx,
-                        bgcolor: canReleaseToStudent ? epoNotenPalette.primary : undefined,
-                        color: canReleaseToStudent ? '#fff' : undefined,
-                        borderColor: canReleaseToStudent ? epoNotenPalette.primary : undefined,
-                        '&:hover': canReleaseToStudent
+                        bgcolor: canReleaseGroup ? epoNotenPalette.primary : undefined,
+                        color: canReleaseGroup ? '#fff' : undefined,
+                        borderColor: canReleaseGroup ? epoNotenPalette.primary : undefined,
+                        '&:hover': canReleaseGroup
                           ? { bgcolor: '#1565c0', borderColor: '#1565c0' }
                           : undefined,
                       }}
@@ -1045,25 +1038,49 @@ export function EpoNotenTeacherView() {
                     >
                       {visibleStudentSections.map((section, sectionIndex) => (
                         <React.Fragment key={section.groupId}>
-                          {!studentListGroupFilter && (
-                            <ListSubheader
-                              disableSticky
-                              sx={{
-                                lineHeight: 1.25,
-                                py: 0.45,
-                                px: 0.75,
-                                fontSize: '0.68rem',
-                                fontWeight: 800,
-                                color: epoNotenPalette.heading,
-                                bgcolor: epoNotenPalette.sand,
-                                borderBottom: '1px solid',
-                                borderTop: sectionIndex > 0 ? '1px solid' : undefined,
-                                borderColor: 'divider',
-                              }}
-                            >
-                              {section.groupName}
-                            </ListSubheader>
-                          )}
+                          <ListSubheader
+                            disableSticky
+                            sx={{
+                              lineHeight: 1.25,
+                              py: 0.45,
+                              px: 0.75,
+                              fontSize: '0.68rem',
+                              fontWeight: 800,
+                              color: epoNotenPalette.heading,
+                              bgcolor: epoNotenPalette.sand,
+                              borderBottom: '1px solid',
+                              borderTop: sectionIndex > 0 ? '1px solid' : undefined,
+                              borderColor: 'divider',
+                            }}
+                          >
+                            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={0.5}>
+                              <Box component="span" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {section.groupName}
+                              </Box>
+                              {!studentListGroupFilter &&
+                              section.groupId !== '__other__' &&
+                              releasableCountInGroup(section.groupId) > 0 ? (
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  disabled={saving}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void releaseAllInGroup(section.groupId);
+                                  }}
+                                  sx={{
+                                    ...epoNotenCompactBtnSx,
+                                    flexShrink: 0,
+                                    py: 0.15,
+                                    minHeight: 22,
+                                    fontSize: '0.62rem',
+                                  }}
+                                >
+                                  Alle freigeben ({releasableCountInGroup(section.groupId)})
+                                </Button>
+                              ) : null}
+                            </Stack>
+                          </ListSubheader>
                           {section.students.map((s, studentIndex) => {
                             const active = s.studentId === selectedStudentId;
                             const isLastInSection = studentIndex === section.students.length - 1;
@@ -1125,16 +1142,16 @@ export function EpoNotenTeacherView() {
                         </React.Fragment>
                       ))}
                     </List>
-                    {activeCourseGroupId ? (
+                    {activeCourseGroupId && releasableCountInGroup(activeCourseGroupId) > 0 ? (
                       <Button
                         fullWidth
                         size="small"
-                        variant="outlined"
+                        variant="contained"
                         onClick={() => void releaseAllInGroup(activeCourseGroupId)}
                         disabled={saving}
                         sx={{ ...epoNotenCompactBtnSx, mt: 0.35 }}
                       >
-                        Kurs „{activeCourseName}“ freigeben
+                        Alle SuS freigeben ({releasableCountInGroup(activeCourseGroupId)}) · {activeCourseName}
                       </Button>
                     ) : null}
                   </Box>
@@ -1257,7 +1274,8 @@ export function EpoNotenTeacherView() {
                                       : 'Speichern fehlgeschlagen — bitte „Speichern“ erneut tippen'}
                                 </Typography>
                               )}
-                              {!selectedStudent.teacherReleasedAt && (
+                              {selectedStudent.groupId &&
+                                releasableCountInGroup(selectedStudent.groupId) > 0 && (
                                 <Stack direction="row" spacing={0.75} justifyContent="flex-end">
                                   <Button
                                     size="small"
@@ -1271,11 +1289,13 @@ export function EpoNotenTeacherView() {
                                   <Button
                                     size="small"
                                     variant="contained"
-                                    onClick={() => void releaseOne()}
-                                    disabled={saving || !canReleaseToStudent}
+                                    onClick={() => void releaseAllInGroup(selectedStudent.groupId!)}
+                                    disabled={
+                                      saving || releasableCountInGroup(selectedStudent.groupId) === 0
+                                    }
                                     sx={epoNotenCompactBtnSx}
                                   >
-                                    An SuS abschicken
+                                    Lerngruppe freigeben ({releasableCountInGroup(selectedStudent.groupId)})
                                   </Button>
                                 </Stack>
                               )}
