@@ -5861,7 +5861,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 )}
               </Box>
               <Box sx={{ flex: 1, minWidth: 8 }} />
-              <Box sx={{ display: 'flex', gap: 0.25, alignItems: 'center', flexShrink: 1, flexWrap: 'nowrap', ml: 'auto', minWidth: 0, overflow: 'hidden' }}>
+              <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexShrink: 1, flexWrap: 'nowrap', ml: 'auto', minWidth: 0, overflow: 'hidden', pr: 0.5 }}>
                 {/* Exkursionsprotokoll */}
                 <Box sx={{ position: 'relative' }}>
                   <Tooltip
@@ -5958,7 +5958,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     </Box>
                   )}
                 </Box>
-                <Box sx={{ position: 'relative' }}>
+                <Box sx={{ position: 'relative', mx: { xs: 0.75, sm: 1.25 } }}>
                   <Tooltip
                     title={
                       epoNotenPublishedForStudent
@@ -5974,10 +5974,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         onClick={() => navigate('/epo-noten')}
                         sx={{
                           p: 0,
-                          minWidth: 34,
-                          width: 34,
-                          height: 34,
-                          borderRadius: 1.1,
+                          minWidth: 52,
+                          width: 52,
+                          height: 38,
+                          borderRadius: 1.35,
                           border: epoNotenPublishedForStudent
                             ? '2px solid rgba(46, 125, 50, 0.55)'
                             : '2px solid rgba(46, 125, 50, 0.35)',
@@ -6008,7 +6008,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                           transition: 'all 0.2s ease',
                         }}
                       >
-                        <GradeIcon sx={{ fontSize: 18 }} />
+                        <GradeIcon sx={{ fontSize: 22 }} />
                       </IconButton>
                     </span>
                   </Tooltip>
@@ -6017,7 +6017,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                       sx={{
                         position: 'absolute',
                         top: -4,
-                        right: -4,
+                        right: 2,
                         minWidth: 16,
                         height: 16,
                         px: 0.35,

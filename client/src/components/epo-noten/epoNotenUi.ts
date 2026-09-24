@@ -19,13 +19,14 @@ export const epoNotenPageBgSx = {
   minHeight: '100vh',
   bgcolor: epoNotenPalette.background,
   py: { xs: 0.75, sm: 1.25 },
-  px: { xs: 1, sm: 2 },
+  px: { xs: 0.35, sm: 0.75 },
 };
 
 export const epoNotenPageShellSx = {
-  maxWidth: 1080,
+  maxWidth: { xs: '100%', sm: 'min(100%, 1200px)' },
   mx: 'auto',
   width: '100%',
+  px: { xs: 0.5, sm: 1 },
 };
 
 export const epoNotenCardSx = {

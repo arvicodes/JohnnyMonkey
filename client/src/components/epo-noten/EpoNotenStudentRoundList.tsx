@@ -79,12 +79,9 @@ export function EpoNotenStudentRoundList({ sessions, onSelect }: Props) {
   });
 
   return (
-    <Box sx={epoNotenCardSx}>
-      <Typography variant="subtitle2" sx={{ px: 2, pt: 1.5, pb: 0.75, ...epoNotenSectionTitleSx, fontSize: '1.25rem' }}>
+    <Box sx={{ ...epoNotenCardSx, width: '100%' }}>
+      <Typography variant="subtitle2" sx={{ px: 2, pt: 1.5, pb: 1, ...epoNotenSectionTitleSx, fontSize: '1.25rem' }}>
         Deine EPO-Runden
-      </Typography>
-      <Typography variant="body2" sx={{ px: 2, pb: 1, color: epoNotenPalette.textSecondary }}>
-        Blinkend = du sollst hier noch etwas eintragen. Ältere Runden sind ausgegraut.
       </Typography>
       <List dense disablePadding>
         {sorted.map((s) => {
