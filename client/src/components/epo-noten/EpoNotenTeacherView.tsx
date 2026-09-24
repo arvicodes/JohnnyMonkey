@@ -88,6 +88,7 @@ export function EpoNotenTeacherView() {
   const [newGroupIds, setNewGroupIds] = useState<string[]>([]);
   const [publishOnCreate, setPublishOnCreate] = useState(true);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   const loadList = useCallback(async () => {
     const res = await apiGetSafe('/api/epo-noten/list');
@@ -144,6 +145,15 @@ export function EpoNotenTeacherView() {
   const prevSelectedStudentIdRef = useRef('');
   const teacherScoresRef = useRef(teacherScores);
   teacherScoresRef.current = teacherScores;
+  const teacherGradeRef = useRef(teacherGrade);
+  teacherGradeRef.current = teacherGrade;
+  const autoSaveTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (selectedStudentId !== prevSelectedStudentIdRef.current) {
@@ -180,9 +190,87 @@ export function EpoNotenTeacherView() {
     }
   }, [computedRasterResult, selectedStudent, teacherScores]);
 
+  const persistTeacherEntry = useCallback(
+    async (grade: string) => {
+      if (!round || !selectedStudentId) {
+        throw new Error('Kein Schüler ausgewählt');
+      }
+      const scores = teacherScoresRef.current;
+      const row = students.find((s) => s.studentId === selectedStudentId);
+      const mode =
+        row?.groupId && round ? assessmentModeForGroup(round, row.groupId) : selectedAssessmentMode;
+      const resolvedGrade =
+        grade.trim() ||
+        (allCategoriesSelected(scores) ? rasterResultFromTotal(mode, sumCategoryScores(scores)) : '');
+      const res = await apiPut(`/api/epo-noten/${round.id}/teacher/${selectedStudentId}`, {
+        teacherScores: scores,
+        teacherGrade: resolvedGrade,
+      });
+      if (!res?.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(typeof err.error === 'string' ? err.error : 'Speichern fehlgeschlagen');
+      }
+      const data = await res.json();
+      const entry = data.entry as EpoNotenEntry | undefined;
+      if (entry?.studentId) {
+        setStudents((prev) =>
+          prev.map((s) =>
+            s.studentId === entry.studentId ? { ...s, ...entry, groupId: (s as { groupId?: string }).groupId } : s,
+          ),
+        );
+        if (entry.studentId === selectedStudentId) {
+          setTeacherGrade(entry.teacherGrade || resolvedGrade);
+        }
+      }
+      return entry;
+    },
+    [round, selectedStudentId, students, selectedAssessmentMode],
+  );
+
+  const flushTeacherDraft = useCallback(async () => {
+    if (!teacherScoresDirtyRef.current || !round || !selectedStudentId) return;
+    const row = students.find((s) => s.studentId === selectedStudentId);
+    if (row?.teacherReleasedAt) return;
+    if (autoSaveTimerRef.current) {
+      window.clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+    setDraftStatus('saving');
+    await persistTeacherEntry(teacherGradeRef.current);
+    teacherScoresDirtyRef.current = false;
+    setDraftStatus('saved');
+    await loadList();
+  }, [loadList, persistTeacherEntry, round, selectedStudentId, students]);
+
+  const scheduleTeacherAutoSave = useCallback(() => {
+    const row = students.find((s) => s.studentId === selectedStudentId);
+    if (!round || !selectedStudentId || row?.teacherReleasedAt) return;
+    if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = window.setTimeout(() => {
+      void flushTeacherDraft().catch((e) => {
+        setDraftStatus('error');
+        setError(e instanceof Error ? e.message : 'Automatisches Speichern fehlgeschlagen');
+      });
+    }, 600);
+  }, [flushTeacherDraft, round, selectedStudentId, students]);
+
+  const selectStudent = async (studentId: string) => {
+    if (studentId === selectedStudentId) return;
+    setError(null);
+    try {
+      await flushTeacherDraft();
+      setSelectedStudentId(studentId);
+      setDraftStatus('idle');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Speichern vor Schülerwechsel fehlgeschlagen');
+    }
+  };
+
   const handleTeacherScoresChange = (scores: number[]) => {
     teacherScoresDirtyRef.current = true;
+    setDraftStatus('idle');
     setTeacherScores(scores);
+    scheduleTeacherAutoSave();
   };
 
   const handleCreate = async () => {
@@ -261,29 +349,22 @@ export function EpoNotenTeacherView() {
     }
   };
 
-  const persistTeacherEntry = async (grade: string) => {
-    if (!round || !selectedStudentId) return false;
-    const scores = teacherScoresRef.current;
-    const resolvedGrade =
-      grade.trim() || (allCategoriesSelected(scores) ? computedRasterResult : '');
-    const res = await apiPut(`/api/epo-noten/${round.id}/teacher/${selectedStudentId}`, {
-      teacherScores: scores,
-      teacherGrade: resolvedGrade,
-    });
-    if (!res?.ok) throw new Error('Speichern fehlgeschlagen');
-    return true;
-  };
-
   const saveTeacher = async () => {
     if (!round || !selectedStudentId || selectedStudent?.teacherReleasedAt) return;
     setSaving(true);
     setError(null);
     try {
+      if (autoSaveTimerRef.current) {
+        window.clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+      setDraftStatus('saving');
       await persistTeacherEntry(teacherGrade);
       teacherScoresDirtyRef.current = false;
-      await loadDetail(round.id);
+      setDraftStatus('saved');
       await loadList();
     } catch (e) {
+      setDraftStatus('error');
       setError(e instanceof Error ? e.message : 'Fehler');
     } finally {
       setSaving(false);
@@ -746,7 +827,7 @@ export function EpoNotenTeacherView() {
                           <ListItemButton
                             key={s.studentId}
                             selected={active}
-                            onClick={() => setSelectedStudentId(s.studentId)}
+                            onClick={() => void selectStudent(s.studentId)}
                             sx={{
                               py: 0.45,
                               px: 0.75,
@@ -893,12 +974,14 @@ export function EpoNotenTeacherView() {
                                 value={teacherGrade}
                                 onChange={(e) => {
                                   teacherScoresDirtyRef.current = true;
+                                  setDraftStatus('idle');
                                   const raw = e.target.value;
                                   if (selectedAssessmentMode === 'mss') {
                                     setTeacherGrade(raw.replace(/[^\d]/g, '').slice(0, 2));
-                                    return;
+                                  } else {
+                                    setTeacherGrade(raw);
                                   }
-                                  setTeacherGrade(raw);
+                                  scheduleTeacherAutoSave();
                                 }}
                                 placeholder={selectedAssessmentMode === 'mss' ? 'z. B. 11' : 'z. B. 2+ oder 3−'}
                                 fullWidth
@@ -920,25 +1003,49 @@ export function EpoNotenTeacherView() {
                             </Box>
 
                             {!selectedStudent.teacherReleasedAt && (
-                              <Stack direction="row" spacing={0.75} justifyContent="flex-end" sx={{ mt: 1 }}>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  onClick={() => void saveTeacher()}
-                                  disabled={saving}
-                                  sx={epoNotenCompactBtnSx}
+                              <Stack spacing={0.5} sx={{ mt: 1 }}>
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    textAlign: 'right',
+                                    display: 'block',
+                                    color:
+                                      draftStatus === 'error'
+                                        ? 'error.main'
+                                        : draftStatus === 'saved'
+                                          ? 'success.main'
+                                          : 'text.secondary',
+                                    fontWeight: 600,
+                                  }}
                                 >
-                                  Speichern
-                                </Button>
-                                <Button
-                                  size="small"
-                                  variant="contained"
-                                  onClick={() => void releaseOne()}
-                                  disabled={saving || !canReleaseToStudent}
-                                  sx={epoNotenCompactBtnSx}
-                                >
-                                  An SuS abschicken
-                                </Button>
+                                  {draftStatus === 'saving'
+                                    ? 'Speichert…'
+                                    : draftStatus === 'saved'
+                                      ? 'Gespeichert'
+                                      : draftStatus === 'error'
+                                        ? 'Speichern fehlgeschlagen — bitte „Speichern“ erneut tippen'
+                                        : 'Raster wird automatisch gespeichert'}
+                                </Typography>
+                                <Stack direction="row" spacing={0.75} justifyContent="flex-end">
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => void saveTeacher()}
+                                    disabled={saving || draftStatus === 'saving'}
+                                    sx={epoNotenCompactBtnSx}
+                                  >
+                                    Speichern
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    variant="contained"
+                                    onClick={() => void releaseOne()}
+                                    disabled={saving || !canReleaseToStudent}
+                                    sx={epoNotenCompactBtnSx}
+                                  >
+                                    An SuS abschicken
+                                  </Button>
+                                </Stack>
                               </Stack>
                             )}
                         </Box>
