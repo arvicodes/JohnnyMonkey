@@ -114,8 +114,6 @@ export function EpoNotenCategoryGrid({
                   studentOverlayScores != null &&
                   studentOverlayScores[i] >= 0 &&
                   studentOverlayScores[i] === p;
-                const showStudentOnly = studentPick && !teacherChecked && !studentGhost;
-
                 return (
                   <TableCell
                     key={p}
@@ -141,7 +139,7 @@ export function EpoNotenCategoryGrid({
                         minWidth: compact ? 28 : 34,
                       }}
                     >
-                      {showStudentOnly && (
+                      {studentPick && !teacherChecked && !studentGhost && (
                         <Radio
                           size={compact ? 'small' : 'medium'}
                           checked
@@ -149,6 +147,9 @@ export function EpoNotenCategoryGrid({
                           tabIndex={-1}
                           value={p}
                           sx={{
+                            position: 'absolute',
+                            inset: 0,
+                            m: 'auto',
                             p: compact ? 0.35 : 0.75,
                             pointerEvents: 'none',
                             '& .MuiSvgIcon-root': { fontSize: compact ? 20 : 26 },
@@ -157,32 +158,34 @@ export function EpoNotenCategoryGrid({
                           }}
                         />
                       )}
-                      {!showStudentOnly && (
-                        <Radio
-                          size={compact ? 'small' : 'medium'}
-                          name={`epo-noten-cat-${i}`}
-                          checked={teacherChecked}
-                          onChange={() => setScore(i, p)}
-                          disabled={readOnly || studentGhost}
-                          value={p}
-                          sx={{
-                            p: compact ? 0.35 : 0.75,
-                            '& .MuiSvgIcon-root': { fontSize: compact ? 20 : 26 },
-                            color: studentGhost ? 'rgba(156, 39, 176, 0.35)' : 'rgba(25, 118, 210, 0.45)',
-                            '&.Mui-checked': {
-                              color: studentGhost ? studentGhostPurple : epoNotenPalette.primary,
-                            },
-                            ...(studentPick &&
-                              teacherChecked &&
-                              !studentGhost && {
-                                '&.Mui-checked': {
-                                  color: epoNotenPalette.primary,
-                                  filter: 'drop-shadow(0 0 0 2px rgba(156, 39, 176, 0.35))',
-                                },
-                              }),
-                          }}
-                        />
-                      )}
+                      <Radio
+                        size={compact ? 'small' : 'medium'}
+                        name={studentGhost ? `epo-noten-ghost-cat-${i}` : `epo-noten-cat-${i}`}
+                        checked={teacherChecked}
+                        onChange={() => setScore(i, p)}
+                        disabled={readOnly || studentGhost}
+                        value={p}
+                        sx={{
+                          position: 'relative',
+                          zIndex: 1,
+                          p: compact ? 0.35 : 0.75,
+                          bgcolor: studentPick && !teacherChecked && !studentGhost ? 'rgba(255,255,255,0.72)' : undefined,
+                          borderRadius: '50%',
+                          '& .MuiSvgIcon-root': { fontSize: compact ? 20 : 26 },
+                          color: studentGhost ? 'rgba(156, 39, 176, 0.35)' : 'rgba(25, 118, 210, 0.45)',
+                          '&.Mui-checked': {
+                            color: studentGhost ? studentGhostPurple : epoNotenPalette.primary,
+                          },
+                          ...(studentPick &&
+                            teacherChecked &&
+                            !studentGhost && {
+                              '&.Mui-checked': {
+                                color: epoNotenPalette.primary,
+                                filter: 'drop-shadow(0 0 0 2px rgba(156, 39, 176, 0.35))',
+                              },
+                            }),
+                        }}
+                      />
                     </Box>
                   </TableCell>
                 );
