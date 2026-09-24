@@ -340,11 +340,10 @@ export default function EpoNotenPage() {
                   <>
                     <Box
                       sx={{
+                        ...epoNotenStudentSurfaceSx,
                         display: 'grid',
                         gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
                         gap: 1,
-                        width: '100%',
-                        ...epoNotenStudentSurfaceSx,
                       }}
                     >
                       <Box sx={{ ...epoNotenCardSx, minWidth: 0 }}>
