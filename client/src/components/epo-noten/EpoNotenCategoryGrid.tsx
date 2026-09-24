@@ -22,6 +22,8 @@ type Props = {
   compact?: boolean;
   /** SuS-Selbsteinschätzung: lila, nur Anzeige */
   studentGhost?: boolean;
+  /** Lehrer-Raster: SuS-Wahl pro Zeile leicht lila hinterlegen */
+  studentOverlayScores?: number[];
 };
 
 export function EpoNotenCategoryGrid({
@@ -32,6 +34,7 @@ export function EpoNotenCategoryGrid({
   label,
   compact,
   studentGhost,
+  studentOverlayScores,
 }: Props) {
   const setScore = (index: number, value: number) => {
     if (readOnly || !onChange) return;
@@ -105,26 +108,85 @@ export function EpoNotenCategoryGrid({
                   {i + 1}) {text}
                 </Typography>
               </TableCell>
-              {[0, 1, 2, 3].map((p) => (
-                <TableCell key={p} align="center" padding="checkbox" sx={{ py: compact ? 0 : 0.5, px: 0.25 }}>
-                  <Radio
-                    size={compact ? 'small' : 'medium'}
-                    name={`epo-noten-cat-${i}`}
-                    checked={scores[i] === p}
-                    onChange={() => setScore(i, p)}
-                    disabled={readOnly}
-                    value={p}
+              {[0, 1, 2, 3].map((p) => {
+                const teacherChecked = scores[i] === p;
+                const studentPick =
+                  studentOverlayScores != null &&
+                  studentOverlayScores[i] >= 0 &&
+                  studentOverlayScores[i] === p;
+                const showStudentOnly = studentPick && !teacherChecked && !studentGhost;
+
+                return (
+                  <TableCell
+                    key={p}
+                    align="center"
+                    padding="checkbox"
                     sx={{
-                      p: compact ? 0.35 : 0.75,
-                      '& .MuiSvgIcon-root': { fontSize: compact ? 20 : 26 },
-                      color: studentGhost ? 'rgba(156, 39, 176, 0.35)' : 'rgba(25, 118, 210, 0.45)',
-                      '&.Mui-checked': {
-                        color: studentGhost ? studentGhostPurple : epoNotenPalette.primary,
-                      },
+                      py: compact ? 0 : 0.5,
+                      px: 0.25,
+                      bgcolor: studentPick && !studentGhost ? 'rgba(186, 104, 200, 0.16)' : undefined,
+                      boxShadow:
+                        studentPick && !studentGhost
+                          ? 'inset 0 0 0 1px rgba(156, 39, 176, 0.28)'
+                          : undefined,
                     }}
-                  />
-                </TableCell>
-              ))}
+                  >
+                    <Box
+                      sx={{
+                        position: 'relative',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: compact ? 28 : 34,
+                        minWidth: compact ? 28 : 34,
+                      }}
+                    >
+                      {showStudentOnly && (
+                        <Radio
+                          size={compact ? 'small' : 'medium'}
+                          checked
+                          disabled
+                          tabIndex={-1}
+                          value={p}
+                          sx={{
+                            p: compact ? 0.35 : 0.75,
+                            pointerEvents: 'none',
+                            '& .MuiSvgIcon-root': { fontSize: compact ? 20 : 26 },
+                            color: 'rgba(156, 39, 176, 0.4)',
+                            '&.Mui-checked': { color: 'rgba(156, 39, 176, 0.62)' },
+                          }}
+                        />
+                      )}
+                      {!showStudentOnly && (
+                        <Radio
+                          size={compact ? 'small' : 'medium'}
+                          name={`epo-noten-cat-${i}`}
+                          checked={teacherChecked}
+                          onChange={() => setScore(i, p)}
+                          disabled={readOnly || studentGhost}
+                          value={p}
+                          sx={{
+                            p: compact ? 0.35 : 0.75,
+                            '& .MuiSvgIcon-root': { fontSize: compact ? 20 : 26 },
+                            color: studentGhost ? 'rgba(156, 39, 176, 0.35)' : 'rgba(25, 118, 210, 0.45)',
+                            '&.Mui-checked': {
+                              color: studentGhost ? studentGhostPurple : epoNotenPalette.primary,
+                            },
+                            ...(studentPick &&
+                              teacherChecked &&
+                              !studentGhost && {
+                                '&.Mui-checked': {
+                                  color: epoNotenPalette.primary,
+                                  filter: 'drop-shadow(0 0 0 2px rgba(156, 39, 176, 0.35))',
+                                },
+                              }),
+                          }}
+                        />
+                      )}
+                    </Box>
+                  </TableCell>
+                );
+              })}
             </TableRow>
           ))}
         </TableBody>

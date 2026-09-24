@@ -741,55 +741,22 @@ export function EpoNotenTeacherView() {
                         ) : null}
 
                         <Box sx={{ position: 'relative', width: '100%' }}>
-                            <Box
-                              sx={{
-                                position: 'relative',
-                                borderRadius: 1.25,
-                                overflow: 'hidden',
-                                width: '100%',
-                              }}
-                            >
-                              {selectedStudent.studentSubmittedAt ? (
-                                <Box
-                                  sx={{
-                                    position: 'absolute',
-                                    inset: 0,
-                                    zIndex: 0,
-                                    opacity: 0.5,
-                                    pointerEvents: 'none',
-                                  }}
-                                >
-                                  <EpoNotenCategoryGrid
-                                    compact
-                                    studentGhost
-                                    label="SuS — Kategorien"
-                                    categories={EPO_NOTEN_TEACHER_CATEGORIES}
-                                    scores={normalizeCategoryScores(selectedStudent.selfScores)}
-                                    readOnly
-                                  />
-                                </Box>
-                              ) : null}
-                              <Box
-                                sx={{
-                                  position: 'relative',
-                                  zIndex: 1,
-                                  ...(selectedStudent.studentSubmittedAt && {
-                                    '& .MuiTableBody-root .MuiTableRow-root': {
-                                      bgcolor: 'rgba(255, 255, 255, 0.78) !important',
-                                    },
-                                    '& .MuiTable-root': { bgcolor: 'transparent' },
-                                  }),
-                                }}
-                              >
-                                <EpoNotenCategoryGrid
-                                  compact
-                                  label="Lehrkraft"
-                                  categories={EPO_NOTEN_TEACHER_CATEGORIES}
-                                  scores={teacherScores}
-                                  onChange={setTeacherScores}
-                                />
-                              </Box>
-                            </Box>
+                            <EpoNotenCategoryGrid
+                              compact
+                              label={
+                                selectedStudent.studentSubmittedAt
+                                  ? 'Lehrkraft (lila = SuS-Wahl)'
+                                  : 'Lehrkraft'
+                              }
+                              categories={EPO_NOTEN_TEACHER_CATEGORIES}
+                              scores={teacherScores}
+                              onChange={setTeacherScores}
+                              studentOverlayScores={
+                                selectedStudent.studentSubmittedAt
+                                  ? normalizeCategoryScores(selectedStudent.selfScores)
+                                  : undefined
+                              }
+                            />
 
                             <Stack
                               direction="row"
