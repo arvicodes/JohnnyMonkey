@@ -144,9 +144,9 @@ export const epoNotenCompactBtnSx = {
 
 export const epoNotenStudentGhostPanelSx = {
   borderRadius: 1.25,
-  border: '1px solid rgba(156, 39, 176, 0.35)',
-  bgcolor: 'rgba(250, 245, 255, 0.55)',
-  color: '#6a1b9a',
+  border: '1px solid rgba(156, 39, 176, 0.22)',
+  bgcolor: 'rgba(250, 245, 255, 0.38)',
+  color: 'rgba(106, 27, 154, 0.82)',
   p: 0.75,
   pointerEvents: 'none' as const,
   userSelect: 'none' as const,
@@ -171,29 +171,29 @@ export const epoNotenInsetBoxSx = {
   p: 1,
 };
 
-/** SuS: Ziele — große Schrift, ruhiges Layout */
+/** SuS: Ziele — gut lesbar, nicht überdimensioniert */
 export const epoNotenStudentGoalFieldSx = {
   '& .MuiOutlinedInput-root': {
-    borderRadius: 2,
+    borderRadius: 1.5,
     bgcolor: '#fff',
-    fontSize: { xs: '1.12rem', sm: '1.18rem' },
-    fontWeight: 600,
-    lineHeight: 1.5,
+    fontSize: { xs: '0.92rem', sm: '0.98rem' },
+    fontWeight: 500,
+    lineHeight: 1.45,
   },
   '& .MuiInputLabel-root': {
-    fontSize: '0.95rem',
-    fontWeight: 700,
+    fontSize: '0.82rem',
+    fontWeight: 600,
   },
 };
 
 export const epoNotenStudentGoalDisplaySx = {
-  p: 1.5,
-  borderRadius: 2,
+  p: 0.85,
+  borderRadius: 1.5,
   bgcolor: '#f8fafc',
   border: `1px solid ${epoNotenPalette.border}`,
-  fontSize: { xs: '1.12rem', sm: '1.2rem' },
-  fontWeight: 700,
-  lineHeight: 1.5,
+  fontSize: { xs: '0.9rem', sm: '0.95rem' },
+  fontWeight: 600,
+  lineHeight: 1.45,
   color: epoNotenPalette.textPrimary,
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',

@@ -1070,7 +1070,6 @@ export function EpoNotenTeacherView() {
                           <Box
                             sx={{
                               ...epoNotenStudentGhostPanelSx,
-                              opacity: 0.75,
                               py: 0.35,
                               px: 0.5,
                               mb: 0.25,
@@ -1105,9 +1104,10 @@ export function EpoNotenTeacherView() {
 
                             <EpoNotenCategoryGrid
                               compact
+                              teacherEmphasis
                               label={
                                 selectedStudent.studentSubmittedAt
-                                  ? 'Lehrkraft (vorausgefüllt aus SuS — lila = SuS-Wahl)'
+                                  ? 'Lehrkraft — blau = deine Wahl · lila (transparent) = SuS'
                                   : 'Lehrkraft'
                               }
                               categories={EPO_NOTEN_TEACHER_CATEGORIES}
@@ -1236,20 +1236,27 @@ export function EpoNotenTeacherView() {
                         {(selectedStudent.goalsSubmittedAt ||
                           selectedStudent.goal?.trim() ||
                           selectedStudent.goalAction?.trim()) && (
-                          <Box sx={{ ...epoNotenInsetBoxSx, bgcolor: epoNotenPalette.accentTint, p: 0.55 }}>
-                            <Typography sx={{ fontWeight: 800, fontSize: '0.68rem', mb: 0.2 }}>
+                          <Box
+                            sx={{
+                              ...epoNotenInsetBoxSx,
+                              bgcolor: 'rgba(46, 125, 50, 0.06)',
+                              borderColor: 'rgba(46, 125, 50, 0.2)',
+                              p: 0.5,
+                            }}
+                          >
+                            <Typography sx={{ fontWeight: 700, fontSize: '0.62rem', mb: 0.15, color: 'text.secondary' }}>
                               Ziele (SuS)
                               {!selectedStudent.goalsSubmittedAt && (
-                                <Typography component="span" sx={{ fontWeight: 600, fontSize: '0.65rem', ml: 0.5 }}>
-                                  (noch nicht abgeschickt)
+                                <Typography component="span" sx={{ fontWeight: 500, fontSize: '0.58rem', ml: 0.35 }}>
+                                  · noch nicht abgeschickt
                                 </Typography>
                               )}
                             </Typography>
-                            <Typography variant="body2" sx={{ fontSize: '0.76rem', whiteSpace: 'pre-wrap' }}>
-                              <strong>Mein Ziel:</strong> {selectedStudent.goal?.trim() || '—'}
+                            <Typography sx={{ fontSize: '0.68rem', lineHeight: 1.35, whiteSpace: 'pre-wrap' }}>
+                              <strong>Ziel:</strong> {selectedStudent.goal?.trim() || '—'}
                             </Typography>
-                            <Typography variant="body2" sx={{ fontSize: '0.76rem', mt: 0.35, whiteSpace: 'pre-wrap' }}>
-                              <strong>Meine Handlung:</strong> {selectedStudent.goalAction?.trim() || '—'}
+                            <Typography sx={{ fontSize: '0.68rem', mt: 0.2, lineHeight: 1.35, whiteSpace: 'pre-wrap' }}>
+                              <strong>Handlung:</strong> {selectedStudent.goalAction?.trim() || '—'}
                             </Typography>
                           </Box>
                         )}

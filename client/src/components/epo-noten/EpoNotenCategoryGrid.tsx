@@ -24,6 +24,8 @@ type Props = {
   studentGhost?: boolean;
   /** Lehrer-Raster: SuS-Wahl pro Zeile leicht lila hinterlegen */
   studentOverlayScores?: number[];
+  /** Lehrer-Raster deutlich in Blau (eigene Bewertung) */
+  teacherEmphasis?: boolean;
   /** Eindeutige Radio-Gruppen pro Zeile (z. B. Schüler-ID) */
   radioGroupId?: string;
 };
@@ -37,8 +39,10 @@ export function EpoNotenCategoryGrid({
   compact,
   studentGhost,
   studentOverlayScores,
+  teacherEmphasis,
   radioGroupId = 'default',
 }: Props) {
+  const isTeacherOwn = teacherEmphasis && !studentGhost;
   const setScore = (index: number, value: number) => {
     if (readOnly || !onChange) return;
     const next = [...scores];
@@ -50,10 +54,19 @@ export function EpoNotenCategoryGrid({
     <Box
       sx={{
         borderRadius: compact ? 1.5 : 2.5,
-        border: compact ? '1px solid' : `2px solid ${epoNotenPalette.border}`,
-        borderColor: studentGhost ? 'rgba(156, 39, 176, 0.35)' : epoNotenPalette.border,
+        border: isTeacherOwn ? '2px solid' : compact ? '1px solid' : `2px solid ${epoNotenPalette.border}`,
+        borderColor: studentGhost
+          ? 'rgba(156, 39, 176, 0.2)'
+          : isTeacherOwn
+            ? 'rgba(25, 118, 210, 0.55)'
+            : epoNotenPalette.border,
         overflow: 'hidden',
-        bgcolor: studentGhost ? 'rgba(250, 245, 255, 0.85)' : '#fafcff',
+        bgcolor: studentGhost
+          ? 'rgba(250, 245, 255, 0.42)'
+          : isTeacherOwn
+            ? 'rgba(227, 242, 253, 0.75)'
+            : '#fafcff',
+        boxShadow: isTeacherOwn ? '0 2px 10px rgba(25, 118, 210, 0.12)' : undefined,
       }}
     >
       {label && (
@@ -65,8 +78,12 @@ export function EpoNotenCategoryGrid({
             py: compact ? 0.45 : 0.75,
             fontWeight: 800,
             fontSize: compact ? '0.78rem' : undefined,
-            bgcolor: studentGhost ? 'rgba(156, 39, 176, 0.14)' : epoNotenPalette.primaryTint,
-            color: studentGhost ? studentGhostPurple : epoNotenPalette.heading,
+            bgcolor: studentGhost
+              ? 'rgba(156, 39, 176, 0.07)'
+              : isTeacherOwn
+                ? 'rgba(25, 118, 210, 0.22)'
+                : epoNotenPalette.primaryTint,
+            color: studentGhost ? 'rgba(106, 27, 154, 0.75)' : isTeacherOwn ? '#0d47a1' : epoNotenPalette.heading,
           }}
         >
           {label}
@@ -137,10 +154,10 @@ export function EpoNotenCategoryGrid({
                       py: compact ? 0 : 0.5,
                       px: 0.25,
                       cursor: interactive ? 'pointer' : 'default',
-                      bgcolor: studentPick && !studentGhost ? 'rgba(186, 104, 200, 0.16)' : undefined,
+                      bgcolor: studentPick && !studentGhost ? 'rgba(186, 104, 200, 0.09)' : undefined,
                       boxShadow:
                         studentPick && !studentGhost
-                          ? 'inset 0 0 0 1px rgba(156, 39, 176, 0.28)'
+                          ? 'inset 0 0 0 1px rgba(156, 39, 176, 0.18)'
                           : undefined,
                     }}
                   >
@@ -172,19 +189,31 @@ export function EpoNotenCategoryGrid({
                           '& .MuiSvgIcon-root': { fontSize: compact ? 20 : 26 },
                           color:
                             studentPick && !teacherChecked && !studentGhost
-                              ? 'rgba(156, 39, 176, 0.55)'
+                              ? 'rgba(156, 39, 176, 0.38)'
                               : studentGhost
-                                ? 'rgba(156, 39, 176, 0.35)'
-                                : 'rgba(25, 118, 210, 0.45)',
+                                ? 'rgba(156, 39, 176, 0.28)'
+                                : isTeacherOwn
+                                  ? 'rgba(25, 118, 210, 0.55)'
+                                  : 'rgba(25, 118, 210, 0.45)',
                           '&.Mui-checked': {
-                            color: studentGhost ? studentGhostPurple : epoNotenPalette.primary,
+                            color: studentGhost
+                              ? 'rgba(156, 39, 176, 0.55)'
+                              : isTeacherOwn
+                                ? '#1565c0'
+                                : epoNotenPalette.primary,
                           },
                           ...(studentPick &&
                             teacherChecked &&
                             !studentGhost && {
                               '&.Mui-checked': {
-                                color: epoNotenPalette.primary,
-                                filter: 'drop-shadow(0 0 0 2px rgba(156, 39, 176, 0.35))',
+                                color: isTeacherOwn ? '#1565c0' : epoNotenPalette.primary,
+                                filter: 'drop-shadow(0 0 0 2px rgba(156, 39, 176, 0.22))',
+                              },
+                            }),
+                          ...(isTeacherOwn &&
+                            teacherChecked && {
+                              '&.Mui-checked .MuiSvgIcon-root': {
+                                fontSize: compact ? 22 : 28,
                               },
                             }),
                         }}

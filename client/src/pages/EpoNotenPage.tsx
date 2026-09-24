@@ -394,16 +394,16 @@ export default function EpoNotenPage() {
                           >
                             <Box
                               sx={{
-                                p: 1.25,
+                                p: 1,
                                 borderRadius: 2,
-                                bgcolor: epoNotenPalette.primaryTint,
-                                border: `1px solid ${epoNotenPalette.border}`,
+                                bgcolor: 'rgba(25, 118, 210, 0.08)',
+                                border: `1px solid rgba(25, 118, 210, 0.2)`,
                               }}
                             >
                               <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
                                 Du
                               </Typography>
-                              <Typography sx={{ fontWeight: 900, fontSize: '1.35rem', color: epoNotenPalette.primary }}>
+                              <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', color: 'rgba(25, 118, 210, 0.85)' }}>
                                 {selfLabel}
                               </Typography>
                               <Typography variant="body2" color="text.secondary">
@@ -413,10 +413,11 @@ export default function EpoNotenPage() {
                             </Box>
                             <Box
                               sx={{
-                                p: 1.25,
+                                p: 1,
                                 borderRadius: 2,
-                                bgcolor: epoNotenPalette.accentTint,
-                                border: `1px solid ${epoNotenPalette.border}`,
+                                bgcolor: 'rgba(46, 125, 50, 0.14)',
+                                border: `2px solid rgba(46, 125, 50, 0.45)`,
+                                boxShadow: '0 2px 8px rgba(46, 125, 50, 0.12)',
                               }}
                             >
                               <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
@@ -452,11 +453,10 @@ export default function EpoNotenPage() {
                             <AccordionDetails sx={{ pt: 0, px: 1, pb: 1 }}>
                               <Stack spacing={1.25}>
                                 <Box>
-                                  <Typography sx={{ fontWeight: 800, fontSize: '0.8rem', mb: 0.5 }}>
-                                    Deine Selbsteinschätzung
-                                  </Typography>
                                   <EpoNotenCategoryGrid
                                     compact
+                                    studentGhost
+                                    label="Deine Selbsteinschätzung"
                                     radioGroupId={`sus-self-${selectedRoundId}`}
                                     categories={EPO_NOTEN_STUDENT_CATEGORIES}
                                     scores={normalizeCategoryScores(myEntry.selfScores)}
@@ -464,11 +464,10 @@ export default function EpoNotenPage() {
                                   />
                                 </Box>
                                 <Box>
-                                  <Typography sx={{ fontWeight: 800, fontSize: '0.8rem', mb: 0.5 }}>
-                                    Lehrkraft
-                                  </Typography>
                                   <EpoNotenCategoryGrid
                                     compact
+                                    teacherEmphasis
+                                    label="Lehrkraft"
                                     radioGroupId={`sus-teacher-${selectedRoundId}`}
                                     categories={EPO_NOTEN_TEACHER_CATEGORIES}
                                     scores={normalizeCategoryScores(myEntry.teacherScores)}
@@ -482,19 +481,19 @@ export default function EpoNotenPage() {
                       );
                     })()}
 
-                    <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx, p: 1.5 }}>
-                      <Typography sx={{ ...epoNotenSectionTitleSx, mb: 1.5 }}>
+                    <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx, p: 1.1 }}>
+                      <Typography sx={{ ...epoNotenSectionTitleSx, fontSize: '0.98rem', mb: 1 }}>
                         Mein Ziel für den nächsten Zeitraum
                       </Typography>
 
                       {canEditGoals && phase === 'goals' ? (
-                        <Stack spacing={2}>
+                        <Stack spacing={1.25}>
                           <TextField
                             label="Mein konkretes Ziel"
                             value={goal}
                             onChange={(e) => setGoal(e.target.value)}
                             multiline
-                            minRows={3}
+                            minRows={2}
                             fullWidth
                             sx={epoNotenStudentGoalFieldSx}
                           />
@@ -503,7 +502,7 @@ export default function EpoNotenPage() {
                             value={goalAction}
                             onChange={(e) => setGoalAction(e.target.value)}
                             multiline
-                            minRows={3}
+                            minRows={2}
                             fullWidth
                             sx={epoNotenStudentGoalFieldSx}
                           />
@@ -519,7 +518,7 @@ export default function EpoNotenPage() {
                           </Box>
                         </Stack>
                       ) : (
-                        <Stack spacing={2}>
+                        <Stack spacing={1}>
                           <Box>
                             <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
                               Mein Ziel
