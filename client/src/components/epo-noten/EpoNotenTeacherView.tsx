@@ -28,6 +28,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PublishIcon from '@mui/icons-material/Publish';
 import UnpublishedIcon from '@mui/icons-material/Unpublished';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import LockOpenIcon from '@mui/icons-material/LockOpen';
 import { apiDelete, apiGetSafe, apiPost, apiPut } from '../../lib/api';
 import {
   EPO_NOTEN_TEACHER_CATEGORIES,
@@ -260,26 +261,13 @@ export function EpoNotenTeacherView() {
     return true;
   };
 
-  const saveTeacher = async () => {
-    if (!round || !selectedStudentId) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await persistTeacherEntry(teacherGrade.trim());
-      await loadDetail(round.id);
-      await loadList();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const releaseOne = async () => {
     if (!round || !selectedStudentId) return;
-    const grade = teacherGrade.trim();
+    const grade =
+      teacherGrade.trim() ||
+      (allCategoriesSelected(teacherScores) ? computedRasterResult : '');
     if (!grade) {
-      setError('Bitte die EPO-Note eintragen, bevor du abschickst.');
+      setError('Bitte Raster oder Note/MSS-Punkte eintragen, bevor du freigibst.');
       return;
     }
     setSaving(true);
@@ -287,7 +275,7 @@ export function EpoNotenTeacherView() {
     try {
       await persistTeacherEntry(grade);
       const res = await apiPost(`/api/epo-noten/${round.id}/release`, { studentIds: [selectedStudentId] });
-      if (!res?.ok) throw new Error('Abschicken fehlgeschlagen');
+      if (!res?.ok) throw new Error('Freigabe fehlgeschlagen');
       await loadDetail(round.id);
       await loadList();
     } catch (e) {
@@ -382,6 +370,13 @@ export function EpoNotenTeacherView() {
   }
 
   const selectedRoundMeta = rounds.find((r) => r.id === selectedId);
+  const canReleaseToStudent =
+    Boolean(selectedStudentId) &&
+    !selectedStudent?.teacherReleasedAt &&
+    Boolean(
+      teacherGrade.trim() ||
+        (allCategoriesSelected(teacherScores) && computedRasterResult),
+    );
 
   return (
     <Stack spacing={1.25} sx={{ width: '100%', minWidth: 0 }}>
@@ -538,6 +533,27 @@ export function EpoNotenTeacherView() {
                     </span>
                   </Tooltip>
                 )}
+                <Tooltip title="Meine Bewertung freigeben (an ausgewählten SuS)">
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={releaseOne}
+                      disabled={saving || !canReleaseToStudent}
+                      aria-label="Meine Bewertung freigeben"
+                      sx={{
+                        ...epoNotenCompactIconBtnSx,
+                        bgcolor: canReleaseToStudent ? epoNotenPalette.primary : undefined,
+                        color: canReleaseToStudent ? '#fff' : undefined,
+                        borderColor: canReleaseToStudent ? epoNotenPalette.primary : undefined,
+                        '&:hover': canReleaseToStudent
+                          ? { bgcolor: '#1565c0', borderColor: '#1565c0' }
+                          : undefined,
+                      }}
+                    >
+                      <LockOpenIcon sx={epoNotenCompactIconSx} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
                 <Tooltip title="Alle SuS zurücksetzen (Selbsteinschätzung erneut möglich)">
                   <span>
                     <IconButton
@@ -871,28 +887,6 @@ export function EpoNotenTeacherView() {
                               />
                             </Box>
                         </Box>
-
-                        <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                          <Button
-                            size="small"
-                            variant="contained"
-                            onClick={saveTeacher}
-                            disabled={saving}
-                            sx={{ ...epoNotenCompactBtnSx, flex: { xs: '1 1 100%', sm: '0 1 auto' } }}
-                          >
-                            Speichern
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="secondary"
-                            onClick={releaseOne}
-                            disabled={saving || !teacherGrade.trim()}
-                            sx={{ ...epoNotenCompactBtnSx, flex: { xs: '1 1 100%', sm: '0 1 auto' } }}
-                          >
-                            An SuS abschicken
-                          </Button>
-                        </Stack>
 
                         {selectedStudent.teacherReleasedAt && (
                           <Box sx={{ ...epoNotenInsetBoxSx, bgcolor: epoNotenPalette.accentTint }}>
