@@ -77,10 +77,34 @@ export function normalizeCategoryScores(raw: unknown): number[] {
   });
 }
 
+export type EpoNotenSuggestedGradeMode = 'note' | 'mss';
+
+export function isValidSuggestedGrade(mode: EpoNotenSuggestedGradeMode, value: string): boolean {
+  const v = value.trim();
+  if (!v) return false;
+  if (mode === 'mss') {
+    if (!/^\d{1,2}$/.test(v)) return false;
+    const n = Number(v);
+    return Number.isInteger(n) && n >= 0 && n <= 15;
+  }
+  return v.length > 0;
+}
+
+export function formatSuggestedGradeDisplay(
+  mode: EpoNotenSuggestedGradeMode | undefined,
+  value: string | undefined,
+): string {
+  const v = (value || '').trim();
+  if (!v) return '—';
+  if (mode === 'mss') return `${v} Punkte (MSS)`;
+  return v;
+}
+
 export type EpoNotenEntry = {
   studentId: string;
   studentName: string;
   suggestedGrade?: string;
+  suggestedGradeMode?: EpoNotenSuggestedGradeMode;
   justification?: string;
   selfScores?: number[];
   selfGradeFromTable?: string;

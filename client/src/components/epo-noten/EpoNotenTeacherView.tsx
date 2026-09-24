@@ -31,6 +31,7 @@ import {
   EPO_NOTEN_TEACHER_CATEGORIES,
   type EpoNotenEntry,
   type EpoNotenRound,
+  formatSuggestedGradeDisplay,
   gradeFromTotalPoints,
   normalizeCategoryScores,
   sumCategoryScores,
@@ -447,7 +448,13 @@ export function EpoNotenTeacherView() {
                         <>
                           <Typography variant="subtitle2">Selbsteinschätzung</Typography>
                           <Typography variant="body2">
-                            Notenvorschlag: <strong>{selectedStudent.suggestedGrade || '—'}</strong>
+                            Noteneinschätzung:{' '}
+                            <strong>
+                              {formatSuggestedGradeDisplay(
+                                selectedStudent.suggestedGradeMode,
+                                selectedStudent.suggestedGrade,
+                              )}
+                            </strong>
                           </Typography>
                           <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
                             {selectedStudent.justification || '—'}

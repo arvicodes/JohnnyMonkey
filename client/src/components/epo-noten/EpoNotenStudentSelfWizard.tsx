@@ -8,6 +8,8 @@ import {
   Collapse,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material';
 import { EpoNotenCategoryGrid } from './EpoNotenCategoryGrid';
@@ -24,7 +26,9 @@ import {
   gradeFromTotalPoints,
   minPointsThresholdForTotal,
   allCategoriesSelected,
+  isValidSuggestedGrade,
   sumCategoryScores,
+  type EpoNotenSuggestedGradeMode,
 } from '../../lib/epoNotenShared';
 
 type WizardStep = 1 | 2 | 3 | 'done';
@@ -33,10 +37,12 @@ type Props = {
   locked: boolean;
   submitting: boolean;
   suggestedGrade: string;
+  suggestedGradeMode: EpoNotenSuggestedGradeMode;
   justification: string;
   selfScores: number[];
   selfGradeFromTable: string;
   onSuggestedGradeChange: (v: string) => void;
+  onSuggestedGradeModeChange: (v: EpoNotenSuggestedGradeMode) => void;
   onJustificationChange: (v: string) => void;
   onSelfScoresChange: (v: number[]) => void;
   onSelfGradeFromTableChange: (v: string) => void;
@@ -48,9 +54,11 @@ export function EpoNotenStudentSelfWizard({
   locked,
   submitting,
   suggestedGrade,
+  suggestedGradeMode,
   justification,
   selfScores,
   onSuggestedGradeChange,
+  onSuggestedGradeModeChange,
   onJustificationChange,
   onSelfScoresChange,
   onSelfGradeFromTableChange,
@@ -171,7 +179,8 @@ export function EpoNotenStudentSelfWizard({
     if (step === 3) setStep(2);
   };
 
-  const canNextStep1 = suggestedGrade.trim().length > 0 && justification.trim().length > 0;
+  const canNextStep1 =
+    isValidSuggestedGrade(suggestedGradeMode, suggestedGrade) && justification.trim().length > 0;
   const canNextStep2 = !animRunning && allCategoriesSelected(selfScores);
 
   const evaluationPoints = step === 'done' ? totalTarget : animTotal;
@@ -193,14 +202,59 @@ export function EpoNotenStudentSelfWizard({
 
           {(step === 1 || step === 2 || step === 3 || step === 'done') && (
             <Stack spacing={1.25}>
-              <TextField
-                label="Notenvorschlag für deine aktuelle EPO-Note"
-                value={suggestedGrade}
-                onChange={(e) => onSuggestedGradeChange(e.target.value)}
-                disabled={readOnly}
-                fullWidth
-                sx={epoNotenKidTextFieldSx}
-              />
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.75 }}>
+                  Noteneinschätzung
+                </Typography>
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  value={suggestedGradeMode}
+                  onChange={(_, v: EpoNotenSuggestedGradeMode | null) => {
+                    if (!v || readOnly) return;
+                    onSuggestedGradeModeChange(v);
+                  }}
+                  disabled={readOnly}
+                  sx={{ mb: 1 }}
+                >
+                  <ToggleButton value="note" sx={{ px: 1.5, fontWeight: 600 }}>
+                    als Note
+                  </ToggleButton>
+                  <ToggleButton value="mss" sx={{ px: 1.5, fontWeight: 600 }}>
+                    MSS-Punkte (0–15)
+                  </ToggleButton>
+                </ToggleButtonGroup>
+                <TextField
+                  label={
+                    suggestedGradeMode === 'mss'
+                      ? 'Deine Einschätzung in MSS-Punkten'
+                      : 'Deine Einschätzung als Note'
+                  }
+                  placeholder={suggestedGradeMode === 'mss' ? 'z. B. 11' : 'z. B. 2+ oder 3−'}
+                  value={suggestedGrade}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (suggestedGradeMode === 'mss') {
+                      onSuggestedGradeChange(raw.replace(/[^\d]/g, '').slice(0, 2));
+                      return;
+                    }
+                    onSuggestedGradeChange(raw);
+                  }}
+                  disabled={readOnly}
+                  fullWidth
+                  inputMode={suggestedGradeMode === 'mss' ? 'numeric' : 'text'}
+                  helperText={
+                    suggestedGradeMode === 'mss'
+                      ? 'Ganzzahl von 0 bis 15'
+                      : 'Schulnote, z. B. 1, 2+, 3−'
+                  }
+                  error={
+                    suggestedGrade.trim().length > 0 &&
+                    !isValidSuggestedGrade(suggestedGradeMode, suggestedGrade)
+                  }
+                  sx={epoNotenKidTextFieldSx}
+                />
+              </Box>
               <TextField
                 label="Kurze Begründung"
                 value={justification}

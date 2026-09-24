@@ -51,6 +51,7 @@ type EpoNotenEntry = {
   studentId: string;
   studentName: string;
   suggestedGrade?: string;
+  suggestedGradeMode?: 'note' | 'mss';
   justification?: string;
   selfScores?: number[];
   selfGradeFromTable?: string;
@@ -751,10 +752,14 @@ export class EpoNotenController {
           ? req.body.selfGradeFromTable.trim()
           : gradeFromTotalPoints(total);
 
+      const rawMode = req.body?.suggestedGradeMode;
+      const suggestedGradeMode: 'note' | 'mss' = rawMode === 'mss' ? 'mss' : 'note';
+
       const entry: EpoNotenEntry = {
         studentId: user.id,
         studentName: user.name,
         suggestedGrade: typeof req.body?.suggestedGrade === 'string' ? req.body.suggestedGrade.trim() : '',
+        suggestedGradeMode,
         justification: typeof req.body?.justification === 'string' ? req.body.justification.trim() : '',
         selfScores,
         selfGradeFromTable,
@@ -852,6 +857,7 @@ export class EpoNotenController {
         studentId,
         studentName: student.name,
         suggestedGrade: existing?.suggestedGrade,
+        suggestedGradeMode: existing?.suggestedGradeMode,
         justification: existing?.justification,
         selfScores: existing?.selfScores,
         selfGradeFromTable: existing?.selfGradeFromTable,
