@@ -134,6 +134,63 @@ export type EpoNotenEntry = {
   goalsSubmittedAt?: string | null;
 };
 
+/** Lehrer-Raster noch nicht bewertet (inkl. ältere „alles 0“-Platzhalter). */
+export function teacherRasterIsUnset(entry: {
+  teacherScores?: number[];
+  teacherGrade?: string;
+}): boolean {
+  const t = normalizeCategoryScores(entry.teacherScores);
+  if (t.every((s) => s < 0)) return true;
+  if (t.every((s) => s === 0) && !entry.teacherGrade?.trim()) return true;
+  return false;
+}
+
+export function selfScoresForTeacherDefault(entry: EpoNotenEntry): number[] | null {
+  if (!entry.studentSubmittedAt) return null;
+  const self = normalizeCategoryScores(entry.selfScores);
+  if (!self.some((s) => s >= 0)) return null;
+  return self;
+}
+
+/** Lehrer-Raster: gespeicherte Werte oder — wenn leer — SuS-Selbsteinschätzung. */
+export function teacherFormScoresFromEntry(entry: EpoNotenEntry | undefined): number[] {
+  if (!entry) return emptyCategoryScores();
+  const fromSelf = selfScoresForTeacherDefault(entry);
+  const saved = normalizeCategoryScores(entry.teacherScores);
+  if (!teacherRasterIsUnset(entry)) {
+    if (saved.every((s) => s === 0) && fromSelf && fromSelf.some((s) => s > 0)) {
+      return fromSelf;
+    }
+    return saved;
+  }
+  if (fromSelf) return fromSelf;
+  return saved;
+}
+
+export function shouldPrefillTeacherFromSelf(entry: EpoNotenEntry): boolean {
+  const fromSelf = selfScoresForTeacherDefault(entry);
+  if (!fromSelf) return false;
+  if (teacherRasterIsUnset(entry)) return true;
+  const saved = normalizeCategoryScores(entry.teacherScores);
+  return saved.every((s) => s === 0) && fromSelf.some((s) => s > 0) && !entry.teacherReleasedAt;
+}
+
+export function teacherFormGradeFromEntry(
+  entry: EpoNotenEntry | undefined,
+  mode: EpoNotenAssessmentMode,
+): string {
+  if (!entry) return '';
+  if (entry.teacherGrade?.trim()) return entry.teacherGrade.trim();
+  if (!entry.studentSubmittedAt) return '';
+  const scores = teacherFormScoresFromEntry(entry);
+  if (allCategoriesSelected(scores)) {
+    return rasterResultFromTotal(mode, sumCategoryScores(scores));
+  }
+  if (entry.suggestedGrade?.trim()) return entry.suggestedGrade.trim();
+  if (entry.selfGradeFromTable?.trim()) return entry.selfGradeFromTable.trim();
+  return '';
+}
+
 export type EpoNotenRound = {
   id: string;
   title: string;

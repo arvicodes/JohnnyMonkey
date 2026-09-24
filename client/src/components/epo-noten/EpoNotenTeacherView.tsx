@@ -42,7 +42,10 @@ import {
   rasterResultFromTotal,
   type EpoNotenAssessmentMode,
   normalizeCategoryScores,
+  shouldPrefillTeacherFromSelf,
   sumCategoryScores,
+  teacherFormGradeFromEntry,
+  teacherFormScoresFromEntry,
 } from '../../lib/epoNotenShared';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import { EpoNotenCategoryGrid } from './EpoNotenCategoryGrid';
@@ -90,6 +93,8 @@ export function EpoNotenTeacherView() {
   const [publishOnCreate, setPublishOnCreate] = useState(true);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  /** null = alle Gruppen in der SuS-Liste, sonst nur diese Lerngruppe */
+  const [studentListGroupFilter, setStudentListGroupFilter] = useState<string | null>(null);
 
   const loadList = useCallback(async () => {
     const res = await apiGetSafe('/api/epo-noten/list');
@@ -139,6 +144,10 @@ export function EpoNotenTeacherView() {
     }
   }, [selectedId, loadDetail]);
 
+  useEffect(() => {
+    setStudentListGroupFilter(null);
+  }, [selectedId]);
+
   const selectedStudent = students.find((s) => s.studentId === selectedStudentId) ?? null;
 
   const skipRasterGradeSyncRef = useRef(false);
@@ -168,10 +177,12 @@ export function EpoNotenTeacherView() {
     if (selectedStudentId !== prevSelectedStudentIdRef.current) {
       prevSelectedStudentIdRef.current = selectedStudentId;
       teacherScoresDirtyRef.current = false;
-      const scores = normalizeCategoryScores(entry?.teacherScores);
+      const mode =
+        entry?.groupId && round ? assessmentModeForGroup(round, entry.groupId) : 'note';
+      const scores = teacherFormScoresFromEntry(entry);
       teacherScoresRef.current = scores;
       setTeacherScores(scores);
-      const grade = entry?.teacherGrade || '';
+      const grade = teacherFormGradeFromEntry(entry, mode);
       teacherGradeRef.current = grade;
       setTeacherGrade(grade);
       skipRasterGradeSyncRef.current = true;
@@ -179,17 +190,19 @@ export function EpoNotenTeacherView() {
     }
 
     if (teacherScoresDirtyRef.current || !entry) return;
-    const server = normalizeCategoryScores(entry.teacherScores);
+    const mode =
+      entry.groupId && round ? assessmentModeForGroup(round, entry.groupId) : 'note';
+    const server = teacherFormScoresFromEntry(entry);
     const local = teacherScoresRef.current;
     if (local.every((s) => s < 0) && server.some((s) => s >= 0)) {
       teacherScoresRef.current = server;
       setTeacherScores(server);
-      const grade = entry.teacherGrade || '';
+      const grade = teacherFormGradeFromEntry(entry, mode);
       teacherGradeRef.current = grade;
       setTeacherGrade(grade);
       skipRasterGradeSyncRef.current = true;
     }
-  }, [selectedStudentId, students]);
+  }, [selectedStudentId, students, round]);
 
   const totalTeacher = sumCategoryScores(teacherScores);
   const selectedAssessmentMode: EpoNotenAssessmentMode =
@@ -272,6 +285,23 @@ export function EpoNotenTeacherView() {
 
     return teacherSaveChainRef.current;
   }, [loadList, persistTeacherEntry, round, selectedStudentId, students]);
+
+  const prefillFromSelfKeyRef = useRef('');
+
+  useEffect(() => {
+    if (!round || !selectedStudentId) return;
+    const entry = students.find((s) => s.studentId === selectedStudentId);
+    if (!entry || entry.teacherReleasedAt) return;
+    if (!shouldPrefillTeacherFromSelf(entry)) {
+      prefillFromSelfKeyRef.current = '';
+      return;
+    }
+    const key = `${selectedStudentId}:${entry.studentSubmittedAt ?? ''}`;
+    if (prefillFromSelfKeyRef.current === key) return;
+    prefillFromSelfKeyRef.current = key;
+    teacherScoresDirtyRef.current = true;
+    void saveTeacherDraftNow().catch(() => undefined);
+  }, [round, saveTeacherDraftNow, selectedStudentId, students]);
 
   useEffect(() => {
     if (!selectedStudent) return;
@@ -546,6 +576,11 @@ export function EpoNotenTeacherView() {
     return sections;
   }, [groups, round, students]);
 
+  const visibleStudentSections = useMemo(() => {
+    if (!studentListGroupFilter) return studentSections;
+    return studentSections.filter((s) => s.groupId === studentListGroupFilter);
+  }, [studentListGroupFilter, studentSections]);
+
   if (loading && rounds.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
@@ -791,7 +826,10 @@ export function EpoNotenTeacherView() {
 
                 <Box>
                   <Typography variant="caption" sx={{ fontWeight: 700, color: epoNotenPalette.textSecondary }}>
-                    Lerngruppen
+                    Lerngruppen in dieser Runde
+                  </Typography>
+                  <Typography variant="caption" display="block" sx={{ color: 'text.secondary', fontSize: '0.65rem', mt: 0.15 }}>
+                    Tippen = zur Runde hinzufügen/entfernen · unten bei „Schüler“ filtern
                   </Typography>
                   <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mt: 0.35 }}>
                     {groups.map((g) => {
@@ -881,9 +919,47 @@ export function EpoNotenTeacherView() {
                   }}
                 >
                   <Box sx={{ minWidth: 0 }}>
-                    <Typography sx={{ fontWeight: 800, fontSize: '0.75rem', mb: 0.5, color: epoNotenPalette.heading }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: '0.75rem', mb: 0.35, color: epoNotenPalette.heading }}>
                       Schüler
                     </Typography>
+                    {round.groupIds.length > 1 && (
+                      <Stack direction="row" flexWrap="wrap" gap={0.35} sx={{ mb: 0.5 }}>
+                        <Chip
+                          size="small"
+                          label="Alle Gruppen"
+                          clickable
+                          onClick={() => setStudentListGroupFilter(null)}
+                          variant={studentListGroupFilter === null ? 'filled' : 'outlined'}
+                          sx={{
+                            height: 22,
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            bgcolor: studentListGroupFilter === null ? epoNotenPalette.primaryTint : undefined,
+                          }}
+                        />
+                        {round.groupIds.map((gid) => {
+                          const g = groups.find((x) => x.id === gid);
+                          const active = studentListGroupFilter === gid;
+                          return (
+                            <Chip
+                              key={gid}
+                              size="small"
+                              label={g?.name || gid}
+                              clickable
+                              onClick={() => setStudentListGroupFilter(active ? null : gid)}
+                              variant={active ? 'filled' : 'outlined'}
+                              sx={{
+                                height: 22,
+                                fontSize: '0.65rem',
+                                fontWeight: 700,
+                                bgcolor: active ? epoNotenPalette.primaryTint : undefined,
+                                borderColor: active ? epoNotenPalette.primary : undefined,
+                              }}
+                            />
+                          );
+                        })}
+                      </Stack>
+                    )}
                     <List
                       dense
                       sx={{
@@ -896,29 +972,31 @@ export function EpoNotenTeacherView() {
                         py: 0,
                       }}
                     >
-                      {studentSections.map((section, sectionIndex) => (
+                      {visibleStudentSections.map((section, sectionIndex) => (
                         <React.Fragment key={section.groupId}>
-                          <ListSubheader
-                            disableSticky
-                            sx={{
-                              lineHeight: 1.25,
-                              py: 0.45,
-                              px: 0.75,
-                              fontSize: '0.68rem',
-                              fontWeight: 800,
-                              color: epoNotenPalette.heading,
-                              bgcolor: epoNotenPalette.sand,
-                              borderBottom: '1px solid',
-                              borderTop: sectionIndex > 0 ? '1px solid' : undefined,
-                              borderColor: 'divider',
-                            }}
-                          >
-                            {section.groupName}
-                          </ListSubheader>
+                          {!studentListGroupFilter && (
+                            <ListSubheader
+                              disableSticky
+                              sx={{
+                                lineHeight: 1.25,
+                                py: 0.45,
+                                px: 0.75,
+                                fontSize: '0.68rem',
+                                fontWeight: 800,
+                                color: epoNotenPalette.heading,
+                                bgcolor: epoNotenPalette.sand,
+                                borderBottom: '1px solid',
+                                borderTop: sectionIndex > 0 ? '1px solid' : undefined,
+                                borderColor: 'divider',
+                              }}
+                            >
+                              {section.groupName}
+                            </ListSubheader>
+                          )}
                           {section.students.map((s, studentIndex) => {
                             const active = s.studentId === selectedStudentId;
                             const isLastInSection = studentIndex === section.students.length - 1;
-                            const isLastSection = sectionIndex === studentSections.length - 1;
+                            const isLastSection = sectionIndex === visibleStudentSections.length - 1;
                             return (
                               <ListItemButton
                                 key={`${section.groupId}-${s.studentId}`}
@@ -1036,7 +1114,7 @@ export function EpoNotenTeacherView() {
                               readOnly={Boolean(selectedStudent.teacherReleasedAt)}
                               label={
                                 selectedStudent.studentSubmittedAt
-                                  ? 'Lehrkraft (lila = SuS-Wahl)'
+                                  ? 'Lehrkraft (vorausgefüllt aus SuS — lila = SuS-Wahl)'
                                   : 'Lehrkraft'
                               }
                               categories={EPO_NOTEN_TEACHER_CATEGORIES}
@@ -1162,16 +1240,23 @@ export function EpoNotenTeacherView() {
                             )}
                         </Box>
 
-                        {selectedStudent.teacherReleasedAt && (
+                        {(selectedStudent.goalsSubmittedAt ||
+                          selectedStudent.goal?.trim() ||
+                          selectedStudent.goalAction?.trim()) && (
                           <Box sx={{ ...epoNotenInsetBoxSx, bgcolor: epoNotenPalette.accentTint }}>
                             <Typography sx={{ fontWeight: 800, fontSize: '0.75rem', mb: 0.35 }}>
                               Ziele (SuS)
+                              {!selectedStudent.goalsSubmittedAt && (
+                                <Typography component="span" sx={{ fontWeight: 600, fontSize: '0.65rem', ml: 0.5 }}>
+                                  (noch nicht abgeschickt)
+                                </Typography>
+                              )}
                             </Typography>
-                            <Typography variant="body2" sx={{ fontSize: '0.76rem' }}>
-                              {selectedStudent.goal || '—'}
+                            <Typography variant="body2" sx={{ fontSize: '0.76rem', whiteSpace: 'pre-wrap' }}>
+                              <strong>Mein Ziel:</strong> {selectedStudent.goal?.trim() || '—'}
                             </Typography>
-                            <Typography variant="body2" sx={{ fontSize: '0.76rem', mt: 0.35 }}>
-                              {selectedStudent.goalAction || '—'}
+                            <Typography variant="body2" sx={{ fontSize: '0.76rem', mt: 0.35, whiteSpace: 'pre-wrap' }}>
+                              <strong>Meine Handlung:</strong> {selectedStudent.goalAction?.trim() || '—'}
                             </Typography>
                           </Box>
                         )}
