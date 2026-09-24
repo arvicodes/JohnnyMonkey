@@ -32,7 +32,6 @@ import {
   EPO_NOTEN_TEACHER_CATEGORIES,
   type EpoNotenEntry,
   type EpoNotenStudentSession,
-  formatSuggestedGradeDisplay,
   emptyCategoryScores,
   minPointsThresholdForTotal,
   normalizeCategoryScores,
@@ -368,9 +367,6 @@ export default function EpoNotenPage() {
                           <Typography variant="subtitle2" sx={{ mb: 0.75, fontWeight: 800 }}>
                             Deine Selbsteinschätzung
                           </Typography>
-                          <Typography variant="body2" sx={{ fontSize: '0.8rem', mb: 1 }}>
-                            {formatSuggestedGradeDisplay(assessmentMode, myEntry.suggestedGrade)}
-                          </Typography>
                           <EpoNotenCategoryGrid
                             compact
                             radioGroupId={`sus-self-${selectedRoundId}`}
@@ -434,7 +430,7 @@ export default function EpoNotenPage() {
                     <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx }}>
                       <Box sx={{ p: 1.5 }}>
                         <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 800 }}>
-                          Dein Ziel für den nächsten Zeitraum
+                          Mein Ziel für den nächsten Zeitraum
                         </Typography>
                         <TextField
                           label="Ein konkretes Ziel"
