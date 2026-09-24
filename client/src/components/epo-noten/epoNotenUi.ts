@@ -171,29 +171,29 @@ export const epoNotenInsetBoxSx = {
   p: 1,
 };
 
-/** SuS: Ziele — gut lesbar, nicht überdimensioniert */
+/** SuS: Ziele — gut lesbar, mittlere Größe */
 export const epoNotenStudentGoalFieldSx = {
   '& .MuiOutlinedInput-root': {
-    borderRadius: 1.5,
+    borderRadius: 1.75,
     bgcolor: '#fff',
-    fontSize: { xs: '0.92rem', sm: '0.98rem' },
+    fontSize: { xs: '1.02rem', sm: '1.08rem' },
     fontWeight: 500,
-    lineHeight: 1.45,
+    lineHeight: 1.5,
   },
   '& .MuiInputLabel-root': {
-    fontSize: '0.82rem',
+    fontSize: '0.88rem',
     fontWeight: 600,
   },
 };
 
 export const epoNotenStudentGoalDisplaySx = {
-  p: 0.85,
-  borderRadius: 1.5,
+  p: 1.1,
+  borderRadius: 1.75,
   bgcolor: '#f8fafc',
   border: `1px solid ${epoNotenPalette.border}`,
-  fontSize: { xs: '0.9rem', sm: '0.95rem' },
+  fontSize: { xs: '1rem', sm: '1.06rem' },
   fontWeight: 600,
-  lineHeight: 1.45,
+  lineHeight: 1.5,
   color: epoNotenPalette.textPrimary,
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',

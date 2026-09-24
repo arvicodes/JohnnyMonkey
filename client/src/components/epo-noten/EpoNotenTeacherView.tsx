@@ -1256,21 +1256,21 @@ export function EpoNotenTeacherView() {
                               ...epoNotenInsetBoxSx,
                               bgcolor: 'rgba(46, 125, 50, 0.06)',
                               borderColor: 'rgba(46, 125, 50, 0.2)',
-                              p: 0.5,
+                              p: 0.75,
                             }}
                           >
-                            <Typography sx={{ fontWeight: 700, fontSize: '0.62rem', mb: 0.15, color: 'text.secondary' }}>
+                            <Typography sx={{ fontWeight: 700, fontSize: '0.72rem', mb: 0.25, color: 'text.secondary' }}>
                               Ziele (SuS)
                               {!selectedStudent.goalsSubmittedAt && (
-                                <Typography component="span" sx={{ fontWeight: 500, fontSize: '0.58rem', ml: 0.35 }}>
+                                <Typography component="span" sx={{ fontWeight: 500, fontSize: '0.65rem', ml: 0.35 }}>
                                   · noch nicht abgeschickt
                                 </Typography>
                               )}
                             </Typography>
-                            <Typography sx={{ fontSize: '0.68rem', lineHeight: 1.35, whiteSpace: 'pre-wrap' }}>
+                            <Typography sx={{ fontSize: '0.8rem', lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
                               <strong>Ziel:</strong> {selectedStudent.goal?.trim() || '—'}
                             </Typography>
-                            <Typography sx={{ fontSize: '0.68rem', mt: 0.2, lineHeight: 1.35, whiteSpace: 'pre-wrap' }}>
+                            <Typography sx={{ fontSize: '0.8rem', mt: 0.35, lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
                               <strong>Handlung:</strong> {selectedStudent.goalAction?.trim() || '—'}
                             </Typography>
                           </Box>

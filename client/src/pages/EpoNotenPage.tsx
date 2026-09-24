@@ -499,19 +499,19 @@ export default function EpoNotenPage() {
                       );
                     })()}
 
-                    <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx, p: 1.1 }}>
-                      <Typography sx={{ ...epoNotenSectionTitleSx, fontSize: '0.98rem', mb: 1 }}>
+                    <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx, p: 1.35 }}>
+                      <Typography sx={{ ...epoNotenSectionTitleSx, fontSize: '1.05rem', mb: 1.25 }}>
                         Mein Ziel für den nächsten Zeitraum
                       </Typography>
 
                       {canEditGoals && phase === 'goals' ? (
-                        <Stack spacing={1.25}>
+                        <Stack spacing={1.5}>
                           <TextField
                             label="Mein konkretes Ziel"
                             value={goal}
                             onChange={(e) => setGoal(e.target.value)}
                             multiline
-                            minRows={2}
+                            minRows={3}
                             fullWidth
                             sx={epoNotenStudentGoalFieldSx}
                           />
@@ -520,7 +520,7 @@ export default function EpoNotenPage() {
                             value={goalAction}
                             onChange={(e) => setGoalAction(e.target.value)}
                             multiline
-                            minRows={2}
+                            minRows={3}
                             fullWidth
                             sx={epoNotenStudentGoalFieldSx}
                           />
@@ -536,15 +536,15 @@ export default function EpoNotenPage() {
                           </Box>
                         </Stack>
                       ) : (
-                        <Stack spacing={1}>
+                        <Stack spacing={1.25}>
                           <Box>
-                            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                            <Typography sx={{ fontWeight: 700, fontSize: '0.82rem', color: 'text.secondary', mb: 0.35 }}>
                               Mein Ziel
                             </Typography>
                             <Box sx={epoNotenStudentGoalDisplaySx}>{goal.trim() || '—'}</Box>
                           </Box>
                           <Box>
-                            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                            <Typography sx={{ fontWeight: 700, fontSize: '0.82rem', color: 'text.secondary', mb: 0.35 }}>
                               Meine Handlung
                             </Typography>
                             <Box sx={epoNotenStudentGoalDisplaySx}>{goalAction.trim() || '—'}</Box>
