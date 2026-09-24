@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Box,
@@ -16,6 +16,7 @@ import {
   IconButton,
   List,
   ListItemButton,
+  ListSubheader,
   Stack,
   TextField,
   ToggleButton,
@@ -492,6 +493,29 @@ export function EpoNotenTeacherView() {
     await loadList();
   };
 
+  const studentSections = useMemo(() => {
+    if (!round) return [];
+    const sections: { groupId: string; groupName: string; students: EpoNotenEntry[] }[] = [];
+    for (const gid of round.groupIds) {
+      const inGroup = students
+        .filter((s) => s.groupId === gid)
+        .sort((a, b) => a.studentName.localeCompare(b.studentName, 'de'));
+      if (inGroup.length === 0) continue;
+      sections.push({
+        groupId: gid,
+        groupName: groups.find((g) => g.id === gid)?.name || gid,
+        students: inGroup,
+      });
+    }
+    const orphans = students
+      .filter((s) => !s.groupId || !round.groupIds.includes(s.groupId))
+      .sort((a, b) => a.studentName.localeCompare(b.studentName, 'de'));
+    if (orphans.length > 0) {
+      sections.push({ groupId: '__other__', groupName: 'Weitere', students: orphans });
+    }
+    return sections;
+  }, [groups, round, students]);
+
   if (loading && rounds.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
@@ -501,6 +525,7 @@ export function EpoNotenTeacherView() {
   }
 
   const selectedRoundMeta = rounds.find((r) => r.id === selectedId);
+
   const canReleaseToStudent =
     Boolean(selectedStudentId) &&
     !selectedStudent?.teacherReleasedAt &&
@@ -841,50 +866,78 @@ export function EpoNotenTeacherView() {
                         py: 0,
                       }}
                     >
-                      {students.map((s) => {
-                        const active = s.studentId === selectedStudentId;
-                        return (
-                          <ListItemButton
-                            key={s.studentId}
-                            selected={active}
-                            onClick={() => void selectStudent(s.studentId)}
+                      {studentSections.map((section, sectionIndex) => (
+                        <React.Fragment key={section.groupId}>
+                          <ListSubheader
+                            disableSticky
                             sx={{
+                              lineHeight: 1.25,
                               py: 0.45,
                               px: 0.75,
+                              fontSize: '0.68rem',
+                              fontWeight: 800,
+                              color: epoNotenPalette.heading,
+                              bgcolor: epoNotenPalette.sand,
                               borderBottom: '1px solid',
+                              borderTop: sectionIndex > 0 ? '1px solid' : undefined,
                               borderColor: 'divider',
-                              '&:last-child': { borderBottom: 0 },
                             }}
                           >
-                            <Stack spacing={0.15} width="100%" minWidth={0}>
-                              <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.78rem' }}>
-                                {s.studentName}
-                              </Typography>
-                              <Stack direction="row" flexWrap="wrap" gap={0.35}>
-                                <Chip
-                                  size="small"
-                                  label={s.studentSubmittedAt ? 'SuS ✓' : 'offen'}
-                                  sx={{ height: 18, fontSize: '0.6rem' }}
-                                  color={s.studentSubmittedAt ? 'success' : 'default'}
-                                  variant="outlined"
-                                />
-                                {s.teacherGrade ? (
-                                  <Chip
-                                    size="small"
-                                    label={`Note ${s.teacherGrade}`}
-                                    sx={{ height: 18, fontSize: '0.6rem' }}
-                                    color="primary"
-                                    variant="outlined"
-                                  />
-                                ) : null}
-                                {s.teacherReleasedAt ? (
-                                  <Chip size="small" label="frei" sx={{ height: 18, fontSize: '0.6rem' }} color="secondary" />
-                                ) : null}
-                              </Stack>
-                            </Stack>
-                          </ListItemButton>
-                        );
-                      })}
+                            {section.groupName}
+                          </ListSubheader>
+                          {section.students.map((s, studentIndex) => {
+                            const active = s.studentId === selectedStudentId;
+                            const isLastInSection = studentIndex === section.students.length - 1;
+                            const isLastSection = sectionIndex === studentSections.length - 1;
+                            return (
+                              <ListItemButton
+                                key={`${section.groupId}-${s.studentId}`}
+                                selected={active}
+                                onClick={() => void selectStudent(s.studentId)}
+                                sx={{
+                                  py: 0.45,
+                                  px: 0.75,
+                                  borderBottom: '1px solid',
+                                  borderColor: 'divider',
+                                  ...((isLastInSection && isLastSection) ? { borderBottom: 0 } : {}),
+                                }}
+                              >
+                                <Stack spacing={0.15} width="100%" minWidth={0}>
+                                  <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.78rem' }}>
+                                    {s.studentName}
+                                  </Typography>
+                                  <Stack direction="row" flexWrap="wrap" gap={0.35}>
+                                    <Chip
+                                      size="small"
+                                      label={s.studentSubmittedAt ? 'SuS ✓' : 'offen'}
+                                      sx={{ height: 18, fontSize: '0.6rem' }}
+                                      color={s.studentSubmittedAt ? 'success' : 'default'}
+                                      variant="outlined"
+                                    />
+                                    {s.teacherGrade ? (
+                                      <Chip
+                                        size="small"
+                                        label={`Note ${s.teacherGrade}`}
+                                        sx={{ height: 18, fontSize: '0.6rem' }}
+                                        color="primary"
+                                        variant="outlined"
+                                      />
+                                    ) : null}
+                                    {s.teacherReleasedAt ? (
+                                      <Chip
+                                        size="small"
+                                        label="frei"
+                                        sx={{ height: 18, fontSize: '0.6rem' }}
+                                        color="secondary"
+                                      />
+                                    ) : null}
+                                  </Stack>
+                                </Stack>
+                              </ListItemButton>
+                            );
+                          })}
+                        </React.Fragment>
+                      ))}
                     </List>
                     <Stack spacing={0.5} sx={{ mt: 0.65 }}>
                       <Button
