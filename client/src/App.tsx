@@ -72,7 +72,9 @@ function AppContent() {
   const [authReady, setAuthReady] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const isFullBleed = /^\/(presentation\/(edit|present|review)|whiteboard|folien-editor|wall-of-fame)/.test(location.pathname);
+  const isFullBleed = /^\/(presentation\/(edit|present|review)|whiteboard|folien-editor|wall-of-fame|epo-noten|protokoll)/.test(
+    location.pathname,
+  );
   const hideCompanions = /^\/presentation\//.test(location.pathname);
   const loginInputRef = useRef<HTMLInputElement>(null);
 

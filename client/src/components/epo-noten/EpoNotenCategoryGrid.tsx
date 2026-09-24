@@ -17,9 +17,10 @@ type Props = {
   onChange?: (scores: number[]) => void;
   readOnly?: boolean;
   label?: string;
+  compact?: boolean;
 };
 
-export function EpoNotenCategoryGrid({ categories, scores, onChange, readOnly, label }: Props) {
+export function EpoNotenCategoryGrid({ categories, scores, onChange, readOnly, label, compact }: Props) {
   const setScore = (index: number, value: number) => {
     if (readOnly || !onChange) return;
     const next = [...scores];
@@ -30,8 +31,9 @@ export function EpoNotenCategoryGrid({ categories, scores, onChange, readOnly, l
   return (
     <Box
       sx={{
-        borderRadius: 2.5,
-        border: `2px solid ${epoNotenPalette.border}`,
+        borderRadius: compact ? 1.5 : 2.5,
+        border: compact ? '1px solid' : `2px solid ${epoNotenPalette.border}`,
+        borderColor: epoNotenPalette.border,
         overflow: 'hidden',
         bgcolor: '#fafcff',
       }}
@@ -39,17 +41,32 @@ export function EpoNotenCategoryGrid({ categories, scores, onChange, readOnly, l
       {label && (
         <Typography
           variant="subtitle2"
-          sx={{ mb: 0, px: 1.25, py: 0.75, fontWeight: 800, bgcolor: epoNotenPalette.primaryTint, color: epoNotenPalette.heading }}
+          sx={{
+            mb: 0,
+            px: compact ? 1 : 1.25,
+            py: compact ? 0.45 : 0.75,
+            fontWeight: 800,
+            fontSize: compact ? '0.78rem' : undefined,
+            bgcolor: epoNotenPalette.primaryTint,
+            color: epoNotenPalette.heading,
+          }}
         >
           {label}
         </Typography>
       )}
-      <Table size="medium" sx={{ '& td, & th': { borderColor: epoNotenPalette.border } }}>
+      <Table
+        size={compact ? 'small' : 'medium'}
+        sx={{ '& td, & th': { borderColor: epoNotenPalette.border, py: compact ? 0.35 : undefined } }}
+      >
         <TableHead>
           <TableRow sx={{ bgcolor: epoNotenPalette.sand }}>
-            <TableCell sx={{ fontWeight: 800, fontSize: '0.85rem' }}>Kategorie</TableCell>
+            <TableCell sx={{ fontWeight: 800, fontSize: compact ? '0.72rem' : '0.85rem' }}>Kategorie</TableCell>
             {[0, 1, 2, 3].map((p) => (
-              <TableCell key={p} align="center" sx={{ width: 52, fontWeight: 800, fontSize: '1rem' }}>
+              <TableCell
+                key={p}
+                align="center"
+                sx={{ width: compact ? 40 : 52, fontWeight: 800, fontSize: compact ? '0.82rem' : '1rem', px: 0.5 }}
+              >
                 {p}
               </TableCell>
             ))}
@@ -64,23 +81,30 @@ export function EpoNotenCategoryGrid({ categories, scores, onChange, readOnly, l
                 '&:last-child td': { borderBottom: 0 },
               }}
             >
-              <TableCell sx={{ py: 1.25 }}>
-                <Typography variant="body1" sx={{ fontSize: '0.92rem', lineHeight: 1.45, color: epoNotenPalette.textPrimary }}>
+              <TableCell sx={{ py: compact ? 0.35 : 1.25, pr: 0.5 }}>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    fontSize: compact ? '0.78rem' : '0.92rem',
+                    lineHeight: 1.35,
+                    color: epoNotenPalette.textPrimary,
+                  }}
+                >
                   {i + 1}) {text}
                 </Typography>
               </TableCell>
               {[0, 1, 2, 3].map((p) => (
-                <TableCell key={p} align="center" padding="checkbox" sx={{ py: 0.5 }}>
+                <TableCell key={p} align="center" padding="checkbox" sx={{ py: compact ? 0 : 0.5, px: 0.25 }}>
                   <Radio
-                    size="medium"
+                    size={compact ? 'small' : 'medium'}
                     name={`epo-noten-cat-${i}`}
                     checked={scores[i] === p}
                     onChange={() => setScore(i, p)}
                     disabled={readOnly}
                     value={p}
                     sx={{
-                      p: 0.75,
-                      '& .MuiSvgIcon-root': { fontSize: 26 },
+                      p: compact ? 0.35 : 0.75,
+                      '& .MuiSvgIcon-root': { fontSize: compact ? 20 : 26 },
                       color: 'rgba(25, 118, 210, 0.45)',
                       '&.Mui-checked': { color: epoNotenPalette.primary },
                     }}

@@ -20,6 +20,7 @@ import {
   epoNotenKidTextFieldSx,
   epoNotenPalette,
   epoNotenSectionTitleSx,
+  epoNotenStudentSurfaceSx,
 } from './epoNotenUi';
 import {
   EPO_NOTEN_STUDENT_CATEGORIES,
@@ -188,7 +189,7 @@ export function EpoNotenStudentSelfWizard({
   const evaluationPhase = tableVisible || gradeVisible || step === 'done';
 
   return (
-    <Card sx={epoNotenCardSx}>
+    <Card sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx }}>
       <CardContent sx={{ p: { xs: 2, sm: 2.75 }, '&:last-child': { pb: { xs: 2, sm: 2.75 } } }}>
         <Stack spacing={1.5}>
           <Typography variant="subtitle1" sx={epoNotenSectionTitleSx}>
@@ -208,10 +209,10 @@ export function EpoNotenStudentSelfWizard({
                 </Typography>
                 <Box
                   sx={{
-                    display: 'flex',
-                    flexDirection: 'row',
+                    display: 'grid',
+                    gridTemplateColumns: { xs: 'minmax(52px, 64px) minmax(0, 1fr)', sm: 'minmax(56px, 72px) minmax(0, 1fr)' },
                     alignItems: 'stretch',
-                    gap: { xs: 1.25, sm: 2 },
+                    columnGap: { xs: 1, sm: 1.5 },
                     width: '100%',
                   }}
                 >
@@ -226,22 +227,28 @@ export function EpoNotenStudentSelfWizard({
                     }}
                     disabled={readOnly}
                     sx={{
-                      flexShrink: 0,
+                      width: '100%',
+                      maxWidth: 72,
                       '& .MuiToggleButtonGroup-grouped': {
                         border: '1px solid rgba(25, 118, 210, 0.35) !important',
-                        px: 1.25,
-                        py: 1,
-                        textAlign: 'left',
-                        lineHeight: 1.25,
-                        fontWeight: 600,
-                        fontSize: '0.82rem',
+                        px: 0.35,
+                        py: 0.65,
+                        textAlign: 'center',
+                        lineHeight: 1.15,
+                        fontWeight: 700,
+                        fontSize: '0.68rem',
                         whiteSpace: 'normal',
-                        minWidth: { xs: 108, sm: 128 },
+                        minWidth: 0,
+                        width: '100%',
                       },
                     }}
                   >
-                    <ToggleButton value="note">als Note</ToggleButton>
-                    <ToggleButton value="mss">MSS-Punkte (0–15)</ToggleButton>
+                    <ToggleButton value="note">Note</ToggleButton>
+                    <ToggleButton value="mss">
+                      MSS
+                      <br />
+                      0–15
+                    </ToggleButton>
                   </ToggleButtonGroup>
                   <TextField
                     label={
@@ -271,7 +278,7 @@ export function EpoNotenStudentSelfWizard({
                       suggestedGrade.trim().length > 0 &&
                       !isValidSuggestedGrade(suggestedGradeMode, suggestedGrade)
                     }
-                    sx={{ ...epoNotenKidTextFieldSx, flex: 1, minWidth: 0 }}
+                    sx={{ ...epoNotenKidTextFieldSx, minWidth: 0, width: '100%' }}
                   />
                 </Box>
               </Box>
@@ -283,7 +290,7 @@ export function EpoNotenStudentSelfWizard({
                 multiline
                 minRows={3}
                 fullWidth
-                sx={{ ...epoNotenKidTextFieldSx, mt: 2.5 }}
+                sx={{ ...epoNotenKidTextFieldSx, mt: 4 }}
               />
             </Stack>
           )}

@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import type { EpoNotenStudentSession } from '../../lib/epoNotenShared';
-import { epoNotenCardSx, epoNotenPalette, epoNotenSectionTitleSx } from './epoNotenUi';
+import { epoNotenCardSx, epoNotenPalette, epoNotenSectionTitleSx, epoNotenStudentSurfaceSx } from './epoNotenUi';
 
 function formatRoundDate(date: string): string {
   if (!date) return '—';
@@ -79,7 +79,7 @@ export function EpoNotenStudentRoundList({ sessions, onSelect }: Props) {
   });
 
   return (
-    <Box sx={{ ...epoNotenCardSx, width: '100%' }}>
+    <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx }}>
       <Typography variant="subtitle2" sx={{ px: 2, pt: 1.5, pb: 1, ...epoNotenSectionTitleSx, fontSize: '1.25rem' }}>
         Deine EPO-Runden
       </Typography>

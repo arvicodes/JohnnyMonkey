@@ -19,14 +19,23 @@ export const epoNotenPageBgSx = {
   minHeight: '100vh',
   bgcolor: epoNotenPalette.background,
   py: { xs: 0.75, sm: 1.25 },
-  px: { xs: 0.35, sm: 0.75 },
+  px: 0,
 };
 
 export const epoNotenPageShellSx = {
-  maxWidth: { xs: '100%', sm: 'min(100%, 2400px)' },
+  maxWidth: 'none',
   mx: 'auto',
   width: '100%',
-  px: { xs: 0.5, sm: 1 },
+  px: { xs: 0.25, sm: 0.75 },
+};
+
+/** Schüler: Liste + Wizard nutzen die volle nutzbare Breite (kein schmales Mittelband). */
+export const epoNotenStudentSurfaceSx = {
+  width: { xs: 'calc(100vw - 8px)', sm: '100%' },
+  maxWidth: { xs: 'calc(100vw - 8px)', sm: 'min(100%, 1600px)' },
+  ml: { xs: 'calc(4px - 50vw + 50%)', sm: 'auto' },
+  mr: { xs: 'auto', sm: 'auto' },
+  boxSizing: 'border-box' as const,
 };
 
 export const epoNotenCardSx = {
@@ -77,4 +86,62 @@ export const epoNotenBigNumberSx = {
   fontVariantNumeric: 'tabular-nums',
   lineHeight: 1.1,
   color: epoNotenPalette.primary,
+};
+
+export const epoNotenCompactIconBtnSx = {
+  p: 0,
+  minWidth: 30,
+  width: 30,
+  height: 30,
+  borderRadius: 1.25,
+  border: '1px solid',
+  borderColor: epoNotenPalette.border,
+  bgcolor: '#fff',
+  color: epoNotenPalette.primary,
+  transition: 'all 0.15s ease',
+  '&:hover': {
+    bgcolor: epoNotenPalette.primaryTint,
+    borderColor: epoNotenPalette.primary,
+  },
+} as const;
+
+export const epoNotenCompactIconSx = { fontSize: 17 } as const;
+
+/** Kompakte Text-Buttons — Icons nicht über dem Label */
+export const epoNotenCompactBtnSx = {
+  minHeight: 30,
+  py: 0.35,
+  px: 1.1,
+  fontSize: '0.78rem',
+  fontWeight: 700,
+  lineHeight: 1.2,
+  textTransform: 'none',
+  borderRadius: 1.25,
+  boxShadow: 'none',
+  whiteSpace: 'nowrap',
+  '&:hover': { boxShadow: 'none' },
+  '& .MuiButton-startIcon': {
+    marginRight: 0.4,
+    marginLeft: 0,
+    '& > *:nth-of-type(1)': { fontSize: 16 },
+  },
+} as const;
+
+export const epoNotenPanelHeaderSx = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 0.75,
+  flexWrap: 'wrap',
+  px: 1.25,
+  py: 0.85,
+  bgcolor: epoNotenPalette.primaryTint,
+  borderBottom: `1px solid ${epoNotenPalette.border}`,
+};
+
+export const epoNotenInsetBoxSx = {
+  borderRadius: 1.5,
+  border: '1px solid',
+  borderColor: 'divider',
+  bgcolor: '#fafcff',
+  p: 1,
 };

@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   Card,
-  CardContent,
   Checkbox,
   Chip,
   CircularProgress,
@@ -12,20 +11,20 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   FormControlLabel,
   IconButton,
   List,
   ListItemButton,
-  ListItemText,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PublishIcon from '@mui/icons-material/Publish';
 import UnpublishedIcon from '@mui/icons-material/Unpublished';
-import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { apiDelete, apiGetSafe, apiPost, apiPut } from '../../lib/api';
 import {
   EPO_NOTEN_TEACHER_CATEGORIES,
@@ -38,7 +37,15 @@ import {
 } from '../../lib/epoNotenShared';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import { EpoNotenCategoryGrid } from './EpoNotenCategoryGrid';
-import { epoNotenCardSx, epoNotenPalette } from './epoNotenUi';
+import {
+  epoNotenCardSx,
+  epoNotenCompactBtnSx,
+  epoNotenCompactIconBtnSx,
+  epoNotenCompactIconSx,
+  epoNotenInsetBoxSx,
+  epoNotenPanelHeaderSx,
+  epoNotenPalette,
+} from './epoNotenUi';
 
 type GroupInfo = { id: string; name: string; studentCount: number };
 
@@ -311,204 +318,440 @@ export function EpoNotenTeacherView() {
     );
   }
 
-  return (
-    <Stack spacing={2}>
-      {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
+  const selectedRoundMeta = rounds.find((r) => r.id === selectedId);
 
-      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-        <Typography variant="h6" sx={{ fontWeight: 800, color: epoNotenPalette.primary, flex: 1 }}>
-          EPO-Noten — Lehrerbereich
+  return (
+    <Stack spacing={1.25}>
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)} sx={{ py: 0.25 }}>
+          {error}
+        </Alert>
+      )}
+
+      <Stack direction="row" alignItems="center" spacing={0.75} sx={{ minHeight: 32 }}>
+        <Typography
+          sx={{
+            flex: 1,
+            fontWeight: 800,
+            fontSize: '0.9rem',
+            color: epoNotenPalette.heading,
+            minWidth: 0,
+          }}
+        >
+          EPO — Lehrer
         </Typography>
-        <Button startIcon={<AddIcon />} variant="contained" onClick={() => setCreateOpen(true)}>
-          Neue Runde
-        </Button>
+        <Tooltip title="Neue Runde">
+          <Button
+            size="small"
+            variant="contained"
+            onClick={() => setCreateOpen(true)}
+            sx={{ ...epoNotenCompactBtnSx, bgcolor: epoNotenPalette.primary, minWidth: 0, px: 1 }}
+          >
+            <AddIcon sx={{ fontSize: 17 }} />
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' }, ml: 0.5 }}>
+              Neue Runde
+            </Box>
+          </Button>
+        </Tooltip>
       </Stack>
 
-      <Card sx={epoNotenCardSx}>
-        <CardContent>
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>Runden</Typography>
-          <List dense disablePadding>
-            {rounds.map((r) => (
-              <ListItemButton key={r.id} selected={r.id === selectedId} onClick={() => setSelectedId(r.id)}>
-                <ListItemText
-                  primary={r.title}
-                  secondary={`${r.date} · abgegeben ${r.stats.submitted} · bewertet ${r.stats.graded} · freigegeben ${r.stats.released}`}
-                />
-                {r.publishedAt ? <Chip size="small" color="success" label="freigegeben" /> : <Chip size="small" label="Entwurf" />}
-              </ListItemButton>
-            ))}
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', md: 'minmax(200px, 248px) minmax(0, 1fr)' },
+          gap: 1.25,
+          alignItems: 'start',
+        }}
+      >
+        <Card sx={{ ...epoNotenCardSx, borderWidth: 1 }}>
+          <Box sx={{ ...epoNotenPanelHeaderSx, py: 0.55 }}>
+            <Typography sx={{ fontWeight: 800, fontSize: '0.78rem', color: epoNotenPalette.heading }}>
+              Runden
+            </Typography>
+          </Box>
+          <List dense disablePadding sx={{ maxHeight: { md: 'calc(100vh - 220px)' }, overflow: 'auto' }}>
+            {rounds.map((r) => {
+              const active = r.id === selectedId;
+              return (
+                <ListItemButton
+                  key={r.id}
+                  selected={active}
+                  onClick={() => setSelectedId(r.id)}
+                  sx={{
+                    py: 0.65,
+                    px: 1,
+                    alignItems: 'stretch',
+                    flexDirection: 'column',
+                    gap: 0.35,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    '&.Mui-selected': {
+                      bgcolor: epoNotenPalette.primaryTint,
+                      borderLeft: `3px solid ${epoNotenPalette.primary}`,
+                    },
+                  }}
+                >
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" gap={0.5} width="100%">
+                    <Typography
+                      noWrap
+                      sx={{ fontWeight: 700, fontSize: '0.8rem', color: epoNotenPalette.textPrimary, flex: 1, minWidth: 0 }}
+                    >
+                      {r.title}
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={r.publishedAt ? 'live' : 'Entwurf'}
+                      color={r.publishedAt ? 'success' : 'default'}
+                      sx={{ height: 20, fontSize: '0.62rem', fontWeight: 700, flexShrink: 0 }}
+                    />
+                  </Stack>
+                  <Typography variant="caption" sx={{ color: epoNotenPalette.textSecondary, lineHeight: 1.3 }}>
+                    {r.date} · {r.stats.submitted}/{r.stats.graded}/{r.stats.released}
+                  </Typography>
+                </ListItemButton>
+              );
+            })}
             {rounds.length === 0 && (
-              <Typography variant="body2" color="text.secondary">Noch keine Runde angelegt.</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ p: 1.25, fontSize: '0.8rem' }}>
+                Noch keine Runde.
+              </Typography>
             )}
           </List>
-        </CardContent>
-      </Card>
+        </Card>
 
-      {round && (
-        <Card sx={epoNotenCardSx}>
-          <CardContent>
-            <Stack spacing={2}>
-              {!round.publishedAt && round.groupIds.length > 0 && (
-                <Alert severity="warning" variant="filled">
-                  Die Runde ist der Lerngruppe zugeordnet, aber für Schüler noch <strong>nicht sichtbar</strong>.
-                  Klicke auf „Für Lerngruppe freischalten“.
-                </Alert>
-              )}
-              {!round.publishedAt && round.groupIds.length === 0 && (
-                <Alert severity="info">
-                  Wähle mindestens eine Lerngruppe (Häkchen) und schalte die Runde dann für SuS frei.
-                </Alert>
-              )}
-              <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1}>
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>{round.title}</Typography>
-                <Box sx={{ flex: 1 }} />
-                {!round.publishedAt ? (
-                  <Button startIcon={<PublishIcon />} variant="contained" color="success" onClick={publish} disabled={saving}>
-                    Für Lerngruppe freischalten
-                  </Button>
-                ) : (
-                  <Button startIcon={<UnpublishedIcon />} variant="outlined" onClick={unpublish} disabled={saving}>
-                    Freischaltung beenden
-                  </Button>
+        {round ? (
+          <Card sx={{ ...epoNotenCardSx, borderWidth: 1, minWidth: 0 }}>
+            <Box sx={epoNotenPanelHeaderSx}>
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Typography sx={{ fontWeight: 800, fontSize: '0.88rem', color: epoNotenPalette.heading }} noWrap>
+                  {round.title}
+                </Typography>
+                {selectedRoundMeta && (
+                  <Typography variant="caption" sx={{ color: epoNotenPalette.textSecondary }}>
+                    {selectedRoundMeta.date} · abgegeben {selectedRoundMeta.stats.submitted} · bewertet{' '}
+                    {selectedRoundMeta.stats.graded}
+                  </Typography>
                 )}
-                <IconButton onClick={removeRound} color="error" title="Runde löschen">
-                  <DeleteOutlineIcon />
-                </IconButton>
+              </Box>
+              <Stack direction="row" spacing={0.35} flexShrink={0}>
+                {!round.publishedAt ? (
+                  <Tooltip title="Für Lerngruppe freischalten">
+                    <span>
+                      <IconButton
+                        size="small"
+                        onClick={publish}
+                        disabled={saving}
+                        aria-label="Freischalten"
+                        sx={{
+                          ...epoNotenCompactIconBtnSx,
+                          bgcolor: epoNotenPalette.accent,
+                          color: '#fff',
+                          borderColor: epoNotenPalette.accent,
+                          '&:hover': { bgcolor: '#1b5e20', borderColor: '#1b5e20' },
+                        }}
+                      >
+                        <PublishIcon sx={epoNotenCompactIconSx} />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                ) : (
+                  <Tooltip title="Freischaltung beenden">
+                    <span>
+                      <IconButton
+                        size="small"
+                        onClick={unpublish}
+                        disabled={saving}
+                        aria-label="Freischaltung beenden"
+                        sx={epoNotenCompactIconBtnSx}
+                      >
+                        <UnpublishedIcon sx={epoNotenCompactIconSx} />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                )}
+                <Tooltip title="Runde löschen">
+                  <IconButton
+                    size="small"
+                    onClick={removeRound}
+                    aria-label="Löschen"
+                    sx={{
+                      ...epoNotenCompactIconBtnSx,
+                      color: '#c62828',
+                      borderColor: 'rgba(198, 40, 40, 0.35)',
+                      '&:hover': { bgcolor: 'rgba(198, 40, 40, 0.08)' },
+                    }}
+                  >
+                    <DeleteOutlineIcon sx={epoNotenCompactIconSx} />
+                  </IconButton>
+                </Tooltip>
               </Stack>
+            </Box>
 
-              <Box>
-                <Typography variant="caption" color="text.secondary">Lerngruppen</Typography>
-                <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mt: 0.5 }}>
-                  {groups.map((g) => (
-                    <FormControlLabel
-                      key={g.id}
-                      control={
-                        <Checkbox
+            <Box sx={{ p: 1.1 }}>
+              <Stack spacing={1}>
+                {!round.publishedAt && round.groupIds.length > 0 && (
+                  <Alert severity="warning" sx={{ py: 0, fontSize: '0.78rem' }}>
+                    Noch nicht für SuS sichtbar — oben grünen Button (Hochladen) tippen.
+                  </Alert>
+                )}
+                {!round.publishedAt && round.groupIds.length === 0 && (
+                  <Alert severity="info" sx={{ py: 0, fontSize: '0.78rem' }}>
+                    Mindestens eine Lerngruppe wählen, dann freischalten.
+                  </Alert>
+                )}
+
+                <Box>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: epoNotenPalette.textSecondary }}>
+                    Lerngruppen
+                  </Typography>
+                  <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mt: 0.35 }}>
+                    {groups.map((g) => {
+                      const on = round.groupIds.includes(g.id);
+                      return (
+                        <Chip
+                          key={g.id}
                           size="small"
-                          checked={round.groupIds.includes(g.id)}
-                          onChange={() => {
-                            const next = round.groupIds.includes(g.id)
+                          label={`${g.name} (${g.studentCount})`}
+                          clickable
+                          onClick={() => {
+                            const next = on
                               ? round.groupIds.filter((id) => id !== g.id)
                               : [...round.groupIds, g.id];
                             updateRoundGroups(next);
                           }}
+                          variant={on ? 'filled' : 'outlined'}
+                          sx={{
+                            height: 26,
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            bgcolor: on ? epoNotenPalette.primaryTint : undefined,
+                            borderColor: on ? epoNotenPalette.primary : undefined,
+                          }}
                         />
-                      }
-                      label={`${g.name} (${g.studentCount})`}
-                    />
-                  ))}
-                </Stack>
-              </Box>
-
-              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                <Box sx={{ minWidth: 220, maxWidth: 320 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1 }}>Schüler</Typography>
-                  <List dense sx={{ maxHeight: 360, overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-                    {students.map((s) => (
-                      <ListItemButton
-                        key={s.studentId}
-                        selected={s.studentId === selectedStudentId}
-                        onClick={() => setSelectedStudentId(s.studentId)}
-                      >
-                        <ListItemText
-                          primary={s.studentName}
-                          secondary={
-                            [
-                              s.studentSubmittedAt ? 'SuS ✓' : 'SuS offen',
-                              s.teacherGrade ? `Note ${s.teacherGrade}` : 'nicht bewertet',
-                              s.teacherReleasedAt ? 'freigegeben' : '',
-                            ].filter(Boolean).join(' · ')
-                          }
-                        />
-                      </ListItemButton>
-                    ))}
-                  </List>
-                  <Button fullWidth sx={{ mt: 1 }} variant="outlined" onClick={releaseAll} disabled={saving}>
-                    Alle bewerteten freigeben
-                  </Button>
-                  <Button
-                    fullWidth
-                    sx={{ mt: 0.75 }}
-                    variant="outlined"
-                    color="warning"
-                    startIcon={<RestartAltIcon />}
-                    onClick={resetAllStudents}
-                    disabled={saving}
-                  >
-                    Alle SuS zurücksetzen
-                  </Button>
+                      );
+                    })}
+                  </Stack>
                 </Box>
 
-                <Box sx={{ flex: 1 }}>
-                  {!selectedStudent ? (
-                    <Typography color="text.secondary">Schüler auswählen …</Typography>
-                  ) : (
-                    <Stack spacing={2}>
-                      {selectedStudent.studentSubmittedAt ? (
-                        <>
-                          <Typography variant="subtitle2">Selbsteinschätzung</Typography>
-                          <Typography variant="body2">
-                            Noteneinschätzung:{' '}
-                            <strong>
-                              {formatSuggestedGradeDisplay(
-                                selectedStudent.suggestedGradeMode,
-                                selectedStudent.suggestedGrade,
-                              )}
-                            </strong>
-                          </Typography>
-                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                            {selectedStudent.justification || '—'}
-                          </Typography>
-                          <Typography variant="body2">
-                            Punkte: {sumCategoryScores(selectedStudent.selfScores)} → Tabelle:{' '}
-                            {selectedStudent.selfGradeFromTable || '—'}
-                          </Typography>
-                        </>
-                      ) : (
-                        <Alert severity="info">Noch keine Selbsteinschätzung abgegeben.</Alert>
-                      )}
+                <Divider />
 
-                      <EpoNotenCategoryGrid
-                        label="Deine Einschätzung (Lehrkraft)"
-                        categories={EPO_NOTEN_TEACHER_CATEGORIES}
-                        scores={teacherScores}
-                        onChange={setTeacherScores}
-                      />
-                      <Typography variant="body2">
-                        Gesamtpunktzahl: <strong>{totalTeacher}</strong> → Note aus Tabelle: <strong>{computedGrade}</strong>
-                      </Typography>
-                      <TextField
-                        label="EPO-Note (finale Note)"
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', lg: 'minmax(168px, 200px) minmax(0, 1fr)' },
+                    gap: 1,
+                    alignItems: 'start',
+                  }}
+                >
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: '0.75rem', mb: 0.5, color: epoNotenPalette.heading }}>
+                      Schüler
+                    </Typography>
+                    <List
+                      dense
+                      sx={{
+                        maxHeight: 320,
+                        overflow: 'auto',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 1.25,
+                        bgcolor: '#fff',
+                        py: 0,
+                      }}
+                    >
+                      {students.map((s) => {
+                        const active = s.studentId === selectedStudentId;
+                        return (
+                          <ListItemButton
+                            key={s.studentId}
+                            selected={active}
+                            onClick={() => setSelectedStudentId(s.studentId)}
+                            sx={{
+                              py: 0.45,
+                              px: 0.75,
+                              borderBottom: '1px solid',
+                              borderColor: 'divider',
+                              '&:last-child': { borderBottom: 0 },
+                            }}
+                          >
+                            <Stack spacing={0.15} width="100%" minWidth={0}>
+                              <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.78rem' }}>
+                                {s.studentName}
+                              </Typography>
+                              <Stack direction="row" flexWrap="wrap" gap={0.35}>
+                                <Chip
+                                  size="small"
+                                  label={s.studentSubmittedAt ? 'SuS ✓' : 'offen'}
+                                  sx={{ height: 18, fontSize: '0.6rem' }}
+                                  color={s.studentSubmittedAt ? 'success' : 'default'}
+                                  variant="outlined"
+                                />
+                                {s.teacherGrade ? (
+                                  <Chip
+                                    size="small"
+                                    label={`Note ${s.teacherGrade}`}
+                                    sx={{ height: 18, fontSize: '0.6rem' }}
+                                    color="primary"
+                                    variant="outlined"
+                                  />
+                                ) : null}
+                                {s.teacherReleasedAt ? (
+                                  <Chip size="small" label="frei" sx={{ height: 18, fontSize: '0.6rem' }} color="secondary" />
+                                ) : null}
+                              </Stack>
+                            </Stack>
+                          </ListItemButton>
+                        );
+                      })}
+                    </List>
+                    <Stack spacing={0.5} sx={{ mt: 0.65 }}>
+                      <Button
+                        fullWidth
                         size="small"
-                        value={teacherGrade}
-                        onChange={(e) => setTeacherGrade(e.target.value)}
-                        helperText="Wird in die Notenliste übernommen — hier kannst du die Tabelle überschreiben."
-                        sx={{ maxWidth: 200 }}
-                      />
-                      <Stack direction="row" spacing={1}>
-                        <Button variant="contained" onClick={saveTeacher} disabled={saving}>
-                          Bewertung speichern
-                        </Button>
-                        <Button variant="outlined" color="secondary" onClick={releaseOne} disabled={saving || !teacherGrade}>
-                          An Schüler freigeben
-                        </Button>
-                      </Stack>
-
-                      {selectedStudent.teacherReleasedAt && (
-                        <Box sx={{ mt: 1, p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
-                          <Typography variant="subtitle2">Ziele der Schülerin / des Schülers</Typography>
-                          <Typography variant="body2">Ziel: {selectedStudent.goal || '—'}</Typography>
-                          <Typography variant="body2">Handlung: {selectedStudent.goalAction || '—'}</Typography>
-                        </Box>
-                      )}
+                        variant="outlined"
+                        onClick={releaseAll}
+                        disabled={saving}
+                        sx={epoNotenCompactBtnSx}
+                      >
+                        Alle bewerteten freigeben
+                      </Button>
+                      <Button
+                        fullWidth
+                        size="small"
+                        variant="outlined"
+                        color="warning"
+                        onClick={resetAllStudents}
+                        disabled={saving}
+                        sx={epoNotenCompactBtnSx}
+                      >
+                        Alle zurücksetzen
+                      </Button>
                     </Stack>
-                  )}
+                  </Box>
+
+                  <Box sx={{ minWidth: 0 }}>
+                    {!selectedStudent ? (
+                      <Typography sx={{ color: 'text.secondary', fontSize: '0.82rem', py: 2, textAlign: 'center' }}>
+                        Schüler auswählen
+                      </Typography>
+                    ) : (
+                      <Stack spacing={1}>
+                        {selectedStudent.studentSubmittedAt ? (
+                          <Box sx={epoNotenInsetBoxSx}>
+                            <Typography sx={{ fontWeight: 800, fontSize: '0.75rem', mb: 0.5, color: epoNotenPalette.heading }}>
+                              Selbsteinschätzung
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontSize: '0.78rem' }}>
+                              Einschätzung:{' '}
+                              <strong>
+                                {formatSuggestedGradeDisplay(
+                                  selectedStudent.suggestedGradeMode,
+                                  selectedStudent.suggestedGrade,
+                                )}
+                              </strong>
+                              {' · '}
+                              Punkte {sumCategoryScores(selectedStudent.selfScores)} →{' '}
+                              {selectedStudent.selfGradeFromTable || '—'}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              sx={{ fontSize: '0.76rem', mt: 0.5, whiteSpace: 'pre-wrap', color: epoNotenPalette.textPrimary }}
+                            >
+                              {selectedStudent.justification || '—'}
+                            </Typography>
+                          </Box>
+                        ) : (
+                          <Alert severity="info" sx={{ py: 0, fontSize: '0.78rem' }}>Noch keine Selbsteinschätzung.</Alert>
+                        )}
+
+                        <EpoNotenCategoryGrid
+                          compact
+                          label="Lehrkraft"
+                          categories={EPO_NOTEN_TEACHER_CATEGORIES}
+                          scores={teacherScores}
+                          onChange={setTeacherScores}
+                        />
+
+                        <Stack
+                          direction="row"
+                          alignItems="center"
+                          flexWrap="wrap"
+                          gap={0.75}
+                          sx={epoNotenInsetBoxSx}
+                        >
+                          <Typography sx={{ fontSize: '0.78rem' }}>
+                            Summe <strong>{totalTeacher}</strong> → Tabelle <strong>{computedGrade}</strong>
+                          </Typography>
+                          <TextField
+                            label="EPO-Note"
+                            size="small"
+                            value={teacherGrade}
+                            onChange={(e) => setTeacherGrade(e.target.value)}
+                            sx={{
+                              width: 88,
+                              ml: 'auto',
+                              '& .MuiInputBase-root': { fontSize: '0.85rem' },
+                              '& .MuiInputLabel-root': { fontSize: '0.78rem' },
+                            }}
+                          />
+                        </Stack>
+
+                        <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                          <Button
+                            size="small"
+                            variant="contained"
+                            onClick={saveTeacher}
+                            disabled={saving}
+                            sx={{ ...epoNotenCompactBtnSx, flex: { xs: '1 1 100%', sm: '0 1 auto' } }}
+                          >
+                            Speichern
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="secondary"
+                            onClick={releaseOne}
+                            disabled={saving || !teacherGrade}
+                            sx={{ ...epoNotenCompactBtnSx, flex: { xs: '1 1 100%', sm: '0 1 auto' } }}
+                          >
+                            Freigeben
+                          </Button>
+                        </Stack>
+
+                        {selectedStudent.teacherReleasedAt && (
+                          <Box sx={{ ...epoNotenInsetBoxSx, bgcolor: epoNotenPalette.accentTint }}>
+                            <Typography sx={{ fontWeight: 800, fontSize: '0.75rem', mb: 0.35 }}>
+                              Ziele (SuS)
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontSize: '0.76rem' }}>
+                              {selectedStudent.goal || '—'}
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontSize: '0.76rem', mt: 0.35 }}>
+                              {selectedStudent.goalAction || '—'}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Stack>
+                    )}
+                  </Box>
                 </Box>
               </Stack>
-            </Stack>
-          </CardContent>
-        </Card>
-      )}
+            </Box>
+          </Card>
+        ) : (
+          <Box
+            sx={{
+              ...epoNotenInsetBoxSx,
+              py: 4,
+              textAlign: 'center',
+              color: 'text.secondary',
+              fontSize: '0.85rem',
+            }}
+          >
+            Runde links wählen oder „Neue Runde“ anlegen.
+          </Box>
+        )}
+      </Box>
 
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={dialogCloseTitleSx}>
@@ -539,9 +782,17 @@ export function EpoNotenTeacherView() {
             />
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCreateOpen(false)}>Abbrechen</Button>
-          <Button variant="contained" onClick={handleCreate} disabled={saving || !newTitle.trim()}>
+        <DialogActions sx={{ px: 2, pb: 1.5 }}>
+          <Button size="small" onClick={() => setCreateOpen(false)} sx={epoNotenCompactBtnSx}>
+            Abbrechen
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            onClick={handleCreate}
+            disabled={saving || !newTitle.trim()}
+            sx={epoNotenCompactBtnSx}
+          >
             Anlegen
           </Button>
         </DialogActions>
