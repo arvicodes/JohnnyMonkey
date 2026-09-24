@@ -22,31 +22,29 @@ export const epoNotenPageBgSx = {
   px: 0,
 };
 
-export const epoNotenPageShellSx = {
-  maxWidth: 'none',
-  mx: 'auto',
-  width: '100%',
-  px: { xs: 0.25, sm: 0.75 },
-};
+/** Lehrer + SuS: einheitlich 80 % der Bildschirmbreite, zentriert */
+export const EPO_NOTEN_CONTENT_WIDTH = '80vw';
 
-/** Lehrer: schmales, zentriertes Panel — nicht über die ganze Bildschirmbreite */
-export const epoNotenTeacherShellSx = {
-  width: '100%',
-  maxWidth: { xs: '100%', sm: 720, md: 880 },
+export const epoNotenContentShellSx = {
+  width: EPO_NOTEN_CONTENT_WIDTH,
+  maxWidth: EPO_NOTEN_CONTENT_WIDTH,
+  minWidth: 0,
   mx: 'auto',
-  px: { xs: 0.5, sm: 1 },
   boxSizing: 'border-box' as const,
-  overflow: 'hidden',
 };
 
-/**
- * Schüler: breite, zentrierte Karte (ca. 2× frühere schmale Spalte).
- * Kein Viewport-Breakout — sonst hängt die Box links.
- */
+/** Seitenrahmen (Kopfzeile + Inhalt) */
+export const epoNotenPageShellSx = {
+  ...epoNotenContentShellSx,
+};
+
+/** @deprecated Alias — bitte epoNotenPageShellSx verwenden */
+export const epoNotenTeacherShellSx = epoNotenPageShellSx;
+
+/** Karten/Listen innerhalb der 80 %-Spalte */
 export const epoNotenStudentSurfaceSx = {
   width: '100%',
-  maxWidth: { xs: 'calc(100vw - 16px)', sm: 920, md: 1040 },
-  mx: 'auto',
+  maxWidth: '100%',
   boxSizing: 'border-box' as const,
 };
 

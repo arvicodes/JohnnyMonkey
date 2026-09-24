@@ -24,7 +24,6 @@ import {
   epoNotenPageShellSx,
   epoNotenPalette,
   epoNotenStudentSurfaceSx,
-  epoNotenTeacherShellSx,
 } from '../components/epo-noten/epoNotenUi';
 import {
   EPO_NOTEN_TEACHER_CATEGORIES,
@@ -217,7 +216,7 @@ export default function EpoNotenPage() {
 
   return (
     <Box sx={epoNotenPageBgSx}>
-      <Box sx={isTeacher ? epoNotenTeacherShellSx : epoNotenPageShellSx}>
+      <Box sx={epoNotenPageShellSx}>
         <Stack
           direction="row"
           alignItems="center"
@@ -265,12 +264,8 @@ export default function EpoNotenPage() {
             <CircularProgress size={28} />
           </Box>
         ) : (
-          <Stack spacing={1.25} sx={{ width: '100%', alignItems: 'center' }}>
-            {error && (
-              <Alert severity="error" sx={{ width: '100%', maxWidth: { xs: 'calc(100vw - 16px)', sm: 920, md: 1040 } }}>
-                {error}
-              </Alert>
-            )}
+          <Stack spacing={1.25} sx={{ width: '100%' }}>
+            {error && <Alert severity="error">{error}</Alert>}
 
             {sessions.length === 0 ? (
               <Alert severity="info">Sobald deine Lehrkraft eine EPO-Runde freischaltet, erscheint sie hier.</Alert>
@@ -286,13 +281,7 @@ export default function EpoNotenPage() {
                 {roundMeta && (
                   <Typography
                     variant="body2"
-                    sx={{
-                      fontWeight: 600,
-                      color: 'text.secondary',
-                      width: '100%',
-                      maxWidth: { xs: 'calc(100vw - 16px)', sm: 920, md: 1040 },
-                      textAlign: 'center',
-                    }}
+                    sx={{ fontWeight: 600, color: 'text.secondary', width: '100%', textAlign: 'center' }}
                   >
                     {roundMeta.title} · {roundMeta.date} · {roundMeta.groupName}
                   </Typography>
