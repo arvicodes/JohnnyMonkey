@@ -934,21 +934,45 @@ export function EpoNotenTeacherView() {
                       const g = groups.find((x) => x.id === gid);
                       const isActive = activeCourseGroupId === gid;
                       return (
-                        <Chip
-                          key={gid}
-                          label={g?.name || gid}
-                          clickable
-                          onClick={() => selectStudentListGroup(gid)}
-                          onDelete={() => updateRoundGroups(round.groupIds.filter((id) => id !== gid))}
-                          variant={isActive ? 'filled' : 'outlined'}
-                          color={isActive ? 'primary' : 'default'}
-                          sx={{
-                            height: 28,
-                            fontWeight: 700,
-                            fontSize: '0.78rem',
-                            '& .MuiChip-deleteIcon': { fontSize: 16 },
-                          }}
-                        />
+                        <Stack key={gid} direction="row" alignItems="center" gap={0.15}>
+                          <Chip
+                            label={g?.name || gid}
+                            clickable
+                            onClick={() => selectStudentListGroup(gid)}
+                            onDelete={() => updateRoundGroups(round.groupIds.filter((id) => id !== gid))}
+                            variant={isActive ? 'filled' : 'outlined'}
+                            color={isActive ? 'primary' : 'default'}
+                            sx={{
+                              height: 28,
+                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              '& .MuiChip-deleteIcon': { fontSize: 16 },
+                            }}
+                          />
+                          <Tooltip title="SuS dieses Kurses zurücksetzen">
+                            <IconButton
+                              size="small"
+                              aria-label={`${g?.name || gid} zurücksetzen`}
+                              onClick={() => requestReset(gid)}
+                              disabled={saving}
+                              sx={{
+                                ...epoNotenCompactIconBtnSx,
+                                minWidth: 18,
+                                width: 18,
+                                height: 18,
+                                color: '#e65100',
+                                borderColor: 'transparent',
+                                bgcolor: 'transparent',
+                                '&:hover': {
+                                  bgcolor: 'rgba(245, 124, 0, 0.1)',
+                                  borderColor: 'rgba(230, 81, 0, 0.35)',
+                                },
+                              }}
+                            >
+                              <RestartAltIcon sx={{ fontSize: 11 }} />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
                       );
                     })}
                   </Stack>
@@ -1323,10 +1347,28 @@ export function EpoNotenTeacherView() {
         )}
       </Box>
 
-      <Dialog open={resetConfirmOpen} onClose={() => !saving && setResetConfirmOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog
+        open={resetConfirmOpen}
+        onClose={() => {
+          if (!saving) {
+            setResetConfirmOpen(false);
+            setResetGroupId(null);
+          }
+        }}
+        maxWidth="xs"
+        fullWidth
+      >
         <DialogTitle sx={dialogCloseTitleSx}>
-          Alle SuS zurücksetzen?
-          <DialogCloseIconButton onClose={() => !saving && setResetConfirmOpen(false)} disabled={saving} />
+          {resetGroupId ? `Kurs „${resetGroupName}“ zurücksetzen?` : 'Alle SuS zurücksetzen?'}
+          <DialogCloseIconButton
+            onClose={() => {
+              if (!saving) {
+                setResetConfirmOpen(false);
+                setResetGroupId(null);
+              }
+            }}
+            disabled={saving}
+          />
         </DialogTitle>
         <DialogContent>
           <Stack spacing={1.25} sx={{ pt: 0.5 }}>
@@ -1334,7 +1376,16 @@ export function EpoNotenTeacherView() {
               Diese Aktion kann nicht rückgängig gemacht werden.
             </Alert>
             <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
-              Für die Runde <strong>{round?.title}</strong> werden alle Einträge gelöscht:
+              {resetGroupId ? (
+                <>
+                  Für <strong>{resetGroupName}</strong> in der Runde <strong>{round?.title}</strong> werden alle
+                  Einträge dieser SuS gelöscht:
+                </>
+              ) : (
+                <>
+                  Für die Runde <strong>{round?.title}</strong> werden alle Einträge gelöscht:
+                </>
+              )}
             </Typography>
             <Typography component="ul" variant="body2" sx={{ m: 0, pl: 2.25, fontSize: '0.82rem', color: 'text.secondary' }}>
               <li>Selbsteinschätzungen der Schüler</li>
@@ -1347,18 +1398,26 @@ export function EpoNotenTeacherView() {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 2, pb: 1.5 }}>
-          <Button size="small" onClick={() => setResetConfirmOpen(false)} disabled={saving} sx={epoNotenCompactBtnSx}>
+          <Button
+            size="small"
+            onClick={() => {
+              setResetConfirmOpen(false);
+              setResetGroupId(null);
+            }}
+            disabled={saving}
+            sx={epoNotenCompactBtnSx}
+          >
             Abbrechen
           </Button>
           <Button
             size="small"
             variant="contained"
             color="warning"
-            onClick={() => void confirmResetAll()}
+            onClick={() => void confirmReset()}
             disabled={saving}
             sx={epoNotenCompactBtnSx}
           >
-            Ja, alle zurücksetzen
+            {resetGroupId ? 'Ja, Kurs zurücksetzen' : 'Ja, alle zurücksetzen'}
           </Button>
         </DialogActions>
       </Dialog>
