@@ -31,6 +31,7 @@ import {
   epoNotenStudentGoalDisplaySx,
   epoNotenStudentGoalFieldSx,
   epoNotenBigNumberSx,
+  epoNotenBitteAusfuellenAlertSx,
 } from '../components/epo-noten/epoNotenUi';
 import {
   EPO_NOTEN_STUDENT_CATEGORIES,
@@ -343,6 +344,17 @@ export default function EpoNotenPage() {
                   >
                     {roundMeta.title} · {roundMeta.date} · {roundMeta.groupName}
                   </Typography>
+                )}
+
+                {phase === 'self' && canEditSelf && (
+                  <Alert severity="warning" sx={epoNotenBitteAusfuellenAlertSx}>
+                    <strong>Bitte ausfüllen</strong> — EPO-Selbsteinschätzung abgeben.
+                  </Alert>
+                )}
+                {phase === 'goals' && canEditGoals && (
+                  <Alert severity="warning" sx={epoNotenBitteAusfuellenAlertSx}>
+                    <strong>Bitte ausfüllen</strong> — Ziel und Handlung eintragen.
+                  </Alert>
                 )}
 
                 {(phase === 'self' || phase === 'wait') && (

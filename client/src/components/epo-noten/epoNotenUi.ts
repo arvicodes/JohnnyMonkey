@@ -122,6 +122,34 @@ export const epoNotenCompactIconBtnSx = {
 
 export const epoNotenCompactIconSx = { fontSize: 14 } as const;
 
+/** SuS-Aktion offen: „Bitte ausfüllen“ (Liste + Chips) */
+export const epoNotenBitteAusfuellenChipSx = {
+  fontWeight: 800,
+  fontSize: '0.62rem',
+  height: 20,
+  '& .MuiChip-label': { px: 0.6 },
+  animation: 'epoBitteAusfuellenPulse 1.2s ease-in-out infinite',
+  '@keyframes epoBitteAusfuellenPulse': {
+    '0%, 100%': { boxShadow: '0 0 0 0 rgba(245, 124, 0, 0.45)' },
+    '50%': { boxShadow: '0 0 0 7px rgba(245, 124, 0, 0)' },
+  },
+} as const;
+
+export const epoNotenBitteAusfuellenRowSx = {
+  bgcolor: 'rgba(245, 124, 0, 0.09)',
+  borderLeft: '3px solid',
+  borderLeftColor: epoNotenPalette.warn,
+} as const;
+
+export const epoNotenBitteAusfuellenAlertSx = {
+  py: 0.65,
+  fontWeight: 700,
+  border: '2px solid',
+  borderColor: 'warning.main',
+  bgcolor: 'rgba(245, 124, 0, 0.12)',
+  '& .MuiAlert-icon': { fontSize: '1.25rem' },
+} as const;
+
 /** Kompakte Text-Buttons — Icons nicht über dem Label */
 export const epoNotenCompactBtnSx = {
   minHeight: 22,

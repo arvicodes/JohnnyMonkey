@@ -156,6 +156,23 @@ export type EpoNotenEntry = {
   goalsSubmittedAt?: string | null;
 };
 
+/** SuS muss noch etwas in einer freigeschalteten Runde erledigen. */
+export type StudentEpoPendingKind = 'self' | 'goals';
+
+export function studentEpoPendingKind(
+  entry: Pick<EpoNotenEntry, 'studentSubmittedAt' | 'teacherReleasedAt' | 'goalsSubmittedAt'>,
+  roundPublished: boolean,
+): StudentEpoPendingKind | null {
+  if (!roundPublished) return null;
+  if (!entry.studentSubmittedAt) return 'self';
+  if (entry.teacherReleasedAt && !entry.goalsSubmittedAt) return 'goals';
+  return null;
+}
+
+export function studentEpoPendingDetail(kind: StudentEpoPendingKind): string {
+  return kind === 'self' ? 'Selbsteinschätzung' : 'Ziele';
+}
+
 /** Lehrer-Raster noch nicht bewertet (inkl. ältere „alles 0“-Platzhalter). */
 export function teacherRasterIsUnset(entry: {
   teacherScores?: number[];

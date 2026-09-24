@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Chip, List, ListItemButton, ListItemText } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import type { EpoNotenStudentSession } from '../../lib/epoNotenShared';
-import { epoNotenCardSx, epoNotenPalette, epoNotenStudentSurfaceSx } from './epoNotenUi';
+import { epoNotenCardSx, epoNotenPalette, epoNotenStudentSurfaceSx, epoNotenBitteAusfuellenChipSx, epoNotenBitteAusfuellenRowSx } from './epoNotenUi';
 
 function formatRoundDate(date: string): string {
   if (!date) return '—';
@@ -20,15 +20,8 @@ function statusChip(session: EpoNotenStudentSession) {
       <Chip
         size="small"
         color="warning"
-        label="Offen — jetzt ausfüllen"
-        sx={{
-          fontWeight: 800,
-          animation: 'epoOpenBlink 1.1s ease-in-out infinite',
-          '@keyframes epoOpenBlink': {
-            '0%, 100%': { boxShadow: '0 0 0 0 rgba(245, 124, 0, 0.55)' },
-            '50%': { boxShadow: '0 0 0 8px rgba(245, 124, 0, 0)' },
-          },
-        }}
+        label="Bitte ausfüllen"
+        sx={epoNotenBitteAusfuellenChipSx}
       />
     );
   }
@@ -36,16 +29,9 @@ function statusChip(session: EpoNotenStudentSession) {
     return (
       <Chip
         size="small"
-        color="secondary"
-        label="Ziele festlegen"
-        sx={{
-          fontWeight: 800,
-          animation: 'epoOpenBlink 1.1s ease-in-out infinite',
-          '@keyframes epoOpenBlink': {
-            '0%, 100%': { boxShadow: '0 0 0 0 rgba(156, 39, 176, 0.45)' },
-            '50%': { boxShadow: '0 0 0 8px rgba(156, 39, 176, 0)' },
-          },
-        }}
+        color="warning"
+        label="Bitte ausfüllen"
+        sx={epoNotenBitteAusfuellenChipSx}
       />
     );
   }
@@ -85,7 +71,8 @@ export function EpoNotenStudentRoundList({ sessions, onSelect }: Props) {
                 px: 2,
                 borderBottom: `1px solid ${epoNotenPalette.border}`,
                 opacity: archived ? 0.52 : 1,
-                bgcolor: s.actionRequired ? 'rgba(245, 124, 0, 0.06)' : archived ? 'rgba(0,0,0,0.02)' : 'transparent',
+                bgcolor: s.actionRequired ? 'rgba(245, 124, 0, 0.1)' : archived ? 'rgba(0,0,0,0.02)' : 'transparent',
+                ...(s.actionRequired ? epoNotenBitteAusfuellenRowSx : {}),
                 '&:last-child': { borderBottom: 0 },
                 '&:hover': { opacity: archived ? 0.65 : 1 },
               }}

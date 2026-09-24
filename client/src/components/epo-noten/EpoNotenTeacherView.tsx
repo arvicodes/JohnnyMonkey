@@ -43,6 +43,8 @@ import {
   sumCategoryScores,
   teacherFormGradeFromEntry,
   teacherFormScoresFromEntry,
+  studentEpoPendingKind,
+  studentEpoPendingDetail,
 } from '../../lib/epoNotenShared';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import DualStudentAvatars from '../DualStudentAvatars';
@@ -56,6 +58,9 @@ import {
   epoNotenBigNumberSx,
   epoNotenPalette,
   epoNotenStudentGoalDisplaySx,
+  epoNotenBitteAusfuellenChipSx,
+  epoNotenBitteAusfuellenRowSx,
+  epoNotenBitteAusfuellenAlertSx,
 } from './epoNotenUi';
 
 type GroupInfo = { id: string; name: string; studentCount: number };
@@ -441,21 +446,6 @@ export function EpoNotenTeacherView() {
       const res = await apiPost(`/api/epo-noten/${round.id}/unpublish`, {});
       if (!res?.ok) throw new Error('Zurücknehmen fehlgeschlagen');
       await refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveTeacher = async () => {
-    if (!round || !selectedStudentId) return;
-    setSaving(true);
-    setError(null);
-    try {
-      teacherScoresDirtyRef.current = true;
-      await saveTeacherDraftNow();
-      await teacherSaveChainRef.current;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
     } finally {
@@ -1110,6 +1100,9 @@ export function EpoNotenTeacherView() {
                             const active = s.studentId === selectedStudentId;
                             const isLastInSection = studentIndex === section.students.length - 1;
                             const isLastSection = sectionIndex === visibleStudentSections.length - 1;
+                            const pendingKind = round?.publishedAt
+                              ? studentEpoPendingKind(s, Boolean(round.publishedAt))
+                              : null;
                             return (
                               <ListItemButton
                                 key={`${section.groupId}-${s.studentId}`}
@@ -1120,6 +1113,7 @@ export function EpoNotenTeacherView() {
                                   px: 0.5,
                                   borderBottom: '1px solid',
                                   borderColor: 'divider',
+                                  ...(pendingKind ? epoNotenBitteAusfuellenRowSx : {}),
                                   ...((isLastInSection && isLastSection) ? { borderBottom: 0 } : {}),
                                 }}
                               >
@@ -1143,10 +1137,24 @@ export function EpoNotenTeacherView() {
                                   </Typography>
                                   <Chip
                                     size="small"
-                                    label={s.studentSubmittedAt ? '✓' : '·'}
-                                    sx={{ height: 16, minWidth: 22, fontSize: '0.58rem', '& .MuiChip-label': { px: 0.4 } }}
-                                    color={s.studentSubmittedAt ? 'success' : 'default'}
-                                    variant="outlined"
+                                    label={
+                                      pendingKind
+                                        ? 'Bitte ausfüllen'
+                                        : s.studentSubmittedAt
+                                          ? '✓'
+                                          : '—'
+                                    }
+                                    sx={{
+                                      height: 18,
+                                      minWidth: pendingKind ? 72 : 22,
+                                      fontSize: '0.58rem',
+                                      '& .MuiChip-label': { px: 0.4 },
+                                      ...(pendingKind ? epoNotenBitteAusfuellenChipSx : {}),
+                                    }}
+                                    color={
+                                      pendingKind ? 'warning' : s.studentSubmittedAt ? 'success' : 'default'
+                                    }
+                                    variant={pendingKind || s.studentSubmittedAt ? 'filled' : 'outlined'}
                                   />
                                   {s.teacherGrade ? (
                                     <Typography
@@ -1188,9 +1196,25 @@ export function EpoNotenTeacherView() {
                       </Typography>
                     ) : (
                       <Stack spacing={0.45}>
-                        {!selectedStudent.studentSubmittedAt && (
+                        {round?.publishedAt &&
+                          (() => {
+                            const pending = studentEpoPendingKind(
+                              selectedStudent,
+                              Boolean(round.publishedAt),
+                            );
+                            if (!pending) return null;
+                            return (
+                              <Alert severity="warning" sx={epoNotenBitteAusfuellenAlertSx}>
+                                <strong>Bitte ausfüllen</strong> — SuS muss noch{' '}
+                                {studentEpoPendingDetail(pending)} abgeben.
+                              </Alert>
+                            );
+                          })()}
+
+                        {!selectedStudent.studentSubmittedAt &&
+                          !round?.publishedAt && (
                           <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>
-                            Noch keine Selbsteinschätzung.
+                            Runde noch nicht für SuS freigeschaltet.
                           </Typography>
                         )}
 
@@ -1296,21 +1320,12 @@ export function EpoNotenTeacherView() {
                                     ? 'Speichert…'
                                     : draftStatus === 'saved'
                                       ? 'Gespeichert'
-                                      : 'Speichern fehlgeschlagen — bitte „Speichern“ erneut tippen'}
+                                      : 'Automatisches Speichern fehlgeschlagen — bitte erneut ändern oder Seite neu laden'}
                                 </Typography>
                               )}
                               {selectedStudent.groupId &&
                                 releasableCountInGroup(selectedStudent.groupId) > 0 && (
                                 <Stack direction="row" spacing={0.75} justifyContent="flex-end">
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    onClick={() => void saveTeacher()}
-                                    disabled={saving || draftStatus === 'saving'}
-                                    sx={epoNotenCompactBtnSx}
-                                  >
-                                    Speichern
-                                  </Button>
                                   <Button
                                     size="small"
                                     variant="contained"
