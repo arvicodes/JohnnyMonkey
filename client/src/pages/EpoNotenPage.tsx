@@ -44,10 +44,11 @@ function detectIsTeacher(): boolean {
 }
 
 const compactIconBtn = {
-  p: 0.25,
-  minWidth: 28,
-  width: 28,
-  height: 28,
+  p: 0,
+  minWidth: 24,
+  width: 24,
+  height: 24,
+  borderRadius: 1,
 };
 
 export default function EpoNotenPage() {
@@ -219,14 +220,14 @@ export default function EpoNotenPage() {
           direction="row"
           alignItems="center"
           justifyContent="space-between"
-          sx={{ mb: 1, minHeight: 32 }}
+          sx={{ mb: 0.65, minHeight: 26 }}
         >
           {!isTeacher && selectedRoundId ? (
             <IconButton onClick={backToList} aria-label="Zur Liste" size="small" sx={{ ...compactIconBtn, ml: -0.25 }}>
-              <ArrowBackIcon sx={{ fontSize: 18 }} />
+              <ArrowBackIcon sx={{ fontSize: 15 }} />
             </IconButton>
           ) : (
-            <Box sx={{ width: 28 }} />
+            <Box sx={{ width: 24 }} />
           )}
           <Typography
             variant="body2"
@@ -251,7 +252,7 @@ export default function EpoNotenPage() {
             size="small"
             sx={{ ...compactIconBtn, mr: -0.25 }}
           >
-            <CloseIcon sx={{ fontSize: 18 }} />
+            <CloseIcon sx={{ fontSize: 15 }} />
           </IconButton>
         </Stack>
 

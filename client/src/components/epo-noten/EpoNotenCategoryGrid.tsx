@@ -11,6 +11,8 @@ import {
 } from '@mui/material';
 import { epoNotenPalette } from './epoNotenUi';
 
+const studentGhostPurple = '#9c27b0';
+
 type Props = {
   categories: string[];
   scores: number[];
@@ -18,9 +20,19 @@ type Props = {
   readOnly?: boolean;
   label?: string;
   compact?: boolean;
+  /** SuS-Selbsteinschätzung: lila, nur Anzeige */
+  studentGhost?: boolean;
 };
 
-export function EpoNotenCategoryGrid({ categories, scores, onChange, readOnly, label, compact }: Props) {
+export function EpoNotenCategoryGrid({
+  categories,
+  scores,
+  onChange,
+  readOnly,
+  label,
+  compact,
+  studentGhost,
+}: Props) {
   const setScore = (index: number, value: number) => {
     if (readOnly || !onChange) return;
     const next = [...scores];
@@ -33,9 +45,9 @@ export function EpoNotenCategoryGrid({ categories, scores, onChange, readOnly, l
       sx={{
         borderRadius: compact ? 1.5 : 2.5,
         border: compact ? '1px solid' : `2px solid ${epoNotenPalette.border}`,
-        borderColor: epoNotenPalette.border,
+        borderColor: studentGhost ? 'rgba(156, 39, 176, 0.35)' : epoNotenPalette.border,
         overflow: 'hidden',
-        bgcolor: '#fafcff',
+        bgcolor: studentGhost ? 'rgba(250, 245, 255, 0.85)' : '#fafcff',
       }}
     >
       {label && (
@@ -47,8 +59,8 @@ export function EpoNotenCategoryGrid({ categories, scores, onChange, readOnly, l
             py: compact ? 0.45 : 0.75,
             fontWeight: 800,
             fontSize: compact ? '0.78rem' : undefined,
-            bgcolor: epoNotenPalette.primaryTint,
-            color: epoNotenPalette.heading,
+            bgcolor: studentGhost ? 'rgba(156, 39, 176, 0.14)' : epoNotenPalette.primaryTint,
+            color: studentGhost ? studentGhostPurple : epoNotenPalette.heading,
           }}
         >
           {label}
@@ -105,8 +117,10 @@ export function EpoNotenCategoryGrid({ categories, scores, onChange, readOnly, l
                     sx={{
                       p: compact ? 0.35 : 0.75,
                       '& .MuiSvgIcon-root': { fontSize: compact ? 20 : 26 },
-                      color: 'rgba(25, 118, 210, 0.45)',
-                      '&.Mui-checked': { color: epoNotenPalette.primary },
+                      color: studentGhost ? 'rgba(156, 39, 176, 0.35)' : 'rgba(25, 118, 210, 0.45)',
+                      '&.Mui-checked': {
+                        color: studentGhost ? studentGhostPurple : epoNotenPalette.primary,
+                      },
                     }}
                   />
                 </TableCell>

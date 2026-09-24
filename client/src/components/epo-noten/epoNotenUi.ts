@@ -90,10 +90,10 @@ export const epoNotenBigNumberSx = {
 
 export const epoNotenCompactIconBtnSx = {
   p: 0,
-  minWidth: 30,
-  width: 30,
-  height: 30,
-  borderRadius: 1.25,
+  minWidth: 24,
+  width: 24,
+  height: 24,
+  borderRadius: 1,
   border: '1px solid',
   borderColor: epoNotenPalette.border,
   bgcolor: '#fff',
@@ -105,35 +105,45 @@ export const epoNotenCompactIconBtnSx = {
   },
 } as const;
 
-export const epoNotenCompactIconSx = { fontSize: 17 } as const;
+export const epoNotenCompactIconSx = { fontSize: 14 } as const;
 
 /** Kompakte Text-Buttons — Icons nicht über dem Label */
 export const epoNotenCompactBtnSx = {
-  minHeight: 30,
-  py: 0.35,
-  px: 1.1,
-  fontSize: '0.78rem',
+  minHeight: 24,
+  py: 0.2,
+  px: 0.75,
+  fontSize: '0.7rem',
   fontWeight: 700,
-  lineHeight: 1.2,
+  lineHeight: 1.15,
   textTransform: 'none',
-  borderRadius: 1.25,
+  borderRadius: 1,
   boxShadow: 'none',
   whiteSpace: 'nowrap',
   '&:hover': { boxShadow: 'none' },
   '& .MuiButton-startIcon': {
-    marginRight: 0.4,
+    marginRight: 0.25,
     marginLeft: 0,
-    '& > *:nth-of-type(1)': { fontSize: 16 },
+    '& > *:nth-of-type(1)': { fontSize: 14 },
   },
 } as const;
+
+export const epoNotenStudentGhostPanelSx = {
+  borderRadius: 1.25,
+  border: '1px solid rgba(156, 39, 176, 0.35)',
+  bgcolor: 'rgba(250, 245, 255, 0.55)',
+  color: '#6a1b9a',
+  p: 0.75,
+  pointerEvents: 'none' as const,
+  userSelect: 'none' as const,
+};
 
 export const epoNotenPanelHeaderSx = {
   display: 'flex',
   alignItems: 'center',
-  gap: 0.75,
+  gap: 0.5,
   flexWrap: 'wrap',
-  px: 1.25,
-  py: 0.85,
+  px: 0.85,
+  py: 0.45,
   bgcolor: epoNotenPalette.primaryTint,
   borderBottom: `1px solid ${epoNotenPalette.border}`,
 };

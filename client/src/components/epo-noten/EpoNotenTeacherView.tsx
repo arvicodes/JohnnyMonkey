@@ -45,6 +45,7 @@ import {
   epoNotenInsetBoxSx,
   epoNotenPanelHeaderSx,
   epoNotenPalette,
+  epoNotenStudentGhostPanelSx,
 } from './epoNotenUi';
 
 type GroupInfo = { id: string; name: string; studentCount: number };
@@ -328,12 +329,12 @@ export function EpoNotenTeacherView() {
         </Alert>
       )}
 
-      <Stack direction="row" alignItems="center" spacing={0.75} sx={{ minHeight: 32 }}>
+      <Stack direction="row" alignItems="center" spacing={0.5} sx={{ minHeight: 26 }}>
         <Typography
           sx={{
             flex: 1,
             fontWeight: 800,
-            fontSize: '0.9rem',
+            fontSize: '0.78rem',
             color: epoNotenPalette.heading,
             minWidth: 0,
           }}
@@ -341,17 +342,20 @@ export function EpoNotenTeacherView() {
           EPO — Lehrer
         </Typography>
         <Tooltip title="Neue Runde">
-          <Button
+          <IconButton
             size="small"
-            variant="contained"
             onClick={() => setCreateOpen(true)}
-            sx={{ ...epoNotenCompactBtnSx, bgcolor: epoNotenPalette.primary, minWidth: 0, px: 1 }}
+            aria-label="Neue Runde"
+            sx={{
+              ...epoNotenCompactIconBtnSx,
+              bgcolor: epoNotenPalette.primary,
+              color: '#fff',
+              borderColor: epoNotenPalette.primary,
+              '&:hover': { bgcolor: '#1565c0', borderColor: '#1565c0' },
+            }}
           >
-            <AddIcon sx={{ fontSize: 17 }} />
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' }, ml: 0.5 }}>
-              Neue Runde
-            </Box>
-          </Button>
+            <AddIcon sx={epoNotenCompactIconSx} />
+          </IconButton>
         </Tooltip>
       </Stack>
 
@@ -636,13 +640,18 @@ export function EpoNotenTeacherView() {
                       </Typography>
                     ) : (
                       <Stack spacing={1}>
+                        {!selectedStudent.studentSubmittedAt && (
+                          <Alert severity="info" sx={{ py: 0, fontSize: '0.72rem' }}>
+                            Noch keine Selbsteinschätzung.
+                          </Alert>
+                        )}
+
                         {selectedStudent.studentSubmittedAt ? (
-                          <Box sx={epoNotenInsetBoxSx}>
-                            <Typography sx={{ fontWeight: 800, fontSize: '0.75rem', mb: 0.5, color: epoNotenPalette.heading }}>
-                              Selbsteinschätzung
+                          <Box sx={{ ...epoNotenStudentGhostPanelSx, opacity: 0.62, mb: 0.65 }}>
+                            <Typography sx={{ fontWeight: 800, fontSize: '0.68rem', mb: 0.35, color: '#7b1fa2' }}>
+                              SuS — Noteneinschätzung (nur Anzeige)
                             </Typography>
-                            <Typography variant="body2" sx={{ fontSize: '0.78rem' }}>
-                              Einschätzung:{' '}
+                            <Typography sx={{ fontSize: '0.72rem', lineHeight: 1.35 }}>
                               <strong>
                                 {formatSuggestedGradeDisplay(
                                   selectedStudent.suggestedGradeMode,
@@ -650,35 +659,72 @@ export function EpoNotenTeacherView() {
                                 )}
                               </strong>
                               {' · '}
-                              Punkte {sumCategoryScores(selectedStudent.selfScores)} →{' '}
+                              Raster {sumCategoryScores(selectedStudent.selfScores)} Pkt. →{' '}
                               {selectedStudent.selfGradeFromTable || '—'}
                             </Typography>
-                            <Typography
-                              variant="body2"
-                              sx={{ fontSize: '0.76rem', mt: 0.5, whiteSpace: 'pre-wrap', color: epoNotenPalette.textPrimary }}
-                            >
+                            <Typography sx={{ fontSize: '0.7rem', mt: 0.45, whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>
                               {selectedStudent.justification || '—'}
                             </Typography>
                           </Box>
-                        ) : (
-                          <Alert severity="info" sx={{ py: 0, fontSize: '0.78rem' }}>Noch keine Selbsteinschätzung.</Alert>
-                        )}
+                        ) : null}
 
-                        <EpoNotenCategoryGrid
-                          compact
-                          label="Lehrkraft"
-                          categories={EPO_NOTEN_TEACHER_CATEGORIES}
-                          scores={teacherScores}
-                          onChange={setTeacherScores}
-                        />
+                        <Box sx={{ position: 'relative' }}>
+                            <Box sx={{ position: 'relative', borderRadius: 1.25, overflow: 'hidden' }}>
+                              {selectedStudent.studentSubmittedAt ? (
+                                <Box
+                                  sx={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    zIndex: 0,
+                                    opacity: 0.5,
+                                    pointerEvents: 'none',
+                                  }}
+                                >
+                                  <EpoNotenCategoryGrid
+                                    compact
+                                    studentGhost
+                                    label="SuS — Kategorien"
+                                    categories={EPO_NOTEN_TEACHER_CATEGORIES}
+                                    scores={normalizeCategoryScores(selectedStudent.selfScores)}
+                                    readOnly
+                                  />
+                                </Box>
+                              ) : null}
+                              <Box
+                                sx={{
+                                  position: 'relative',
+                                  zIndex: 1,
+                                  ...(selectedStudent.studentSubmittedAt && {
+                                    '& .MuiTableBody-root .MuiTableRow-root': {
+                                      bgcolor: 'rgba(255, 255, 255, 0.78) !important',
+                                    },
+                                    '& .MuiTable-root': { bgcolor: 'transparent' },
+                                  }),
+                                }}
+                              >
+                                <EpoNotenCategoryGrid
+                                  compact
+                                  label="Lehrkraft"
+                                  categories={EPO_NOTEN_TEACHER_CATEGORIES}
+                                  scores={teacherScores}
+                                  onChange={setTeacherScores}
+                                />
+                              </Box>
+                            </Box>
 
-                        <Stack
-                          direction="row"
-                          alignItems="center"
-                          flexWrap="wrap"
-                          gap={0.75}
-                          sx={epoNotenInsetBoxSx}
-                        >
+                            <Stack
+                              direction="row"
+                              alignItems="center"
+                              flexWrap="wrap"
+                              gap={0.75}
+                              sx={{
+                                ...epoNotenInsetBoxSx,
+                                mt: 0.75,
+                                bgcolor: '#fff',
+                                position: 'relative',
+                                zIndex: 2,
+                              }}
+                            >
                           <Typography sx={{ fontSize: '0.78rem' }}>
                             Summe <strong>{totalTeacher}</strong> → Tabelle <strong>{computedGrade}</strong>
                           </Typography>
@@ -694,7 +740,8 @@ export function EpoNotenTeacherView() {
                               '& .MuiInputLabel-root': { fontSize: '0.78rem' },
                             }}
                           />
-                        </Stack>
+                            </Stack>
+                        </Box>
 
                         <Stack direction="row" spacing={0.5} flexWrap="wrap">
                           <Button
