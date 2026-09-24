@@ -25395,7 +25395,6 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                 display: 'flex',
                 gap: participationDocked ? 0.2 : 0.4,
                 alignItems: 'center',
-                flexWrap: 'nowrap',
                 flex: participationDocked ? '0 0 auto' : '1 1 auto',
                 justifyContent: participationDocked ? 'flex-start' : 'center',
                 mx: participationDocked ? 0 : 1,
