@@ -1023,7 +1023,7 @@ export function EpoNotenTeacherView() {
                 <Box
                   sx={{
                     display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', lg: 'minmax(156px, 188px) minmax(0, 1fr)' },
+                    gridTemplateColumns: { xs: '1fr', lg: 'minmax(188px, 228px) minmax(0, 1fr)' },
                     gap: 0.5,
                     alignItems: 'start',
                   }}
@@ -1075,14 +1075,14 @@ export function EpoNotenTeacherView() {
                                 selected={active}
                                 onClick={() => void selectStudent(s.studentId)}
                                 sx={{
-                                  py: 0.35,
+                                  py: 0.5,
                                   px: 0.5,
                                   borderBottom: '1px solid',
                                   borderColor: 'divider',
                                   ...((isLastInSection && isLastSection) ? { borderBottom: 0 } : {}),
                                 }}
                               >
-                                <Stack direction="row" alignItems="center" gap={0.45} width="100%" minWidth={0}>
+                                <Stack direction="row" alignItems="center" gap={0.6} width="100%" minWidth={0}>
                                   <Box
                                     onClick={(e) => e.stopPropagation()}
                                     onKeyDown={(e) => e.stopPropagation()}
@@ -1090,9 +1090,10 @@ export function EpoNotenTeacherView() {
                                   >
                                     <DualStudentAvatars
                                       photoOnly
+                                      photoFraming="portrait"
                                       name={s.studentName}
                                       avatarUrl={s.avatarUrl}
-                                      photoSize={34}
+                                      photoSize={52}
                                       alwaysShowPhotoSlot={false}
                                     />
                                   </Box>

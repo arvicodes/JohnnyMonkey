@@ -21,6 +21,11 @@ type DualStudentAvatarsProps = {
   alwaysShowPhotoSlot?: boolean;
   /** Nur eigenes Foto (kein Emoji-Avatar) */
   photoOnly?: boolean;
+  /**
+   * `faceCloseup` = stärkerer Zoom (Dashboard-Karten).
+   * `portrait` = ganzes Schulporträt, weniger Zoom (z. B. EPO-Noten-Liste).
+   */
+  photoFraming?: 'faceCloseup' | 'portrait';
   onEmojiClick?: () => void;
   onPhotoClick?: () => void;
   sx?: SxProps<Theme>;
@@ -41,6 +46,7 @@ export function DualStudentAvatars({
   large = false,
   alwaysShowPhotoSlot = true,
   photoOnly = false,
+  photoFraming = 'faceCloseup',
   onEmojiClick,
   onPhotoClick,
   sx,
@@ -107,7 +113,7 @@ export function DualStudentAvatars({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    bgcolor: hasPhoto && !photoLoading ? 'transparent' : '#e8eaf6',
+    bgcolor: hasPhoto && !photoLoading ? (photoFraming === 'portrait' ? '#f0f0f0' : 'transparent') : '#e8eaf6',
     color: '#5c6bc0',
     boxShadow: large
       ? '0 4px 12px rgba(0,0,0,0.2)'
@@ -133,6 +139,25 @@ export function DualStudentAvatars({
   };
 
   const photoClickable = photoEditable || photoPreviewable;
+  const photoImgSx =
+    photoFraming === 'portrait'
+      ? {
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain' as const,
+          objectPosition: 'center center',
+          display: 'block',
+        }
+      : {
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover' as const,
+          objectPosition: '50% 18%',
+          transform: 'scale(1.32)',
+          transformOrigin: 'center 22%',
+          filter: 'contrast(1.16) saturate(1.12) brightness(1.06)',
+          display: 'block',
+        };
   const photoAvatar = (
     <Box
       component={photoClickable ? 'button' : 'div'}
@@ -156,16 +181,7 @@ export function DualStudentAvatars({
           alt={name ? `${name} Foto` : 'Eigenes Bild'}
           onError={() => setImgFailed(true)}
           draggable={false}
-          sx={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            objectPosition: '50% 18%',
-            transform: 'scale(1.32)',
-            transformOrigin: 'center 22%',
-            filter: 'contrast(1.16) saturate(1.12) brightness(1.06)',
-            display: 'block',
-          }}
+          sx={photoImgSx}
         />
       ) : large ? (
         <AddAPhotoIcon sx={{ fontSize: 36 }} />
