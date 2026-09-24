@@ -39,20 +39,16 @@ export const epoNotenTeacherShellSx = {
   overflow: 'hidden',
 };
 
-/** Volle nutzbare Breite (Viewport-Breakout auf schmalen Screens). */
-const epoNotenWideSurfaceBase = {
-  width: { xs: 'calc(100vw - 8px)', sm: '100%' },
-  maxWidth: { xs: 'calc(100vw - 8px)', sm: 'min(100%, 3200px)' },
-  ml: { xs: 'calc(4px - 50vw + 50%)', sm: 'auto' },
-  mr: { xs: 'auto', sm: 'auto' },
+/**
+ * Schüler: breite, zentrierte Karte (ca. 2× frühere schmale Spalte).
+ * Kein Viewport-Breakout — sonst hängt die Box links.
+ */
+export const epoNotenStudentSurfaceSx = {
+  width: '100%',
+  maxWidth: { xs: 'calc(100vw - 16px)', sm: 920, md: 1040 },
+  mx: 'auto',
   boxSizing: 'border-box' as const,
 };
-
-/** Schüler: Liste + Wizard */
-export const epoNotenStudentSurfaceSx = epoNotenWideSurfaceBase;
-
-/** Lehrer: Runden + Bewertung (SuS-Overlay) */
-export const epoNotenTeacherSurfaceSx = epoNotenWideSurfaceBase;
 
 export const epoNotenCardSx = {
   borderRadius: 3,

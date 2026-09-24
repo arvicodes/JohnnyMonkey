@@ -23,6 +23,7 @@ import {
   epoNotenPageBgSx,
   epoNotenPageShellSx,
   epoNotenPalette,
+  epoNotenStudentSurfaceSx,
   epoNotenTeacherShellSx,
 } from '../components/epo-noten/epoNotenUi';
 import {
@@ -264,8 +265,12 @@ export default function EpoNotenPage() {
             <CircularProgress size={28} />
           </Box>
         ) : (
-          <Stack spacing={1.25}>
-            {error && <Alert severity="error">{error}</Alert>}
+          <Stack spacing={1.25} sx={{ width: '100%', alignItems: 'center' }}>
+            {error && (
+              <Alert severity="error" sx={{ width: '100%', maxWidth: { xs: 'calc(100vw - 16px)', sm: 920, md: 1040 } }}>
+                {error}
+              </Alert>
+            )}
 
             {sessions.length === 0 ? (
               <Alert severity="info">Sobald deine Lehrkraft eine EPO-Runde freischaltet, erscheint sie hier.</Alert>
@@ -279,7 +284,16 @@ export default function EpoNotenPage() {
                   </Alert>
                 )}
                 {roundMeta && (
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 600,
+                      color: 'text.secondary',
+                      width: '100%',
+                      maxWidth: { xs: 'calc(100vw - 16px)', sm: 920, md: 1040 },
+                      textAlign: 'center',
+                    }}
+                  >
                     {roundMeta.title} · {roundMeta.date} · {roundMeta.groupName}
                   </Typography>
                 )}
@@ -305,7 +319,7 @@ export default function EpoNotenPage() {
 
                 {(phase === 'goals' || phase === 'done') && myEntry && (
                   <>
-                    <Box sx={epoNotenCardSx}>
+                    <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx }}>
                       <Box sx={{ p: 1.5 }}>
                         <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 800 }}>
                           Einschätzung deiner Lehrkraft
@@ -321,7 +335,7 @@ export default function EpoNotenPage() {
                       </Box>
                     </Box>
 
-                    <Box sx={epoNotenCardSx}>
+                    <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx }}>
                       <Box sx={{ p: 1.5 }}>
                         <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 800 }}>
                           Dein Ziel für den nächsten Zeitraum

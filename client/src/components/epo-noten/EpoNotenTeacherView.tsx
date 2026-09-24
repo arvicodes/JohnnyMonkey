@@ -46,7 +46,6 @@ import {
   epoNotenPanelHeaderSx,
   epoNotenPalette,
   epoNotenStudentGhostPanelSx,
-  epoNotenTeacherSurfaceSx,
 } from './epoNotenUi';
 
 type GroupInfo = { id: string; name: string; studentCount: number };
@@ -323,7 +322,7 @@ export function EpoNotenTeacherView() {
   const selectedRoundMeta = rounds.find((r) => r.id === selectedId);
 
   return (
-    <Stack spacing={1.25} sx={epoNotenTeacherSurfaceSx}>
+    <Stack spacing={1.25} sx={{ width: '100%', minWidth: 0 }}>
       {error && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ py: 0.25 }}>
           {error}
