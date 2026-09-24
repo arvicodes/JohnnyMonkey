@@ -73,9 +73,6 @@ export function EpoNotenStudentRoundList({ sessions, onSelect }: Props) {
 
   return (
     <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx }}>
-      <Typography variant="subtitle2" sx={{ px: 2, pt: 1.5, pb: 1, ...epoNotenSectionTitleSx, fontSize: '1.25rem' }}>
-        Deine EPO-Runden
-      </Typography>
       <List dense disablePadding>
         {sorted.map((s) => {
           const archived = s.isArchived;
