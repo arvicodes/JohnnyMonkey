@@ -25,6 +25,7 @@ import {
   EPO_NOTEN_STUDENT_CATEGORIES,
   minPointsThresholdForTotal,
   rasterResultFromTotal,
+  epoSummaryHeadline,
   allCategoriesSelected,
   isValidSuggestedGrade,
   sumCategoryScores,
@@ -261,18 +262,20 @@ export function EpoNotenStudentSelfWizard({
 
                   <Collapse in={evaluationPhase}>
                     <Box sx={{ mt: 2.5, textAlign: 'right', pr: 0.5, scrollMarginBottom: 100 }}>
-                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
-                        Gesamtpunktzahl (Raster):{' '}
-                        <Typography component="span" variant="body2" sx={{ fontWeight: 800, color: epoNotenPalette.textPrimary }}>
-                          {evaluationPoints}
+                      {assessmentMode === 'note' && (
+                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                          Gesamtpunktzahl (Raster):{' '}
+                          <Typography component="span" variant="body2" sx={{ fontWeight: 800, color: epoNotenPalette.textPrimary }}>
+                            {evaluationPoints}
+                          </Typography>
                         </Typography>
-                      </Typography>
+                      )}
                       <Typography
                         variant="body1"
                         color="text.secondary"
-                        sx={{ mt: 2, fontWeight: 700, fontSize: '1rem' }}
+                        sx={{ mt: assessmentMode === 'mss' ? 0 : 2, fontWeight: 700, fontSize: '1rem' }}
                       >
-                        {assessmentMode === 'mss' ? 'Deine Spalte in der Tabelle' : 'Note aus Tabelle'}
+                        {assessmentMode === 'mss' ? 'Deine MSS-Punkte' : 'Note aus Tabelle'}
                       </Typography>
                       <Typography
                         component="p"
@@ -284,7 +287,7 @@ export function EpoNotenStudentSelfWizard({
                           mt: 0.5,
                         }}
                       >
-                        {evaluationGrade}
+                        {epoSummaryHeadline(assessmentMode, evaluationGrade, evaluationPoints)}
                       </Typography>
                     </Box>
                   </Collapse>

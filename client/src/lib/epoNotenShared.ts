@@ -94,6 +94,26 @@ export function rasterResultFromTotal(mode: EpoNotenAssessmentMode, total: numbe
   return gradeFromTotalPoints(t);
 }
 
+/** SuS-Kurzüberblick: eine große Zeile (bei MSS keine doppelte Zahl + „MSS-Pkt.“). */
+export function epoSummaryHeadline(
+  mode: EpoNotenAssessmentMode,
+  gradeOrPoints: string,
+  rasterPoints: number,
+): string {
+  if (mode === 'mss') {
+    const n = gradeOrPoints.trim() || String(Math.max(0, Math.min(15, Math.round(rasterPoints))));
+    return `${n} MSS-Pkt.`;
+  }
+  const g = gradeOrPoints.trim();
+  return g || rasterResultFromTotal('note', rasterPoints);
+}
+
+/** Zweite Zeile nur im Noten-Modus (Punkte im Raster). */
+export function epoSummarySubline(mode: EpoNotenAssessmentMode, rasterPoints: number): string | null {
+  if (mode === 'mss') return null;
+  return `${rasterPoints} Pkt. im Raster`;
+}
+
 export function isValidSuggestedGrade(mode: EpoNotenSuggestedGradeMode, value: string): boolean {
   const v = value.trim();
   if (!v) return false;

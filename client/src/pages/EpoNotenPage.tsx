@@ -30,6 +30,7 @@ import {
   epoNotenSectionTitleSx,
   epoNotenStudentGoalDisplaySx,
   epoNotenStudentGoalFieldSx,
+  epoNotenBigNumberSx,
 } from '../components/epo-noten/epoNotenUi';
 import {
   EPO_NOTEN_STUDENT_CATEGORIES,
@@ -37,6 +38,8 @@ import {
   type EpoNotenEntry,
   type EpoNotenStudentSession,
   emptyCategoryScores,
+  epoSummaryHeadline,
+  epoSummarySubline,
   minPointsThresholdForTotal,
   normalizeCategoryScores,
   rasterResultFromTotal,
@@ -375,11 +378,18 @@ export default function EpoNotenPage() {
                     {(() => {
                       const selfPts = sumCategoryScores(myEntry.selfScores);
                       const teacherPts = sumCategoryScores(myEntry.teacherScores);
-                      const selfLabel =
-                        myEntry.selfGradeFromTable || rasterResultFromTotal(assessmentMode, selfPts);
-                      const teacherLabel = myEntry.teacherGrade || '—';
-                      const ptsSuffix =
-                        assessmentMode === 'mss' ? ' MSS-Pkt.' : ' Pkt. im Raster';
+                      const selfHeadline = epoSummaryHeadline(
+                        assessmentMode,
+                        myEntry.selfGradeFromTable || rasterResultFromTotal(assessmentMode, selfPts),
+                        selfPts,
+                      );
+                      const teacherHeadline = epoSummaryHeadline(
+                        assessmentMode,
+                        myEntry.teacherGrade || '',
+                        teacherPts,
+                      );
+                      const selfSub = epoSummarySubline(assessmentMode, selfPts);
+                      const teacherSub = epoSummarySubline(assessmentMode, teacherPts);
                       return (
                         <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx, p: 1.5 }}>
                           <Typography sx={{ ...epoNotenSectionTitleSx, fontSize: '1.05rem', mb: 1.25 }}>
@@ -403,13 +413,14 @@ export default function EpoNotenPage() {
                               <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
                                 Du
                               </Typography>
-                              <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', color: 'rgba(25, 118, 210, 0.85)' }}>
-                                {selfLabel}
+                              <Typography sx={{ ...epoNotenBigNumberSx, fontSize: { xs: '1.75rem', sm: '2rem' } }}>
+                                {selfHeadline}
                               </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {selfPts}
-                                {ptsSuffix}
-                              </Typography>
+                              {selfSub && (
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                                  {selfSub}
+                                </Typography>
+                              )}
                             </Box>
                             <Box
                               sx={{
@@ -423,13 +434,20 @@ export default function EpoNotenPage() {
                               <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
                                 Lehrkraft
                               </Typography>
-                              <Typography sx={{ fontWeight: 900, fontSize: '1.35rem', color: epoNotenPalette.accent }}>
-                                {teacherLabel}
+                              <Typography
+                                sx={{
+                                  ...epoNotenBigNumberSx,
+                                  fontSize: { xs: '1.75rem', sm: '2rem' },
+                                  color: epoNotenPalette.accent,
+                                }}
+                              >
+                                {teacherHeadline}
                               </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {teacherPts}
-                                {ptsSuffix}
-                              </Typography>
+                              {teacherSub && (
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                                  {teacherSub}
+                                </Typography>
+                              )}
                             </Box>
                           </Stack>
 
