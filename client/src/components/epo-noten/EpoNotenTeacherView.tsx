@@ -662,19 +662,6 @@ export function EpoNotenTeacherView() {
                   )}
                 </Box>
 
-                <Button
-                  fullWidth
-                  size="small"
-                  variant="outlined"
-                  color="warning"
-                  onClick={resetAllStudents}
-                  disabled={saving}
-                  startIcon={<RestartAltIcon sx={{ fontSize: 16 }} />}
-                  sx={{ ...epoNotenCompactBtnSx, justifyContent: 'center' }}
-                >
-                  Alle SuS zurücksetzen
-                </Button>
-
                 <Divider />
 
                 <Box
