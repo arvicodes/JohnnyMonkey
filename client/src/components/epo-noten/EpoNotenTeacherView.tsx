@@ -46,6 +46,7 @@ import {
   teacherFormScoresFromEntry,
 } from '../../lib/epoNotenShared';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
+import DualStudentAvatars from '../DualStudentAvatars';
 import { EpoNotenCategoryGrid } from './EpoNotenCategoryGrid';
 import { EpoNotenGradeTable } from './EpoNotenGradeTable';
 import {
@@ -951,7 +952,7 @@ export function EpoNotenTeacherView() {
                 <Box
                   sx={{
                     display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', lg: 'minmax(120px, 148px) minmax(0, 1fr)' },
+                    gridTemplateColumns: { xs: '1fr', lg: 'minmax(156px, 188px) minmax(0, 1fr)' },
                     gap: 0.5,
                     alignItems: 'start',
                   }}
@@ -1015,7 +1016,21 @@ export function EpoNotenTeacherView() {
                                   ...((isLastInSection && isLastSection) ? { borderBottom: 0 } : {}),
                                 }}
                               >
-                                <Stack direction="row" alignItems="center" gap={0.35} width="100%" minWidth={0}>
+                                <Stack direction="row" alignItems="center" gap={0.45} width="100%" minWidth={0}>
+                                  <Box
+                                    onClick={(e) => e.stopPropagation()}
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                    sx={{ flexShrink: 0, lineHeight: 0 }}
+                                  >
+                                    <DualStudentAvatars
+                                      name={s.studentName}
+                                      avatarEmoji={s.avatarEmoji}
+                                      avatarUrl={s.avatarUrl}
+                                      size={18}
+                                      photoSize={22}
+                                      alwaysShowPhotoSlot={false}
+                                    />
+                                  </Box>
                                   <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.72rem', flex: 1, minWidth: 0 }}>
                                     {s.studentName}
                                   </Typography>

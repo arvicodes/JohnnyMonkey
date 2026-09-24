@@ -52,6 +52,9 @@ const sumCategoryScores = (scores: number[]) =>
 type EpoNotenEntry = {
   studentId: string;
   studentName: string;
+  /** Nur in API-Antworten (aus User), nicht in gespeicherten Round-Entries */
+  avatarEmoji?: string | null;
+  avatarUrl?: string | null;
   suggestedGrade?: string;
   suggestedGradeMode?: 'note' | 'mss';
   justification?: string;
@@ -225,7 +228,7 @@ const loadTeacherGroupsWithStudents = async (teacherId: string) =>
       name: true,
       students: {
         where: { role: 'STUDENT' },
-        select: { id: true, name: true },
+        select: { id: true, name: true, avatarEmoji: true, avatarUrl: true },
         orderBy: { name: 'asc' },
       },
     },
@@ -460,7 +463,14 @@ export class EpoNotenController {
             studentId: s.id,
             studentName: s.name,
           };
-          students.push({ ...row, groupId: g.id } as EpoNotenEntry & { groupId: string });
+          students.push({
+            ...row,
+            studentId: s.id,
+            studentName: s.name,
+            avatarEmoji: s.avatarEmoji,
+            avatarUrl: s.avatarUrl,
+            groupId: g.id,
+          } as EpoNotenEntry & { groupId: string });
         }
       }
 

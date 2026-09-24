@@ -118,6 +118,8 @@ export function formatSuggestedGradeDisplay(
 export type EpoNotenEntry = {
   studentId: string;
   studentName: string;
+  avatarEmoji?: string | null;
+  avatarUrl?: string | null;
   /** Nur in Lehrer-Detail: Lerngruppe des SuS in dieser Runde */
   groupId?: string;
   suggestedGrade?: string;
