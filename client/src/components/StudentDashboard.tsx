@@ -33,7 +33,6 @@ import {
   School as SchoolIcon,
   QuestionAnswer as QuizIcon,
   Edit as EditIcon,
-  Grade as GradeIcon,
   Close as CloseIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
@@ -6023,7 +6022,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                           transition: 'all 0.2s ease',
                         }}
                       >
-                        <GradeIcon sx={{ fontSize: 22 }} />
+                        <ParticipationIcon sx={{ fontSize: 22 }} />
                       </IconButton>
                     </span>
                   </Tooltip>

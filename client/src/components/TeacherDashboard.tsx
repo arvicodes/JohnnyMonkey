@@ -248,6 +248,7 @@ import {
   PersonAdd as PersonAddIcon,
   Folder as FolderIcon,
   Grade as GradeIcon,
+  RecordVoiceOver as EpoNotenIcon,
   DragIndicator as GripVerticalIcon,
   Delete as Trash2Icon,
   Save as SaveIcon,
@@ -16315,7 +16316,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
                   }}
                   title="EPO-Noten — Selbsteinschätzung & Bewertung"
                 >
-                  <GradeIcon sx={{ fontSize: 18 }} />
+                  <EpoNotenIcon sx={{ fontSize: 18 }} />
                 </IconButton>
                 {/* Ankündigungen & Vordrucke (für alle) */}
                 <IconButton
