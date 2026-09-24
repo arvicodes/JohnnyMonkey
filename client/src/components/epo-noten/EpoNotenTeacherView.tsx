@@ -147,13 +147,7 @@ export function EpoNotenTeacherView() {
   teacherScoresRef.current = teacherScores;
   const teacherGradeRef = useRef(teacherGrade);
   teacherGradeRef.current = teacherGrade;
-  const autoSaveTimerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);
-    };
-  }, []);
+  const teacherSaveChainRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     if (selectedStudentId !== prevSelectedStudentIdRef.current) {
@@ -178,17 +172,6 @@ export function EpoNotenTeacherView() {
       ? assessmentModeForGroup(round, selectedStudent.groupId)
       : 'note';
   const computedRasterResult = rasterResultFromTotal(selectedAssessmentMode, totalTeacher);
-
-  useEffect(() => {
-    if (!selectedStudent) return;
-    if (skipRasterGradeSyncRef.current) {
-      skipRasterGradeSyncRef.current = false;
-      return;
-    }
-    if (allCategoriesSelected(teacherScores)) {
-      setTeacherGrade(computedRasterResult);
-    }
-  }, [computedRasterResult, selectedStudent, teacherScores]);
 
   const persistTeacherEntry = useCallback(
     async (grade: string) => {
@@ -219,7 +202,9 @@ export function EpoNotenTeacherView() {
           ),
         );
         if (entry.studentId === selectedStudentId) {
-          setTeacherGrade(entry.teacherGrade || resolvedGrade);
+          const g = entry.teacherGrade || resolvedGrade;
+          teacherGradeRef.current = g;
+          setTeacherGrade(g);
         }
       }
       return entry;
@@ -227,38 +212,57 @@ export function EpoNotenTeacherView() {
     [round, selectedStudentId, students, selectedAssessmentMode],
   );
 
-  const flushTeacherDraft = useCallback(async () => {
-    if (!teacherScoresDirtyRef.current || !round || !selectedStudentId) return;
-    const row = students.find((s) => s.studentId === selectedStudentId);
-    if (row?.teacherReleasedAt) return;
-    if (autoSaveTimerRef.current) {
-      window.clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = null;
+  const saveTeacherDraftNow = useCallback((): Promise<void> => {
+    if (!teacherScoresDirtyRef.current || !round || !selectedStudentId) {
+      return teacherSaveChainRef.current;
     }
+    const row = students.find((s) => s.studentId === selectedStudentId);
+    if (row?.teacherReleasedAt) return teacherSaveChainRef.current;
+
     setDraftStatus('saving');
-    await persistTeacherEntry(teacherGradeRef.current);
-    teacherScoresDirtyRef.current = false;
-    setDraftStatus('saved');
-    await loadList();
+    teacherSaveChainRef.current = teacherSaveChainRef.current
+      .then(async () => {
+        while (teacherScoresDirtyRef.current) {
+          if (!round || !selectedStudentId) break;
+          const current = students.find((s) => s.studentId === selectedStudentId);
+          if (current?.teacherReleasedAt) break;
+          teacherScoresDirtyRef.current = false;
+          await persistTeacherEntry(teacherGradeRef.current);
+          setDraftStatus('saved');
+          await loadList();
+        }
+      })
+      .catch((e) => {
+        teacherScoresDirtyRef.current = true;
+        setDraftStatus('error');
+        setError(e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+        throw e;
+      });
+
+    return teacherSaveChainRef.current;
   }, [loadList, persistTeacherEntry, round, selectedStudentId, students]);
 
-  const scheduleTeacherAutoSave = useCallback(() => {
-    const row = students.find((s) => s.studentId === selectedStudentId);
-    if (!round || !selectedStudentId || row?.teacherReleasedAt) return;
-    if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = window.setTimeout(() => {
-      void flushTeacherDraft().catch((e) => {
-        setDraftStatus('error');
-        setError(e instanceof Error ? e.message : 'Automatisches Speichern fehlgeschlagen');
-      });
-    }, 600);
-  }, [flushTeacherDraft, round, selectedStudentId, students]);
+  useEffect(() => {
+    if (!selectedStudent) return;
+    if (skipRasterGradeSyncRef.current) {
+      skipRasterGradeSyncRef.current = false;
+      return;
+    }
+    if (allCategoriesSelected(teacherScores)) {
+      teacherGradeRef.current = computedRasterResult;
+      setTeacherGrade(computedRasterResult);
+      if (teacherScoresDirtyRef.current) {
+        void saveTeacherDraftNow();
+      }
+    }
+  }, [computedRasterResult, saveTeacherDraftNow, selectedStudent, teacherScores]);
 
   const selectStudent = async (studentId: string) => {
     if (studentId === selectedStudentId) return;
     setError(null);
     try {
-      await flushTeacherDraft();
+      await saveTeacherDraftNow();
+      await teacherSaveChainRef.current;
       setSelectedStudentId(studentId);
       setDraftStatus('idle');
     } catch (e) {
@@ -266,11 +270,26 @@ export function EpoNotenTeacherView() {
     }
   };
 
+  const selectRound = async (roundId: string) => {
+    if (roundId === selectedId) return;
+    setError(null);
+    try {
+      await saveTeacherDraftNow();
+      await teacherSaveChainRef.current;
+      setSelectedStudentId('');
+      setSelectedId(roundId);
+      setDraftStatus('idle');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Speichern vor Rundenwechsel fehlgeschlagen');
+    }
+  };
+
   const handleTeacherScoresChange = (scores: number[]) => {
     teacherScoresDirtyRef.current = true;
-    setDraftStatus('idle');
+    teacherScoresRef.current = scores;
+    setDraftStatus('saving');
     setTeacherScores(scores);
-    scheduleTeacherAutoSave();
+    void saveTeacherDraftNow().catch(() => undefined);
   };
 
   const handleCreate = async () => {
@@ -354,17 +373,10 @@ export function EpoNotenTeacherView() {
     setSaving(true);
     setError(null);
     try {
-      if (autoSaveTimerRef.current) {
-        window.clearTimeout(autoSaveTimerRef.current);
-        autoSaveTimerRef.current = null;
-      }
-      setDraftStatus('saving');
-      await persistTeacherEntry(teacherGrade);
-      teacherScoresDirtyRef.current = false;
-      setDraftStatus('saved');
-      await loadList();
+      teacherScoresDirtyRef.current = true;
+      await saveTeacherDraftNow();
+      await teacherSaveChainRef.current;
     } catch (e) {
-      setDraftStatus('error');
       setError(e instanceof Error ? e.message : 'Fehler');
     } finally {
       setSaving(false);
@@ -373,9 +385,10 @@ export function EpoNotenTeacherView() {
 
   const releaseOne = async () => {
     if (!round || !selectedStudentId) return;
+    const scores = teacherScoresRef.current;
     const grade =
-      teacherGrade.trim() ||
-      (allCategoriesSelected(teacherScores) ? computedRasterResult : '');
+      teacherGradeRef.current.trim() ||
+      (allCategoriesSelected(scores) ? rasterResultFromTotal(selectedAssessmentMode, sumCategoryScores(scores)) : '');
     if (!grade) {
       setError('Bitte Raster oder Note/MSS-Punkte eintragen, bevor du freigibst.');
       return;
@@ -383,8 +396,9 @@ export function EpoNotenTeacherView() {
     setSaving(true);
     setError(null);
     try {
-      await persistTeacherEntry(grade);
-      teacherScoresDirtyRef.current = false;
+      teacherScoresDirtyRef.current = true;
+      await saveTeacherDraftNow();
+      await teacherSaveChainRef.current;
       const res = await apiPost(`/api/epo-noten/${round.id}/release`, { studentIds: [selectedStudentId] });
       if (!res?.ok) throw new Error('Freigabe fehlgeschlagen');
       await loadDetail(round.id);
@@ -412,6 +426,12 @@ export function EpoNotenTeacherView() {
 
   const updateRoundGroups = async (groupIds: string[]) => {
     if (!round) return;
+    try {
+      await saveTeacherDraftNow();
+      await teacherSaveChainRef.current;
+    } catch {
+      return;
+    }
     setRound({ ...round, groupIds });
     const res = await apiPut(`/api/epo-noten/${round.id}`, { groupIds });
     if (!res?.ok) {
@@ -551,7 +571,7 @@ export function EpoNotenTeacherView() {
                 <ListItemButton
                   key={r.id}
                   selected={active}
-                  onClick={() => setSelectedId(r.id)}
+                  onClick={() => void selectRound(r.id)}
                   sx={{
                     py: 0.65,
                     px: 1,
@@ -974,14 +994,15 @@ export function EpoNotenTeacherView() {
                                 value={teacherGrade}
                                 onChange={(e) => {
                                   teacherScoresDirtyRef.current = true;
-                                  setDraftStatus('idle');
                                   const raw = e.target.value;
-                                  if (selectedAssessmentMode === 'mss') {
-                                    setTeacherGrade(raw.replace(/[^\d]/g, '').slice(0, 2));
-                                  } else {
-                                    setTeacherGrade(raw);
-                                  }
-                                  scheduleTeacherAutoSave();
+                                  const next =
+                                    selectedAssessmentMode === 'mss'
+                                      ? raw.replace(/[^\d]/g, '').slice(0, 2)
+                                      : raw;
+                                  teacherGradeRef.current = next;
+                                  setTeacherGrade(next);
+                                  setDraftStatus('saving');
+                                  void saveTeacherDraftNow().catch(() => undefined);
                                 }}
                                 placeholder={selectedAssessmentMode === 'mss' ? 'z. B. 11' : 'z. B. 2+ oder 3−'}
                                 fullWidth
