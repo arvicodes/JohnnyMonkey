@@ -394,6 +394,7 @@ const studentSessionDto = (resolved: ResolvedRound, studentId: string) => {
     date: resolved.payload.date,
     groupId: resolved.groupId,
     groupName: resolved.groupName,
+    assessmentMode: assessmentModeForGroup(resolved.payload, resolved.groupId),
     publishedAt: resolved.payload.publishedAt,
     isActive,
     isArchived: !isActive,

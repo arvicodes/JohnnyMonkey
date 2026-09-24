@@ -80,17 +80,27 @@ export default function EpoNotenPage() {
   const selectedRoundId = searchParams.get('roundId') || '';
   const showStudentList = !isTeacher && !selectedRoundId;
 
-  const populateFromEntry = useCallback((entry: EpoNotenEntry | null) => {
-    setSuggestedGrade(entry?.suggestedGrade || '');
-    setJustification(entry?.justification || '');
-    setSelfScores(
-      entry?.selfScores?.length ? normalizeCategoryScores(entry.selfScores) : emptyCategoryScores(),
-    );
-    const pts = sumCategoryScores(entry?.selfScores);
-    setSelfGradeFromTable(entry?.selfScores?.length ? gradeFromTotalPoints(pts) : '');
-    setGoal(entry?.goal || '');
-    setGoalAction(entry?.goalAction || '');
-  }, []);
+  const populateFromEntry = useCallback(
+    (entry: EpoNotenEntry | null, mode: EpoNotenAssessmentMode) => {
+      setSuggestedGrade(entry?.suggestedGrade || '');
+      setJustification(entry?.justification || '');
+      setSelfScores(
+        entry?.selfScores?.length ? normalizeCategoryScores(entry.selfScores) : emptyCategoryScores(),
+      );
+      const pts = sumCategoryScores(entry?.selfScores);
+      if (entry?.selfScores?.length) {
+        const fromEntry = entry.selfGradeFromTable?.trim();
+        setSelfGradeFromTable(
+          fromEntry || (mode === 'mss' ? String(pts) : gradeFromTotalPoints(pts)),
+        );
+      } else {
+        setSelfGradeFromTable('');
+      }
+      setGoal(entry?.goal || '');
+      setGoalAction(entry?.goalAction || '');
+    },
+    [],
+  );
 
   const loadStudent = useCallback(async () => {
     setLoading(true);
@@ -104,10 +114,15 @@ export default function EpoNotenPage() {
       setSessions(list);
 
       if (selectedRoundId) {
-        setMyEntry((data.myEntry as EpoNotenEntry) || null);
+        const myEntryLoaded = (data.myEntry as EpoNotenEntry) || null;
+        setMyEntry(myEntryLoaded);
         setCanEditSelf(Boolean(data.canEditSelf));
         setCanEditGoals(Boolean(data.canEditGoals));
         setTeacherId(typeof data.teacherId === 'string' ? data.teacherId : '');
+
+        const fromList = list.find((s) => s.id === selectedRoundId);
+        let mode: EpoNotenAssessmentMode = 'note';
+
         if (data.round && typeof data.round === 'object') {
           const r = data.round as {
             id: string;
@@ -117,22 +132,27 @@ export default function EpoNotenPage() {
             assessmentMode?: EpoNotenAssessmentMode;
           };
           setRoundMeta({ id: r.id, title: r.title, date: r.date, groupName: r.groupName });
-          setAssessmentMode(r.assessmentMode === 'mss' ? 'mss' : 'note');
-        } else {
-          const fromList = list.find((s) => s.id === selectedRoundId);
-          if (fromList) {
-            setRoundMeta({
-              id: fromList.id,
-              title: fromList.title,
-              date: fromList.date,
-              groupName: fromList.groupName,
-            });
-          }
+          mode = r.assessmentMode === 'mss' ? 'mss' : 'note';
+        } else if (fromList) {
+          setRoundMeta({
+            id: fromList.id,
+            title: fromList.title,
+            date: fromList.date,
+            groupName: fromList.groupName,
+          });
+          mode = fromList.assessmentMode === 'mss' ? 'mss' : 'note';
         }
-        populateFromEntry((data.myEntry as EpoNotenEntry) || null);
+
+        if (!data.round && !fromList) {
+          mode = myEntryLoaded?.suggestedGradeMode === 'mss' ? 'mss' : 'note';
+        }
+
+        setAssessmentMode(mode);
+        populateFromEntry(myEntryLoaded, mode);
       } else {
         setMyEntry(null);
         setRoundMeta(null);
+        setAssessmentMode('note');
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
@@ -294,6 +314,7 @@ export default function EpoNotenPage() {
 
                 {(phase === 'self' || phase === 'wait') && (
                   <EpoNotenStudentSelfWizard
+                    key={`${selectedRoundId}-${assessmentMode}`}
                     locked={phase === 'wait' || !canEditSelf}
                     submitting={submitting}
                     assessmentMode={assessmentMode}

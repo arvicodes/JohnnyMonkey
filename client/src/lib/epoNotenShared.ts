@@ -146,6 +146,8 @@ export type EpoNotenStudentSession = {
   date: string;
   groupId: string;
   groupName: string;
+  /** Note vs. MSS — von der Lehrkraft für diese Gruppe festgelegt */
+  assessmentMode?: EpoNotenAssessmentMode;
   publishedAt: string | null;
   /** Aktuell freigeschaltete Runde für diese Gruppe */
   isActive: boolean;
