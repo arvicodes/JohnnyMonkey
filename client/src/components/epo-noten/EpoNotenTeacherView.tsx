@@ -36,7 +36,6 @@ import {
   allCategoriesSelected,
   assessmentModeForGroup,
   formatSuggestedGradeDisplay,
-  minPointsThresholdForTotal,
   rasterResultFromTotal,
   type EpoNotenAssessmentMode,
   normalizeCategoryScores,
@@ -48,7 +47,6 @@ import {
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import DualStudentAvatars from '../DualStudentAvatars';
 import { EpoNotenCategoryGrid } from './EpoNotenCategoryGrid';
-import { EpoNotenGradeTable } from './EpoNotenGradeTable';
 import {
   epoNotenCardSx,
   epoNotenCompactBtnSx,
@@ -57,6 +55,7 @@ import {
   epoNotenInsetBoxSx,
   epoNotenBigNumberSx,
   epoNotenPalette,
+  epoNotenStudentGoalDisplaySx,
 } from './epoNotenUi';
 
 type GroupInfo = { id: string; name: string; studentCount: number };
@@ -1188,6 +1187,59 @@ export function EpoNotenTeacherView() {
                           </Typography>
                         ) : null}
 
+                        <Box
+                          sx={{
+                            ...epoNotenInsetBoxSx,
+                            bgcolor: 'rgba(46, 125, 50, 0.06)',
+                            borderColor: 'rgba(46, 125, 50, 0.25)',
+                            p: 0.75,
+                            mb: 0.5,
+                          }}
+                        >
+                          <Typography sx={{ fontWeight: 800, fontSize: '0.78rem', mb: 0.35, color: epoNotenPalette.heading }}>
+                            Ziele (SuS)
+                            {selectedStudent.goalsSubmittedAt ? (
+                              <Typography component="span" sx={{ fontWeight: 600, fontSize: '0.65rem', ml: 0.5, color: 'success.main' }}>
+                                abgeschickt
+                              </Typography>
+                            ) : selectedStudent.teacherReleasedAt ? (
+                              <Typography component="span" sx={{ fontWeight: 600, fontSize: '0.65rem', ml: 0.5, color: 'text.secondary' }}>
+                                · noch offen
+                              </Typography>
+                            ) : null}
+                          </Typography>
+                          {!selectedStudent.teacherReleasedAt ? (
+                            <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.4 }}>
+                              Sichtbar, sobald du die Bewertung an den SuS geschickt hast.
+                            </Typography>
+                          ) : selectedStudent.goalsSubmittedAt ||
+                            selectedStudent.goal?.trim() ||
+                            selectedStudent.goalAction?.trim() ? (
+                            <Stack spacing={0.5}>
+                              <Box>
+                                <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                                  Ziel
+                                </Typography>
+                                <Box sx={{ ...epoNotenStudentGoalDisplaySx, mt: 0.25, fontSize: '0.82rem', p: 0.75 }}>
+                                  {selectedStudent.goal?.trim() || '—'}
+                                </Box>
+                              </Box>
+                              <Box>
+                                <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                                  Handlung
+                                </Typography>
+                                <Box sx={{ ...epoNotenStudentGoalDisplaySx, mt: 0.25, fontSize: '0.82rem', p: 0.75 }}>
+                                  {selectedStudent.goalAction?.trim() || '—'}
+                                </Box>
+                              </Box>
+                            </Stack>
+                          ) : (
+                            <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.4 }}>
+                              Der SuS hat noch keine Ziele eingetragen.
+                            </Typography>
+                          )}
+                        </Box>
+
                         <Box sx={{ position: 'relative', width: '100%' }}>
                             {selectedStudent.teacherReleasedAt && (
                               <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mb: 0.35 }}>
@@ -1209,22 +1261,6 @@ export function EpoNotenTeacherView() {
                                   : undefined
                               }
                             />
-
-                            {allCategoriesSelected(teacherScores) && (
-                              <Box sx={{ mt: 0.35 }}>
-                                <EpoNotenGradeTable
-                                  mode={selectedAssessmentMode}
-                                  highlightMinPoints={
-                                    selectedAssessmentMode === 'note'
-                                      ? minPointsThresholdForTotal(totalTeacher)
-                                      : null
-                                  }
-                                  highlightExactPoints={
-                                    selectedAssessmentMode === 'mss' ? totalTeacher : null
-                                  }
-                                />
-                              </Box>
-                            )}
 
                             <Stack
                               direction="row"
@@ -1298,34 +1334,6 @@ export function EpoNotenTeacherView() {
                               )}
                             </Stack>
                         </Box>
-
-                        {(selectedStudent.goalsSubmittedAt ||
-                          selectedStudent.goal?.trim() ||
-                          selectedStudent.goalAction?.trim()) && (
-                          <Box
-                            sx={{
-                              ...epoNotenInsetBoxSx,
-                              bgcolor: 'rgba(46, 125, 50, 0.06)',
-                              borderColor: 'rgba(46, 125, 50, 0.2)',
-                              p: 0.75,
-                            }}
-                          >
-                            <Typography sx={{ fontWeight: 700, fontSize: '0.72rem', mb: 0.25, color: 'text.secondary' }}>
-                              Ziele (SuS)
-                              {!selectedStudent.goalsSubmittedAt && (
-                                <Typography component="span" sx={{ fontWeight: 500, fontSize: '0.65rem', ml: 0.35 }}>
-                                  · noch nicht abgeschickt
-                                </Typography>
-                              )}
-                            </Typography>
-                            <Typography sx={{ fontSize: '0.8rem', lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
-                              <strong>Ziel:</strong> {selectedStudent.goal?.trim() || '—'}
-                            </Typography>
-                            <Typography sx={{ fontSize: '0.8rem', mt: 0.35, lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
-                              <strong>Handlung:</strong> {selectedStudent.goalAction?.trim() || '—'}
-                            </Typography>
-                          </Box>
-                        )}
                       </Stack>
                     )}
                   </Box>
