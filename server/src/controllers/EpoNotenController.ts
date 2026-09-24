@@ -49,6 +49,23 @@ const normalizeCategoryScores = (raw: unknown): number[] => {
 const sumCategoryScores = (scores: number[]) =>
   scores.reduce((a, b) => a + (Number.isFinite(b) && b >= 0 ? b : 0), 0);
 
+const allCategoriesSelected = (scores: number[]) =>
+  normalizeCategoryScores(scores).every((s) => s >= 0);
+
+const rasterResultFromTotal = (mode: AssessmentMode, total: number): string => {
+  const t = Math.max(0, Math.min(15, Math.round(total)));
+  if (mode === 'mss') return String(t);
+  return gradeFromTotalPoints(t);
+};
+
+const effectiveTeacherGrade = (entry: EpoNotenEntry, mode: AssessmentMode): string => {
+  const trimmed = entry.teacherGrade?.trim();
+  if (trimmed) return trimmed;
+  const scores = normalizeCategoryScores(entry.teacherScores);
+  if (!allCategoriesSelected(scores)) return '';
+  return rasterResultFromTotal(mode, sumCategoryScores(scores));
+};
+
 type EpoNotenEntry = {
   studentId: string;
   studentName: string;
@@ -930,16 +947,41 @@ export class EpoNotenController {
       if (!payload) return res.status(404).json({ error: 'Runde nicht gefunden' });
 
       const all = Boolean(req.body?.all);
+      const groupId = typeof req.body?.groupId === 'string' ? req.body.groupId.trim() : '';
       const studentIds = Array.isArray(req.body?.studentIds)
         ? (req.body.studentIds as string[]).map((id) => String(id).trim()).filter(Boolean)
         : [];
+
+      if (!all && !groupId && studentIds.length === 0) {
+        return res.status(400).json({ error: 'studentIds, groupId oder all erforderlich' });
+      }
+
+      if (groupId && !payload.groupIds.includes(groupId)) {
+        return res.status(400).json({ error: 'Diese Lerngruppe gehört nicht zu dieser Runde' });
+      }
+
+      const groups = await loadTeacherGroupsWithStudents(user.id);
+      const studentToGroup = new Map<string, string>();
+      for (const g of groups) {
+        if (!payload.groupIds.includes(g.id)) continue;
+        for (const s of g.students) {
+          studentToGroup.set(s.id, g.id);
+        }
+      }
 
       const now = new Date().toISOString();
       let count = 0;
 
       for (const entry of payload.entries) {
-        if (!entry.teacherGrade) continue;
-        if (!all && !studentIds.includes(entry.studentId)) continue;
+        if (entry.teacherReleasedAt) continue;
+        const entryGroupId = studentToGroup.get(entry.studentId);
+        if (groupId && entryGroupId !== groupId) continue;
+        if (!all && studentIds.length > 0 && !studentIds.includes(entry.studentId)) continue;
+
+        const mode = entryGroupId ? assessmentModeForGroup(payload, entryGroupId) : 'note';
+        const grade = effectiveTeacherGrade(entry, mode);
+        if (!grade) continue;
+        entry.teacherGrade = grade;
         entry.teacherReleasedAt = now;
         count += 1;
       }
