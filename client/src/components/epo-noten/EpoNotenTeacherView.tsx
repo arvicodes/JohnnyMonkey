@@ -151,20 +151,44 @@ export function EpoNotenTeacherView() {
   const teacherSaveChainRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
-    if (selectedStudentId !== prevSelectedStudentIdRef.current) {
-      teacherScoresDirtyRef.current = false;
-      prevSelectedStudentIdRef.current = selectedStudentId;
-    }
     if (!selectedStudentId) {
+      if (prevSelectedStudentIdRef.current !== '') {
+        prevSelectedStudentIdRef.current = '';
+        teacherScoresDirtyRef.current = false;
+      }
+      teacherScoresRef.current = normalizeCategoryScores([]);
       setTeacherScores(normalizeCategoryScores([]));
+      teacherGradeRef.current = '';
       setTeacherGrade('');
       return;
     }
-    if (teacherScoresDirtyRef.current) return;
+
     const entry = students.find((s) => s.studentId === selectedStudentId);
-    setTeacherScores(normalizeCategoryScores(entry?.teacherScores));
-    setTeacherGrade(entry?.teacherGrade || '');
-    skipRasterGradeSyncRef.current = true;
+
+    if (selectedStudentId !== prevSelectedStudentIdRef.current) {
+      prevSelectedStudentIdRef.current = selectedStudentId;
+      teacherScoresDirtyRef.current = false;
+      const scores = normalizeCategoryScores(entry?.teacherScores);
+      teacherScoresRef.current = scores;
+      setTeacherScores(scores);
+      const grade = entry?.teacherGrade || '';
+      teacherGradeRef.current = grade;
+      setTeacherGrade(grade);
+      skipRasterGradeSyncRef.current = true;
+      return;
+    }
+
+    if (teacherScoresDirtyRef.current || !entry) return;
+    const server = normalizeCategoryScores(entry.teacherScores);
+    const local = teacherScoresRef.current;
+    if (local.every((s) => s < 0) && server.some((s) => s >= 0)) {
+      teacherScoresRef.current = server;
+      setTeacherScores(server);
+      const grade = entry.teacherGrade || '';
+      teacherGradeRef.current = grade;
+      setTeacherGrade(grade);
+      skipRasterGradeSyncRef.current = true;
+    }
   }, [selectedStudentId, students]);
 
   const totalTeacher = sumCategoryScores(teacherScores);
@@ -175,11 +199,11 @@ export function EpoNotenTeacherView() {
   const computedRasterResult = rasterResultFromTotal(selectedAssessmentMode, totalTeacher);
 
   const persistTeacherEntry = useCallback(
-    async (grade: string) => {
+    async (grade: string, scoresSnapshot: number[]) => {
       if (!round || !selectedStudentId) {
         throw new Error('Kein Schüler ausgewählt');
       }
-      const scores = teacherScoresRef.current;
+      const scores = normalizeCategoryScores(scoresSnapshot);
       const row = students.find((s) => s.studentId === selectedStudentId);
       const mode =
         row?.groupId && round ? assessmentModeForGroup(round, row.groupId) : selectedAssessmentMode;
@@ -203,6 +227,10 @@ export function EpoNotenTeacherView() {
           ),
         );
         if (entry.studentId === selectedStudentId) {
+          const savedScores = normalizeCategoryScores(entry.teacherScores ?? scores);
+          teacherScoresRef.current = savedScores;
+          skipRasterGradeSyncRef.current = true;
+          setTeacherScores(savedScores);
           const g = entry.teacherGrade || resolvedGrade;
           teacherGradeRef.current = g;
           setTeacherGrade(g);
@@ -227,8 +255,10 @@ export function EpoNotenTeacherView() {
           if (!round || !selectedStudentId) break;
           const current = students.find((s) => s.studentId === selectedStudentId);
           if (current?.teacherReleasedAt) break;
+          const scoresSnapshot = [...teacherScoresRef.current];
+          const gradeSnapshot = teacherGradeRef.current;
           teacherScoresDirtyRef.current = false;
-          await persistTeacherEntry(teacherGradeRef.current);
+          await persistTeacherEntry(gradeSnapshot, scoresSnapshot);
           setDraftStatus('saved');
           await loadList();
         }
@@ -995,8 +1025,15 @@ export function EpoNotenTeacherView() {
                         ) : null}
 
                         <Box sx={{ position: 'relative', width: '100%' }}>
+                            {selectedStudent.teacherReleasedAt && (
+                              <Alert severity="info" sx={{ py: 0, fontSize: '0.72rem', mb: 0.5 }}>
+                                Bewertung bereits an SuS freigegeben — Raster hier nur noch ansehen.
+                              </Alert>
+                            )}
+
                             <EpoNotenCategoryGrid
                               compact
+                              readOnly={Boolean(selectedStudent.teacherReleasedAt)}
                               label={
                                 selectedStudent.studentSubmittedAt
                                   ? 'Lehrkraft (lila = SuS-Wahl)'
@@ -1045,6 +1082,7 @@ export function EpoNotenTeacherView() {
                                 label={selectedAssessmentMode === 'mss' ? 'MSS-Punkte' : 'EPO-Note'}
                                 size="small"
                                 value={teacherGrade}
+                                disabled={Boolean(selectedStudent.teacherReleasedAt)}
                                 onChange={(e) => {
                                   teacherScoresDirtyRef.current = true;
                                   const raw = e.target.value;

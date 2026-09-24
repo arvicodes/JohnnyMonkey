@@ -124,7 +124,14 @@ export function EpoNotenCategoryGrid({
                     key={p}
                     align="center"
                     padding="checkbox"
-                    onClick={interactive ? () => setScore(i, p) : undefined}
+                    onClick={
+                      interactive
+                        ? (e) => {
+                            e.stopPropagation();
+                            setScore(i, p);
+                          }
+                        : undefined
+                    }
                     sx={{
                       py: compact ? 0 : 0.5,
                       px: 0.25,
