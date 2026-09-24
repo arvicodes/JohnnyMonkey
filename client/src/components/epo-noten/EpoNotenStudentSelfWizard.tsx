@@ -201,69 +201,89 @@ export function EpoNotenStudentSelfWizard({
           </Typography>
 
           {(step === 1 || step === 2 || step === 3 || step === 'done') && (
-            <Stack spacing={1.25}>
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.75 }}>
+            <Stack spacing={0} sx={{ width: '100%' }}>
+              <Box sx={{ width: '100%' }}>
+                <Typography variant="body2" sx={{ fontWeight: 700, mb: 1 }}>
                   Noteneinschätzung
                 </Typography>
-                <ToggleButtonGroup
-                  exclusive
-                  size="small"
-                  value={suggestedGradeMode}
-                  onChange={(_, v: EpoNotenSuggestedGradeMode | null) => {
-                    if (!v || readOnly) return;
-                    onSuggestedGradeModeChange(v);
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'stretch',
+                    gap: { xs: 1.25, sm: 2 },
+                    width: '100%',
                   }}
-                  disabled={readOnly}
-                  sx={{ mb: 1 }}
                 >
-                  <ToggleButton value="note" sx={{ px: 1.5, fontWeight: 600 }}>
-                    als Note
-                  </ToggleButton>
-                  <ToggleButton value="mss" sx={{ px: 1.5, fontWeight: 600 }}>
-                    MSS-Punkte (0–15)
-                  </ToggleButton>
-                </ToggleButtonGroup>
-                <TextField
-                  label={
-                    suggestedGradeMode === 'mss'
-                      ? 'Deine Einschätzung in MSS-Punkten'
-                      : 'Deine Einschätzung als Note'
-                  }
-                  placeholder={suggestedGradeMode === 'mss' ? 'z. B. 11' : 'z. B. 2+ oder 3−'}
-                  value={suggestedGrade}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    if (suggestedGradeMode === 'mss') {
-                      onSuggestedGradeChange(raw.replace(/[^\d]/g, '').slice(0, 2));
-                      return;
+                  <ToggleButtonGroup
+                    orientation="vertical"
+                    exclusive
+                    size="small"
+                    value={suggestedGradeMode}
+                    onChange={(_, v: EpoNotenSuggestedGradeMode | null) => {
+                      if (!v || readOnly) return;
+                      onSuggestedGradeModeChange(v);
+                    }}
+                    disabled={readOnly}
+                    sx={{
+                      flexShrink: 0,
+                      '& .MuiToggleButtonGroup-grouped': {
+                        border: '1px solid rgba(25, 118, 210, 0.35) !important',
+                        px: 1.25,
+                        py: 1,
+                        textAlign: 'left',
+                        lineHeight: 1.25,
+                        fontWeight: 600,
+                        fontSize: '0.82rem',
+                        whiteSpace: 'normal',
+                        minWidth: { xs: 108, sm: 128 },
+                      },
+                    }}
+                  >
+                    <ToggleButton value="note">als Note</ToggleButton>
+                    <ToggleButton value="mss">MSS-Punkte (0–15)</ToggleButton>
+                  </ToggleButtonGroup>
+                  <TextField
+                    label={
+                      suggestedGradeMode === 'mss'
+                        ? 'Deine Einschätzung in MSS-Punkten'
+                        : 'Deine Einschätzung als Note'
                     }
-                    onSuggestedGradeChange(raw);
-                  }}
-                  disabled={readOnly}
-                  fullWidth
-                  inputMode={suggestedGradeMode === 'mss' ? 'numeric' : 'text'}
-                  helperText={
-                    suggestedGradeMode === 'mss'
-                      ? 'Ganzzahl von 0 bis 15'
-                      : 'Schulnote, z. B. 1, 2+, 3−'
-                  }
-                  error={
-                    suggestedGrade.trim().length > 0 &&
-                    !isValidSuggestedGrade(suggestedGradeMode, suggestedGrade)
-                  }
-                  sx={epoNotenKidTextFieldSx}
-                />
+                    placeholder={suggestedGradeMode === 'mss' ? 'z. B. 11' : 'z. B. 2+ oder 3−'}
+                    value={suggestedGrade}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (suggestedGradeMode === 'mss') {
+                        onSuggestedGradeChange(raw.replace(/[^\d]/g, '').slice(0, 2));
+                        return;
+                      }
+                      onSuggestedGradeChange(raw);
+                    }}
+                    disabled={readOnly}
+                    fullWidth
+                    inputMode={suggestedGradeMode === 'mss' ? 'numeric' : 'text'}
+                    helperText={
+                      suggestedGradeMode === 'mss'
+                        ? 'Ganzzahl von 0 bis 15'
+                        : 'Schulnote, z. B. 1, 2+, 3−'
+                    }
+                    error={
+                      suggestedGrade.trim().length > 0 &&
+                      !isValidSuggestedGrade(suggestedGradeMode, suggestedGrade)
+                    }
+                    sx={{ ...epoNotenKidTextFieldSx, flex: 1, minWidth: 0 }}
+                  />
+                </Box>
               </Box>
               <TextField
-                label="Kurze Begründung"
+                label="Erkläre deine Einschätzung kurz in ein paar Sätzen"
                 value={justification}
                 onChange={(e) => onJustificationChange(e.target.value)}
                 disabled={readOnly}
                 multiline
                 minRows={3}
                 fullWidth
-                sx={epoNotenKidTextFieldSx}
+                sx={{ ...epoNotenKidTextFieldSx, mt: 2.5 }}
               />
             </Stack>
           )}

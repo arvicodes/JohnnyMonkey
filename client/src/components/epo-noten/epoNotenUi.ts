@@ -23,7 +23,7 @@ export const epoNotenPageBgSx = {
 };
 
 export const epoNotenPageShellSx = {
-  maxWidth: { xs: '100%', sm: 'min(100%, 1200px)' },
+  maxWidth: { xs: '100%', sm: 'min(100%, 2400px)' },
   mx: 'auto',
   width: '100%',
   px: { xs: 0.5, sm: 1 },
