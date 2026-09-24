@@ -23,6 +23,7 @@ import {
   epoNotenPageBgSx,
   epoNotenPageShellSx,
   epoNotenPalette,
+  epoNotenTeacherShellSx,
 } from '../components/epo-noten/epoNotenUi';
 import {
   EPO_NOTEN_TEACHER_CATEGORIES,
@@ -215,7 +216,7 @@ export default function EpoNotenPage() {
 
   return (
     <Box sx={epoNotenPageBgSx}>
-      <Box sx={epoNotenPageShellSx}>
+      <Box sx={isTeacher ? epoNotenTeacherShellSx : epoNotenPageShellSx}>
         <Stack
           direction="row"
           alignItems="center"

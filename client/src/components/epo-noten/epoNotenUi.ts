@@ -29,14 +29,30 @@ export const epoNotenPageShellSx = {
   px: { xs: 0.25, sm: 0.75 },
 };
 
-/** Schüler: Liste + Wizard nutzen die volle nutzbare Breite (kein schmales Mittelband). */
-export const epoNotenStudentSurfaceSx = {
+/** Lehrer: schmales, zentriertes Panel — nicht über die ganze Bildschirmbreite */
+export const epoNotenTeacherShellSx = {
+  width: '100%',
+  maxWidth: { xs: '100%', sm: 720, md: 880 },
+  mx: 'auto',
+  px: { xs: 0.5, sm: 1 },
+  boxSizing: 'border-box' as const,
+  overflow: 'hidden',
+};
+
+/** Volle nutzbare Breite (Viewport-Breakout auf schmalen Screens). */
+const epoNotenWideSurfaceBase = {
   width: { xs: 'calc(100vw - 8px)', sm: '100%' },
-  maxWidth: { xs: 'calc(100vw - 8px)', sm: 'min(100%, 1600px)' },
+  maxWidth: { xs: 'calc(100vw - 8px)', sm: 'min(100%, 3200px)' },
   ml: { xs: 'calc(4px - 50vw + 50%)', sm: 'auto' },
   mr: { xs: 'auto', sm: 'auto' },
   boxSizing: 'border-box' as const,
 };
+
+/** Schüler: Liste + Wizard */
+export const epoNotenStudentSurfaceSx = epoNotenWideSurfaceBase;
+
+/** Lehrer: Runden + Bewertung (SuS-Overlay) */
+export const epoNotenTeacherSurfaceSx = epoNotenWideSurfaceBase;
 
 export const epoNotenCardSx = {
   borderRadius: 3,

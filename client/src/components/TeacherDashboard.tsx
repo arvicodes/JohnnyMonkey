@@ -15840,6 +15840,8 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
   const lessonSplitLeft = isLessonStundeRoute && lessonPlanViewMode === 'background';
   const laptopLeftWidth = `${laptopSplitPct}%`;
   const laptopRightWidth = `${100 - laptopSplitPct}%`;
+  /** Angedocktes Epochal-Panel: nicht halbe Bildschirmbreite einnehmen */
+  const epochalDockedPanelWidth = `min(${laptopRightWidth}, 380px)`;
   const endLaptopSplitDrag = () => {
     if (!laptopSplitDraggingRef.current && !laptopSplitListenersRef.current) return;
     laptopSplitDraggingRef.current = false;
@@ -25286,8 +25288,8 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                 m: 0,
                 maxHeight: '100vh',
                 height: '100%',
-                maxWidth: laptopRightWidth,
-                width: laptopRightWidth,
+                maxWidth: epochalDockedPanelWidth,
+                width: epochalDockedPanelWidth,
                 minWidth: 0,
                 boxSizing: 'border-box',
                 borderRadius: 0,
@@ -25398,10 +25400,11 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
                 justifyContent: participationDocked ? 'flex-start' : 'center',
                 mx: participationDocked ? 0 : 1,
                 minWidth: 0,
-                alignSelf: participationDocked ? 'flex-start' : undefined,
-                width: participationDocked ? 'max-content' : undefined,
+                alignSelf: participationDocked ? 'stretch' : undefined,
+                width: participationDocked ? '100%' : undefined,
                 maxWidth: participationDocked ? '100%' : undefined,
-                overflowX: participationDocked ? 'auto' : 'visible',
+                flexWrap: participationDocked ? 'wrap' : 'nowrap',
+                overflowX: 'hidden',
                 pb: participationDocked ? 0.1 : 0,
                 WebkitOverflowScrolling: 'touch',
                 scrollbarGutter: participationDocked ? 'stable' : undefined,

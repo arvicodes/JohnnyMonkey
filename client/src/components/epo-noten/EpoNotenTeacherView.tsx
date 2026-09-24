@@ -46,6 +46,7 @@ import {
   epoNotenPanelHeaderSx,
   epoNotenPalette,
   epoNotenStudentGhostPanelSx,
+  epoNotenTeacherSurfaceSx,
 } from './epoNotenUi';
 
 type GroupInfo = { id: string; name: string; studentCount: number };
@@ -322,7 +323,7 @@ export function EpoNotenTeacherView() {
   const selectedRoundMeta = rounds.find((r) => r.id === selectedId);
 
   return (
-    <Stack spacing={1.25}>
+    <Stack spacing={1.25} sx={epoNotenTeacherSurfaceSx}>
       {error && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ py: 0.25 }}>
           {error}
@@ -362,9 +363,12 @@ export function EpoNotenTeacherView() {
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: 'minmax(200px, 248px) minmax(0, 1fr)' },
-          gap: 1.25,
+          gridTemplateColumns: { xs: '1fr', md: 'minmax(128px, 156px) minmax(0, 1fr)' },
+          gap: 1,
           alignItems: 'start',
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
         }}
       >
         <Card sx={{ ...epoNotenCardSx, borderWidth: 1 }}>
@@ -542,7 +546,7 @@ export function EpoNotenTeacherView() {
                 <Box
                   sx={{
                     display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', lg: 'minmax(168px, 200px) minmax(0, 1fr)' },
+                    gridTemplateColumns: { xs: '1fr', lg: 'minmax(132px, 160px) minmax(0, 1fr)' },
                     gap: 1,
                     alignItems: 'start',
                   }}
@@ -633,7 +637,7 @@ export function EpoNotenTeacherView() {
                     </Stack>
                   </Box>
 
-                  <Box sx={{ minWidth: 0 }}>
+                  <Box sx={{ minWidth: 0, width: '100%', maxWidth: 'none' }}>
                     {!selectedStudent ? (
                       <Typography sx={{ color: 'text.secondary', fontSize: '0.82rem', py: 2, textAlign: 'center' }}>
                         Schüler auswählen
@@ -668,8 +672,15 @@ export function EpoNotenTeacherView() {
                           </Box>
                         ) : null}
 
-                        <Box sx={{ position: 'relative' }}>
-                            <Box sx={{ position: 'relative', borderRadius: 1.25, overflow: 'hidden' }}>
+                        <Box sx={{ position: 'relative', width: '100%' }}>
+                            <Box
+                              sx={{
+                                position: 'relative',
+                                borderRadius: 1.25,
+                                overflow: 'hidden',
+                                width: '100%',
+                              }}
+                            >
                               {selectedStudent.studentSubmittedAt ? (
                                 <Box
                                   sx={{
