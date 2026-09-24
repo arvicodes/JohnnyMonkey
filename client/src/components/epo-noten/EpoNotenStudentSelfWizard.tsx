@@ -19,11 +19,12 @@ import {
   epoNotenPalette,
   epoNotenSectionTitleSx,
   epoNotenStudentSurfaceSx,
+  epoNotenCompactBtnSx,
 } from './epoNotenUi';
 import {
   EPO_NOTEN_STUDENT_CATEGORIES,
-  gradeFromTotalPoints,
   minPointsThresholdForTotal,
+  rasterResultFromTotal,
   allCategoriesSelected,
   isValidSuggestedGrade,
   sumCategoryScores,
@@ -77,14 +78,12 @@ export function EpoNotenStudentSelfWizard({
         ? totalTarget
         : null;
 
-  const gradeForPoints = (pts: number) =>
-    assessmentMode === 'mss' ? String(pts) : gradeFromTotalPoints(pts);
+  const gradeForPoints = (pts: number) => rasterResultFromTotal(assessmentMode, pts);
 
   const applyDoneEvaluation = useCallback(
     (pts: number) => {
       setEvaluationReady(true);
-      const g = assessmentMode === 'mss' ? String(pts) : gradeFromTotalPoints(pts);
-      onSelfGradeFromTableChange(g);
+      onSelfGradeFromTableChange(rasterResultFromTotal(assessmentMode, pts));
     },
     [assessmentMode, onSelfGradeFromTableChange],
   );
@@ -305,7 +304,7 @@ export function EpoNotenStudentSelfWizard({
           {step !== 'done' && step !== 3 && (
             <Stack direction="row" spacing={1} justifyContent="flex-end">
               {step > 1 && (
-                <Button size="small" onClick={goBack} disabled={submitting}>
+                <Button size="small" onClick={goBack} disabled={submitting} sx={epoNotenCompactBtnSx}>
                   Zurück
                 </Button>
               )}
@@ -316,6 +315,7 @@ export function EpoNotenStudentSelfWizard({
                 disabled={
                   submitting || (step === 1 && !canNextStep1) || (step === 2 && !canNextStep2)
                 }
+                sx={epoNotenCompactBtnSx}
               >
                 {step === 2 ? 'Weiter zur Auswertung' : 'Weiter'}
               </Button>

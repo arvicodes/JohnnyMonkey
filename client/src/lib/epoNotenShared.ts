@@ -87,6 +87,13 @@ export function assessmentModeForGroup(
   return round?.assessmentModeByGroup?.[groupId] === 'mss' ? 'mss' : 'note';
 }
 
+/** Ergebnis aus Kategorie-Raster — abhängig vom Gruppen-Modus (Note oder MSS-Punkte). */
+export function rasterResultFromTotal(mode: EpoNotenAssessmentMode, total: number): string {
+  const t = Math.max(0, Math.min(15, Math.round(total)));
+  if (mode === 'mss') return String(t);
+  return gradeFromTotalPoints(t);
+}
+
 export function isValidSuggestedGrade(mode: EpoNotenSuggestedGradeMode, value: string): boolean {
   const v = value.trim();
   if (!v) return false;

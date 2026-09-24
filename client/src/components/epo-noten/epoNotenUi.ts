@@ -124,21 +124,21 @@ export const epoNotenCompactIconSx = { fontSize: 14 } as const;
 
 /** Kompakte Text-Buttons — Icons nicht über dem Label */
 export const epoNotenCompactBtnSx = {
-  minHeight: 24,
-  py: 0.2,
-  px: 0.75,
-  fontSize: '0.7rem',
+  minHeight: 22,
+  py: 0.1,
+  px: 0.55,
+  fontSize: '0.64rem',
   fontWeight: 700,
-  lineHeight: 1.15,
+  lineHeight: 1.1,
   textTransform: 'none',
-  borderRadius: 1,
+  borderRadius: 0.85,
   boxShadow: 'none',
   whiteSpace: 'nowrap',
   '&:hover': { boxShadow: 'none' },
   '& .MuiButton-startIcon': {
-    marginRight: 0.25,
+    marginRight: 0.2,
     marginLeft: 0,
-    '& > *:nth-of-type(1)': { fontSize: 14 },
+    '& > *:nth-of-type(1)': { fontSize: 13 },
   },
 } as const;
 

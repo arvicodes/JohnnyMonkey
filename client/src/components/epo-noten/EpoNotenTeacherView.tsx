@@ -36,13 +36,15 @@ import {
   allCategoriesSelected,
   assessmentModeForGroup,
   formatSuggestedGradeDisplay,
-  gradeFromTotalPoints,
+  minPointsThresholdForTotal,
+  rasterResultFromTotal,
   type EpoNotenAssessmentMode,
   normalizeCategoryScores,
   sumCategoryScores,
 } from '../../lib/epoNotenShared';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import { EpoNotenCategoryGrid } from './EpoNotenCategoryGrid';
+import { EpoNotenGradeTable } from './EpoNotenGradeTable';
 import {
   epoNotenCardSx,
   epoNotenCompactBtnSx,
@@ -146,7 +148,11 @@ export function EpoNotenTeacherView() {
   }, [selectedStudent]);
 
   const totalTeacher = sumCategoryScores(teacherScores);
-  const computedGrade = gradeFromTotalPoints(totalTeacher);
+  const selectedAssessmentMode: EpoNotenAssessmentMode =
+    round && selectedStudent?.groupId
+      ? assessmentModeForGroup(round, selectedStudent.groupId)
+      : 'note';
+  const computedRasterResult = rasterResultFromTotal(selectedAssessmentMode, totalTeacher);
 
   const skipRasterGradeSyncRef = useRef(false);
 
@@ -162,9 +168,9 @@ export function EpoNotenTeacherView() {
       return;
     }
     if (allCategoriesSelected(teacherScores)) {
-      setTeacherGrade(computedGrade);
+      setTeacherGrade(computedRasterResult);
     }
-  }, [computedGrade, selectedStudent, teacherScores]);
+  }, [computedRasterResult, selectedStudent, teacherScores]);
 
   const handleCreate = async () => {
     setSaving(true);
@@ -245,7 +251,7 @@ export function EpoNotenTeacherView() {
   const persistTeacherEntry = async (grade: string) => {
     if (!round || !selectedStudentId) return false;
     const resolvedGrade =
-      grade.trim() || (allCategoriesSelected(teacherScores) ? computedGrade : '');
+      grade.trim() || (allCategoriesSelected(teacherScores) ? computedRasterResult : '');
     const res = await apiPut(`/api/epo-noten/${round.id}/teacher/${selectedStudentId}`, {
       teacherScores,
       teacherGrade: resolvedGrade,
@@ -775,8 +781,12 @@ export function EpoNotenTeacherView() {
                                 )}
                               </strong>
                               {' · '}
-                              Raster {sumCategoryScores(selectedStudent.selfScores)} Pkt. →{' '}
-                              {selectedStudent.selfGradeFromTable || '—'}
+                              Raster{' '}
+                              {selectedStudent.groupId
+                                ? assessmentModeForGroup(round, selectedStudent.groupId) === 'mss'
+                                  ? `${sumCategoryScores(selectedStudent.selfScores)} MSS-Pkt.`
+                                  : `${sumCategoryScores(selectedStudent.selfScores)} Pkt. → ${selectedStudent.selfGradeFromTable || '—'}`
+                                : `${sumCategoryScores(selectedStudent.selfScores)} Pkt.`}
                             </Typography>
                             <Typography sx={{ fontSize: '0.7rem', mt: 0.45, whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>
                               {selectedStudent.justification || '—'}
@@ -802,6 +812,22 @@ export function EpoNotenTeacherView() {
                               }
                             />
 
+                            {allCategoriesSelected(teacherScores) && (
+                              <Box sx={{ mt: 0.75 }}>
+                                <EpoNotenGradeTable
+                                  mode={selectedAssessmentMode}
+                                  highlightMinPoints={
+                                    selectedAssessmentMode === 'note'
+                                      ? minPointsThresholdForTotal(totalTeacher)
+                                      : null
+                                  }
+                                  highlightExactPoints={
+                                    selectedAssessmentMode === 'mss' ? totalTeacher : null
+                                  }
+                                />
+                              </Box>
+                            )}
+
                             <Box
                               sx={{
                                 ...epoNotenInsetBoxSx,
@@ -812,19 +838,31 @@ export function EpoNotenTeacherView() {
                               }}
                             >
                               <Typography sx={{ fontWeight: 800, fontSize: '0.75rem', mb: 0.75, color: epoNotenPalette.heading }}>
-                                EPO-Note
+                                {selectedAssessmentMode === 'mss' ? 'MSS-Punkte (0–15)' : 'EPO-Note'}
                               </Typography>
                               <TextField
-                                label="EPO-Note"
+                                label={selectedAssessmentMode === 'mss' ? 'MSS-Punkte' : 'EPO-Note'}
                                 size="small"
                                 value={teacherGrade}
-                                onChange={(e) => setTeacherGrade(e.target.value)}
-                                placeholder="z. B. 2+ oder 3−"
+                                onChange={(e) => {
+                                  const raw = e.target.value;
+                                  if (selectedAssessmentMode === 'mss') {
+                                    setTeacherGrade(raw.replace(/[^\d]/g, '').slice(0, 2));
+                                    return;
+                                  }
+                                  setTeacherGrade(raw);
+                                }}
+                                placeholder={selectedAssessmentMode === 'mss' ? 'z. B. 11' : 'z. B. 2+ oder 3−'}
                                 fullWidth
+                                inputMode={selectedAssessmentMode === 'mss' ? 'numeric' : 'text'}
                                 helperText={
                                   allCategoriesSelected(teacherScores)
-                                    ? `Aus Raster: ${totalTeacher} Punkte → ${computedGrade} (wird automatisch gesetzt, du kannst anpassen)`
-                                    : `Raster noch unvollständig — Note manuell eintragen oder Raster vervollständigen`
+                                    ? selectedAssessmentMode === 'mss'
+                                      ? `Aus Raster: ${totalTeacher} MSS-Punkte (automatisch, anpassbar)`
+                                      : `Aus Raster: ${totalTeacher} Punkte → ${computedRasterResult} (automatisch, anpassbar)`
+                                    : selectedAssessmentMode === 'mss'
+                                      ? 'Raster vervollständigen oder MSS-Punkte manuell eintragen'
+                                      : 'Raster vervollständigen oder Note manuell eintragen'
                                 }
                                 sx={{
                                   '& .MuiInputBase-root': { fontSize: '0.95rem', fontWeight: 700 },

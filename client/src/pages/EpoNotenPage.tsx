@@ -15,6 +15,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { apiGetSafe, apiPost } from '../lib/api';
 import { EpoNotenTeacherView } from '../components/epo-noten/EpoNotenTeacherView';
 import { EpoNotenCategoryGrid } from '../components/epo-noten/EpoNotenCategoryGrid';
+import { EpoNotenGradeTable } from '../components/epo-noten/EpoNotenGradeTable';
 import { EpoNotenStudentRoundList } from '../components/epo-noten/EpoNotenStudentRoundList';
 import { EpoNotenStudentSelfWizard } from '../components/epo-noten/EpoNotenStudentSelfWizard';
 import {
@@ -24,14 +25,18 @@ import {
   epoNotenPageShellSx,
   epoNotenPalette,
   epoNotenStudentSurfaceSx,
+  epoNotenCompactBtnSx,
 } from '../components/epo-noten/epoNotenUi';
 import {
+  EPO_NOTEN_STUDENT_CATEGORIES,
   EPO_NOTEN_TEACHER_CATEGORIES,
   type EpoNotenEntry,
   type EpoNotenStudentSession,
-  gradeFromTotalPoints,
+  formatSuggestedGradeDisplay,
   emptyCategoryScores,
+  minPointsThresholdForTotal,
   normalizeCategoryScores,
+  rasterResultFromTotal,
   sumCategoryScores,
   type EpoNotenAssessmentMode,
 } from '../lib/epoNotenShared';
@@ -91,7 +96,7 @@ export default function EpoNotenPage() {
       if (entry?.selfScores?.length) {
         const fromEntry = entry.selfGradeFromTable?.trim();
         setSelfGradeFromTable(
-          fromEntry || (mode === 'mss' ? String(pts) : gradeFromTotalPoints(pts)),
+          fromEntry || rasterResultFromTotal(mode, pts),
         );
       } else {
         setSelfGradeFromTable('');
@@ -175,7 +180,7 @@ export default function EpoNotenPage() {
 
   const submitSelf = useCallback(async () => {
     const total = sumCategoryScores(selfScores);
-    const gradeTable = assessmentMode === 'mss' ? String(total) : gradeFromTotalPoints(total);
+    const gradeTable = rasterResultFromTotal(assessmentMode, total);
     setSubmitting(true);
     setError(null);
     try {
@@ -333,19 +338,78 @@ export default function EpoNotenPage() {
 
                 {(phase === 'goals' || phase === 'done') && myEntry && (
                   <>
-                    <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx }}>
-                      <Box sx={{ p: 1.5 }}>
-                        <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 800 }}>
-                          Einschätzung deiner Lehrkraft
-                        </Typography>
-                        <EpoNotenCategoryGrid
-                          categories={EPO_NOTEN_TEACHER_CATEGORIES}
-                          scores={normalizeCategoryScores(myEntry.teacherScores)}
-                          readOnly
-                        />
-                        <Typography variant="h6" sx={{ mt: 1.5, fontWeight: 800, color: epoNotenPalette.accent }}>
-                          Deine EPO-Note: {myEntry.teacherGrade || '—'}
-                        </Typography>
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+                        gap: 1,
+                        width: '100%',
+                        ...epoNotenStudentSurfaceSx,
+                      }}
+                    >
+                      <Box sx={{ ...epoNotenCardSx, minWidth: 0 }}>
+                        <Box sx={{ p: 1.25 }}>
+                          <Typography variant="subtitle2" sx={{ mb: 0.75, fontWeight: 800 }}>
+                            Deine Selbsteinschätzung
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem', mb: 1 }}>
+                            {formatSuggestedGradeDisplay(assessmentMode, myEntry.suggestedGrade)}
+                          </Typography>
+                          <EpoNotenCategoryGrid
+                            compact
+                            categories={EPO_NOTEN_STUDENT_CATEGORIES}
+                            scores={normalizeCategoryScores(myEntry.selfScores)}
+                            readOnly
+                          />
+                          <Box sx={{ mt: 1 }}>
+                            <EpoNotenGradeTable
+                              mode={assessmentMode}
+                              highlightMinPoints={
+                                assessmentMode === 'note'
+                                  ? minPointsThresholdForTotal(sumCategoryScores(myEntry.selfScores))
+                                  : null
+                              }
+                              highlightExactPoints={
+                                assessmentMode === 'mss' ? sumCategoryScores(myEntry.selfScores) : null
+                              }
+                            />
+                          </Box>
+                          <Typography sx={{ mt: 1, fontWeight: 800, fontSize: '0.9rem', color: epoNotenPalette.primary }}>
+                            {assessmentMode === 'mss' ? 'Deine MSS-Punkte (Raster): ' : 'Deine Note (Raster): '}
+                            {myEntry.selfGradeFromTable || rasterResultFromTotal(assessmentMode, sumCategoryScores(myEntry.selfScores))}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ ...epoNotenCardSx, minWidth: 0 }}>
+                        <Box sx={{ p: 1.25 }}>
+                          <Typography variant="subtitle2" sx={{ mb: 0.75, fontWeight: 800 }}>
+                            Einschätzung deiner Lehrkraft
+                          </Typography>
+                          <EpoNotenCategoryGrid
+                            compact
+                            categories={EPO_NOTEN_TEACHER_CATEGORIES}
+                            scores={normalizeCategoryScores(myEntry.teacherScores)}
+                            readOnly
+                          />
+                          <Box sx={{ mt: 1 }}>
+                            <EpoNotenGradeTable
+                              mode={assessmentMode}
+                              highlightMinPoints={
+                                assessmentMode === 'note'
+                                  ? minPointsThresholdForTotal(sumCategoryScores(myEntry.teacherScores))
+                                  : null
+                              }
+                              highlightExactPoints={
+                                assessmentMode === 'mss' ? sumCategoryScores(myEntry.teacherScores) : null
+                              }
+                            />
+                          </Box>
+                          <Typography sx={{ mt: 1, fontWeight: 800, fontSize: '0.9rem', color: epoNotenPalette.accent }}>
+                            {assessmentMode === 'mss' ? 'MSS-Punkte (Lehrkraft): ' : 'EPO-Note (Lehrkraft): '}
+                            {myEntry.teacherGrade || '—'}
+                          </Typography>
+                        </Box>
                       </Box>
                     </Box>
 
@@ -376,7 +440,13 @@ export default function EpoNotenPage() {
                         />
                         {canEditGoals && phase === 'goals' && (
                           <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'flex-end' }}>
-                            <Button size="small" variant="contained" onClick={() => void submitGoals()} disabled={submitting}>
+                            <Button
+                              size="small"
+                              variant="contained"
+                              onClick={() => void submitGoals()}
+                              disabled={submitting}
+                              sx={epoNotenCompactBtnSx}
+                            >
                               Ziele speichern
                             </Button>
                           </Box>
