@@ -961,9 +961,18 @@ export function EpoNotenTeacherView() {
                             size="small"
                             aria-label={`${g?.name || gid} entfernen`}
                             onClick={() => updateRoundGroups(round.groupIds.filter((id) => id !== gid))}
-                            sx={{ p: 0.25, color: 'text.secondary' }}
+                            sx={{
+                              ...epoNotenCompactIconBtnSx,
+                              minWidth: 18,
+                              width: 18,
+                              height: 18,
+                              color: 'text.secondary',
+                              borderColor: 'transparent',
+                              bgcolor: 'transparent',
+                              '&:hover': { bgcolor: 'rgba(0,0,0,0.06)', borderColor: 'divider' },
+                            }}
                           >
-                            <CloseIcon sx={{ fontSize: 16 }} />
+                            <CloseIcon sx={{ fontSize: 11 }} />
                           </IconButton>
                         </Tooltip>
                       </Stack>
