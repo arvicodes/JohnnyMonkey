@@ -647,9 +647,9 @@ export function EpoNotenTeacherView() {
 
   const selectedRoundMeta = rounds.find((r) => r.id === selectedId);
 
+  const selectedStudentGroupId = selectedStudent?.groupId;
   const canReleaseGroup =
-    Boolean(selectedStudent?.groupId) &&
-    releasableCountInGroup(selectedStudent.groupId) > 0;
+    selectedStudentGroupId != null && releasableCountInGroup(selectedStudentGroupId) > 0;
 
   return (
     <Stack
