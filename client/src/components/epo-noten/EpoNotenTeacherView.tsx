@@ -275,16 +275,11 @@ export function EpoNotenTeacherView() {
     if (!teacherScoresDirtyRef.current || !round || !selectedStudentId) {
       return teacherSaveChainRef.current;
     }
-    const row = students.find((s) => s.studentId === selectedStudentId);
-    if (row?.teacherReleasedAt) return teacherSaveChainRef.current;
-
     setDraftStatus('saving');
     teacherSaveChainRef.current = teacherSaveChainRef.current
       .then(async () => {
         while (teacherScoresDirtyRef.current) {
           if (!round || !selectedStudentId) break;
-          const current = students.find((s) => s.studentId === selectedStudentId);
-          if (current?.teacherReleasedAt) break;
           const scoresSnapshot = [...teacherScoresRef.current];
           const gradeSnapshot = teacherGradeRef.current;
           teacherScoresDirtyRef.current = false;
@@ -447,7 +442,7 @@ export function EpoNotenTeacherView() {
   };
 
   const saveTeacher = async () => {
-    if (!round || !selectedStudentId || selectedStudent?.teacherReleasedAt) return;
+    if (!round || !selectedStudentId) return;
     setSaving(true);
     setError(null);
     try {
@@ -1128,13 +1123,13 @@ export function EpoNotenTeacherView() {
                         <Box sx={{ position: 'relative', width: '100%' }}>
                             {selectedStudent.teacherReleasedAt && (
                               <Alert severity="info" sx={{ py: 0, fontSize: '0.72rem', mb: 0.5 }}>
-                                Bewertung bereits an SuS freigegeben — Raster hier nur noch ansehen.
+                                Bereits an SuS freigegeben — du kannst die Bewertung hier weiter anpassen; der SuS sieht
+                                die aktuelle Version beim nächsten Öffnen der Runde.
                               </Alert>
                             )}
 
                             <EpoNotenCategoryGrid
                               compact
-                              readOnly={Boolean(selectedStudent.teacherReleasedAt)}
                               label={
                                 selectedStudent.studentSubmittedAt
                                   ? 'Lehrkraft (vorausgefüllt aus SuS — lila = SuS-Wahl)'
@@ -1183,7 +1178,6 @@ export function EpoNotenTeacherView() {
                                 label={selectedAssessmentMode === 'mss' ? 'MSS-Punkte' : 'EPO-Note'}
                                 size="small"
                                 value={teacherGrade}
-                                disabled={Boolean(selectedStudent.teacherReleasedAt)}
                                 onChange={(e) => {
                                   teacherScoresDirtyRef.current = true;
                                   const raw = e.target.value;
@@ -1215,30 +1209,30 @@ export function EpoNotenTeacherView() {
                               />
                             </Box>
 
-                            {!selectedStudent.teacherReleasedAt && (
-                              <Stack spacing={0.5} sx={{ mt: 1 }}>
-                                <Typography
-                                  variant="caption"
-                                  sx={{
-                                    textAlign: 'right',
-                                    display: 'block',
-                                    color:
-                                      draftStatus === 'error'
-                                        ? 'error.main'
-                                        : draftStatus === 'saved'
-                                          ? 'success.main'
-                                          : 'text.secondary',
-                                    fontWeight: 600,
-                                  }}
-                                >
-                                  {draftStatus === 'saving'
-                                    ? 'Speichert…'
-                                    : draftStatus === 'saved'
-                                      ? 'Gespeichert'
-                                      : draftStatus === 'error'
-                                        ? 'Speichern fehlgeschlagen — bitte „Speichern“ erneut tippen'
-                                        : 'Raster wird automatisch gespeichert'}
-                                </Typography>
+                            <Stack spacing={0.5} sx={{ mt: 1 }}>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  textAlign: 'right',
+                                  display: 'block',
+                                  color:
+                                    draftStatus === 'error'
+                                      ? 'error.main'
+                                      : draftStatus === 'saved'
+                                        ? 'success.main'
+                                        : 'text.secondary',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {draftStatus === 'saving'
+                                  ? 'Speichert…'
+                                  : draftStatus === 'saved'
+                                    ? 'Gespeichert'
+                                    : draftStatus === 'error'
+                                      ? 'Speichern fehlgeschlagen — bitte „Speichern“ erneut tippen'
+                                      : 'Raster wird automatisch gespeichert'}
+                              </Typography>
+                              {!selectedStudent.teacherReleasedAt && (
                                 <Stack direction="row" spacing={0.75} justifyContent="flex-end">
                                   <Button
                                     size="small"
@@ -1259,8 +1253,8 @@ export function EpoNotenTeacherView() {
                                     An SuS abschicken
                                   </Button>
                                 </Stack>
-                              </Stack>
-                            )}
+                              )}
+                            </Stack>
                         </Box>
 
                         {(selectedStudent.goalsSubmittedAt ||
