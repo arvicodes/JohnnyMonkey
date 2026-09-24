@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -10,12 +13,12 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloseIcon from '@mui/icons-material/Close';
 import { apiGetSafe, apiPost } from '../lib/api';
 import { EpoNotenTeacherView } from '../components/epo-noten/EpoNotenTeacherView';
 import { EpoNotenCategoryGrid } from '../components/epo-noten/EpoNotenCategoryGrid';
-import { EpoNotenGradeTable } from '../components/epo-noten/EpoNotenGradeTable';
 import { EpoNotenStudentRoundList } from '../components/epo-noten/EpoNotenStudentRoundList';
 import { EpoNotenStudentSelfWizard } from '../components/epo-noten/EpoNotenStudentSelfWizard';
 import {
@@ -24,12 +27,9 @@ import {
   epoNotenPageShellSx,
   epoNotenPalette,
   epoNotenStudentSurfaceSx,
+  epoNotenSectionTitleSx,
   epoNotenStudentGoalDisplaySx,
   epoNotenStudentGoalFieldSx,
-  epoNotenStudentGoalHintSx,
-  epoNotenStudentGoalLabelSx,
-  epoNotenStudentGoalsHeaderSx,
-  epoNotenStudentGoalsShellSx,
 } from '../components/epo-noten/epoNotenUi';
 import {
   EPO_NOTEN_STUDENT_CATEGORIES,
@@ -371,188 +371,171 @@ export default function EpoNotenPage() {
                 )}
 
                 {(phase === 'goals' || phase === 'done') && myEntry && (
-                  <>
-                    <Box
-                      sx={{
-                        ...epoNotenStudentSurfaceSx,
-                        display: 'grid',
-                        gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-                        gap: 1,
-                      }}
-                    >
-                      <Box sx={{ ...epoNotenCardSx, minWidth: 0 }}>
-                        <Box sx={{ p: 1.25 }}>
-                          <Typography variant="subtitle2" sx={{ mb: 0.75, fontWeight: 800 }}>
-                            Deine Selbsteinschätzung
+                  <Stack spacing={1.5} sx={{ width: '100%' }}>
+                    {(() => {
+                      const selfPts = sumCategoryScores(myEntry.selfScores);
+                      const teacherPts = sumCategoryScores(myEntry.teacherScores);
+                      const selfLabel =
+                        myEntry.selfGradeFromTable || rasterResultFromTotal(assessmentMode, selfPts);
+                      const teacherLabel = myEntry.teacherGrade || '—';
+                      const ptsSuffix =
+                        assessmentMode === 'mss' ? ' MSS-Pkt.' : ' Pkt. im Raster';
+                      return (
+                        <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx, p: 1.5 }}>
+                          <Typography sx={{ ...epoNotenSectionTitleSx, fontSize: '1.05rem', mb: 1.25 }}>
+                            Dein EPO-Ergebnis
                           </Typography>
-                          <EpoNotenCategoryGrid
-                            compact
-                            radioGroupId={`sus-self-${selectedRoundId}`}
-                            categories={EPO_NOTEN_STUDENT_CATEGORIES}
-                            scores={normalizeCategoryScores(myEntry.selfScores)}
-                            readOnly
-                          />
-                          <Box sx={{ mt: 1 }}>
-                            <EpoNotenGradeTable
-                              mode={assessmentMode}
-                              highlightMinPoints={
-                                assessmentMode === 'note'
-                                  ? minPointsThresholdForTotal(sumCategoryScores(myEntry.selfScores))
-                                  : null
-                              }
-                              highlightExactPoints={
-                                assessmentMode === 'mss' ? sumCategoryScores(myEntry.selfScores) : null
-                              }
-                            />
-                          </Box>
-                          <Typography sx={{ mt: 1, fontWeight: 800, fontSize: '0.9rem', color: epoNotenPalette.primary }}>
-                            {assessmentMode === 'mss' ? 'Deine MSS-Punkte (Raster): ' : 'Deine Note (Raster): '}
-                            {myEntry.selfGradeFromTable || rasterResultFromTotal(assessmentMode, sumCategoryScores(myEntry.selfScores))}
-                          </Typography>
+                          <Stack
+                            direction={{ xs: 'column', sm: 'row' }}
+                            spacing={1}
+                            sx={{
+                              '& > *': { flex: 1, minWidth: 0 },
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                p: 1.25,
+                                borderRadius: 2,
+                                bgcolor: epoNotenPalette.primaryTint,
+                                border: `1px solid ${epoNotenPalette.border}`,
+                              }}
+                            >
+                              <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                                Du
+                              </Typography>
+                              <Typography sx={{ fontWeight: 900, fontSize: '1.35rem', color: epoNotenPalette.primary }}>
+                                {selfLabel}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {selfPts}
+                                {ptsSuffix}
+                              </Typography>
+                            </Box>
+                            <Box
+                              sx={{
+                                p: 1.25,
+                                borderRadius: 2,
+                                bgcolor: epoNotenPalette.accentTint,
+                                border: `1px solid ${epoNotenPalette.border}`,
+                              }}
+                            >
+                              <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                                Lehrkraft
+                              </Typography>
+                              <Typography sx={{ fontWeight: 900, fontSize: '1.35rem', color: epoNotenPalette.accent }}>
+                                {teacherLabel}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {teacherPts}
+                                {ptsSuffix}
+                              </Typography>
+                            </Box>
+                          </Stack>
+
+                          <Accordion
+                            disableGutters
+                            elevation={0}
+                            sx={{
+                              mt: 1.25,
+                              bgcolor: 'transparent',
+                              '&:before': { display: 'none' },
+                              border: `1px solid ${epoNotenPalette.border}`,
+                              borderRadius: 2,
+                              overflow: 'hidden',
+                            }}
+                          >
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 40, py: 0 }}>
+                              <Typography sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
+                                Raster im Detail anzeigen
+                              </Typography>
+                            </AccordionSummary>
+                            <AccordionDetails sx={{ pt: 0, px: 1, pb: 1 }}>
+                              <Stack spacing={1.25}>
+                                <Box>
+                                  <Typography sx={{ fontWeight: 800, fontSize: '0.8rem', mb: 0.5 }}>
+                                    Deine Selbsteinschätzung
+                                  </Typography>
+                                  <EpoNotenCategoryGrid
+                                    compact
+                                    radioGroupId={`sus-self-${selectedRoundId}`}
+                                    categories={EPO_NOTEN_STUDENT_CATEGORIES}
+                                    scores={normalizeCategoryScores(myEntry.selfScores)}
+                                    readOnly
+                                  />
+                                </Box>
+                                <Box>
+                                  <Typography sx={{ fontWeight: 800, fontSize: '0.8rem', mb: 0.5 }}>
+                                    Lehrkraft
+                                  </Typography>
+                                  <EpoNotenCategoryGrid
+                                    compact
+                                    radioGroupId={`sus-teacher-${selectedRoundId}`}
+                                    categories={EPO_NOTEN_TEACHER_CATEGORIES}
+                                    scores={normalizeCategoryScores(myEntry.teacherScores)}
+                                    readOnly
+                                  />
+                                </Box>
+                              </Stack>
+                            </AccordionDetails>
+                          </Accordion>
                         </Box>
-                      </Box>
+                      );
+                    })()}
 
-                      <Box sx={{ ...epoNotenCardSx, minWidth: 0 }}>
-                        <Box sx={{ p: 1.25 }}>
-                          <Typography variant="subtitle2" sx={{ mb: 0.75, fontWeight: 800 }}>
-                            Einschätzung deiner Lehrkraft
-                          </Typography>
-                          <EpoNotenCategoryGrid
-                            compact
-                            radioGroupId={`sus-teacher-${selectedRoundId}`}
-                            categories={EPO_NOTEN_TEACHER_CATEGORIES}
-                            scores={normalizeCategoryScores(myEntry.teacherScores)}
-                            readOnly
+                    <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx, p: 1.5 }}>
+                      <Typography sx={{ ...epoNotenSectionTitleSx, mb: 1.5 }}>
+                        Mein Ziel für den nächsten Zeitraum
+                      </Typography>
+
+                      {canEditGoals && phase === 'goals' ? (
+                        <Stack spacing={2}>
+                          <TextField
+                            label="Mein konkretes Ziel"
+                            value={goal}
+                            onChange={(e) => setGoal(e.target.value)}
+                            multiline
+                            minRows={3}
+                            fullWidth
+                            sx={epoNotenStudentGoalFieldSx}
                           />
-                          <Box sx={{ mt: 1 }}>
-                            <EpoNotenGradeTable
-                              mode={assessmentMode}
-                              highlightMinPoints={
-                                assessmentMode === 'note'
-                                  ? minPointsThresholdForTotal(sumCategoryScores(myEntry.teacherScores))
-                                  : null
-                              }
-                              highlightExactPoints={
-                                assessmentMode === 'mss' ? sumCategoryScores(myEntry.teacherScores) : null
-                              }
-                            />
+                          <TextField
+                            label="Meine konkrete Handlung dazu"
+                            value={goalAction}
+                            onChange={(e) => setGoalAction(e.target.value)}
+                            multiline
+                            minRows={3}
+                            fullWidth
+                            sx={epoNotenStudentGoalFieldSx}
+                          />
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <Button
+                              variant="contained"
+                              onClick={() => void submitGoals()}
+                              disabled={submitting}
+                              sx={{ fontWeight: 800, px: 2.5 }}
+                            >
+                              Ziele speichern
+                            </Button>
                           </Box>
-                          <Typography sx={{ mt: 1, fontWeight: 800, fontSize: '0.9rem', color: epoNotenPalette.accent }}>
-                            {assessmentMode === 'mss' ? 'MSS-Punkte (Lehrkraft): ' : 'EPO-Note (Lehrkraft): '}
-                            {myEntry.teacherGrade || '—'}
-                          </Typography>
-                        </Box>
-                      </Box>
+                        </Stack>
+                      ) : (
+                        <Stack spacing={2}>
+                          <Box>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                              Mein Ziel
+                            </Typography>
+                            <Box sx={epoNotenStudentGoalDisplaySx}>{goal.trim() || '—'}</Box>
+                          </Box>
+                          <Box>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                              Meine Handlung
+                            </Typography>
+                            <Box sx={epoNotenStudentGoalDisplaySx}>{goalAction.trim() || '—'}</Box>
+                          </Box>
+                        </Stack>
+                      )}
                     </Box>
-
-                    <Box
-                      sx={{
-                        ...epoNotenCardSx,
-                        ...epoNotenStudentSurfaceSx,
-                        ...epoNotenStudentGoalsShellSx,
-                      }}
-                    >
-                      <Box sx={epoNotenStudentGoalsHeaderSx}>
-                        <Typography
-                          component="h2"
-                          sx={{
-                            fontWeight: 900,
-                            fontSize: { xs: '1.35rem', sm: '1.55rem' },
-                            color: epoNotenPalette.heading,
-                            lineHeight: 1.25,
-                          }}
-                        >
-                          Mein Ziel für den nächsten Zeitraum
-                        </Typography>
-                        <Typography sx={{ ...epoNotenStudentGoalHintSx, mt: 0.75, mb: 0 }}>
-                          Formuliere dein Ziel und deine Handlung groß und klar — du kannst sie hier jederzeit
-                          wieder ansehen.
-                        </Typography>
-                      </Box>
-
-                      <Stack spacing={2.75} sx={{ p: { xs: 2, sm: 2.5 } }}>
-                        {canEditGoals && phase === 'goals' ? (
-                          <>
-                            <Box>
-                              <Typography component="label" sx={epoNotenStudentGoalLabelSx}>
-                                1. Mein konkretes Ziel
-                              </Typography>
-                              <Typography sx={epoNotenStudentGoalHintSx}>
-                                Was willst du im nächsten Zeitraum erreichen?
-                              </Typography>
-                              <TextField
-                                aria-label="Mein konkretes Ziel"
-                                placeholder="z. B. Ich will in Mathe sicherer mit Brüchen werden …"
-                                value={goal}
-                                onChange={(e) => setGoal(e.target.value)}
-                                multiline
-                                minRows={3}
-                                fullWidth
-                                sx={epoNotenStudentGoalFieldSx}
-                              />
-                            </Box>
-                            <Box>
-                              <Typography component="label" sx={epoNotenStudentGoalLabelSx}>
-                                2. Meine konkrete Handlung dazu
-                              </Typography>
-                              <Typography sx={epoNotenStudentGoalHintSx}>
-                                Was machst du dafür ganz konkret?
-                              </Typography>
-                              <TextField
-                                aria-label="Meine konkrete Handlung"
-                                placeholder="z. B. Jeden Tag 15 Minuten üben und in der Stunde öfter mitmachen …"
-                                value={goalAction}
-                                onChange={(e) => setGoalAction(e.target.value)}
-                                multiline
-                                minRows={4}
-                                fullWidth
-                                sx={epoNotenStudentGoalFieldSx}
-                              />
-                            </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                              <Button
-                                size="large"
-                                variant="contained"
-                                color="success"
-                                onClick={() => void submitGoals()}
-                                disabled={submitting}
-                                sx={{
-                                  fontWeight: 800,
-                                  fontSize: '1rem',
-                                  px: 3,
-                                  py: 1.1,
-                                  borderRadius: 2,
-                                }}
-                              >
-                                Ziele speichern
-                              </Button>
-                            </Box>
-                          </>
-                        ) : (
-                          <>
-                            <Box>
-                              <Typography sx={epoNotenStudentGoalLabelSx}>Mein konkretes Ziel</Typography>
-                              <Box sx={epoNotenStudentGoalDisplaySx} role="region" aria-label="Gespeichertes Ziel">
-                                {goal.trim() || '—'}
-                              </Box>
-                            </Box>
-                            <Box>
-                              <Typography sx={epoNotenStudentGoalLabelSx}>Meine konkrete Handlung dazu</Typography>
-                              <Box sx={epoNotenStudentGoalDisplaySx} role="region" aria-label="Gespeicherte Handlung">
-                                {goalAction.trim() || '—'}
-                              </Box>
-                            </Box>
-                            {phase === 'done' && (
-                              <Alert severity="success" sx={{ fontWeight: 700, fontSize: '0.95rem' }}>
-                                Deine Ziele sind gespeichert — sie bleiben hier groß sichtbar, damit du sie im Blick
-                                behältst.
-                              </Alert>
-                            )}
-                          </>
-                        )}
-                      </Stack>
-                    </Box>
-                  </>
+                  </Stack>
                 )}
               </>
             )}
