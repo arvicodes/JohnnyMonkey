@@ -27,6 +27,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PublishIcon from '@mui/icons-material/Publish';
 import UnpublishedIcon from '@mui/icons-material/Unpublished';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { apiDelete, apiGetSafe, apiPost, apiPut } from '../../lib/api';
 import {
   EPO_NOTEN_TEACHER_CATEGORIES,
@@ -511,6 +512,24 @@ export function EpoNotenTeacherView() {
                     </span>
                   </Tooltip>
                 )}
+                <Tooltip title="Alle SuS zurücksetzen (Selbsteinschätzung erneut möglich)">
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={resetAllStudents}
+                      disabled={saving}
+                      aria-label="Alle zurücksetzen"
+                      sx={{
+                        ...epoNotenCompactIconBtnSx,
+                        color: '#e65100',
+                        borderColor: 'rgba(230, 81, 0, 0.45)',
+                        '&:hover': { bgcolor: 'rgba(245, 124, 0, 0.1)' },
+                      }}
+                    >
+                      <RestartAltIcon sx={epoNotenCompactIconSx} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
                 <Tooltip title="Runde löschen">
                   <IconButton
                     size="small"
@@ -623,6 +642,19 @@ export function EpoNotenTeacherView() {
                   )}
                 </Box>
 
+                <Button
+                  fullWidth
+                  size="small"
+                  variant="outlined"
+                  color="warning"
+                  onClick={resetAllStudents}
+                  disabled={saving}
+                  startIcon={<RestartAltIcon sx={{ fontSize: 16 }} />}
+                  sx={{ ...epoNotenCompactBtnSx, justifyContent: 'center' }}
+                >
+                  Alle SuS zurücksetzen
+                </Button>
+
                 <Divider />
 
                 <Box
@@ -704,17 +736,6 @@ export function EpoNotenTeacherView() {
                         sx={epoNotenCompactBtnSx}
                       >
                         Alle bewerteten freigeben
-                      </Button>
-                      <Button
-                        fullWidth
-                        size="small"
-                        variant="outlined"
-                        color="warning"
-                        onClick={resetAllStudents}
-                        disabled={saving}
-                        sx={epoNotenCompactBtnSx}
-                      >
-                        Alle zurücksetzen
                       </Button>
                     </Stack>
                   </Box>
