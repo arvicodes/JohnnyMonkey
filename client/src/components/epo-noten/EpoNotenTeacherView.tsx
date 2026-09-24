@@ -87,6 +87,7 @@ export function EpoNotenTeacherView() {
   const [newDate, setNewDate] = useState(new Date().toISOString().slice(0, 10));
   const [newGroupIds, setNewGroupIds] = useState<string[]>([]);
   const [publishOnCreate, setPublishOnCreate] = useState(true);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
 
   const loadList = useCallback(async () => {
     const res = await apiGetSafe('/api/epo-noten/list');
@@ -327,16 +328,16 @@ export function EpoNotenTeacherView() {
     await loadDetail(round.id);
   };
 
-  const resetAllStudents = async () => {
+  const requestResetAll = () => {
     if (!round) return;
-    if (
-      !window.confirm(
-        'Alle Einträge dieser Runde zurücksetzen? SuS können ihre Selbsteinschätzung dann erneut ausfüllen.',
-      )
-    ) {
-      return;
-    }
+    setResetConfirmOpen(true);
+  };
+
+  const confirmResetAll = async () => {
+    if (!round) return;
+    setResetConfirmOpen(false);
     setSaving(true);
+    setError(null);
     try {
       const res = await apiPost(`/api/epo-noten/${round.id}/reset-all`, {});
       if (!res?.ok) {
@@ -558,7 +559,7 @@ export function EpoNotenTeacherView() {
                   <span>
                     <IconButton
                       size="small"
-                      onClick={resetAllStudents}
+                      onClick={requestResetAll}
                       disabled={saving}
                       aria-label="Alle zurücksetzen"
                       sx={{
@@ -922,6 +923,46 @@ export function EpoNotenTeacherView() {
           </Box>
         )}
       </Box>
+
+      <Dialog open={resetConfirmOpen} onClose={() => !saving && setResetConfirmOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={dialogCloseTitleSx}>
+          Alle SuS zurücksetzen?
+          <DialogCloseIconButton onClose={() => !saving && setResetConfirmOpen(false)} disabled={saving} />
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.25} sx={{ pt: 0.5 }}>
+            <Alert severity="warning" sx={{ py: 0.5, fontSize: '0.8rem' }}>
+              Diese Aktion kann nicht rückgängig gemacht werden.
+            </Alert>
+            <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+              Für die Runde <strong>{round?.title}</strong> werden alle Einträge gelöscht:
+            </Typography>
+            <Typography component="ul" variant="body2" sx={{ m: 0, pl: 2.25, fontSize: '0.82rem', color: 'text.secondary' }}>
+              <li>Selbsteinschätzungen der Schüler</li>
+              <li>deine Bewertungen und Noten</li>
+              <li>Freigaben und Ziele</li>
+            </Typography>
+            <Typography variant="body2" sx={{ fontSize: '0.82rem' }}>
+              Danach können die SuS ihre Selbsteinschätzung erneut abgeben.
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 1.5 }}>
+          <Button size="small" onClick={() => setResetConfirmOpen(false)} disabled={saving} sx={epoNotenCompactBtnSx}>
+            Abbrechen
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            color="warning"
+            onClick={() => void confirmResetAll()}
+            disabled={saving}
+            sx={epoNotenCompactBtnSx}
+          >
+            Ja, alle zurücksetzen
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={dialogCloseTitleSx}>
