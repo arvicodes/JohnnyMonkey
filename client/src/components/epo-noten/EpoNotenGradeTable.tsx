@@ -82,9 +82,8 @@ export function EpoNotenGradeTable({
                     py: 0.85,
                     px: 0.2,
                     fontSize: '0.88rem',
-                    fontWeight: active ? 900 : 600,
                     borderRadius: 1,
-                    ...(active ? activeColumnSx : { color: epoNotenPalette.textPrimary }),
+                    ...(active ? activeColumnSx : { fontWeight: 600, color: epoNotenPalette.textPrimary }),
                   }}
                 >
                   {pts}
@@ -169,11 +168,18 @@ export function EpoNotenGradeTable({
                   py: 0.85,
                   px: 0.25,
                   fontSize: active ? '1.05rem' : '0.95rem',
-                  borderRadius: active ? '0 0 8px 8px' : 1,
-                  bgcolor: active ? undefined : epoNotenPalette.sand,
                   ...(active
-                    ? { ...activeColumnSx, borderRadius: '0 0 8px 8px', boxShadow: `inset 0 -2px 0 0 ${epoNotenPalette.accent}, inset 2px 0 0 ${epoNotenPalette.accent}, inset -2px 0 0 ${epoNotenPalette.accent}` }
-                    : { fontWeight: 700, color: epoNotenPalette.textPrimary }),
+                    ? {
+                        ...activeColumnSx,
+                        borderRadius: '0 0 8px 8px',
+                        boxShadow: `inset 0 -2px 0 0 ${epoNotenPalette.accent}, inset 2px 0 0 ${epoNotenPalette.accent}, inset -2px 0 0 ${epoNotenPalette.accent}`,
+                      }
+                    : {
+                        borderRadius: 1,
+                        bgcolor: epoNotenPalette.sand,
+                        fontWeight: 700,
+                        color: epoNotenPalette.textPrimary,
+                      }),
                 }}
               >
                 {col.grade}
