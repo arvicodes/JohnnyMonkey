@@ -12,7 +12,6 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
-  FormControlLabel,
   IconButton,
   List,
   ListItemButton,
@@ -145,10 +144,28 @@ export function EpoNotenTeacherView() {
   }, [selectedId, loadDetail]);
 
   useEffect(() => {
-    setStudentListGroupFilter(null);
-  }, [selectedId]);
+    if (!round) {
+      setStudentListGroupFilter(null);
+      return;
+    }
+    if (round.groupIds.length === 0) {
+      setStudentListGroupFilter(null);
+      return;
+    }
+    setStudentListGroupFilter((prev) => {
+      if (prev && round.groupIds.includes(prev)) return prev;
+      return round.groupIds[0];
+    });
+  }, [round?.id, round?.groupIds.join('|')]);
 
   const selectedStudent = students.find((s) => s.studentId === selectedStudentId) ?? null;
+
+  const selectStudentListGroup = (gid: string) => {
+    setStudentListGroupFilter(gid);
+    if (selectedStudent?.groupId && selectedStudent.groupId !== gid) {
+      setSelectedStudentId('');
+    }
+  };
 
   const skipRasterGradeSyncRef = useRef(false);
   const teacherScoresDirtyRef = useRef(false);
@@ -829,7 +846,7 @@ export function EpoNotenTeacherView() {
                     Lerngruppen in dieser Runde
                   </Typography>
                   <Typography variant="caption" display="block" sx={{ color: 'text.secondary', fontSize: '0.65rem', mt: 0.15 }}>
-                    Tippen = zur Runde hinzufügen/entfernen · unten bei „Schüler“ filtern
+                    Tippen = zur Runde hinzufügen oder entfernen
                   </Typography>
                   <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mt: 0.35 }}>
                     {groups.map((g) => {
@@ -863,9 +880,15 @@ export function EpoNotenTeacherView() {
                       <Typography variant="caption" sx={{ fontWeight: 700, color: epoNotenPalette.textSecondary }}>
                         Bewertungsart pro Gruppe
                       </Typography>
+                      {round.groupIds.length > 1 && (
+                        <Typography variant="caption" display="block" sx={{ color: 'text.secondary', fontSize: '0.65rem', mb: 0.25 }}>
+                          Gruppenname tippen = SuS dieser Gruppe in der Liste
+                        </Typography>
+                      )}
                       {round.groupIds.map((gid) => {
                         const g = groups.find((x) => x.id === gid);
                         const mode = assessmentModeForGroup(round, gid);
+                        const groupListActive = studentListGroupFilter === gid;
                         return (
                           <Stack
                             key={gid}
@@ -874,16 +897,48 @@ export function EpoNotenTeacherView() {
                             justifyContent="space-between"
                             gap={0.75}
                             flexWrap="wrap"
+                            role={round.groupIds.length > 1 ? 'button' : undefined}
+                            tabIndex={round.groupIds.length > 1 ? 0 : undefined}
+                            onClick={
+                              round.groupIds.length > 1
+                                ? () => selectStudentListGroup(gid)
+                                : undefined
+                            }
+                            onKeyDown={
+                              round.groupIds.length > 1
+                                ? (e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault();
+                                      selectStudentListGroup(gid);
+                                    }
+                                  }
+                                : undefined
+                            }
                             sx={{
                               py: 0.35,
                               px: 0.5,
                               borderRadius: 1,
-                              bgcolor: 'rgba(0,0,0,0.02)',
+                              cursor: round.groupIds.length > 1 ? 'pointer' : 'default',
+                              bgcolor: groupListActive ? epoNotenPalette.primaryTint : 'rgba(0,0,0,0.02)',
+                              border: '2px solid',
+                              borderColor: groupListActive ? epoNotenPalette.primary : 'transparent',
+                              '&:hover':
+                                round.groupIds.length > 1
+                                  ? { bgcolor: groupListActive ? epoNotenPalette.primaryTint : 'rgba(25, 118, 210, 0.06)' }
+                                  : undefined,
                             }}
                           >
-                            <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, minWidth: 0 }}>
+                            <Typography
+                              sx={{
+                                fontSize: '0.72rem',
+                                fontWeight: groupListActive ? 800 : 700,
+                                minWidth: 0,
+                                color: groupListActive ? epoNotenPalette.heading : epoNotenPalette.textPrimary,
+                              }}
+                            >
                               {g?.name || gid}
                             </Typography>
+                            <Box onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                             <ToggleButtonGroup
                               exclusive
                               size="small"
@@ -901,6 +956,7 @@ export function EpoNotenTeacherView() {
                                 MSS 0–15
                               </ToggleButton>
                             </ToggleButtonGroup>
+                            </Box>
                           </Stack>
                         );
                       })}
@@ -921,45 +977,12 @@ export function EpoNotenTeacherView() {
                   <Box sx={{ minWidth: 0 }}>
                     <Typography sx={{ fontWeight: 800, fontSize: '0.75rem', mb: 0.35, color: epoNotenPalette.heading }}>
                       Schüler
+                      {studentListGroupFilter && round.groupIds.length > 1 ? (
+                        <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 0.5 }}>
+                          · {groups.find((x) => x.id === studentListGroupFilter)?.name || ''}
+                        </Typography>
+                      ) : null}
                     </Typography>
-                    {round.groupIds.length > 1 && (
-                      <Stack direction="row" flexWrap="wrap" gap={0.35} sx={{ mb: 0.5 }}>
-                        <Chip
-                          size="small"
-                          label="Alle Gruppen"
-                          clickable
-                          onClick={() => setStudentListGroupFilter(null)}
-                          variant={studentListGroupFilter === null ? 'filled' : 'outlined'}
-                          sx={{
-                            height: 22,
-                            fontSize: '0.65rem',
-                            fontWeight: 700,
-                            bgcolor: studentListGroupFilter === null ? epoNotenPalette.primaryTint : undefined,
-                          }}
-                        />
-                        {round.groupIds.map((gid) => {
-                          const g = groups.find((x) => x.id === gid);
-                          const active = studentListGroupFilter === gid;
-                          return (
-                            <Chip
-                              key={gid}
-                              size="small"
-                              label={g?.name || gid}
-                              clickable
-                              onClick={() => setStudentListGroupFilter(active ? null : gid)}
-                              variant={active ? 'filled' : 'outlined'}
-                              sx={{
-                                height: 22,
-                                fontSize: '0.65rem',
-                                fontWeight: 700,
-                                bgcolor: active ? epoNotenPalette.primaryTint : undefined,
-                                borderColor: active ? epoNotenPalette.primary : undefined,
-                              }}
-                            />
-                          );
-                        })}
-                      </Stack>
-                    )}
                     <List
                       dense
                       sx={{
@@ -1332,23 +1355,63 @@ export function EpoNotenTeacherView() {
             <TextField label="Titel (z. B. EPO 1)" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} fullWidth />
             <TextField label="Datum" type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} fullWidth InputLabelProps={{ shrink: true }} />
             <Typography variant="subtitle2">Lerngruppen</Typography>
-            {groups.map((g) => (
-              <FormControlLabel
-                key={g.id}
-                control={<Checkbox checked={newGroupIds.includes(g.id)} onChange={() => toggleNewGroup(g.id)} />}
-                label={g.name}
+            {groups.map((g) => {
+              const checked = newGroupIds.includes(g.id);
+              return (
+                <Box
+                  key={g.id}
+                  role="checkbox"
+                  aria-checked={checked}
+                  onClick={() => toggleNewGroup(g.id)}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    py: 0.35,
+                    px: 0.5,
+                    mx: -0.5,
+                    borderRadius: 1,
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    '&:hover': { bgcolor: 'action.hover' },
+                  }}
+                >
+                  <Checkbox checked={checked} tabIndex={-1} disableRipple sx={{ p: 0.25, pointerEvents: 'none' }} />
+                  <Typography variant="body2">{g.name}</Typography>
+                </Box>
+              );
+            })}
+            <Box
+              role="checkbox"
+              aria-checked={publishOnCreate}
+              aria-disabled={newGroupIds.length === 0}
+              onClick={() => {
+                if (newGroupIds.length === 0) return;
+                setPublishOnCreate((v) => !v);
+              }}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                py: 0.35,
+                px: 0.5,
+                mx: -0.5,
+                borderRadius: 1,
+                cursor: newGroupIds.length === 0 ? 'default' : 'pointer',
+                opacity: newGroupIds.length === 0 ? 0.5 : 1,
+                userSelect: 'none',
+                '&:hover': newGroupIds.length === 0 ? undefined : { bgcolor: 'action.hover' },
+              }}
+            >
+              <Checkbox
+                checked={publishOnCreate}
+                disabled={newGroupIds.length === 0}
+                tabIndex={-1}
+                disableRipple
+                sx={{ p: 0.25, pointerEvents: 'none' }}
               />
-            ))}
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={publishOnCreate}
-                  onChange={(e) => setPublishOnCreate(e.target.checked)}
-                  disabled={newGroupIds.length === 0}
-                />
-              }
-              label="Direkt für SuS freischalten (empfohlen)"
-            />
+              <Typography variant="body2">Direkt für SuS freischalten (empfohlen)</Typography>
+            </Box>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 2, pb: 1.5 }}>

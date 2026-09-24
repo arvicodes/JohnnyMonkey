@@ -119,23 +119,24 @@ export function EpoNotenCategoryGrid({
                   studentOverlayScores[i] === p;
                 const interactive = !readOnly && !studentGhost && Boolean(onChange);
 
+                const pickScore = () => {
+                  if (!interactive) return;
+                  setScore(i, p);
+                };
+
                 return (
                   <TableCell
                     key={p}
                     align="center"
                     padding="checkbox"
-                    onClick={
-                      interactive
-                        ? (e) => {
-                            e.stopPropagation();
-                            setScore(i, p);
-                          }
-                        : undefined
-                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      pickScore();
+                    }}
                     sx={{
                       py: compact ? 0 : 0.5,
                       px: 0.25,
-                      cursor: interactive ? 'pointer' : undefined,
+                      cursor: interactive ? 'pointer' : 'default',
                       bgcolor: studentPick && !studentGhost ? 'rgba(186, 104, 200, 0.16)' : undefined,
                       boxShadow:
                         studentPick && !studentGhost
@@ -150,6 +151,7 @@ export function EpoNotenCategoryGrid({
                         justifyContent: 'center',
                         minHeight: compact ? 28 : 34,
                         minWidth: compact ? 28 : 34,
+                        pointerEvents: 'none',
                       }}
                     >
                       <Radio
@@ -160,13 +162,13 @@ export function EpoNotenCategoryGrid({
                             : `epo-noten-${radioGroupId}-cat-${i}`
                         }
                         checked={teacherChecked}
-                        onChange={() => setScore(i, p)}
+                        readOnly
                         disabled={readOnly || studentGhost}
                         value={p}
-                        tabIndex={interactive ? 0 : -1}
+                        tabIndex={-1}
                         sx={{
                           p: compact ? 0.35 : 0.75,
-                          pointerEvents: interactive ? 'auto' : 'none',
+                          pointerEvents: 'none',
                           '& .MuiSvgIcon-root': { fontSize: compact ? 20 : 26 },
                           color:
                             studentPick && !teacherChecked && !studentGhost
