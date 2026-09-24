@@ -233,7 +233,7 @@ export function EpoNotenStudentSelfWizard({
                         variant="h2"
                         sx={{
                           ...epoNotenBigNumberSx,
-                          fontSize: { xs: '2.35rem', sm: '2.75rem' },
+                          fontSize: { xs: '1.65rem', sm: '1.9rem' },
                           transition: 'transform 0.2s ease',
                           transform: 'scale(1)',
                         }}
@@ -273,18 +273,17 @@ export function EpoNotenStudentSelfWizard({
                       <Typography
                         variant="body1"
                         color="text.secondary"
-                        sx={{ mt: assessmentMode === 'mss' ? 0 : 2, fontWeight: 700, fontSize: '1rem' }}
+                        sx={{ mt: assessmentMode === 'mss' ? 0 : 2, fontWeight: 700, fontSize: '0.82rem' }}
                       >
                         {assessmentMode === 'mss' ? 'Deine MSS-Punkte' : 'Note aus Tabelle'}
                       </Typography>
                       <Typography
                         component="p"
                         sx={{
-                          fontWeight: 900,
-                          color: epoNotenPalette.accent,
-                          lineHeight: 1.05,
-                          fontSize: { xs: '3.25rem', sm: '4rem' },
-                          mt: 0.5,
+                          ...epoNotenBigNumberSx,
+                          lineHeight: 1.15,
+                          fontSize: { xs: '1.85rem', sm: '2.1rem' },
+                          mt: 0.35,
                         }}
                       >
                         {epoSummaryHeadline(assessmentMode, evaluationGrade, evaluationPoints)}

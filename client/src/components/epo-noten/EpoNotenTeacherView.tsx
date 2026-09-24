@@ -1023,7 +1023,7 @@ export function EpoNotenTeacherView() {
                 <Box
                   sx={{
                     display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', lg: 'minmax(188px, 228px) minmax(0, 1fr)' },
+                    gridTemplateColumns: { xs: '1fr', lg: 'minmax(168px, 200px) minmax(0, 1fr)' },
                     gap: 0.5,
                     alignItems: 'start',
                   }}
@@ -1093,7 +1093,7 @@ export function EpoNotenTeacherView() {
                                       photoFraming="portrait"
                                       name={s.studentName}
                                       avatarUrl={s.avatarUrl}
-                                      photoSize={52}
+                                      photoSize={44}
                                       alwaysShowPhotoSlot={false}
                                     />
                                   </Box>
@@ -1240,7 +1240,7 @@ export function EpoNotenTeacherView() {
                               <Typography
                                 sx={{
                                   ...epoNotenBigNumberSx,
-                                  fontSize: '1.5rem',
+                                  fontSize: '1.2rem',
                                   color: teacherGrade.trim() || allCategoriesSelected(teacherScores)
                                     ? epoNotenPalette.primary
                                     : 'text.disabled',
