@@ -952,7 +952,7 @@ export class EpoNotenController {
     }
   }
 
-  /** Lehrkraft: alle Einträge dieser Runde löschen (SuS können neu starten) */
+  /** Lehrkraft: Einträge löschen (ganze Runde oder eine Lerngruppe) */
   static async resetAllEntries(req: Request, res: Response) {
     try {
       const user = await getUserByLoginCode(req);
@@ -962,6 +962,23 @@ export class EpoNotenController {
       const roundId = String(req.params.id || '').trim();
       const payload = await loadRound(user.id, roundId);
       if (!payload) return res.status(404).json({ error: 'Runde nicht gefunden' });
+
+      const groupId = typeof req.body?.groupId === 'string' ? req.body.groupId.trim() : '';
+
+      if (groupId) {
+        if (!payload.groupIds.includes(groupId)) {
+          return res.status(400).json({ error: 'Diese Lerngruppe gehört nicht zu dieser Runde' });
+        }
+        const groups = await loadTeacherGroupsWithStudents(user.id);
+        const group = groups.find((g) => g.id === groupId);
+        if (!group) return res.status(400).json({ error: 'Lerngruppe nicht gefunden' });
+        const studentIds = new Set(group.students.map((s) => s.id));
+        const before = payload.entries.length;
+        payload.entries = payload.entries.filter((e) => !studentIds.has(e.studentId));
+        const removed = before - payload.entries.length;
+        await saveRound(user.id, payload);
+        return res.json({ success: true, removedCount: removed, groupId });
+      }
 
       const removed = payload.entries.length;
       payload.entries = [];

@@ -23,7 +23,6 @@ import {
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PublishIcon from '@mui/icons-material/Publish';
 import UnpublishedIcon from '@mui/icons-material/Unpublished';
@@ -56,10 +55,8 @@ import {
   epoNotenCompactIconBtnSx,
   epoNotenCompactIconSx,
   epoNotenInsetBoxSx,
-  epoNotenPanelHeaderSx,
   epoNotenBigNumberSx,
   epoNotenPalette,
-  epoNotenStudentGhostPanelSx,
 } from './epoNotenUi';
 
 type GroupInfo = { id: string; name: string; studentCount: number };
@@ -93,6 +90,8 @@ export function EpoNotenTeacherView() {
   const [newGroupIds, setNewGroupIds] = useState<string[]>([]);
   const [publishOnCreate, setPublishOnCreate] = useState(true);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  /** null = ganze Runde, sonst nur diese Lerngruppe */
+  const [resetGroupId, setResetGroupId] = useState<string | null>(null);
   const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   /** null = alle Gruppen in der SuS-Liste, sonst nur diese Lerngruppe */
   const [studentListGroupFilter, setStudentListGroupFilter] = useState<string | null>(null);
@@ -542,23 +541,38 @@ export function EpoNotenTeacherView() {
     await loadDetail(round.id);
   };
 
-  const requestResetAll = () => {
+  const requestReset = (groupId: string | null) => {
     if (!round) return;
+    setResetGroupId(groupId);
     setResetConfirmOpen(true);
   };
 
-  const confirmResetAll = async () => {
+  const resetGroupName =
+    resetGroupId ? groups.find((g) => g.id === resetGroupId)?.name || resetGroupId : '';
+
+  const confirmReset = async () => {
     if (!round) return;
     setResetConfirmOpen(false);
     setSaving(true);
     setError(null);
     try {
-      const res = await apiPost(`/api/epo-noten/${round.id}/reset-all`, {});
+      const body = resetGroupId ? { groupId: resetGroupId } : {};
+      const res = await apiPost(`/api/epo-noten/${round.id}/reset-all`, body);
       if (!res?.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(typeof err.error === 'string' ? err.error : 'Zurücksetzen fehlgeschlagen');
       }
-      setSelectedStudentId('');
+      if (
+        resetGroupId &&
+        selectedStudent?.groupId &&
+        selectedStudent.groupId === resetGroupId
+      ) {
+        setSelectedStudentId('');
+      }
+      if (!resetGroupId) {
+        setSelectedStudentId('');
+      }
+      setResetGroupId(null);
       await loadDetail(round.id);
       await loadList();
     } catch (e) {
@@ -661,7 +675,17 @@ export function EpoNotenTeacherView() {
         }}
       >
         <Card sx={{ ...epoNotenCardSx, borderWidth: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <Box sx={{ ...epoNotenPanelHeaderSx, py: 0.25, px: 0.5, justifyContent: 'space-between' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              px: 0.75,
+              py: 0.4,
+              borderBottom: `1px solid ${epoNotenPalette.border}`,
+              bgcolor: '#fff',
+            }}
+          >
             <Typography sx={{ fontWeight: 800, fontSize: '0.72rem', color: epoNotenPalette.heading }}>
               Runden
             </Typography>
@@ -744,7 +768,18 @@ export function EpoNotenTeacherView() {
               overflow: 'hidden',
             }}
           >
-            <Box sx={{ ...epoNotenPanelHeaderSx, py: 0.25, px: 0.55, gap: 0.35 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                flexWrap: 'wrap',
+                px: 1,
+                py: 0.5,
+                bgcolor: '#fff',
+                borderBottom: `1px solid ${epoNotenPalette.border}`,
+              }}
+            >
               <Box sx={{ minWidth: 0, flex: 1 }}>
                 <Typography sx={{ fontWeight: 800, fontSize: '0.8rem', color: epoNotenPalette.heading, lineHeight: 1.2 }} noWrap>
                   {round.title}
@@ -819,7 +854,7 @@ export function EpoNotenTeacherView() {
                   <span>
                     <IconButton
                       size="small"
-                      onClick={requestResetAll}
+                      onClick={() => requestReset(null)}
                       disabled={saving}
                       aria-label="Alle zurücksetzen"
                       sx={{
@@ -851,7 +886,7 @@ export function EpoNotenTeacherView() {
               </Stack>
             </Box>
 
-            <Box sx={{ px: 0.5, py: 0.4, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Box sx={{ px: 1, py: 0.75, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider', bgcolor: '#fafbfc' }}>
               {!round.publishedAt && (
                 <Typography
                   variant="caption"
@@ -893,91 +928,61 @@ export function EpoNotenTeacherView() {
               )}
 
               {round.groupIds.length > 0 && (
-                <Stack spacing={0.35}>
-                  <Typography variant="caption" sx={{ fontSize: '0.62rem', fontWeight: 700, color: 'text.secondary' }}>
-                    Kurs wählen — Note/MSS gilt jeweils für diesen Kurs
-                  </Typography>
-                  {round.groupIds.map((gid) => {
-                    const g = groups.find((x) => x.id === gid);
-                    const mode = assessmentModeForGroup(round, gid);
-                    const isActive = activeCourseGroupId === gid;
-                    return (
-                      <Stack
-                        key={gid}
-                        direction="row"
-                        alignItems="center"
-                        flexWrap="wrap"
-                        gap={0.4}
+                <Stack spacing={0.75}>
+                  <Stack direction="row" flexWrap="wrap" gap={0.5} alignItems="center">
+                    {round.groupIds.map((gid) => {
+                      const g = groups.find((x) => x.id === gid);
+                      const isActive = activeCourseGroupId === gid;
+                      return (
+                        <Chip
+                          key={gid}
+                          label={g?.name || gid}
+                          clickable
+                          onClick={() => selectStudentListGroup(gid)}
+                          onDelete={() => updateRoundGroups(round.groupIds.filter((id) => id !== gid))}
+                          variant={isActive ? 'filled' : 'outlined'}
+                          color={isActive ? 'primary' : 'default'}
+                          sx={{
+                            height: 28,
+                            fontWeight: 700,
+                            fontSize: '0.78rem',
+                            '& .MuiChip-deleteIcon': { fontSize: 16 },
+                          }}
+                        />
+                      );
+                    })}
+                  </Stack>
+                  {activeCourseGroupId && (
+                    <Stack direction="row" alignItems="center" gap={0.75} flexWrap="wrap">
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                        Bewertung für diesen Kurs
+                      </Typography>
+                      <ToggleButtonGroup
+                        exclusive
+                        size="small"
+                        value={assessmentModeForGroup(round, activeCourseGroupId)}
+                        onChange={(_, v: EpoNotenAssessmentMode | null) => {
+                          if (!v) return;
+                          void updateGroupAssessmentMode(activeCourseGroupId, v);
+                        }}
+                        disabled={saving}
                         sx={{
-                          py: 0.25,
-                          px: 0.35,
-                          borderRadius: 1,
-                          border: '1px solid',
-                          borderColor: isActive ? epoNotenPalette.primary : 'divider',
-                          bgcolor: isActive ? epoNotenPalette.primaryTint : 'rgba(0,0,0,0.02)',
+                          bgcolor: '#fff',
+                          '& .MuiToggleButton-root': {
+                            px: 1.25,
+                            py: 0.25,
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            textTransform: 'none',
+                            borderColor: epoNotenPalette.border,
+                          },
                         }}
                       >
-                        <Button
-                          size="small"
-                          variant={isActive ? 'contained' : 'outlined'}
-                          onClick={() => selectStudentListGroup(gid)}
-                          sx={{
-                            minHeight: 24,
-                            py: 0.15,
-                            px: 1,
-                            fontSize: '0.72rem',
-                            fontWeight: 800,
-                            textTransform: 'none',
-                            boxShadow: 'none',
-                          }}
-                        >
-                          {g?.name || gid}
-                        </Button>
-                        <ToggleButtonGroup
-                          exclusive
-                          size="small"
-                          value={mode}
-                          onChange={(_, v: EpoNotenAssessmentMode | null) => {
-                            if (!v) return;
-                            void updateGroupAssessmentMode(gid, v);
-                          }}
-                          disabled={saving}
-                        >
-                          <ToggleButton
-                            value="note"
-                            sx={{ px: 0.65, py: 0.1, minHeight: 24, fontSize: '0.65rem', fontWeight: 700, lineHeight: 1 }}
-                          >
-                            Note
-                          </ToggleButton>
-                          <ToggleButton
-                            value="mss"
-                            sx={{ px: 0.65, py: 0.1, minHeight: 24, fontSize: '0.65rem', fontWeight: 700, lineHeight: 1 }}
-                          >
-                            MSS
-                          </ToggleButton>
-                        </ToggleButtonGroup>
-                        <Tooltip title="Kurs aus dieser Runde entfernen">
-                          <IconButton
-                            size="small"
-                            aria-label={`${g?.name || gid} entfernen`}
-                            onClick={() => updateRoundGroups(round.groupIds.filter((id) => id !== gid))}
-                            sx={{
-                              ...epoNotenCompactIconBtnSx,
-                              minWidth: 18,
-                              width: 18,
-                              height: 18,
-                              color: 'text.secondary',
-                              borderColor: 'transparent',
-                              bgcolor: 'transparent',
-                              '&:hover': { bgcolor: 'rgba(0,0,0,0.06)', borderColor: 'divider' },
-                            }}
-                          >
-                            <CloseIcon sx={{ fontSize: 11 }} />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
-                    );
-                  })}
+                        <ToggleButton value="note">Note</ToggleButton>
+                        <ToggleButton value="mss">MSS</ToggleButton>
+                      </ToggleButtonGroup>
+                    </Stack>
+                  )}
                 </Stack>
               )}
             </Box>
@@ -1000,13 +1005,8 @@ export function EpoNotenTeacherView() {
                   }}
                 >
                   <Box sx={{ minWidth: 0 }}>
-                    <Typography sx={{ fontWeight: 800, fontSize: '0.68rem', mb: 0.2, color: epoNotenPalette.heading }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.75rem', mb: 0.35, color: 'text.secondary' }}>
                       Schüler
-                      {activeCourseName ? (
-                        <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 0.5 }}>
-                          · {activeCourseName}
-                        </Typography>
-                      ) : null}
                     </Typography>
                     <List
                       dense
@@ -1083,12 +1083,16 @@ export function EpoNotenTeacherView() {
                                     variant="outlined"
                                   />
                                   {s.teacherGrade ? (
-                                    <Typography sx={{ fontSize: '0.62rem', fontWeight: 800, color: 'primary.main', flexShrink: 0 }}>
+                                    <Typography
+                                      sx={{
+                                        fontSize: '0.7rem',
+                                        fontWeight: 800,
+                                        color: s.teacherReleasedAt ? 'success.main' : 'primary.main',
+                                        flexShrink: 0,
+                                      }}
+                                    >
                                       {s.teacherGrade}
                                     </Typography>
-                                  ) : null}
-                                  {s.teacherReleasedAt ? (
-                                    <Chip size="small" label="frei" sx={{ height: 16, fontSize: '0.55rem', '& .MuiChip-label': { px: 0.35 } }} color="secondary" />
                                   ) : null}
                                 </Stack>
                               </ListItemButton>
@@ -1125,37 +1129,43 @@ export function EpoNotenTeacherView() {
                         )}
 
                         {selectedStudent.studentSubmittedAt ? (
-                          <Box
+                          <Typography
                             sx={{
-                              ...epoNotenStudentGhostPanelSx,
-                              py: 0.35,
-                              px: 0.5,
-                              mb: 0.25,
+                              fontSize: '0.78rem',
+                              lineHeight: 1.45,
+                              color: 'text.secondary',
+                              mb: 0.5,
+                              borderLeft: `3px solid ${epoNotenPalette.border}`,
+                              pl: 1,
                             }}
                           >
-                            <Typography sx={{ fontSize: '0.65rem', lineHeight: 1.3 }} noWrap title={selectedStudent.justification || ''}>
-                              <strong>SuS:</strong>{' '}
-                              {formatSuggestedGradeDisplay(
-                                selectedStudent.groupId
-                                  ? assessmentModeForGroup(round, selectedStudent.groupId)
-                                  : selectedStudent.suggestedGradeMode,
-                                selectedStudent.suggestedGrade,
-                              )}
-                              {' · '}
-                              {selectedStudent.groupId &&
-                              assessmentModeForGroup(round, selectedStudent.groupId) === 'mss'
-                                ? `${sumCategoryScores(selectedStudent.selfScores)} MSS`
-                                : `${sumCategoryScores(selectedStudent.selfScores)} Pkt. → ${selectedStudent.selfGradeFromTable || '—'}`}
-                              {selectedStudent.justification
-                                ? ` · ${selectedStudent.justification.replace(/\s+/g, ' ').slice(0, 80)}${selectedStudent.justification.length > 80 ? '…' : ''}`
-                                : ''}
+                            <Typography component="span" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                              SuS:{' '}
                             </Typography>
-                          </Box>
+                            {formatSuggestedGradeDisplay(
+                              selectedStudent.groupId
+                                ? assessmentModeForGroup(round, selectedStudent.groupId)
+                                : selectedStudent.suggestedGradeMode,
+                              selectedStudent.suggestedGrade,
+                            )}
+                            {selectedStudent.groupId &&
+                            assessmentModeForGroup(round, selectedStudent.groupId) === 'mss'
+                              ? ` · Raster ${sumCategoryScores(selectedStudent.selfScores)}`
+                              : ` · Raster ${sumCategoryScores(selectedStudent.selfScores)} → ${selectedStudent.selfGradeFromTable || '—'}`}
+                            {selectedStudent.justification ? (
+                              <>
+                                <br />
+                                <Typography component="span" sx={{ fontStyle: 'italic' }}>
+                                  {selectedStudent.justification}
+                                </Typography>
+                              </>
+                            ) : null}
+                          </Typography>
                         ) : null}
 
                         <Box sx={{ position: 'relative', width: '100%' }}>
                             {selectedStudent.teacherReleasedAt && (
-                              <Typography variant="caption" sx={{ display: 'block', fontSize: '0.62rem', color: 'info.main', mb: 0.25 }}>
+                              <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mb: 0.35 }}>
                                 Freigegeben — Änderungen sieht der SuS beim nächsten Öffnen.
                               </Typography>
                             )}
@@ -1163,11 +1173,7 @@ export function EpoNotenTeacherView() {
                             <EpoNotenCategoryGrid
                               compact
                               teacherEmphasis
-                              label={
-                                selectedStudent.studentSubmittedAt
-                                  ? 'Lehrkraft — blau = deine Wahl · lila (transparent) = SuS'
-                                  : 'Lehrkraft'
-                              }
+                              label={selectedStudent.studentSubmittedAt ? 'Deine Bewertung (lila = SuS)' : 'Deine Bewertung'}
                               categories={EPO_NOTEN_TEACHER_CATEGORIES}
                               scores={teacherScores}
                               onChange={handleTeacherScoresChange}
@@ -1195,23 +1201,21 @@ export function EpoNotenTeacherView() {
                               </Box>
                             )}
 
-                            <Box
-                              sx={{
-                                ...epoNotenInsetBoxSx,
-                                mt: 0.35,
-                                p: 0.65,
-                                bgcolor: '#fff',
-                                position: 'relative',
-                                zIndex: 2,
-                              }}
+                            <Stack
+                              direction="row"
+                              alignItems="baseline"
+                              justifyContent="space-between"
+                              flexWrap="wrap"
+                              gap={0.5}
+                              sx={{ mt: 0.75, pt: 0.75, borderTop: `1px solid ${epoNotenPalette.border}` }}
                             >
-                              <Typography sx={{ fontWeight: 800, fontSize: '0.68rem', mb: 0.25, color: epoNotenPalette.heading }}>
-                                {selectedAssessmentMode === 'mss' ? 'MSS-Punkte (0–15)' : 'EPO-Note'}
+                              <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'text.secondary' }}>
+                                {selectedAssessmentMode === 'mss' ? 'MSS' : 'Note'}
                               </Typography>
                               <Typography
                                 sx={{
                                   ...epoNotenBigNumberSx,
-                                  fontSize: '1.45rem',
+                                  fontSize: '1.5rem',
                                   color: teacherGrade.trim() || allCategoriesSelected(teacherScores)
                                     ? epoNotenPalette.primary
                                     : 'text.disabled',
@@ -1220,16 +1224,7 @@ export function EpoNotenTeacherView() {
                                 {teacherGrade.trim() ||
                                   (allCategoriesSelected(teacherScores) ? computedRasterResult : '—')}
                               </Typography>
-                              <Typography variant="caption" sx={{ display: 'block', mt: 0.35, color: 'text.secondary', lineHeight: 1.35 }}>
-                                {allCategoriesSelected(teacherScores)
-                                  ? selectedAssessmentMode === 'mss'
-                                    ? `Aus deinem Raster: ${totalTeacher} MSS-Punkte (wird automatisch gespeichert)`
-                                    : `Aus deinem Raster: ${totalTeacher} Punkte (wird automatisch gespeichert)`
-                                  : selectedAssessmentMode === 'mss'
-                                    ? 'Raster vervollständigen — dann erscheinen die MSS-Punkte hier.'
-                                    : 'Raster vervollständigen — dann erscheint die Note hier.'}
-                              </Typography>
-                            </Box>
+                            </Stack>
 
                             <Stack spacing={0.5} sx={{ mt: 1 }}>
                               <Typography

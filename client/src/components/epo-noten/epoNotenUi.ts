@@ -54,9 +54,9 @@ export const epoNotenStudentSurfaceSx = {
 };
 
 export const epoNotenCardSx = {
-  borderRadius: 3,
-  boxShadow: '0 4px 20px rgba(25, 55, 109, 0.09)',
-  border: `2px solid ${epoNotenPalette.border}`,
+  borderRadius: 2,
+  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)',
+  border: `1px solid ${epoNotenPalette.border}`,
   bgcolor: epoNotenPalette.cardBg,
   overflow: 'hidden',
 };
