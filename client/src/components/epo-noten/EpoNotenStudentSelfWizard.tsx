@@ -8,8 +8,6 @@ import {
   Collapse,
   Stack,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
 } from '@mui/material';
 import { EpoNotenCategoryGrid } from './EpoNotenCategoryGrid';
@@ -29,7 +27,7 @@ import {
   allCategoriesSelected,
   isValidSuggestedGrade,
   sumCategoryScores,
-  type EpoNotenSuggestedGradeMode,
+  type EpoNotenAssessmentMode,
 } from '../../lib/epoNotenShared';
 
 type WizardStep = 1 | 2 | 3 | 'done';
@@ -37,13 +35,12 @@ type WizardStep = 1 | 2 | 3 | 'done';
 type Props = {
   locked: boolean;
   submitting: boolean;
+  assessmentMode: EpoNotenAssessmentMode;
   suggestedGrade: string;
-  suggestedGradeMode: EpoNotenSuggestedGradeMode;
   justification: string;
   selfScores: number[];
   selfGradeFromTable: string;
   onSuggestedGradeChange: (v: string) => void;
-  onSuggestedGradeModeChange: (v: EpoNotenSuggestedGradeMode) => void;
   onJustificationChange: (v: string) => void;
   onSelfScoresChange: (v: number[]) => void;
   onSelfGradeFromTableChange: (v: string) => void;
@@ -54,12 +51,11 @@ type Props = {
 export function EpoNotenStudentSelfWizard({
   locked,
   submitting,
+  assessmentMode,
   suggestedGrade,
-  suggestedGradeMode,
   justification,
   selfScores,
   onSuggestedGradeChange,
-  onSuggestedGradeModeChange,
   onJustificationChange,
   onSelfScoresChange,
   onSelfGradeFromTableChange,
@@ -68,38 +64,36 @@ export function EpoNotenStudentSelfWizard({
 }: Props) {
   const [step, setStep] = useState<WizardStep>(startAtDone ? 'done' : 1);
   const [showCategories, setShowCategories] = useState(false);
-  const [animTotal, setAnimTotal] = useState(0);
-  const [highlightMin, setHighlightMin] = useState<number | null>(null);
-  const [tableVisible, setTableVisible] = useState(false);
-  const [gradeVisible, setGradeVisible] = useState(false);
-  const [animRunning, setAnimRunning] = useState(false);
+  const [evaluationReady, setEvaluationReady] = useState(false);
   const submitStarted = useRef(false);
   const tableAnchorRef = useRef<HTMLDivElement | null>(null);
-  const gradeAnchorRef = useRef<HTMLDivElement | null>(null);
-
   const totalTarget = sumCategoryScores(selfScores);
-  const readOnly = locked || step === 'done' || animRunning;
+  const readOnly = locked || step === 'done';
 
   const pointsShown =
-    step === 'done' ? totalTarget : step === 3 ? animTotal : allCategoriesSelected(selfScores) ? totalTarget : null;
+    step === 'done' || step === 3 || evaluationReady
+      ? totalTarget
+      : allCategoriesSelected(selfScores)
+        ? totalTarget
+        : null;
 
-  const gradeForPoints = (pts: number) => gradeFromTotalPoints(pts);
+  const gradeForPoints = (pts: number) =>
+    assessmentMode === 'mss' ? String(pts) : gradeFromTotalPoints(pts);
 
   const applyDoneEvaluation = useCallback(
     (pts: number) => {
-      setAnimTotal(pts);
-      setTableVisible(true);
-      setHighlightMin(minPointsThresholdForTotal(pts));
-      setGradeVisible(true);
+      setEvaluationReady(true);
+      const g = assessmentMode === 'mss' ? String(pts) : gradeFromTotalPoints(pts);
+      onSelfGradeFromTableChange(g);
     },
-    [],
+    [assessmentMode, onSelfGradeFromTableChange],
   );
 
   useEffect(() => {
     if (startAtDone || step === 'done') {
-      applyDoneEvaluation(totalTarget);
+      setEvaluationReady(true);
     }
-  }, [startAtDone, step, totalTarget, applyDoneEvaluation]);
+  }, [startAtDone, step]);
 
   useEffect(() => {
     if (startAtDone) {
@@ -110,57 +104,24 @@ export function EpoNotenStudentSelfWizard({
   }, [startAtDone]);
 
   useEffect(() => {
-    if (!tableVisible) return;
+    if (!evaluationReady) return;
     const t = window.setTimeout(() => {
       tableAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 120);
+    }, 80);
     return () => window.clearTimeout(t);
-  }, [tableVisible]);
+  }, [evaluationReady]);
 
-  useEffect(() => {
-    if (!gradeVisible) return;
-    const t = window.setTimeout(() => {
-      gradeAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }, 200);
-    return () => window.clearTimeout(t);
-  }, [gradeVisible]);
-
-  const runCalculationAnimation = useCallback(async () => {
+  const finishEvaluation = useCallback(async () => {
     if (locked) return;
-    setAnimRunning(true);
-    setAnimTotal(0);
-    setHighlightMin(null);
-    setTableVisible(false);
-    setGradeVisible(false);
-
-    const scores = selfScores.map((s) => Math.min(3, Math.max(0, Math.round(s))));
-    let running = 0;
-    for (let i = 0; i < scores.length; i += 1) {
-      await new Promise((r) => setTimeout(r, 380));
-      running += scores[i];
-      setAnimTotal(running);
-    }
-    await new Promise((r) => setTimeout(r, 400));
-
-    setTableVisible(true);
-    await new Promise((r) => setTimeout(r, 350));
-
-    const minPts = minPointsThresholdForTotal(running);
-    setHighlightMin(minPts);
-    await new Promise((r) => setTimeout(r, 700));
-
-    setGradeVisible(true);
-    const g = gradeForPoints(running);
-    onSelfGradeFromTableChange(g);
-    await new Promise((r) => setTimeout(r, 600));
-
-    setAnimRunning(false);
+    const pts = sumCategoryScores(selfScores);
+    applyDoneEvaluation(pts);
+    setStep(3);
     if (!submitStarted.current) {
       submitStarted.current = true;
       await onSubmit();
     }
     setStep('done');
-  }, [locked, onSelfGradeFromTableChange, onSubmit, selfScores]);
+  }, [applyDoneEvaluation, locked, onSubmit, selfScores]);
 
   const goNext = async () => {
     if (step === 1) {
@@ -169,24 +130,22 @@ export function EpoNotenStudentSelfWizard({
       return;
     }
     if (step === 2) {
-      setStep(3);
-      void runCalculationAnimation();
+      void finishEvaluation();
     }
   };
 
   const goBack = () => {
-    if (animRunning) return;
     if (step === 2) setStep(1);
     if (step === 3) setStep(2);
   };
 
   const canNextStep1 =
-    isValidSuggestedGrade(suggestedGradeMode, suggestedGrade) && justification.trim().length > 0;
-  const canNextStep2 = !animRunning && allCategoriesSelected(selfScores);
+    isValidSuggestedGrade(assessmentMode, suggestedGrade) && justification.trim().length > 0;
+  const canNextStep2 = allCategoriesSelected(selfScores);
 
-  const evaluationPoints = step === 'done' ? totalTarget : animTotal;
+  const evaluationPoints = totalTarget;
   const evaluationGrade = gradeForPoints(evaluationPoints);
-  const evaluationPhase = tableVisible || gradeVisible || step === 'done';
+  const evaluationPhase = evaluationReady || step === 'done' || step === 3;
 
   return (
     <Card sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx }}>
@@ -206,81 +165,39 @@ export function EpoNotenStudentSelfWizard({
               <Box sx={{ width: '100%' }}>
                 <Typography variant="body2" sx={{ fontWeight: 700, mb: 1 }}>
                   Noteneinschätzung
+                  <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.75 }}>
+                    ({assessmentMode === 'mss' ? 'MSS 0–15' : 'Note'} — von Lehrkraft festgelegt)
+                  </Typography>
                 </Typography>
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: 'minmax(52px, 64px) minmax(0, 1fr)', sm: 'minmax(56px, 72px) minmax(0, 1fr)' },
-                    alignItems: 'stretch',
-                    columnGap: { xs: 1, sm: 1.5 },
-                    width: '100%',
+                <TextField
+                  label={
+                    assessmentMode === 'mss'
+                      ? 'Deine Einschätzung in MSS-Punkten'
+                      : 'Deine Einschätzung als Note'
+                  }
+                  placeholder={assessmentMode === 'mss' ? 'z. B. 11' : 'z. B. 2+ oder 3−'}
+                  value={suggestedGrade}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (assessmentMode === 'mss') {
+                      onSuggestedGradeChange(raw.replace(/[^\d]/g, '').slice(0, 2));
+                      return;
+                    }
+                    onSuggestedGradeChange(raw);
                   }}
-                >
-                  <ToggleButtonGroup
-                    orientation="vertical"
-                    exclusive
-                    size="small"
-                    value={suggestedGradeMode}
-                    onChange={(_, v: EpoNotenSuggestedGradeMode | null) => {
-                      if (!v || readOnly) return;
-                      onSuggestedGradeModeChange(v);
-                    }}
-                    disabled={readOnly}
-                    sx={{
-                      width: '100%',
-                      maxWidth: 72,
-                      '& .MuiToggleButtonGroup-grouped': {
-                        border: '1px solid rgba(25, 118, 210, 0.35) !important',
-                        px: 0.35,
-                        py: 0.65,
-                        textAlign: 'center',
-                        lineHeight: 1.15,
-                        fontWeight: 700,
-                        fontSize: '0.68rem',
-                        whiteSpace: 'normal',
-                        minWidth: 0,
-                        width: '100%',
-                      },
-                    }}
-                  >
-                    <ToggleButton value="note">Note</ToggleButton>
-                    <ToggleButton value="mss">
-                      MSS
-                      <br />
-                      0–15
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-                  <TextField
-                    label={
-                      suggestedGradeMode === 'mss'
-                        ? 'Deine Einschätzung in MSS-Punkten'
-                        : 'Deine Einschätzung als Note'
-                    }
-                    placeholder={suggestedGradeMode === 'mss' ? 'z. B. 11' : 'z. B. 2+ oder 3−'}
-                    value={suggestedGrade}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      if (suggestedGradeMode === 'mss') {
-                        onSuggestedGradeChange(raw.replace(/[^\d]/g, '').slice(0, 2));
-                        return;
-                      }
-                      onSuggestedGradeChange(raw);
-                    }}
-                    disabled={readOnly}
-                    fullWidth
-                    inputMode={suggestedGradeMode === 'mss' ? 'numeric' : 'text'}
-                    helperText={
-                      suggestedGradeMode === 'mss'
-                        ? 'Ganzzahl von 0 bis 15'
-                        : 'Schulnote, z. B. 1, 2+, 3−'
-                    }
-                    error={
-                      suggestedGrade.trim().length > 0 &&
-                      !isValidSuggestedGrade(suggestedGradeMode, suggestedGrade)
-                    }
-                    sx={{ ...epoNotenKidTextFieldSx, minWidth: 0, width: '100%' }}
-                  />
-                </Box>
+                  disabled={readOnly}
+                  fullWidth
+                  inputMode={assessmentMode === 'mss' ? 'numeric' : 'text'}
+                  helperText={
+                    assessmentMode === 'mss'
+                      ? 'Ganzzahl von 0 bis 15'
+                      : 'Schulnote, z. B. 1, 2+, 3−'
+                  }
+                  error={
+                    suggestedGrade.trim().length > 0 && !isValidSuggestedGrade(assessmentMode, suggestedGrade)
+                  }
+                  sx={epoNotenKidTextFieldSx}
+                />
               </Box>
               <TextField
                 label="Erkläre deine Einschätzung kurz in ein paar Sätzen"
@@ -317,7 +234,7 @@ export function EpoNotenStudentSelfWizard({
                           ...epoNotenBigNumberSx,
                           fontSize: { xs: '2.35rem', sm: '2.75rem' },
                           transition: 'transform 0.2s ease',
-                          transform: animRunning ? 'scale(1.05)' : 'scale(1)',
+                          transform: 'scale(1)',
                         }}
                       >
                         {pointsShown === null ? '—' : pointsShown}
@@ -330,30 +247,22 @@ export function EpoNotenStudentSelfWizard({
                     </Box>
                   )}
 
-                  <Collapse in={tableVisible}>
+                  <Collapse in={evaluationPhase}>
                     <Box ref={tableAnchorRef} sx={{ mt: 2, width: '100%', scrollMarginTop: 48 }}>
                       <EpoNotenGradeTable
+                        mode={assessmentMode}
                         highlightMinPoints={
-                          highlightMin ?? (step === 'done' ? minPointsThresholdForTotal(totalTarget) : null)
+                          assessmentMode === 'note' ? minPointsThresholdForTotal(totalTarget) : null
                         }
-                        pulseGrade={gradeVisible || step === 'done' ? evaluationGrade : null}
+                        highlightExactPoints={assessmentMode === 'mss' ? totalTarget : null}
                       />
                     </Box>
                   </Collapse>
 
-                  <Collapse in={gradeVisible || step === 'done'}>
-                    <Box
-                      ref={gradeAnchorRef}
-                      sx={{
-                        mt: 2.5,
-                        textAlign: 'right',
-                        pr: 0.5,
-                        scrollMarginTop: 48,
-                        scrollMarginBottom: 140,
-                      }}
-                    >
+                  <Collapse in={evaluationPhase}>
+                    <Box sx={{ mt: 2.5, textAlign: 'right', pr: 0.5, scrollMarginBottom: 100 }}>
                       <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
-                        Gesamtpunktzahl:{' '}
+                        Gesamtpunktzahl (Raster):{' '}
                         <Typography component="span" variant="body2" sx={{ fontWeight: 800, color: epoNotenPalette.textPrimary }}>
                           {evaluationPoints}
                         </Typography>
@@ -363,7 +272,7 @@ export function EpoNotenStudentSelfWizard({
                         color="text.secondary"
                         sx={{ mt: 2, fontWeight: 700, fontSize: '1rem' }}
                       >
-                        Note aus Tabelle
+                        {assessmentMode === 'mss' ? 'Deine Spalte in der Tabelle' : 'Note aus Tabelle'}
                       </Typography>
                       <Typography
                         component="p"
@@ -373,18 +282,13 @@ export function EpoNotenStudentSelfWizard({
                           lineHeight: 1.05,
                           fontSize: { xs: '3.25rem', sm: '4rem' },
                           mt: 0.5,
-                          animation: gradeVisible ? 'epoGradePop 0.45s ease' : 'none',
-                          '@keyframes epoGradePop': {
-                            '0%': { transform: 'scale(0.88)', opacity: 0.35 },
-                            '100%': { transform: 'scale(1)', opacity: 1 },
-                          },
                         }}
                       >
                         {evaluationGrade}
                       </Typography>
                     </Box>
                   </Collapse>
-                  {(gradeVisible || step === 'done') && <Box sx={{ height: { xs: 100, sm: 140 } }} aria-hidden />}
+                  {evaluationPhase && <Box sx={{ height: { xs: 80, sm: 100 } }} aria-hidden />}
                 </Stack>
               )}
             </Box>
@@ -401,7 +305,7 @@ export function EpoNotenStudentSelfWizard({
           {step !== 'done' && step !== 3 && (
             <Stack direction="row" spacing={1} justifyContent="flex-end">
               {step > 1 && (
-                <Button size="small" onClick={goBack} disabled={animRunning || submitting}>
+                <Button size="small" onClick={goBack} disabled={submitting}>
                   Zurück
                 </Button>
               )}
@@ -410,7 +314,7 @@ export function EpoNotenStudentSelfWizard({
                 variant="contained"
                 onClick={() => void goNext()}
                 disabled={
-                  submitting || animRunning || (step === 1 && !canNextStep1) || (step === 2 && !canNextStep2)
+                  submitting || (step === 1 && !canNextStep1) || (step === 2 && !canNextStep2)
                 }
               >
                 {step === 2 ? 'Weiter zur Auswertung' : 'Weiter'}

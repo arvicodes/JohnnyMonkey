@@ -18,6 +18,8 @@ import {
   ListItemButton,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -30,8 +32,10 @@ import {
   EPO_NOTEN_TEACHER_CATEGORIES,
   type EpoNotenEntry,
   type EpoNotenRound,
+  assessmentModeForGroup,
   formatSuggestedGradeDisplay,
   gradeFromTotalPoints,
+  type EpoNotenAssessmentMode,
   normalizeCategoryScores,
   sumCategoryScores,
 } from '../../lib/epoNotenShared';
@@ -275,6 +279,21 @@ export function EpoNotenTeacherView() {
     }
     await loadDetail(round.id);
     await loadList();
+  };
+
+  const updateGroupAssessmentMode = async (groupId: string, mode: EpoNotenAssessmentMode) => {
+    if (!round) return;
+    const assessmentModeByGroup = { ...round.assessmentModeByGroup, [groupId]: mode };
+    setRound({ ...round, assessmentModeByGroup });
+    const res = await apiPut(`/api/epo-noten/${round.id}`, {
+      assessmentModeByGroup: { [groupId]: mode },
+    });
+    if (!res?.ok) {
+      setError('Einstellung konnte nicht gespeichert werden');
+      await loadDetail(round.id);
+      return;
+    }
+    await loadDetail(round.id);
   };
 
   const resetAllStudents = async () => {
@@ -538,6 +557,54 @@ export function EpoNotenTeacherView() {
                       );
                     })}
                   </Stack>
+                  {round.groupIds.length > 0 && (
+                    <Stack spacing={0.5} sx={{ mt: 0.75 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: epoNotenPalette.textSecondary }}>
+                        Bewertungsart pro Gruppe
+                      </Typography>
+                      {round.groupIds.map((gid) => {
+                        const g = groups.find((x) => x.id === gid);
+                        const mode = assessmentModeForGroup(round, gid);
+                        return (
+                          <Stack
+                            key={gid}
+                            direction="row"
+                            alignItems="center"
+                            justifyContent="space-between"
+                            gap={0.75}
+                            flexWrap="wrap"
+                            sx={{
+                              py: 0.35,
+                              px: 0.5,
+                              borderRadius: 1,
+                              bgcolor: 'rgba(0,0,0,0.02)',
+                            }}
+                          >
+                            <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, minWidth: 0 }}>
+                              {g?.name || gid}
+                            </Typography>
+                            <ToggleButtonGroup
+                              exclusive
+                              size="small"
+                              value={mode}
+                              onChange={(_, v: EpoNotenAssessmentMode | null) => {
+                                if (!v) return;
+                                void updateGroupAssessmentMode(gid, v);
+                              }}
+                              disabled={saving}
+                            >
+                              <ToggleButton value="note" sx={{ px: 0.85, py: 0.15, fontSize: '0.68rem', fontWeight: 700 }}>
+                                Note
+                              </ToggleButton>
+                              <ToggleButton value="mss" sx={{ px: 0.85, py: 0.15, fontSize: '0.68rem', fontWeight: 700 }}>
+                                MSS 0–15
+                              </ToggleButton>
+                            </ToggleButtonGroup>
+                          </Stack>
+                        );
+                      })}
+                    </Stack>
+                  )}
                 </Box>
 
                 <Divider />
@@ -657,7 +724,9 @@ export function EpoNotenTeacherView() {
                             <Typography sx={{ fontSize: '0.72rem', lineHeight: 1.35 }}>
                               <strong>
                                 {formatSuggestedGradeDisplay(
-                                  selectedStudent.suggestedGradeMode,
+                                  selectedStudent.groupId
+                                    ? assessmentModeForGroup(round, selectedStudent.groupId)
+                                    : selectedStudent.suggestedGradeMode,
                                   selectedStudent.suggestedGrade,
                                 )}
                               </strong>

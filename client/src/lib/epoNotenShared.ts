@@ -78,6 +78,14 @@ export function normalizeCategoryScores(raw: unknown): number[] {
 }
 
 export type EpoNotenSuggestedGradeMode = 'note' | 'mss';
+export type EpoNotenAssessmentMode = EpoNotenSuggestedGradeMode;
+
+export function assessmentModeForGroup(
+  round: { assessmentModeByGroup?: Record<string, EpoNotenAssessmentMode> } | null | undefined,
+  groupId: string,
+): EpoNotenAssessmentMode {
+  return round?.assessmentModeByGroup?.[groupId] === 'mss' ? 'mss' : 'note';
+}
 
 export function isValidSuggestedGrade(mode: EpoNotenSuggestedGradeMode, value: string): boolean {
   const v = value.trim();
@@ -103,6 +111,8 @@ export function formatSuggestedGradeDisplay(
 export type EpoNotenEntry = {
   studentId: string;
   studentName: string;
+  /** Nur in Lehrer-Detail: Lerngruppe des SuS in dieser Runde */
+  groupId?: string;
   suggestedGrade?: string;
   suggestedGradeMode?: EpoNotenSuggestedGradeMode;
   justification?: string;
@@ -122,6 +132,8 @@ export type EpoNotenRound = {
   title: string;
   date: string;
   groupIds: string[];
+  /** Note vs. MSS-Punkte (0–15) — pro Lerngruppe, legt die Lehrkraft fest */
+  assessmentModeByGroup?: Record<string, EpoNotenAssessmentMode>;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;

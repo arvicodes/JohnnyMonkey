@@ -33,7 +33,7 @@ import {
   emptyCategoryScores,
   normalizeCategoryScores,
   sumCategoryScores,
-  type EpoNotenSuggestedGradeMode,
+  type EpoNotenAssessmentMode,
 } from '../lib/epoNotenShared';
 
 function detectIsTeacher(): boolean {
@@ -70,7 +70,7 @@ export default function EpoNotenPage() {
   const [teacherId, setTeacherId] = useState('');
 
   const [suggestedGrade, setSuggestedGrade] = useState('');
-  const [suggestedGradeMode, setSuggestedGradeMode] = useState<EpoNotenSuggestedGradeMode>('note');
+  const [assessmentMode, setAssessmentMode] = useState<EpoNotenAssessmentMode>('note');
   const [justification, setJustification] = useState('');
   const [selfScores, setSelfScores] = useState(emptyCategoryScores());
   const [selfGradeFromTable, setSelfGradeFromTable] = useState('');
@@ -82,7 +82,6 @@ export default function EpoNotenPage() {
 
   const populateFromEntry = useCallback((entry: EpoNotenEntry | null) => {
     setSuggestedGrade(entry?.suggestedGrade || '');
-    setSuggestedGradeMode(entry?.suggestedGradeMode === 'mss' ? 'mss' : 'note');
     setJustification(entry?.justification || '');
     setSelfScores(
       entry?.selfScores?.length ? normalizeCategoryScores(entry.selfScores) : emptyCategoryScores(),
@@ -110,8 +109,15 @@ export default function EpoNotenPage() {
         setCanEditGoals(Boolean(data.canEditGoals));
         setTeacherId(typeof data.teacherId === 'string' ? data.teacherId : '');
         if (data.round && typeof data.round === 'object') {
-          const r = data.round as { id: string; title: string; date: string; groupName: string };
-          setRoundMeta(r);
+          const r = data.round as {
+            id: string;
+            title: string;
+            date: string;
+            groupName: string;
+            assessmentMode?: EpoNotenAssessmentMode;
+          };
+          setRoundMeta({ id: r.id, title: r.title, date: r.date, groupName: r.groupName });
+          setAssessmentMode(r.assessmentMode === 'mss' ? 'mss' : 'note');
         } else {
           const fromList = list.find((s) => s.id === selectedRoundId);
           if (fromList) {
@@ -149,7 +155,7 @@ export default function EpoNotenPage() {
 
   const submitSelf = useCallback(async () => {
     const total = sumCategoryScores(selfScores);
-    const gradeTable = gradeFromTotalPoints(total);
+    const gradeTable = assessmentMode === 'mss' ? String(total) : gradeFromTotalPoints(total);
     setSubmitting(true);
     setError(null);
     try {
@@ -157,7 +163,6 @@ export default function EpoNotenPage() {
         roundId: roundMeta?.id || selectedRoundId,
         teacherId,
         suggestedGrade,
-        suggestedGradeMode,
         justification,
         selfScores,
         selfGradeFromTable: gradeTable,
@@ -180,8 +185,8 @@ export default function EpoNotenPage() {
     roundMeta?.id,
     selectedRoundId,
     selfScores,
+    assessmentMode,
     suggestedGrade,
-    suggestedGradeMode,
     teacherId,
   ]);
 
@@ -291,13 +296,12 @@ export default function EpoNotenPage() {
                   <EpoNotenStudentSelfWizard
                     locked={phase === 'wait' || !canEditSelf}
                     submitting={submitting}
+                    assessmentMode={assessmentMode}
                     suggestedGrade={suggestedGrade}
-                    suggestedGradeMode={suggestedGradeMode}
                     justification={justification}
                     selfScores={selfScores}
                     selfGradeFromTable={selfGradeFromTable}
                     onSuggestedGradeChange={setSuggestedGrade}
-                    onSuggestedGradeModeChange={setSuggestedGradeMode}
                     onJustificationChange={setJustification}
                     onSelfScoresChange={setSelfScores}
                     onSelfGradeFromTableChange={setSelfGradeFromTable}

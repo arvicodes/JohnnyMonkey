@@ -1,15 +1,8 @@
 import React from 'react';
-import {
-  Box,
-  Chip,
-  List,
-  ListItemButton,
-  ListItemText,
-  Typography,
-} from '@mui/material';
+import { Box, Chip, List, ListItemButton, ListItemText } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import type { EpoNotenStudentSession } from '../../lib/epoNotenShared';
-import { epoNotenCardSx, epoNotenPalette, epoNotenSectionTitleSx, epoNotenStudentSurfaceSx } from './epoNotenUi';
+import { epoNotenCardSx, epoNotenPalette, epoNotenStudentSurfaceSx } from './epoNotenUi';
 
 function formatRoundDate(date: string): string {
   if (!date) return '—';

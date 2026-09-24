@@ -17,9 +17,13 @@ export const epoNotenPalette = {
 
 export const epoNotenPageBgSx = {
   minHeight: '100vh',
+  width: '100%',
   bgcolor: epoNotenPalette.background,
   py: { xs: 0.75, sm: 1.25 },
   px: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
 };
 
 /** Lehrer + SuS: einheitlich 80 % der Bildschirmbreite, zentriert */
@@ -36,6 +40,7 @@ export const epoNotenContentShellSx = {
 /** Seitenrahmen (Kopfzeile + Inhalt) */
 export const epoNotenPageShellSx = {
   ...epoNotenContentShellSx,
+  alignSelf: 'center',
 };
 
 /** @deprecated Alias — bitte epoNotenPageShellSx verwenden */

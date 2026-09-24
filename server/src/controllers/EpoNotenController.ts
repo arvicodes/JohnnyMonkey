@@ -64,16 +64,33 @@ type EpoNotenEntry = {
   goalsSubmittedAt?: string | null;
 };
 
+type AssessmentMode = 'note' | 'mss';
+
 type EpoNotenRoundPayload = {
   id: string;
   title: string;
   date: string;
   groupIds: string[];
+  assessmentModeByGroup?: Record<string, AssessmentMode>;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
   entries: EpoNotenEntry[];
 };
+
+const normalizeAssessmentModes = (payload: EpoNotenRoundPayload): Record<string, AssessmentMode> => {
+  const raw = payload.assessmentModeByGroup && typeof payload.assessmentModeByGroup === 'object'
+    ? payload.assessmentModeByGroup
+    : {};
+  const modes: Record<string, AssessmentMode> = {};
+  for (const gid of payload.groupIds) {
+    modes[gid] = raw[gid] === 'mss' ? 'mss' : 'note';
+  }
+  return modes;
+};
+
+const assessmentModeForGroup = (payload: EpoNotenRoundPayload, groupId: string): AssessmentMode =>
+  normalizeAssessmentModes(payload)[groupId] === 'mss' ? 'mss' : 'note';
 
 type EpoNotenIndexPayload = {
   version: 1;
@@ -121,6 +138,7 @@ const parseRound = (raw: string | null | undefined): EpoNotenRoundPayload | null
     if (!parsed || typeof parsed.id !== 'string' || typeof parsed.title !== 'string') return null;
     if (!Array.isArray(parsed.entries)) parsed.entries = [];
     if (!Array.isArray(parsed.groupIds)) parsed.groupIds = [];
+    parsed.assessmentModeByGroup = normalizeAssessmentModes(parsed);
     return parsed;
   } catch {
     return null;
@@ -435,12 +453,11 @@ export class EpoNotenController {
         if (!round.groupIds.includes(g.id)) continue;
         for (const s of g.students) {
           const existing = findEntry(round, s.id);
-          students.push(
-            existing ?? {
-              studentId: s.id,
-              studentName: s.name,
-            },
-          );
+          const row = existing ?? {
+            studentId: s.id,
+            studentName: s.name,
+          };
+          students.push({ ...row, groupId: g.id } as EpoNotenEntry & { groupId: string });
         }
       }
 
@@ -476,6 +493,7 @@ export class EpoNotenController {
         title,
         date: typeof req.body?.date === 'string' ? req.body.date.trim() : new Date().toISOString().slice(0, 10),
         groupIds,
+        assessmentModeByGroup: Object.fromEntries(groupIds.map((gid) => [gid, 'note' as AssessmentMode])),
         publishedAt: null,
         entries: [],
         createdAt: now,
@@ -515,11 +533,21 @@ export class EpoNotenController {
         groupIds = (req.body.groupIds as string[]).map((g) => String(g).trim()).filter((id) => ownedIds.has(id));
       }
 
+      let assessmentModeByGroup = normalizeAssessmentModes({ ...existing, groupIds });
+      if (req.body?.assessmentModeByGroup && typeof req.body.assessmentModeByGroup === 'object') {
+        const patch = req.body.assessmentModeByGroup as Record<string, unknown>;
+        for (const gid of groupIds) {
+          const v = patch[gid];
+          if (v === 'mss' || v === 'note') assessmentModeByGroup[gid] = v;
+        }
+      }
+
       const next: EpoNotenRoundPayload = {
         ...existing,
         title,
         date: typeof req.body?.date === 'string' ? req.body.date.trim() : existing.date,
         groupIds,
+        assessmentModeByGroup,
       };
 
       await saveRound(user.id, next);
@@ -687,6 +715,7 @@ export class EpoNotenController {
             publishedAt: resolved.payload.publishedAt,
             groupId: resolved.groupId,
             groupName: resolved.groupName,
+            assessmentMode: assessmentModeForGroup(resolved.payload, resolved.groupId),
           },
           myEntry,
           canEditSelf,
@@ -752,8 +781,7 @@ export class EpoNotenController {
           ? req.body.selfGradeFromTable.trim()
           : gradeFromTotalPoints(total);
 
-      const rawMode = req.body?.suggestedGradeMode;
-      const suggestedGradeMode: 'note' | 'mss' = rawMode === 'mss' ? 'mss' : 'note';
+      const suggestedGradeMode = assessmentModeForGroup(payload, resolvedRound.groupId);
 
       const entry: EpoNotenEntry = {
         studentId: user.id,
