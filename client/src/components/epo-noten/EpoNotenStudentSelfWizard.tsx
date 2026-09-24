@@ -216,6 +216,7 @@ export function EpoNotenStudentSelfWizard({
               {(step === 2 || step === 3 || step === 'done') && (
                 <Stack spacing={0}>
                   <EpoNotenCategoryGrid
+                    radioGroupId="self-wizard"
                     categories={EPO_NOTEN_STUDENT_CATEGORIES}
                     scores={selfScores}
                     onChange={onSelfScoresChange}

@@ -139,15 +139,28 @@ export function EpoNotenTeacherView() {
 
   const selectedStudent = students.find((s) => s.studentId === selectedStudentId) ?? null;
 
+  const skipRasterGradeSyncRef = useRef(false);
+  const teacherScoresDirtyRef = useRef(false);
+  const prevSelectedStudentIdRef = useRef('');
+  const teacherScoresRef = useRef(teacherScores);
+  teacherScoresRef.current = teacherScores;
+
   useEffect(() => {
-    if (!selectedStudent) {
+    if (selectedStudentId !== prevSelectedStudentIdRef.current) {
+      teacherScoresDirtyRef.current = false;
+      prevSelectedStudentIdRef.current = selectedStudentId;
+    }
+    if (!selectedStudentId) {
       setTeacherScores(normalizeCategoryScores([]));
       setTeacherGrade('');
       return;
     }
-    setTeacherScores(normalizeCategoryScores(selectedStudent.teacherScores));
-    setTeacherGrade(selectedStudent.teacherGrade || '');
-  }, [selectedStudent]);
+    if (teacherScoresDirtyRef.current) return;
+    const entry = students.find((s) => s.studentId === selectedStudentId);
+    setTeacherScores(normalizeCategoryScores(entry?.teacherScores));
+    setTeacherGrade(entry?.teacherGrade || '');
+    skipRasterGradeSyncRef.current = true;
+  }, [selectedStudentId, students]);
 
   const totalTeacher = sumCategoryScores(teacherScores);
   const selectedAssessmentMode: EpoNotenAssessmentMode =
@@ -155,13 +168,6 @@ export function EpoNotenTeacherView() {
       ? assessmentModeForGroup(round, selectedStudent.groupId)
       : 'note';
   const computedRasterResult = rasterResultFromTotal(selectedAssessmentMode, totalTeacher);
-
-  const skipRasterGradeSyncRef = useRef(false);
-
-  useEffect(() => {
-    if (!selectedStudent) return;
-    skipRasterGradeSyncRef.current = true;
-  }, [selectedStudent?.studentId]);
 
   useEffect(() => {
     if (!selectedStudent) return;
@@ -173,6 +179,11 @@ export function EpoNotenTeacherView() {
       setTeacherGrade(computedRasterResult);
     }
   }, [computedRasterResult, selectedStudent, teacherScores]);
+
+  const handleTeacherScoresChange = (scores: number[]) => {
+    teacherScoresDirtyRef.current = true;
+    setTeacherScores(scores);
+  };
 
   const handleCreate = async () => {
     setSaving(true);
@@ -252,14 +263,31 @@ export function EpoNotenTeacherView() {
 
   const persistTeacherEntry = async (grade: string) => {
     if (!round || !selectedStudentId) return false;
+    const scores = teacherScoresRef.current;
     const resolvedGrade =
-      grade.trim() || (allCategoriesSelected(teacherScores) ? computedRasterResult : '');
+      grade.trim() || (allCategoriesSelected(scores) ? computedRasterResult : '');
     const res = await apiPut(`/api/epo-noten/${round.id}/teacher/${selectedStudentId}`, {
-      teacherScores,
+      teacherScores: scores,
       teacherGrade: resolvedGrade,
     });
     if (!res?.ok) throw new Error('Speichern fehlgeschlagen');
     return true;
+  };
+
+  const saveTeacher = async () => {
+    if (!round || !selectedStudentId || selectedStudent?.teacherReleasedAt) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await persistTeacherEntry(teacherGrade);
+      teacherScoresDirtyRef.current = false;
+      await loadDetail(round.id);
+      await loadList();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Fehler');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const releaseOne = async () => {
@@ -275,6 +303,7 @@ export function EpoNotenTeacherView() {
     setError(null);
     try {
       await persistTeacherEntry(grade);
+      teacherScoresDirtyRef.current = false;
       const res = await apiPost(`/api/epo-noten/${round.id}/release`, { studentIds: [selectedStudentId] });
       if (!res?.ok) throw new Error('Freigabe fehlgeschlagen');
       await loadDetail(round.id);
@@ -821,7 +850,8 @@ export function EpoNotenTeacherView() {
                               }
                               categories={EPO_NOTEN_TEACHER_CATEGORIES}
                               scores={teacherScores}
-                              onChange={setTeacherScores}
+                              onChange={handleTeacherScoresChange}
+                              radioGroupId={selectedStudentId}
                               studentOverlayScores={
                                 selectedStudent.studentSubmittedAt
                                   ? normalizeCategoryScores(selectedStudent.selfScores)
@@ -862,6 +892,7 @@ export function EpoNotenTeacherView() {
                                 size="small"
                                 value={teacherGrade}
                                 onChange={(e) => {
+                                  teacherScoresDirtyRef.current = true;
                                   const raw = e.target.value;
                                   if (selectedAssessmentMode === 'mss') {
                                     setTeacherGrade(raw.replace(/[^\d]/g, '').slice(0, 2));
@@ -887,6 +918,29 @@ export function EpoNotenTeacherView() {
                                 }}
                               />
                             </Box>
+
+                            {!selectedStudent.teacherReleasedAt && (
+                              <Stack direction="row" spacing={0.75} justifyContent="flex-end" sx={{ mt: 1 }}>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={() => void saveTeacher()}
+                                  disabled={saving}
+                                  sx={epoNotenCompactBtnSx}
+                                >
+                                  Speichern
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  onClick={() => void releaseOne()}
+                                  disabled={saving || !canReleaseToStudent}
+                                  sx={epoNotenCompactBtnSx}
+                                >
+                                  An SuS abschicken
+                                </Button>
+                              </Stack>
+                            )}
                         </Box>
 
                         {selectedStudent.teacherReleasedAt && (

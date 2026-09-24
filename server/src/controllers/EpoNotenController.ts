@@ -36,16 +36,18 @@ const gradeFromTotalPoints = (total: number): string => {
   return '5';
 };
 
-const normalizeScores = (raw: unknown): number[] => {
+/** Wie Client: -1 = noch nicht gewählt, 0–3 = gewählt */
+const normalizeCategoryScores = (raw: unknown): number[] => {
   const base = Array.isArray(raw) ? raw : [];
   return Array.from({ length: CATEGORY_COUNT }, (_, i) => {
     const n = Number(base[i]);
-    if (!Number.isFinite(n)) return 0;
+    if (!Number.isFinite(n) || n < 0) return -1;
     return Math.min(3, Math.max(0, Math.round(n)));
   });
 };
 
-const sumScores = (scores: number[]) => scores.reduce((a, b) => a + b, 0);
+const sumCategoryScores = (scores: number[]) =>
+  scores.reduce((a, b) => a + (Number.isFinite(b) && b >= 0 ? b : 0), 0);
 
 type EpoNotenEntry = {
   studentId: string;
@@ -775,8 +777,8 @@ export class EpoNotenController {
         return res.status(403).json({ error: 'Bewertung bereits freigegeben — keine Änderung mehr möglich' });
       }
 
-      const selfScores = normalizeScores(req.body?.selfScores);
-      const total = sumScores(selfScores);
+      const selfScores = normalizeCategoryScores(req.body?.selfScores);
+      const total = sumCategoryScores(selfScores);
       const selfGradeFromTable =
         typeof req.body?.selfGradeFromTable === 'string' && req.body.selfGradeFromTable.trim()
           ? req.body.selfGradeFromTable.trim()
@@ -874,8 +876,8 @@ export class EpoNotenController {
       if (!student) return res.status(404).json({ error: 'Schüler nicht gefunden' });
 
       const existing = findEntry(payload, studentId);
-      const teacherScores = normalizeScores(req.body?.teacherScores);
-      const total = sumScores(teacherScores);
+      const teacherScores = normalizeCategoryScores(req.body?.teacherScores);
+      const total = sumCategoryScores(teacherScores);
       const computed = gradeFromTotalPoints(total);
       const teacherGrade =
         typeof req.body?.teacherGrade === 'string' ? req.body.teacherGrade.trim() : existing?.teacherGrade ?? '';

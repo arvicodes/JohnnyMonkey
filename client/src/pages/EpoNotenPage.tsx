@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Alert,
@@ -82,24 +82,26 @@ export default function EpoNotenPage() {
   const [goal, setGoal] = useState('');
   const [goalAction, setGoalAction] = useState('');
 
+  const selfFormDirtyRef = useRef(false);
+
   const selectedRoundId = searchParams.get('roundId') || '';
   const showStudentList = !isTeacher && !selectedRoundId;
 
   const populateFromEntry = useCallback(
     (entry: EpoNotenEntry | null, mode: EpoNotenAssessmentMode) => {
-      setSuggestedGrade(entry?.suggestedGrade || '');
-      setJustification(entry?.justification || '');
-      setSelfScores(
-        entry?.selfScores?.length ? normalizeCategoryScores(entry.selfScores) : emptyCategoryScores(),
-      );
-      const pts = sumCategoryScores(entry?.selfScores);
-      if (entry?.selfScores?.length) {
-        const fromEntry = entry.selfGradeFromTable?.trim();
-        setSelfGradeFromTable(
-          fromEntry || rasterResultFromTotal(mode, pts),
+      if (!selfFormDirtyRef.current) {
+        setSuggestedGrade(entry?.suggestedGrade || '');
+        setJustification(entry?.justification || '');
+        setSelfScores(
+          entry?.selfScores?.length ? normalizeCategoryScores(entry.selfScores) : emptyCategoryScores(),
         );
-      } else {
-        setSelfGradeFromTable('');
+        const pts = sumCategoryScores(entry?.selfScores);
+        if (entry?.selfScores?.length) {
+          const fromEntry = entry.selfGradeFromTable?.trim();
+          setSelfGradeFromTable(fromEntry || rasterResultFromTotal(mode, pts));
+        } else {
+          setSelfGradeFromTable('');
+        }
       }
       setGoal(entry?.goal || '');
       setGoalAction(entry?.goalAction || '');
@@ -167,10 +169,15 @@ export default function EpoNotenPage() {
   }, [populateFromEntry, selectedRoundId]);
 
   useEffect(() => {
+    selfFormDirtyRef.current = false;
+  }, [selectedRoundId]);
+
+  useEffect(() => {
     if (!isTeacher) loadStudent();
   }, [isTeacher, loadStudent, selectedRoundId]);
 
   const openRound = (id: string) => {
+    selfFormDirtyRef.current = false;
     setSearchParams({ roundId: id });
   };
 
@@ -197,6 +204,7 @@ export default function EpoNotenPage() {
         throw new Error(err.error || 'Speichern fehlgeschlagen');
       }
       setSelfGradeFromTable(gradeTable);
+      selfFormDirtyRef.current = false;
       await loadStudent();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
@@ -327,9 +335,18 @@ export default function EpoNotenPage() {
                     justification={justification}
                     selfScores={selfScores}
                     selfGradeFromTable={selfGradeFromTable}
-                    onSuggestedGradeChange={setSuggestedGrade}
-                    onJustificationChange={setJustification}
-                    onSelfScoresChange={setSelfScores}
+                    onSuggestedGradeChange={(v) => {
+                      selfFormDirtyRef.current = true;
+                      setSuggestedGrade(v);
+                    }}
+                    onJustificationChange={(v) => {
+                      selfFormDirtyRef.current = true;
+                      setJustification(v);
+                    }}
+                    onSelfScoresChange={(v) => {
+                      selfFormDirtyRef.current = true;
+                      setSelfScores(v);
+                    }}
                     onSelfGradeFromTableChange={setSelfGradeFromTable}
                     onSubmit={submitSelf}
                     startAtDone={phase === 'wait'}
@@ -356,6 +373,7 @@ export default function EpoNotenPage() {
                           </Typography>
                           <EpoNotenCategoryGrid
                             compact
+                            radioGroupId={`sus-self-${selectedRoundId}`}
                             categories={EPO_NOTEN_STUDENT_CATEGORIES}
                             scores={normalizeCategoryScores(myEntry.selfScores)}
                             readOnly
@@ -387,6 +405,7 @@ export default function EpoNotenPage() {
                           </Typography>
                           <EpoNotenCategoryGrid
                             compact
+                            radioGroupId={`sus-teacher-${selectedRoundId}`}
                             categories={EPO_NOTEN_TEACHER_CATEGORIES}
                             scores={normalizeCategoryScores(myEntry.teacherScores)}
                             readOnly

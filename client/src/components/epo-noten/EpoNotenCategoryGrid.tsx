@@ -24,6 +24,8 @@ type Props = {
   studentGhost?: boolean;
   /** Lehrer-Raster: SuS-Wahl pro Zeile leicht lila hinterlegen */
   studentOverlayScores?: number[];
+  /** Eindeutige Radio-Gruppen pro Zeile (z. B. Schüler-ID) */
+  radioGroupId?: string;
 };
 
 export function EpoNotenCategoryGrid({
@@ -35,6 +37,7 @@ export function EpoNotenCategoryGrid({
   compact,
   studentGhost,
   studentOverlayScores,
+  radioGroupId = 'default',
 }: Props) {
   const setScore = (index: number, value: number) => {
     if (readOnly || !onChange) return;
@@ -114,14 +117,18 @@ export function EpoNotenCategoryGrid({
                   studentOverlayScores != null &&
                   studentOverlayScores[i] >= 0 &&
                   studentOverlayScores[i] === p;
+                const interactive = !readOnly && !studentGhost && Boolean(onChange);
+
                 return (
                   <TableCell
                     key={p}
                     align="center"
                     padding="checkbox"
+                    onClick={interactive ? () => setScore(i, p) : undefined}
                     sx={{
                       py: compact ? 0 : 0.5,
                       px: 0.25,
+                      cursor: interactive ? 'pointer' : undefined,
                       bgcolor: studentPick && !studentGhost ? 'rgba(186, 104, 200, 0.16)' : undefined,
                       boxShadow:
                         studentPick && !studentGhost
@@ -131,7 +138,6 @@ export function EpoNotenCategoryGrid({
                   >
                     <Box
                       sx={{
-                        position: 'relative',
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -139,40 +145,28 @@ export function EpoNotenCategoryGrid({
                         minWidth: compact ? 28 : 34,
                       }}
                     >
-                      {studentPick && !teacherChecked && !studentGhost && (
-                        <Radio
-                          size={compact ? 'small' : 'medium'}
-                          checked
-                          disabled
-                          tabIndex={-1}
-                          value={p}
-                          sx={{
-                            position: 'absolute',
-                            inset: 0,
-                            m: 'auto',
-                            p: compact ? 0.35 : 0.75,
-                            pointerEvents: 'none',
-                            '& .MuiSvgIcon-root': { fontSize: compact ? 20 : 26 },
-                            color: 'rgba(156, 39, 176, 0.4)',
-                            '&.Mui-checked': { color: 'rgba(156, 39, 176, 0.62)' },
-                          }}
-                        />
-                      )}
                       <Radio
                         size={compact ? 'small' : 'medium'}
-                        name={studentGhost ? `epo-noten-ghost-cat-${i}` : `epo-noten-cat-${i}`}
+                        name={
+                          studentGhost
+                            ? `epo-noten-ghost-${radioGroupId}-cat-${i}`
+                            : `epo-noten-${radioGroupId}-cat-${i}`
+                        }
                         checked={teacherChecked}
                         onChange={() => setScore(i, p)}
                         disabled={readOnly || studentGhost}
                         value={p}
+                        tabIndex={interactive ? 0 : -1}
                         sx={{
-                          position: 'relative',
-                          zIndex: 1,
                           p: compact ? 0.35 : 0.75,
-                          bgcolor: studentPick && !teacherChecked && !studentGhost ? 'rgba(255,255,255,0.72)' : undefined,
-                          borderRadius: '50%',
+                          pointerEvents: interactive ? 'auto' : 'none',
                           '& .MuiSvgIcon-root': { fontSize: compact ? 20 : 26 },
-                          color: studentGhost ? 'rgba(156, 39, 176, 0.35)' : 'rgba(25, 118, 210, 0.45)',
+                          color:
+                            studentPick && !teacherChecked && !studentGhost
+                              ? 'rgba(156, 39, 176, 0.55)'
+                              : studentGhost
+                                ? 'rgba(156, 39, 176, 0.35)'
+                                : 'rgba(25, 118, 210, 0.45)',
                           '&.Mui-checked': {
                             color: studentGhost ? studentGhostPurple : epoNotenPalette.primary,
                           },
