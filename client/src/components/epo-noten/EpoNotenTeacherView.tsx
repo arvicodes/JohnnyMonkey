@@ -154,18 +154,25 @@ export function EpoNotenTeacherView() {
     }
     setStudentListGroupFilter((prev) => {
       if (prev && round.groupIds.includes(prev)) return prev;
-      return round.groupIds[0];
+      return null;
     });
   }, [round?.id, round?.groupIds.join('|')]);
 
   const selectedStudent = students.find((s) => s.studentId === selectedStudentId) ?? null;
 
   const selectStudentListGroup = (gid: string) => {
-    setStudentListGroupFilter(gid);
-    if (selectedStudent?.groupId && selectedStudent.groupId !== gid) {
+    setStudentListGroupFilter((prev) => (prev === gid ? null : gid));
+  };
+
+  useEffect(() => {
+    if (
+      studentListGroupFilter &&
+      selectedStudent?.groupId &&
+      selectedStudent.groupId !== studentListGroupFilter
+    ) {
       setSelectedStudentId('');
     }
-  };
+  }, [studentListGroupFilter, selectedStudent?.groupId]);
 
   const skipRasterGradeSyncRef = useRef(false);
   const teacherScoresDirtyRef = useRef(false);
@@ -539,33 +546,50 @@ export function EpoNotenTeacherView() {
     await loadList();
   };
 
+  const studentsForList = useMemo(() => {
+    if (!round || round.groupIds.length !== 1) return students;
+    const gid = round.groupIds[0];
+    return students.map((s) => (s.groupId ? s : { ...s, groupId: gid }));
+  }, [round, students]);
+
   const studentSections = useMemo(() => {
     if (!round) return [];
     const sections: { groupId: string; groupName: string; students: EpoNotenEntry[] }[] = [];
     for (const gid of round.groupIds) {
-      const inGroup = students
+      const inGroup = studentsForList
         .filter((s) => s.groupId === gid)
         .sort((a, b) => a.studentName.localeCompare(b.studentName, 'de'));
-      if (inGroup.length === 0) continue;
       sections.push({
         groupId: gid,
         groupName: groups.find((g) => g.id === gid)?.name || gid,
         students: inGroup,
       });
     }
-    const orphans = students
+    const orphans = studentsForList
       .filter((s) => !s.groupId || !round.groupIds.includes(s.groupId))
       .sort((a, b) => a.studentName.localeCompare(b.studentName, 'de'));
     if (orphans.length > 0) {
       sections.push({ groupId: '__other__', groupName: 'Weitere', students: orphans });
     }
     return sections;
-  }, [groups, round, students]);
+  }, [groups, round, studentsForList]);
 
   const visibleStudentSections = useMemo(() => {
     if (!studentListGroupFilter) return studentSections;
-    return studentSections.filter((s) => s.groupId === studentListGroupFilter);
-  }, [studentListGroupFilter, studentSections]);
+    const match = studentSections.find((s) => s.groupId === studentListGroupFilter);
+    if (match) return [match];
+    const groupName =
+      groups.find((g) => g.id === studentListGroupFilter)?.name || studentListGroupFilter;
+    return [
+      {
+        groupId: studentListGroupFilter,
+        groupName,
+        students: studentsForList
+          .filter((s) => s.groupId === studentListGroupFilter)
+          .sort((a, b) => a.studentName.localeCompare(b.studentName, 'de')),
+      },
+    ];
+  }, [groups, studentListGroupFilter, studentSections, studentsForList]);
 
   const activeCourseGroupId =
     studentListGroupFilter && round?.groupIds.includes(studentListGroupFilter)
@@ -735,7 +759,7 @@ export function EpoNotenTeacherView() {
                     />
                   </Stack>
                   <Typography variant="caption" sx={{ color: epoNotenPalette.textSecondary, lineHeight: 1.2, fontSize: '0.62rem' }}>
-                    {r.date} · {r.stats.submitted}/{r.stats.graded}/{r.stats.released}
+                    {r.date} · {r.stats.submitted}/{r.stats.graded}/{r.stats.released} (abgegeben/bewertet/frei)
                   </Typography>
                 </ListItemButton>
               );
@@ -924,7 +948,7 @@ export function EpoNotenTeacherView() {
                   <Stack direction="row" flexWrap="wrap" gap={0.5} alignItems="center">
                     {round.groupIds.map((gid) => {
                       const g = groups.find((x) => x.id === gid);
-                      const isActive = activeCourseGroupId === gid;
+                      const isActive = studentListGroupFilter === gid;
                       return (
                         <Stack key={gid} direction="row" alignItems="center" gap={0.15}>
                           <Chip
@@ -1053,34 +1077,35 @@ export function EpoNotenTeacherView() {
                               borderColor: 'divider',
                             }}
                           >
-                            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={0.5}>
-                              <Box component="span" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {section.groupName}
-                              </Box>
-                              {!studentListGroupFilter &&
-                              section.groupId !== '__other__' &&
-                              releasableCountInGroup(section.groupId) > 0 ? (
-                                <Button
-                                  size="small"
-                                  variant="contained"
-                                  disabled={saving}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    void releaseAllInGroup(section.groupId);
-                                  }}
-                                  sx={{
-                                    ...epoNotenCompactBtnSx,
-                                    flexShrink: 0,
-                                    py: 0.15,
-                                    minHeight: 22,
-                                    fontSize: '0.62rem',
-                                  }}
-                                >
-                                  Alle freigeben ({releasableCountInGroup(section.groupId)})
-                                </Button>
-                              ) : null}
-                            </Stack>
+                            {section.groupName}
                           </ListSubheader>
+                          {!studentListGroupFilter &&
+                          section.groupId !== '__other__' &&
+                          releasableCountInGroup(section.groupId) > 0 ? (
+                            <ListItemButton
+                              dense
+                              disabled={saving}
+                              onClick={() => void releaseAllInGroup(section.groupId)}
+                              sx={{
+                                py: 0.35,
+                                px: 0.75,
+                                borderBottom: '1px solid',
+                                borderColor: 'divider',
+                                bgcolor: 'rgba(46, 125, 50, 0.06)',
+                              }}
+                            >
+                              <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'success.dark' }}>
+                                Alle freigeben ({releasableCountInGroup(section.groupId)} SuS)
+                              </Typography>
+                            </ListItemButton>
+                          ) : null}
+                          {section.students.length === 0 ? (
+                            <ListItemButton dense disabled sx={{ py: 0.5, px: 0.75, opacity: 1 }}>
+                              <Typography variant="caption" color="text.secondary">
+                                Keine Schüler geladen — Seite neu laden oder Kurs erneut zur Runde hinzufügen.
+                              </Typography>
+                            </ListItemButton>
+                          ) : null}
                           {section.students.map((s, studentIndex) => {
                             const active = s.studentId === selectedStudentId;
                             const isLastInSection = studentIndex === section.students.length - 1;
@@ -1110,7 +1135,7 @@ export function EpoNotenTeacherView() {
                                       name={s.studentName}
                                       avatarUrl={s.avatarUrl}
                                       photoSize={44}
-                                      alwaysShowPhotoSlot={false}
+                                      alwaysShowPhotoSlot
                                     />
                                   </Box>
                                   <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.72rem', flex: 1, minWidth: 0 }}>
