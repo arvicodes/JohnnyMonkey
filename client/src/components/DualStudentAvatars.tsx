@@ -19,6 +19,8 @@ type DualStudentAvatarsProps = {
   large?: boolean;
   /** Always show photo circle even without image (default true) */
   alwaysShowPhotoSlot?: boolean;
+  /** Nur eigenes Foto (kein Emoji-Avatar) */
+  photoOnly?: boolean;
   onEmojiClick?: () => void;
   onPhotoClick?: () => void;
   sx?: SxProps<Theme>;
@@ -38,6 +40,7 @@ export function DualStudentAvatars({
   photoSize,
   large = false,
   alwaysShowPhotoSlot = true,
+  photoOnly = false,
   onEmojiClick,
   onPhotoClick,
   sx,
@@ -56,7 +59,7 @@ export function DualStudentAvatars({
   const emojiEditable = Boolean(onEmojiClick);
   const photoEditable = Boolean(onPhotoClick);
   const photoPreviewable = hasPhoto && !photoEditable;
-  const compact = !large && Math.min(size, photoPx) <= 18;
+  const compact = !large && !photoOnly && Math.min(size, photoPx) <= 18;
   const borderWidth = large ? 3 : compact ? 1 : 2;
   const defaultGap = large ? 1.5 : compact ? 0.25 : 0.6;
 
@@ -172,26 +175,31 @@ export function DualStudentAvatars({
     </Box>
   );
 
+  if (photoOnly && !showPhoto) {
+    return null;
+  }
+
   return (
     <>
       <Box
         sx={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: defaultGap,
+          gap: photoOnly ? 0 : defaultGap,
           ...((typeof sx === 'object' && sx !== null && !Array.isArray(sx) ? sx : {}) as object),
         }}
       >
-        {compact ? (
-          emojiAvatar
-        ) : (
-          <Tooltip title={emojiTooltip} placement="bottom">
-            {emojiAvatar}
-          </Tooltip>
-        )}
+        {!photoOnly &&
+          (compact ? (
+            emojiAvatar
+          ) : (
+            <Tooltip title={emojiTooltip} placement="bottom">
+              {emojiAvatar}
+            </Tooltip>
+          ))}
 
         {showPhoto &&
-          (compact ? (
+          (compact || photoOnly ? (
             photoAvatar
           ) : (
             <Tooltip title={photoTooltip} placement="bottom">

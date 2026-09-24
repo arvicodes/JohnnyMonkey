@@ -1009,7 +1009,7 @@ export function EpoNotenTeacherView() {
                                 selected={active}
                                 onClick={() => void selectStudent(s.studentId)}
                                 sx={{
-                                  py: 0.2,
+                                  py: 0.35,
                                   px: 0.5,
                                   borderBottom: '1px solid',
                                   borderColor: 'divider',
@@ -1023,11 +1023,10 @@ export function EpoNotenTeacherView() {
                                     sx={{ flexShrink: 0, lineHeight: 0 }}
                                   >
                                     <DualStudentAvatars
+                                      photoOnly
                                       name={s.studentName}
-                                      avatarEmoji={s.avatarEmoji}
                                       avatarUrl={s.avatarUrl}
-                                      size={18}
-                                      photoSize={22}
+                                      photoSize={34}
                                       alwaysShowPhotoSlot={false}
                                     />
                                   </Box>
