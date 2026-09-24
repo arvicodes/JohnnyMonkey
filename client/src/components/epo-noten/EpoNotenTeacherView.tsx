@@ -11,7 +11,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   IconButton,
   List,
   ListItemButton,
@@ -612,61 +611,57 @@ export function EpoNotenTeacherView() {
     );
 
   return (
-    <Stack spacing={1.25} sx={{ width: '100%', minWidth: 0 }}>
+    <Stack
+      spacing={0.4}
+      sx={{
+        width: '100%',
+        minWidth: 0,
+        maxHeight: 'calc(100vh - 40px)',
+        overflow: 'hidden',
+      }}
+    >
       {error && (
-        <Alert severity="error" onClose={() => setError(null)} sx={{ py: 0.25 }}>
+        <Alert severity="error" onClose={() => setError(null)} sx={{ py: 0, fontSize: '0.72rem', flexShrink: 0 }}>
           {error}
         </Alert>
       )}
 
-      <Stack direction="row" alignItems="center" spacing={0.5} sx={{ minHeight: 26 }}>
-        <Typography
-          sx={{
-            flex: 1,
-            fontWeight: 800,
-            fontSize: '0.78rem',
-            color: epoNotenPalette.heading,
-            minWidth: 0,
-          }}
-        >
-          EPO — Lehrer
-        </Typography>
-        <Tooltip title="Neue Runde">
-          <IconButton
-            size="small"
-            onClick={() => setCreateOpen(true)}
-            aria-label="Neue Runde"
-            sx={{
-              ...epoNotenCompactIconBtnSx,
-              bgcolor: epoNotenPalette.primary,
-              color: '#fff',
-              borderColor: epoNotenPalette.primary,
-              '&:hover': { bgcolor: '#1565c0', borderColor: '#1565c0' },
-            }}
-          >
-            <AddIcon sx={epoNotenCompactIconSx} />
-          </IconButton>
-        </Tooltip>
-      </Stack>
-
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: 'minmax(128px, 156px) minmax(0, 1fr)' },
-          gap: 1,
-          alignItems: 'start',
+          gridTemplateColumns: { xs: '1fr', md: 'minmax(112px, 132px) minmax(0, 1fr)' },
+          gap: 0.5,
+          alignItems: 'stretch',
           width: '100%',
           maxWidth: '100%',
           minWidth: 0,
+          flex: 1,
+          minHeight: 0,
         }}
       >
-        <Card sx={{ ...epoNotenCardSx, borderWidth: 1 }}>
-          <Box sx={{ ...epoNotenPanelHeaderSx, py: 0.55 }}>
-            <Typography sx={{ fontWeight: 800, fontSize: '0.78rem', color: epoNotenPalette.heading }}>
+        <Card sx={{ ...epoNotenCardSx, borderWidth: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <Box sx={{ ...epoNotenPanelHeaderSx, py: 0.25, px: 0.5, justifyContent: 'space-between' }}>
+            <Typography sx={{ fontWeight: 800, fontSize: '0.72rem', color: epoNotenPalette.heading }}>
               Runden
             </Typography>
+            <Tooltip title="Neue Runde">
+              <IconButton
+                size="small"
+                onClick={() => setCreateOpen(true)}
+                aria-label="Neue Runde"
+                sx={{
+                  ...epoNotenCompactIconBtnSx,
+                  bgcolor: epoNotenPalette.primary,
+                  color: '#fff',
+                  borderColor: epoNotenPalette.primary,
+                  '&:hover': { bgcolor: '#1565c0', borderColor: '#1565c0' },
+                }}
+              >
+                <AddIcon sx={epoNotenCompactIconSx} />
+              </IconButton>
+            </Tooltip>
           </Box>
-          <List dense disablePadding sx={{ maxHeight: { md: 'calc(100vh - 220px)' }, overflow: 'auto' }}>
+          <List dense disablePadding sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
             {rounds.map((r) => {
               const active = r.id === selectedId;
               return (
@@ -675,11 +670,11 @@ export function EpoNotenTeacherView() {
                   selected={active}
                   onClick={() => void selectRound(r.id)}
                   sx={{
-                    py: 0.65,
-                    px: 1,
+                    py: 0.35,
+                    px: 0.65,
                     alignItems: 'stretch',
                     flexDirection: 'column',
-                    gap: 0.35,
+                    gap: 0.15,
                     borderBottom: '1px solid',
                     borderColor: 'divider',
                     '&.Mui-selected': {
@@ -699,10 +694,10 @@ export function EpoNotenTeacherView() {
                       size="small"
                       label={r.publishedAt ? 'live' : 'Entwurf'}
                       color={r.publishedAt ? 'success' : 'default'}
-                      sx={{ height: 20, fontSize: '0.62rem', fontWeight: 700, flexShrink: 0 }}
+                      sx={{ height: 16, fontSize: '0.58rem', fontWeight: 700, flexShrink: 0 }}
                     />
                   </Stack>
-                  <Typography variant="caption" sx={{ color: epoNotenPalette.textSecondary, lineHeight: 1.3 }}>
+                  <Typography variant="caption" sx={{ color: epoNotenPalette.textSecondary, lineHeight: 1.2, fontSize: '0.62rem' }}>
                     {r.date} · {r.stats.submitted}/{r.stats.graded}/{r.stats.released}
                   </Typography>
                 </ListItemButton>
@@ -717,18 +712,30 @@ export function EpoNotenTeacherView() {
         </Card>
 
         {round ? (
-          <Card sx={{ ...epoNotenCardSx, borderWidth: 1, minWidth: 0 }}>
-            <Box sx={epoNotenPanelHeaderSx}>
+          <Card
+            sx={{
+              ...epoNotenCardSx,
+              borderWidth: 1,
+              minWidth: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 0,
+              overflow: 'hidden',
+            }}
+          >
+            <Box sx={{ ...epoNotenPanelHeaderSx, py: 0.25, px: 0.55, gap: 0.35 }}>
               <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Typography sx={{ fontWeight: 800, fontSize: '0.88rem', color: epoNotenPalette.heading }} noWrap>
+                <Typography sx={{ fontWeight: 800, fontSize: '0.8rem', color: epoNotenPalette.heading, lineHeight: 1.2 }} noWrap>
                   {round.title}
+                  {selectedRoundMeta ? (
+                    <Typography
+                      component="span"
+                      sx={{ fontWeight: 600, fontSize: '0.65rem', color: epoNotenPalette.textSecondary, ml: 0.5 }}
+                    >
+                      · {selectedRoundMeta.date} · {selectedRoundMeta.stats.submitted}/{selectedRoundMeta.stats.graded}
+                    </Typography>
+                  ) : null}
                 </Typography>
-                {selectedRoundMeta && (
-                  <Typography variant="caption" sx={{ color: epoNotenPalette.textSecondary }}>
-                    {selectedRoundMeta.date} · abgegeben {selectedRoundMeta.stats.submitted} · bewertet{' '}
-                    {selectedRoundMeta.stats.graded}
-                  </Typography>
-                )}
               </Box>
               <Stack direction="row" spacing={0.35} flexShrink={0}>
                 {!round.publishedAt ? (
@@ -823,154 +830,134 @@ export function EpoNotenTeacherView() {
               </Stack>
             </Box>
 
-            <Box sx={{ p: 1.1 }}>
-              <Stack spacing={1}>
-                {!round.publishedAt && round.groupIds.length > 0 && (
-                  <Alert severity="warning" sx={{ py: 0, fontSize: '0.78rem' }}>
-                    Noch nicht für SuS sichtbar — oben grünen Button (Hochladen) tippen.
-                  </Alert>
-                )}
-                {!round.publishedAt && round.groupIds.length === 0 && (
-                  <Alert severity="info" sx={{ py: 0, fontSize: '0.78rem' }}>
-                    Mindestens eine Lerngruppe wählen, dann freischalten.
-                  </Alert>
-                )}
-
-                <Box>
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: epoNotenPalette.textSecondary }}>
-                    Lerngruppen in dieser Runde
-                  </Typography>
-                  <Typography variant="caption" display="block" sx={{ color: 'text.secondary', fontSize: '0.65rem', mt: 0.15 }}>
-                    Tippen = zur Runde hinzufügen oder entfernen
-                  </Typography>
-                  <Stack direction="row" flexWrap="wrap" gap={0.5} sx={{ mt: 0.35 }}>
-                    {groups.map((g) => {
-                      const on = round.groupIds.includes(g.id);
-                      return (
-                        <Chip
-                          key={g.id}
-                          size="small"
-                          label={`${g.name} (${g.studentCount})`}
-                          clickable
-                          onClick={() => {
-                            const next = on
-                              ? round.groupIds.filter((id) => id !== g.id)
-                              : [...round.groupIds, g.id];
-                            updateRoundGroups(next);
-                          }}
-                          variant={on ? 'filled' : 'outlined'}
-                          sx={{
-                            height: 26,
-                            fontSize: '0.72rem',
-                            fontWeight: 600,
-                            bgcolor: on ? epoNotenPalette.primaryTint : undefined,
-                            borderColor: on ? epoNotenPalette.primary : undefined,
-                          }}
-                        />
-                      );
-                    })}
-                  </Stack>
-                  {round.groupIds.length > 0 && (
-                    <Stack spacing={0.5} sx={{ mt: 0.75 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 700, color: epoNotenPalette.textSecondary }}>
-                        Bewertungsart pro Gruppe
-                      </Typography>
-                      {round.groupIds.length > 1 && (
-                        <Typography variant="caption" display="block" sx={{ color: 'text.secondary', fontSize: '0.65rem', mb: 0.25 }}>
-                          Gruppenname tippen = SuS dieser Gruppe in der Liste
-                        </Typography>
-                      )}
-                      {round.groupIds.map((gid) => {
-                        const g = groups.find((x) => x.id === gid);
-                        const mode = assessmentModeForGroup(round, gid);
-                        const groupListActive = studentListGroupFilter === gid;
-                        return (
-                          <Stack
-                            key={gid}
-                            direction="row"
-                            alignItems="center"
-                            justifyContent="space-between"
-                            gap={0.75}
-                            flexWrap="wrap"
-                            role={round.groupIds.length > 1 ? 'button' : undefined}
-                            tabIndex={round.groupIds.length > 1 ? 0 : undefined}
-                            onClick={
-                              round.groupIds.length > 1
-                                ? () => selectStudentListGroup(gid)
-                                : undefined
-                            }
-                            onKeyDown={
-                              round.groupIds.length > 1
-                                ? (e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                      e.preventDefault();
-                                      selectStudentListGroup(gid);
-                                    }
-                                  }
-                                : undefined
-                            }
+            <Box sx={{ px: 0.5, py: 0.35, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider' }}>
+              {!round.publishedAt && (
+                <Typography
+                  variant="caption"
+                  sx={{
+                    display: 'block',
+                    fontSize: '0.62rem',
+                    fontWeight: 600,
+                    color: round.groupIds.length === 0 ? 'info.main' : 'warning.main',
+                    lineHeight: 1.2,
+                    mb: 0.25,
+                  }}
+                >
+                  {round.groupIds.length === 0
+                    ? 'Gruppe wählen, dann freischalten (↗).'
+                    : 'Noch nicht live — Freischalten (↗).'}
+                </Typography>
+              )}
+              <Stack direction="row" flexWrap="wrap" gap={0.35} alignItems="center">
+                {groups.map((g) => {
+                  const on = round.groupIds.includes(g.id);
+                  const mode = on ? assessmentModeForGroup(round, g.id) : null;
+                  const groupListActive = on && round.groupIds.length > 1 && studentListGroupFilter === g.id;
+                  return (
+                    <Stack
+                      key={g.id}
+                      direction="row"
+                      alignItems="center"
+                      gap={0.2}
+                      sx={{
+                        borderRadius: 0.75,
+                        border: '1px solid',
+                        borderColor: groupListActive ? epoNotenPalette.primary : on ? 'rgba(25, 118, 210, 0.35)' : 'divider',
+                        bgcolor: groupListActive ? epoNotenPalette.primaryTint : on ? 'rgba(0,0,0,0.02)' : 'transparent',
+                        pl: 0.15,
+                        pr: on ? 0.15 : 0,
+                        py: 0.1,
+                      }}
+                    >
+                      <Chip
+                        size="small"
+                        label={g.name}
+                        clickable
+                        onClick={() => {
+                          const next = on
+                            ? round.groupIds.filter((id) => id !== g.id)
+                            : [...round.groupIds, g.id];
+                          updateRoundGroups(next);
+                        }}
+                        variant={on ? 'filled' : 'outlined'}
+                        sx={{
+                          height: 20,
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                          bgcolor: on ? 'transparent' : undefined,
+                          border: 'none',
+                          '& .MuiChip-label': { px: 0.6 },
+                        }}
+                      />
+                      {on && mode ? (
+                        <Box onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                          <ToggleButtonGroup
+                            exclusive
+                            size="small"
+                            value={mode}
+                            onChange={(_, v: EpoNotenAssessmentMode | null) => {
+                              if (!v) return;
+                              void updateGroupAssessmentMode(g.id, v);
+                            }}
+                            disabled={saving}
+                          >
+                            <ToggleButton
+                              value="note"
+                              sx={{ px: 0.45, py: 0, minHeight: 18, fontSize: '0.58rem', fontWeight: 700, lineHeight: 1 }}
+                            >
+                              Note
+                            </ToggleButton>
+                            <ToggleButton
+                              value="mss"
+                              sx={{ px: 0.45, py: 0, minHeight: 18, fontSize: '0.58rem', fontWeight: 700, lineHeight: 1 }}
+                            >
+                              MSS
+                            </ToggleButton>
+                          </ToggleButtonGroup>
+                        </Box>
+                      ) : null}
+                      {on && round.groupIds.length > 1 ? (
+                        <Tooltip title="SuS-Liste filtern">
+                          <IconButton
+                            size="small"
+                            aria-label={`${g.name} in Liste`}
+                            onClick={() => selectStudentListGroup(g.id)}
                             sx={{
-                              py: 0.35,
-                              px: 0.5,
-                              borderRadius: 1,
-                              cursor: round.groupIds.length > 1 ? 'pointer' : 'default',
-                              bgcolor: groupListActive ? epoNotenPalette.primaryTint : 'rgba(0,0,0,0.02)',
-                              border: '2px solid',
-                              borderColor: groupListActive ? epoNotenPalette.primary : 'transparent',
-                              '&:hover':
-                                round.groupIds.length > 1
-                                  ? { bgcolor: groupListActive ? epoNotenPalette.primaryTint : 'rgba(25, 118, 210, 0.06)' }
-                                  : undefined,
+                              p: 0,
+                              width: 18,
+                              height: 18,
+                              color: groupListActive ? epoNotenPalette.primary : 'text.secondary',
                             }}
                           >
-                            <Typography
-                              sx={{
-                                fontSize: '0.72rem',
-                                fontWeight: groupListActive ? 800 : 700,
-                                minWidth: 0,
-                                color: groupListActive ? epoNotenPalette.heading : epoNotenPalette.textPrimary,
-                              }}
-                            >
-                              {g?.name || gid}
-                            </Typography>
-                            <Box onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                            <ToggleButtonGroup
-                              exclusive
-                              size="small"
-                              value={mode}
-                              onChange={(_, v: EpoNotenAssessmentMode | null) => {
-                                if (!v) return;
-                                void updateGroupAssessmentMode(gid, v);
-                              }}
-                              disabled={saving}
-                            >
-                              <ToggleButton value="note" sx={{ px: 0.85, py: 0.15, fontSize: '0.68rem', fontWeight: 700 }}>
-                                Note
-                              </ToggleButton>
-                              <ToggleButton value="mss" sx={{ px: 0.85, py: 0.15, fontSize: '0.68rem', fontWeight: 700 }}>
-                                MSS 0–15
-                              </ToggleButton>
-                            </ToggleButtonGroup>
-                            </Box>
-                          </Stack>
-                        );
-                      })}
+                            <Typography sx={{ fontSize: '0.55rem', fontWeight: 800, lineHeight: 1 }}>→</Typography>
+                          </IconButton>
+                        </Tooltip>
+                      ) : null}
                     </Stack>
-                  )}
-                </Box>
+                  );
+                })}
+              </Stack>
+            </Box>
 
-                <Divider />
-
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                overflow: 'auto',
+                p: 0.5,
+              }}
+            >
+              <Stack spacing={0.5}>
                 <Box
                   sx={{
                     display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', lg: 'minmax(132px, 160px) minmax(0, 1fr)' },
-                    gap: 1,
+                    gridTemplateColumns: { xs: '1fr', lg: 'minmax(120px, 148px) minmax(0, 1fr)' },
+                    gap: 0.5,
                     alignItems: 'start',
                   }}
                 >
                   <Box sx={{ minWidth: 0 }}>
-                    <Typography sx={{ fontWeight: 800, fontSize: '0.75rem', mb: 0.35, color: epoNotenPalette.heading }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: '0.68rem', mb: 0.2, color: epoNotenPalette.heading }}>
                       Schüler
                       {studentListGroupFilter && round.groupIds.length > 1 ? (
                         <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 0.5 }}>
@@ -981,11 +968,11 @@ export function EpoNotenTeacherView() {
                     <List
                       dense
                       sx={{
-                        maxHeight: 320,
+                        maxHeight: { lg: '38vh', xs: 220 },
                         overflow: 'auto',
                         border: '1px solid',
                         borderColor: 'divider',
-                        borderRadius: 1.25,
+                        borderRadius: 1,
                         bgcolor: '#fff',
                         py: 0,
                       }}
@@ -1021,43 +1008,32 @@ export function EpoNotenTeacherView() {
                                 selected={active}
                                 onClick={() => void selectStudent(s.studentId)}
                                 sx={{
-                                  py: 0.45,
-                                  px: 0.75,
+                                  py: 0.2,
+                                  px: 0.5,
                                   borderBottom: '1px solid',
                                   borderColor: 'divider',
                                   ...((isLastInSection && isLastSection) ? { borderBottom: 0 } : {}),
                                 }}
                               >
-                                <Stack spacing={0.15} width="100%" minWidth={0}>
-                                  <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.78rem' }}>
+                                <Stack direction="row" alignItems="center" gap={0.35} width="100%" minWidth={0}>
+                                  <Typography noWrap sx={{ fontWeight: 700, fontSize: '0.72rem', flex: 1, minWidth: 0 }}>
                                     {s.studentName}
                                   </Typography>
-                                  <Stack direction="row" flexWrap="wrap" gap={0.35}>
-                                    <Chip
-                                      size="small"
-                                      label={s.studentSubmittedAt ? 'SuS ✓' : 'offen'}
-                                      sx={{ height: 18, fontSize: '0.6rem' }}
-                                      color={s.studentSubmittedAt ? 'success' : 'default'}
-                                      variant="outlined"
-                                    />
-                                    {s.teacherGrade ? (
-                                      <Chip
-                                        size="small"
-                                        label={`Note ${s.teacherGrade}`}
-                                        sx={{ height: 18, fontSize: '0.6rem' }}
-                                        color="primary"
-                                        variant="outlined"
-                                      />
-                                    ) : null}
-                                    {s.teacherReleasedAt ? (
-                                      <Chip
-                                        size="small"
-                                        label="frei"
-                                        sx={{ height: 18, fontSize: '0.6rem' }}
-                                        color="secondary"
-                                      />
-                                    ) : null}
-                                  </Stack>
+                                  <Chip
+                                    size="small"
+                                    label={s.studentSubmittedAt ? '✓' : '·'}
+                                    sx={{ height: 16, minWidth: 22, fontSize: '0.58rem', '& .MuiChip-label': { px: 0.4 } }}
+                                    color={s.studentSubmittedAt ? 'success' : 'default'}
+                                    variant="outlined"
+                                  />
+                                  {s.teacherGrade ? (
+                                    <Typography sx={{ fontSize: '0.62rem', fontWeight: 800, color: 'primary.main', flexShrink: 0 }}>
+                                      {s.teacherGrade}
+                                    </Typography>
+                                  ) : null}
+                                  {s.teacherReleasedAt ? (
+                                    <Chip size="small" label="frei" sx={{ height: 16, fontSize: '0.55rem', '& .MuiChip-label': { px: 0.35 } }} color="secondary" />
+                                  ) : null}
                                 </Stack>
                               </ListItemButton>
                             );
@@ -1065,67 +1041,66 @@ export function EpoNotenTeacherView() {
                         </React.Fragment>
                       ))}
                     </List>
-                    <Stack spacing={0.5} sx={{ mt: 0.65 }}>
-                      <Button
-                        fullWidth
-                        size="small"
-                        variant="outlined"
-                        onClick={releaseAll}
-                        disabled={saving}
-                        sx={epoNotenCompactBtnSx}
-                      >
-                        Alle bewerteten freigeben
-                      </Button>
-                    </Stack>
+                    <Button
+                      fullWidth
+                      size="small"
+                      variant="outlined"
+                      onClick={releaseAll}
+                      disabled={saving}
+                      sx={{ ...epoNotenCompactBtnSx, mt: 0.35 }}
+                    >
+                      Alle freigeben
+                    </Button>
                   </Box>
 
                   <Box sx={{ minWidth: 0, width: '100%', maxWidth: 'none' }}>
                     {!selectedStudent ? (
-                      <Typography sx={{ color: 'text.secondary', fontSize: '0.82rem', py: 2, textAlign: 'center' }}>
+                      <Typography sx={{ color: 'text.secondary', fontSize: '0.75rem', py: 0.75, textAlign: 'center' }}>
                         Schüler auswählen
                       </Typography>
                     ) : (
-                      <Stack spacing={1}>
+                      <Stack spacing={0.45}>
                         {!selectedStudent.studentSubmittedAt && (
-                          <Alert severity="info" sx={{ py: 0, fontSize: '0.72rem' }}>
+                          <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>
                             Noch keine Selbsteinschätzung.
-                          </Alert>
+                          </Typography>
                         )}
 
                         {selectedStudent.studentSubmittedAt ? (
-                          <Box sx={{ ...epoNotenStudentGhostPanelSx, opacity: 0.62, mb: 0.65 }}>
-                            <Typography sx={{ fontWeight: 800, fontSize: '0.68rem', mb: 0.35, color: '#7b1fa2' }}>
-                              SuS — Noteneinschätzung (nur Anzeige)
-                            </Typography>
-                            <Typography sx={{ fontSize: '0.72rem', lineHeight: 1.35 }}>
-                              <strong>
-                                {formatSuggestedGradeDisplay(
-                                  selectedStudent.groupId
-                                    ? assessmentModeForGroup(round, selectedStudent.groupId)
-                                    : selectedStudent.suggestedGradeMode,
-                                  selectedStudent.suggestedGrade,
-                                )}
-                              </strong>
+                          <Box
+                            sx={{
+                              ...epoNotenStudentGhostPanelSx,
+                              opacity: 0.75,
+                              py: 0.35,
+                              px: 0.5,
+                              mb: 0.25,
+                            }}
+                          >
+                            <Typography sx={{ fontSize: '0.65rem', lineHeight: 1.3 }} noWrap title={selectedStudent.justification || ''}>
+                              <strong>SuS:</strong>{' '}
+                              {formatSuggestedGradeDisplay(
+                                selectedStudent.groupId
+                                  ? assessmentModeForGroup(round, selectedStudent.groupId)
+                                  : selectedStudent.suggestedGradeMode,
+                                selectedStudent.suggestedGrade,
+                              )}
                               {' · '}
-                              Raster{' '}
-                              {selectedStudent.groupId
-                                ? assessmentModeForGroup(round, selectedStudent.groupId) === 'mss'
-                                  ? `${sumCategoryScores(selectedStudent.selfScores)} MSS-Pkt.`
-                                  : `${sumCategoryScores(selectedStudent.selfScores)} Pkt. → ${selectedStudent.selfGradeFromTable || '—'}`
-                                : `${sumCategoryScores(selectedStudent.selfScores)} Pkt.`}
-                            </Typography>
-                            <Typography sx={{ fontSize: '0.7rem', mt: 0.45, whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>
-                              {selectedStudent.justification || '—'}
+                              {selectedStudent.groupId &&
+                              assessmentModeForGroup(round, selectedStudent.groupId) === 'mss'
+                                ? `${sumCategoryScores(selectedStudent.selfScores)} MSS`
+                                : `${sumCategoryScores(selectedStudent.selfScores)} Pkt. → ${selectedStudent.selfGradeFromTable || '—'}`}
+                              {selectedStudent.justification
+                                ? ` · ${selectedStudent.justification.replace(/\s+/g, ' ').slice(0, 80)}${selectedStudent.justification.length > 80 ? '…' : ''}`
+                                : ''}
                             </Typography>
                           </Box>
                         ) : null}
 
                         <Box sx={{ position: 'relative', width: '100%' }}>
                             {selectedStudent.teacherReleasedAt && (
-                              <Alert severity="info" sx={{ py: 0, fontSize: '0.72rem', mb: 0.5 }}>
-                                Bereits an SuS freigegeben — du kannst die Bewertung hier weiter anpassen; der SuS sieht
-                                die aktuelle Version beim nächsten Öffnen der Runde.
-                              </Alert>
+                              <Typography variant="caption" sx={{ display: 'block', fontSize: '0.62rem', color: 'info.main', mb: 0.25 }}>
+                                Freigegeben — Änderungen sieht der SuS beim nächsten Öffnen.
+                              </Typography>
                             )}
 
                             <EpoNotenCategoryGrid
@@ -1147,7 +1122,7 @@ export function EpoNotenTeacherView() {
                             />
 
                             {allCategoriesSelected(teacherScores) && (
-                              <Box sx={{ mt: 0.75 }}>
+                              <Box sx={{ mt: 0.35 }}>
                                 <EpoNotenGradeTable
                                   mode={selectedAssessmentMode}
                                   highlightMinPoints={
@@ -1165,13 +1140,14 @@ export function EpoNotenTeacherView() {
                             <Box
                               sx={{
                                 ...epoNotenInsetBoxSx,
-                                mt: 0.75,
+                                mt: 0.35,
+                                p: 0.65,
                                 bgcolor: '#fff',
                                 position: 'relative',
                                 zIndex: 2,
                               }}
                             >
-                              <Typography sx={{ fontWeight: 800, fontSize: '0.75rem', mb: 0.75, color: epoNotenPalette.heading }}>
+                              <Typography sx={{ fontWeight: 800, fontSize: '0.68rem', mb: 0.35, color: epoNotenPalette.heading }}>
                                 {selectedAssessmentMode === 'mss' ? 'MSS-Punkte (0–15)' : 'EPO-Note'}
                               </Typography>
                               <TextField
@@ -1260,8 +1236,8 @@ export function EpoNotenTeacherView() {
                         {(selectedStudent.goalsSubmittedAt ||
                           selectedStudent.goal?.trim() ||
                           selectedStudent.goalAction?.trim()) && (
-                          <Box sx={{ ...epoNotenInsetBoxSx, bgcolor: epoNotenPalette.accentTint }}>
-                            <Typography sx={{ fontWeight: 800, fontSize: '0.75rem', mb: 0.35 }}>
+                          <Box sx={{ ...epoNotenInsetBoxSx, bgcolor: epoNotenPalette.accentTint, p: 0.55 }}>
+                            <Typography sx={{ fontWeight: 800, fontSize: '0.68rem', mb: 0.2 }}>
                               Ziele (SuS)
                               {!selectedStudent.goalsSubmittedAt && (
                                 <Typography component="span" sx={{ fontWeight: 600, fontSize: '0.65rem', ml: 0.5 }}>

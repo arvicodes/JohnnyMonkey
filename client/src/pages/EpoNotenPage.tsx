@@ -20,12 +20,16 @@ import { EpoNotenStudentRoundList } from '../components/epo-noten/EpoNotenStuden
 import { EpoNotenStudentSelfWizard } from '../components/epo-noten/EpoNotenStudentSelfWizard';
 import {
   epoNotenCardSx,
-  epoNotenKidTextFieldSx,
   epoNotenPageBgSx,
   epoNotenPageShellSx,
   epoNotenPalette,
   epoNotenStudentSurfaceSx,
-  epoNotenCompactBtnSx,
+  epoNotenStudentGoalDisplaySx,
+  epoNotenStudentGoalFieldSx,
+  epoNotenStudentGoalHintSx,
+  epoNotenStudentGoalLabelSx,
+  epoNotenStudentGoalsHeaderSx,
+  epoNotenStudentGoalsShellSx,
 } from '../components/epo-noten/epoNotenUi';
 import {
   EPO_NOTEN_STUDENT_CATEGORIES,
@@ -252,21 +256,33 @@ export default function EpoNotenPage() {
   }, [myEntry]);
 
   return (
-    <Box sx={epoNotenPageBgSx}>
+    <Box sx={{ ...epoNotenPageBgSx, py: isTeacher ? 0.35 : epoNotenPageBgSx.py }}>
       <Box sx={epoNotenPageShellSx}>
         <Stack
           direction="row"
           alignItems="center"
           justifyContent="space-between"
-          sx={{ mb: 0.65, minHeight: 26 }}
+          sx={{ mb: isTeacher ? 0.25 : 0.65, minHeight: isTeacher ? 22 : 26 }}
         >
           {!isTeacher && selectedRoundId ? (
             <IconButton onClick={backToList} aria-label="Zur Liste" size="small" sx={{ ...compactIconBtn, ml: -0.25 }}>
               <ArrowBackIcon sx={{ fontSize: 15 }} />
             </IconButton>
           ) : (
-            <Box sx={{ width: 24 }} />
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 800,
+                color: epoNotenPalette.primary,
+                fontSize: isTeacher ? '0.8rem' : '0.88rem',
+                minWidth: 0,
+                pl: isTeacher ? 0.25 : 0,
+              }}
+            >
+              {isTeacher ? 'EPO — Lehrer' : ''}
+            </Typography>
           )}
+          {!isTeacher && (
           <Typography
             variant="body2"
             sx={{
@@ -284,6 +300,8 @@ export default function EpoNotenPage() {
           >
             EPO-Noten
           </Typography>
+          )}
+          {isTeacher && <Box sx={{ flex: 1 }} />}
           <IconButton
             onClick={() => navigate('/')}
             aria-label="Schließen"
@@ -427,50 +445,112 @@ export default function EpoNotenPage() {
                       </Box>
                     </Box>
 
-                    <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx }}>
-                      <Box sx={{ p: 1.5 }}>
-                        <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 800 }}>
+                    <Box
+                      sx={{
+                        ...epoNotenCardSx,
+                        ...epoNotenStudentSurfaceSx,
+                        ...epoNotenStudentGoalsShellSx,
+                      }}
+                    >
+                      <Box sx={epoNotenStudentGoalsHeaderSx}>
+                        <Typography
+                          component="h2"
+                          sx={{
+                            fontWeight: 900,
+                            fontSize: { xs: '1.35rem', sm: '1.55rem' },
+                            color: epoNotenPalette.heading,
+                            lineHeight: 1.25,
+                          }}
+                        >
                           Mein Ziel für den nächsten Zeitraum
                         </Typography>
-                        <TextField
-                          label="Ein konkretes Ziel"
-                          value={goal}
-                          onChange={(e) => setGoal(e.target.value)}
-                          disabled={!canEditGoals || phase === 'done'}
-                          multiline
-                          minRows={2}
-                          fullWidth
-                          sx={{ mb: 1.5, ...epoNotenKidTextFieldSx }}
-                        />
-                        <TextField
-                          label="Eine konkrete Handlung dazu"
-                          value={goalAction}
-                          onChange={(e) => setGoalAction(e.target.value)}
-                          disabled={!canEditGoals || phase === 'done'}
-                          multiline
-                          minRows={3}
-                          fullWidth
-                          sx={epoNotenKidTextFieldSx}
-                        />
-                        {canEditGoals && phase === 'goals' && (
-                          <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'flex-end' }}>
-                            <Button
-                              size="small"
-                              variant="contained"
-                              onClick={() => void submitGoals()}
-                              disabled={submitting}
-                              sx={epoNotenCompactBtnSx}
-                            >
-                              Ziele speichern
-                            </Button>
-                          </Box>
-                        )}
-                        {phase === 'done' && (
-                          <Alert sx={{ mt: 1.5 }} severity="info">
-                            Deine Ziele sind gespeichert und bleiben hier sichtbar.
-                          </Alert>
-                        )}
+                        <Typography sx={{ ...epoNotenStudentGoalHintSx, mt: 0.75, mb: 0 }}>
+                          Formuliere dein Ziel und deine Handlung groß und klar — du kannst sie hier jederzeit
+                          wieder ansehen.
+                        </Typography>
                       </Box>
+
+                      <Stack spacing={2.75} sx={{ p: { xs: 2, sm: 2.5 } }}>
+                        {canEditGoals && phase === 'goals' ? (
+                          <>
+                            <Box>
+                              <Typography component="label" sx={epoNotenStudentGoalLabelSx}>
+                                1. Mein konkretes Ziel
+                              </Typography>
+                              <Typography sx={epoNotenStudentGoalHintSx}>
+                                Was willst du im nächsten Zeitraum erreichen?
+                              </Typography>
+                              <TextField
+                                aria-label="Mein konkretes Ziel"
+                                placeholder="z. B. Ich will in Mathe sicherer mit Brüchen werden …"
+                                value={goal}
+                                onChange={(e) => setGoal(e.target.value)}
+                                multiline
+                                minRows={3}
+                                fullWidth
+                                sx={epoNotenStudentGoalFieldSx}
+                              />
+                            </Box>
+                            <Box>
+                              <Typography component="label" sx={epoNotenStudentGoalLabelSx}>
+                                2. Meine konkrete Handlung dazu
+                              </Typography>
+                              <Typography sx={epoNotenStudentGoalHintSx}>
+                                Was machst du dafür ganz konkret?
+                              </Typography>
+                              <TextField
+                                aria-label="Meine konkrete Handlung"
+                                placeholder="z. B. Jeden Tag 15 Minuten üben und in der Stunde öfter mitmachen …"
+                                value={goalAction}
+                                onChange={(e) => setGoalAction(e.target.value)}
+                                multiline
+                                minRows={4}
+                                fullWidth
+                                sx={epoNotenStudentGoalFieldSx}
+                              />
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                              <Button
+                                size="large"
+                                variant="contained"
+                                color="success"
+                                onClick={() => void submitGoals()}
+                                disabled={submitting}
+                                sx={{
+                                  fontWeight: 800,
+                                  fontSize: '1rem',
+                                  px: 3,
+                                  py: 1.1,
+                                  borderRadius: 2,
+                                }}
+                              >
+                                Ziele speichern
+                              </Button>
+                            </Box>
+                          </>
+                        ) : (
+                          <>
+                            <Box>
+                              <Typography sx={epoNotenStudentGoalLabelSx}>Mein konkretes Ziel</Typography>
+                              <Box sx={epoNotenStudentGoalDisplaySx} role="region" aria-label="Gespeichertes Ziel">
+                                {goal.trim() || '—'}
+                              </Box>
+                            </Box>
+                            <Box>
+                              <Typography sx={epoNotenStudentGoalLabelSx}>Meine konkrete Handlung dazu</Typography>
+                              <Box sx={epoNotenStudentGoalDisplaySx} role="region" aria-label="Gespeicherte Handlung">
+                                {goalAction.trim() || '—'}
+                              </Box>
+                            </Box>
+                            {phase === 'done' && (
+                              <Alert severity="success" sx={{ fontWeight: 700, fontSize: '0.95rem' }}>
+                                Deine Ziele sind gespeichert — sie bleiben hier groß sichtbar, damit du sie im Blick
+                                behältst.
+                              </Alert>
+                            )}
+                          </>
+                        )}
+                      </Stack>
                     </Box>
                   </>
                 )}

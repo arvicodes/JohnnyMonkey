@@ -170,3 +170,79 @@ export const epoNotenInsetBoxSx = {
   bgcolor: '#fafcff',
   p: 1,
 };
+
+/** SuS: Ziele-Bereich — groß, grün markiert */
+export const epoNotenStudentGoalsShellSx = {
+  border: `3px solid ${epoNotenPalette.accent}`,
+  boxShadow: '0 8px 28px rgba(46, 125, 50, 0.18)',
+};
+
+export const epoNotenStudentGoalsHeaderSx = {
+  px: { xs: 2, sm: 2.5 },
+  py: { xs: 1.5, sm: 1.75 },
+  bgcolor: epoNotenPalette.accentTint,
+  borderBottom: `2px solid ${epoNotenPalette.accent}`,
+};
+
+export const epoNotenStudentGoalLabelSx = {
+  fontWeight: 900,
+  fontSize: { xs: '1.05rem', sm: '1.15rem' },
+  color: epoNotenPalette.heading,
+  mb: 1,
+  display: 'block',
+};
+
+export const epoNotenStudentGoalHintSx = {
+  fontSize: { xs: '0.88rem', sm: '0.95rem' },
+  fontWeight: 600,
+  color: epoNotenPalette.textSecondary,
+  mb: 1.25,
+  display: 'block',
+  lineHeight: 1.45,
+};
+
+export const epoNotenStudentGoalFieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: 2.5,
+    bgcolor: '#fff',
+    fontSize: { xs: '1.22rem', sm: '1.32rem' },
+    fontWeight: 700,
+    lineHeight: 1.5,
+    py: 0.75,
+    '& fieldset': {
+      borderWidth: 3,
+      borderColor: 'rgba(46, 125, 50, 0.55)',
+    },
+    '&:hover fieldset': {
+      borderColor: epoNotenPalette.accent,
+    },
+    '&.Mui-focused fieldset': {
+      borderWidth: 3,
+      borderColor: epoNotenPalette.accent,
+    },
+  },
+  '& .MuiInputLabel-root': {
+    fontSize: '1rem',
+    fontWeight: 800,
+    color: epoNotenPalette.heading,
+  },
+  '& .MuiInputLabel-root.Mui-focused': {
+    color: epoNotenPalette.accent,
+  },
+};
+
+/** Gespeicherte Ziele — gut lesbar, nicht wie deaktiviertes Formular */
+export const epoNotenStudentGoalDisplaySx = {
+  p: { xs: 2, sm: 2.25 },
+  borderRadius: 2.5,
+  bgcolor: '#fff',
+  border: `3px solid ${epoNotenPalette.accent}`,
+  fontSize: { xs: '1.28rem', sm: '1.42rem' },
+  fontWeight: 800,
+  lineHeight: 1.55,
+  color: epoNotenPalette.textPrimary,
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
+  minHeight: { xs: 88, sm: 96 },
+  boxShadow: 'inset 0 2px 8px rgba(46, 125, 50, 0.06)',
+};
