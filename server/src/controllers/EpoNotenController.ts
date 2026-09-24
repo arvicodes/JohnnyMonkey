@@ -878,9 +878,7 @@ export class EpoNotenController {
       const total = sumScores(teacherScores);
       const computed = gradeFromTotalPoints(total);
       const teacherGrade =
-        typeof req.body?.teacherGrade === 'string' && req.body.teacherGrade.trim()
-          ? req.body.teacherGrade.trim()
-          : computed;
+        typeof req.body?.teacherGrade === 'string' ? req.body.teacherGrade.trim() : existing?.teacherGrade ?? '';
 
       const entry: EpoNotenEntry = {
         studentId,

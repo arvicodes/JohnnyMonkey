@@ -32,6 +32,7 @@ import {
   EPO_NOTEN_TEACHER_CATEGORIES,
   type EpoNotenEntry,
   type EpoNotenRound,
+  allCategoriesSelected,
   assessmentModeForGroup,
   formatSuggestedGradeDisplay,
   gradeFromTotalPoints,
@@ -222,15 +223,22 @@ export function EpoNotenTeacherView() {
     }
   };
 
+  const persistTeacherEntry = async (grade: string) => {
+    if (!round || !selectedStudentId) return false;
+    const res = await apiPut(`/api/epo-noten/${round.id}/teacher/${selectedStudentId}`, {
+      teacherScores,
+      teacherGrade: grade,
+    });
+    if (!res?.ok) throw new Error('Speichern fehlgeschlagen');
+    return true;
+  };
+
   const saveTeacher = async () => {
     if (!round || !selectedStudentId) return;
     setSaving(true);
+    setError(null);
     try {
-      const res = await apiPut(`/api/epo-noten/${round.id}/teacher/${selectedStudentId}`, {
-        teacherScores,
-        teacherGrade: teacherGrade || computedGrade,
-      });
-      if (!res?.ok) throw new Error('Speichern fehlgeschlagen');
+      await persistTeacherEntry(teacherGrade.trim());
       await loadDetail(round.id);
       await loadList();
     } catch (e) {
@@ -242,11 +250,19 @@ export function EpoNotenTeacherView() {
 
   const releaseOne = async () => {
     if (!round || !selectedStudentId) return;
+    const grade = teacherGrade.trim();
+    if (!grade) {
+      setError('Bitte die EPO-Note eintragen, bevor du abschickst.');
+      return;
+    }
     setSaving(true);
+    setError(null);
     try {
+      await persistTeacherEntry(grade);
       const res = await apiPost(`/api/epo-noten/${round.id}/release`, { studentIds: [selectedStudentId] });
-      if (!res?.ok) throw new Error('Freigabe fehlgeschlagen');
+      if (!res?.ok) throw new Error('Abschicken fehlgeschlagen');
       await loadDetail(round.id);
+      await loadList();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
     } finally {
@@ -758,11 +774,7 @@ export function EpoNotenTeacherView() {
                               }
                             />
 
-                            <Stack
-                              direction="row"
-                              alignItems="center"
-                              flexWrap="wrap"
-                              gap={0.75}
+                            <Box
                               sx={{
                                 ...epoNotenInsetBoxSx,
                                 mt: 0.75,
@@ -771,22 +783,32 @@ export function EpoNotenTeacherView() {
                                 zIndex: 2,
                               }}
                             >
-                          <Typography sx={{ fontSize: '0.78rem' }}>
-                            Summe <strong>{totalTeacher}</strong> → Tabelle <strong>{computedGrade}</strong>
-                          </Typography>
-                          <TextField
-                            label="EPO-Note"
-                            size="small"
-                            value={teacherGrade}
-                            onChange={(e) => setTeacherGrade(e.target.value)}
-                            sx={{
-                              width: 88,
-                              ml: 'auto',
-                              '& .MuiInputBase-root': { fontSize: '0.85rem' },
-                              '& .MuiInputLabel-root': { fontSize: '0.78rem' },
-                            }}
-                          />
-                            </Stack>
+                              <Typography sx={{ fontWeight: 800, fontSize: '0.75rem', mb: 0.75, color: epoNotenPalette.heading }}>
+                                Deine EPO-Note (eigenständig)
+                              </Typography>
+                              <TextField
+                                label="EPO-Note eintragen"
+                                size="small"
+                                value={teacherGrade}
+                                onChange={(e) => setTeacherGrade(e.target.value)}
+                                placeholder="z. B. 2+ oder 3−"
+                                fullWidth
+                                helperText={`Nur Vorschlag aus Raster: ${totalTeacher} Punkte → ${computedGrade} (wird nicht automatisch übernommen)`}
+                                sx={{
+                                  '& .MuiInputBase-root': { fontSize: '0.95rem', fontWeight: 700 },
+                                  '& .MuiInputLabel-root': { fontSize: '0.78rem' },
+                                }}
+                              />
+                              <Button
+                                size="small"
+                                variant="text"
+                                onClick={() => setTeacherGrade(computedGrade)}
+                                disabled={saving || !allCategoriesSelected(teacherScores)}
+                                sx={{ mt: 0.35, px: 0, minHeight: 24, fontSize: '0.68rem', fontWeight: 700 }}
+                              >
+                                Vorschlag aus Raster übernehmen ({computedGrade})
+                              </Button>
+                            </Box>
                         </Box>
 
                         <Stack direction="row" spacing={0.5} flexWrap="wrap">
@@ -804,10 +826,10 @@ export function EpoNotenTeacherView() {
                             variant="outlined"
                             color="secondary"
                             onClick={releaseOne}
-                            disabled={saving || !teacherGrade}
+                            disabled={saving || !teacherGrade.trim()}
                             sx={{ ...epoNotenCompactBtnSx, flex: { xs: '1 1 100%', sm: '0 1 auto' } }}
                           >
-                            Freigeben
+                            An SuS abschicken
                           </Button>
                         </Stack>
 
