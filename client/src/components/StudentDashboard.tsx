@@ -5827,9 +5827,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             background: '#f8f9fa',
             color: '#222',
             borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            overflow: 'visible',
           }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, width: '100%', minWidth: 0, pr: 0.25 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, width: '100%', minWidth: 0, pr: 0.25, overflow: 'visible' }}>
               <Box sx={{ position: 'relative', flexShrink: 0 }}>
                 <DualStudentAvatars
                   name={studentName}
@@ -5861,7 +5862,20 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 )}
               </Box>
               <Box sx={{ flex: 1, minWidth: 8 }} />
-              <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexShrink: 1, flexWrap: 'nowrap', ml: 'auto', minWidth: 0, overflow: 'hidden', pr: 0.5 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 0.5,
+                  alignItems: 'center',
+                  flexShrink: 0,
+                  flexWrap: 'nowrap',
+                  ml: 'auto',
+                  overflow: 'visible',
+                  pr: 0.5,
+                  pt: 0.35,
+                  mt: -0.35,
+                }}
+              >
                 {/* Exkursionsprotokoll */}
                 <Box sx={{ position: 'relative' }}>
                   <Tooltip
@@ -5952,6 +5966,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         justifyContent: 'center',
                         border: '2px solid #f8f9fa',
                         pointerEvents: 'none',
+                        zIndex: 2,
                       }}
                     >
                       {excursionProtocolPendingCount}
@@ -6017,7 +6032,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                       sx={{
                         position: 'absolute',
                         top: -4,
-                        right: 2,
+                        right: -4,
                         minWidth: 16,
                         height: 16,
                         px: 0.35,
@@ -6031,6 +6046,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         justifyContent: 'center',
                         border: '2px solid #f8f9fa',
                         pointerEvents: 'none',
+                        zIndex: 2,
                       }}
                     >
                       {epoNotenPendingCount}
@@ -6118,6 +6134,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                         justifyContent: 'center',
                         border: '2px solid #f8f9fa',
                         pointerEvents: 'none',
+                        zIndex: 2,
                       }}
                     >
                       {announcementUnreadCount}
