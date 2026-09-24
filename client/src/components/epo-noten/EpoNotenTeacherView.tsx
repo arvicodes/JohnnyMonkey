@@ -23,6 +23,7 @@ import {
   Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PublishIcon from '@mui/icons-material/Publish';
 import UnpublishedIcon from '@mui/icons-material/Unpublished';
@@ -56,6 +57,7 @@ import {
   epoNotenCompactIconSx,
   epoNotenInsetBoxSx,
   epoNotenPanelHeaderSx,
+  epoNotenBigNumberSx,
   epoNotenPalette,
   epoNotenStudentGhostPanelSx,
 } from './epoNotenUi';
@@ -483,13 +485,22 @@ export function EpoNotenTeacherView() {
     }
   };
 
-  const releaseAll = async () => {
+  const releaseAllInGroup = async (groupId: string) => {
     if (!round) return;
+    const studentIds = students
+      .filter((s) => s.groupId === groupId && s.teacherGrade?.trim() && !s.teacherReleasedAt)
+      .map((s) => s.studentId);
+    if (studentIds.length === 0) {
+      setError('In diesem Kurs gibt es keine bewerteten SuS, die noch nicht freigegeben sind.');
+      return;
+    }
     setSaving(true);
+    setError(null);
     try {
-      const res = await apiPost(`/api/epo-noten/${round.id}/release`, { all: true });
+      const res = await apiPost(`/api/epo-noten/${round.id}/release`, { studentIds });
       if (!res?.ok) throw new Error('Freigabe fehlgeschlagen');
       await loadDetail(round.id);
+      await loadList();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
     } finally {
@@ -592,6 +603,15 @@ export function EpoNotenTeacherView() {
     if (!studentListGroupFilter) return studentSections;
     return studentSections.filter((s) => s.groupId === studentListGroupFilter);
   }, [studentListGroupFilter, studentSections]);
+
+  const activeCourseGroupId =
+    studentListGroupFilter && round?.groupIds.includes(studentListGroupFilter)
+      ? studentListGroupFilter
+      : round?.groupIds[0] ?? null;
+
+  const activeCourseName = activeCourseGroupId
+    ? groups.find((g) => g.id === activeCourseGroupId)?.name ?? ''
+    : '';
 
   if (loading && rounds.length === 0) {
     return (
@@ -831,7 +851,7 @@ export function EpoNotenTeacherView() {
               </Stack>
             </Box>
 
-            <Box sx={{ px: 0.5, py: 0.35, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Box sx={{ px: 0.5, py: 0.4, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider' }}>
               {!round.publishedAt && (
                 <Typography
                   variant="caption"
@@ -841,103 +861,116 @@ export function EpoNotenTeacherView() {
                     fontWeight: 600,
                     color: round.groupIds.length === 0 ? 'info.main' : 'warning.main',
                     lineHeight: 1.2,
-                    mb: 0.25,
+                    mb: 0.35,
                   }}
                 >
                   {round.groupIds.length === 0
-                    ? 'Gruppe wählen, dann freischalten (↗).'
+                    ? 'Mindestens einen Kurs hinzufügen, dann freischalten (↗).'
                     : 'Noch nicht live — Freischalten (↗).'}
                 </Typography>
               )}
-              <Stack direction="row" flexWrap="wrap" gap={0.35} alignItems="center">
-                {groups.map((g) => {
-                  const on = round.groupIds.includes(g.id);
-                  const mode = on ? assessmentModeForGroup(round, g.id) : null;
-                  const groupListActive = on && round.groupIds.length > 1 && studentListGroupFilter === g.id;
-                  return (
-                    <Stack
-                      key={g.id}
-                      direction="row"
-                      alignItems="center"
-                      gap={0.2}
-                      sx={{
-                        borderRadius: 0.75,
-                        border: '1px solid',
-                        borderColor: groupListActive ? epoNotenPalette.primary : on ? 'rgba(25, 118, 210, 0.35)' : 'divider',
-                        bgcolor: groupListActive ? epoNotenPalette.primaryTint : on ? 'rgba(0,0,0,0.02)' : 'transparent',
-                        pl: 0.15,
-                        pr: on ? 0.15 : 0,
-                        py: 0.1,
-                      }}
-                    >
+
+              {groups.some((g) => !round.groupIds.includes(g.id)) && (
+                <Stack direction="row" flexWrap="wrap" gap={0.35} alignItems="center" sx={{ mb: round.groupIds.length > 0 ? 0.45 : 0 }}>
+                  <Typography variant="caption" sx={{ fontSize: '0.62rem', fontWeight: 700, color: 'text.secondary', mr: 0.25 }}>
+                    Kurs hinzufügen:
+                  </Typography>
+                  {groups
+                    .filter((g) => !round.groupIds.includes(g.id))
+                    .map((g) => (
                       <Chip
+                        key={g.id}
                         size="small"
+                        icon={<AddIcon sx={{ fontSize: '0.85rem !important' }} />}
                         label={g.name}
                         clickable
-                        onClick={() => {
-                          const next = on
-                            ? round.groupIds.filter((id) => id !== g.id)
-                            : [...round.groupIds, g.id];
-                          updateRoundGroups(next);
-                        }}
-                        variant={on ? 'filled' : 'outlined'}
-                        sx={{
-                          height: 20,
-                          fontSize: '0.65rem',
-                          fontWeight: 700,
-                          bgcolor: on ? 'transparent' : undefined,
-                          border: 'none',
-                          '& .MuiChip-label': { px: 0.6 },
-                        }}
+                        onClick={() => updateRoundGroups([...round.groupIds, g.id])}
+                        variant="outlined"
+                        sx={{ height: 22, fontSize: '0.68rem', fontWeight: 700 }}
                       />
-                      {on && mode ? (
-                        <Box onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                          <ToggleButtonGroup
-                            exclusive
-                            size="small"
-                            value={mode}
-                            onChange={(_, v: EpoNotenAssessmentMode | null) => {
-                              if (!v) return;
-                              void updateGroupAssessmentMode(g.id, v);
-                            }}
-                            disabled={saving}
+                    ))}
+                </Stack>
+              )}
+
+              {round.groupIds.length > 0 && (
+                <Stack spacing={0.35}>
+                  <Typography variant="caption" sx={{ fontSize: '0.62rem', fontWeight: 700, color: 'text.secondary' }}>
+                    Kurs wählen — Note/MSS gilt jeweils für diesen Kurs
+                  </Typography>
+                  {round.groupIds.map((gid) => {
+                    const g = groups.find((x) => x.id === gid);
+                    const mode = assessmentModeForGroup(round, gid);
+                    const isActive = activeCourseGroupId === gid;
+                    return (
+                      <Stack
+                        key={gid}
+                        direction="row"
+                        alignItems="center"
+                        flexWrap="wrap"
+                        gap={0.4}
+                        sx={{
+                          py: 0.25,
+                          px: 0.35,
+                          borderRadius: 1,
+                          border: '1px solid',
+                          borderColor: isActive ? epoNotenPalette.primary : 'divider',
+                          bgcolor: isActive ? epoNotenPalette.primaryTint : 'rgba(0,0,0,0.02)',
+                        }}
+                      >
+                        <Button
+                          size="small"
+                          variant={isActive ? 'contained' : 'outlined'}
+                          onClick={() => selectStudentListGroup(gid)}
+                          sx={{
+                            minHeight: 24,
+                            py: 0.15,
+                            px: 1,
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            textTransform: 'none',
+                            boxShadow: 'none',
+                          }}
+                        >
+                          {g?.name || gid}
+                        </Button>
+                        <ToggleButtonGroup
+                          exclusive
+                          size="small"
+                          value={mode}
+                          onChange={(_, v: EpoNotenAssessmentMode | null) => {
+                            if (!v) return;
+                            void updateGroupAssessmentMode(gid, v);
+                          }}
+                          disabled={saving}
+                        >
+                          <ToggleButton
+                            value="note"
+                            sx={{ px: 0.65, py: 0.1, minHeight: 24, fontSize: '0.65rem', fontWeight: 700, lineHeight: 1 }}
                           >
-                            <ToggleButton
-                              value="note"
-                              sx={{ px: 0.45, py: 0, minHeight: 18, fontSize: '0.58rem', fontWeight: 700, lineHeight: 1 }}
-                            >
-                              Note
-                            </ToggleButton>
-                            <ToggleButton
-                              value="mss"
-                              sx={{ px: 0.45, py: 0, minHeight: 18, fontSize: '0.58rem', fontWeight: 700, lineHeight: 1 }}
-                            >
-                              MSS
-                            </ToggleButton>
-                          </ToggleButtonGroup>
-                        </Box>
-                      ) : null}
-                      {on && round.groupIds.length > 1 ? (
-                        <Tooltip title="SuS-Liste filtern">
+                            Note
+                          </ToggleButton>
+                          <ToggleButton
+                            value="mss"
+                            sx={{ px: 0.65, py: 0.1, minHeight: 24, fontSize: '0.65rem', fontWeight: 700, lineHeight: 1 }}
+                          >
+                            MSS
+                          </ToggleButton>
+                        </ToggleButtonGroup>
+                        <Tooltip title="Kurs aus dieser Runde entfernen">
                           <IconButton
                             size="small"
-                            aria-label={`${g.name} in Liste`}
-                            onClick={() => selectStudentListGroup(g.id)}
-                            sx={{
-                              p: 0,
-                              width: 18,
-                              height: 18,
-                              color: groupListActive ? epoNotenPalette.primary : 'text.secondary',
-                            }}
+                            aria-label={`${g?.name || gid} entfernen`}
+                            onClick={() => updateRoundGroups(round.groupIds.filter((id) => id !== gid))}
+                            sx={{ p: 0.25, color: 'text.secondary' }}
                           >
-                            <Typography sx={{ fontSize: '0.55rem', fontWeight: 800, lineHeight: 1 }}>→</Typography>
+                            <CloseIcon sx={{ fontSize: 16 }} />
                           </IconButton>
                         </Tooltip>
-                      ) : null}
-                    </Stack>
-                  );
-                })}
-              </Stack>
+                      </Stack>
+                    );
+                  })}
+                </Stack>
+              )}
             </Box>
 
             <Box
@@ -960,9 +993,9 @@ export function EpoNotenTeacherView() {
                   <Box sx={{ minWidth: 0 }}>
                     <Typography sx={{ fontWeight: 800, fontSize: '0.68rem', mb: 0.2, color: epoNotenPalette.heading }}>
                       Schüler
-                      {studentListGroupFilter && round.groupIds.length > 1 ? (
+                      {activeCourseName ? (
                         <Typography component="span" sx={{ fontWeight: 600, color: 'text.secondary', ml: 0.5 }}>
-                          · {groups.find((x) => x.id === studentListGroupFilter)?.name || ''}
+                          · {activeCourseName}
                         </Typography>
                       ) : null}
                     </Typography>
@@ -1055,16 +1088,18 @@ export function EpoNotenTeacherView() {
                         </React.Fragment>
                       ))}
                     </List>
-                    <Button
-                      fullWidth
-                      size="small"
-                      variant="outlined"
-                      onClick={releaseAll}
-                      disabled={saving}
-                      sx={{ ...epoNotenCompactBtnSx, mt: 0.35 }}
-                    >
-                      Alle freigeben
-                    </Button>
+                    {activeCourseGroupId ? (
+                      <Button
+                        fullWidth
+                        size="small"
+                        variant="outlined"
+                        onClick={() => void releaseAllInGroup(activeCourseGroupId)}
+                        disabled={saving}
+                        sx={{ ...epoNotenCompactBtnSx, mt: 0.35 }}
+                      >
+                        Kurs „{activeCourseName}“ freigeben
+                      </Button>
+                    ) : null}
                   </Box>
 
                   <Box sx={{ minWidth: 0, width: '100%', maxWidth: 'none' }}>
@@ -1161,42 +1196,30 @@ export function EpoNotenTeacherView() {
                                 zIndex: 2,
                               }}
                             >
-                              <Typography sx={{ fontWeight: 800, fontSize: '0.68rem', mb: 0.35, color: epoNotenPalette.heading }}>
+                              <Typography sx={{ fontWeight: 800, fontSize: '0.68rem', mb: 0.25, color: epoNotenPalette.heading }}>
                                 {selectedAssessmentMode === 'mss' ? 'MSS-Punkte (0–15)' : 'EPO-Note'}
                               </Typography>
-                              <TextField
-                                label={selectedAssessmentMode === 'mss' ? 'MSS-Punkte' : 'EPO-Note'}
-                                size="small"
-                                value={teacherGrade}
-                                onChange={(e) => {
-                                  teacherScoresDirtyRef.current = true;
-                                  const raw = e.target.value;
-                                  const next =
-                                    selectedAssessmentMode === 'mss'
-                                      ? raw.replace(/[^\d]/g, '').slice(0, 2)
-                                      : raw;
-                                  teacherGradeRef.current = next;
-                                  setTeacherGrade(next);
-                                  setDraftStatus('saving');
-                                  void saveTeacherDraftNow().catch(() => undefined);
-                                }}
-                                placeholder={selectedAssessmentMode === 'mss' ? 'z. B. 11' : 'z. B. 2+ oder 3−'}
-                                fullWidth
-                                inputMode={selectedAssessmentMode === 'mss' ? 'numeric' : 'text'}
-                                helperText={
-                                  allCategoriesSelected(teacherScores)
-                                    ? selectedAssessmentMode === 'mss'
-                                      ? `Aus Raster: ${totalTeacher} MSS-Punkte (automatisch, anpassbar)`
-                                      : `Aus Raster: ${totalTeacher} Punkte → ${computedRasterResult} (automatisch, anpassbar)`
-                                    : selectedAssessmentMode === 'mss'
-                                      ? 'Raster vervollständigen oder MSS-Punkte manuell eintragen'
-                                      : 'Raster vervollständigen oder Note manuell eintragen'
-                                }
+                              <Typography
                                 sx={{
-                                  '& .MuiInputBase-root': { fontSize: '0.95rem', fontWeight: 700 },
-                                  '& .MuiInputLabel-root': { fontSize: '0.78rem' },
+                                  ...epoNotenBigNumberSx,
+                                  fontSize: '1.45rem',
+                                  color: teacherGrade.trim() || allCategoriesSelected(teacherScores)
+                                    ? epoNotenPalette.primary
+                                    : 'text.disabled',
                                 }}
-                              />
+                              >
+                                {teacherGrade.trim() ||
+                                  (allCategoriesSelected(teacherScores) ? computedRasterResult : '—')}
+                              </Typography>
+                              <Typography variant="caption" sx={{ display: 'block', mt: 0.35, color: 'text.secondary', lineHeight: 1.35 }}>
+                                {allCategoriesSelected(teacherScores)
+                                  ? selectedAssessmentMode === 'mss'
+                                    ? `Aus deinem Raster: ${totalTeacher} MSS-Punkte (wird automatisch gespeichert)`
+                                    : `Aus deinem Raster: ${totalTeacher} Punkte (wird automatisch gespeichert)`
+                                  : selectedAssessmentMode === 'mss'
+                                    ? 'Raster vervollständigen — dann erscheinen die MSS-Punkte hier.'
+                                    : 'Raster vervollständigen — dann erscheint die Note hier.'}
+                              </Typography>
                             </Box>
 
                             <Stack spacing={0.5} sx={{ mt: 1 }}>
