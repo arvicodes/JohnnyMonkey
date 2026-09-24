@@ -15877,36 +15877,27 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   const laptopSplitSeam = alpha('#3949ab', 0.2);
   const laptopSplitGlow = alpha('#3949ab', 0.12);
 
-  /** Epochal-Panel Kopfzeile: Laptop — höhere Buttons, lesbarere Schrift, Breite = Inhalt */
-  const epochalLaptopHeaderBtnSx = participationDocked
-    ? {
-        fontSize: '0.68rem',
-        py: 0.35,
-        px: 0.55,
-        minWidth: 'unset',
-        width: 'fit-content',
-        maxWidth: 'none',
-        textTransform: 'none' as const,
-        height: 28,
-        minHeight: 28,
-        lineHeight: 1.15,
-        whiteSpace: 'nowrap' as const,
-        '& .MuiButton-startIcon': { display: 'none' },
-      }
-    : {
-        fontSize: '0.65rem',
-        py: 0.25,
-        px: 0.6,
-        minWidth: 'auto',
-        textTransform: 'none' as const,
-        height: '24px',
-        minHeight: 24,
-        lineHeight: 1.1,
-        '& .MuiButton-startIcon': {
-          marginRight: '4px',
-          marginLeft: 0,
-        },
-      };
+  /** Epochal-Panel Kopfzeile — kompakt, Icons nicht über dem Label */
+  const epochalLaptopHeaderBtnSx = {
+    fontSize: participationDocked ? '0.68rem' : '0.72rem',
+    fontWeight: 700,
+    py: 0.35,
+    px: participationDocked ? 0.65 : 0.85,
+    minWidth: 'unset',
+    width: 'fit-content',
+    maxWidth: 'none',
+    textTransform: 'none' as const,
+    height: 30,
+    minHeight: 30,
+    lineHeight: 1.15,
+    whiteSpace: 'nowrap' as const,
+    borderRadius: 1.25,
+    boxShadow: 'none',
+    '&:hover': { boxShadow: 'none' },
+    '& .MuiButton-startIcon': {
+      display: 'none',
+    },
+  };
 
   useEffect(() => {
     if (lessonPlanViewMode !== 'background') {
