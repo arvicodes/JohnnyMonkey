@@ -61,17 +61,26 @@ const effectiveTeacherGrade = (entry, mode) => {
         return '';
     return rasterResultFromTotal(mode, sumCategoryScores(scores));
 };
-const normalizeAssessmentModes = (payload) => {
+const normalizeAssessmentModes = (payload, groupNamesById) => {
     const raw = payload.assessmentModeByGroup && typeof payload.assessmentModeByGroup === 'object'
         ? payload.assessmentModeByGroup
         : {};
     const modes = {};
     for (const gid of payload.groupIds) {
+        const gName = groupNamesById === null || groupNamesById === void 0 ? void 0 : groupNamesById.get(gid);
+        if (epoGroupUsesMssPoints(gName)) {
+            modes[gid] = 'mss';
+            continue;
+        }
         modes[gid] = raw[gid] === 'mss' ? 'mss' : 'note';
     }
     return modes;
 };
-const assessmentModeForGroup = (payload, groupId) => normalizeAssessmentModes(payload)[groupId] === 'mss' ? 'mss' : 'note';
+const assessmentModeForGroup = (payload, groupId, groupName) => {
+    if (epoGroupUsesMssPoints(groupName))
+        return 'mss';
+    return normalizeAssessmentModes(payload)[groupId] === 'mss' ? 'mss' : 'note';
+};
 const emptyIndex = () => ({
     version: 1,
     rounds: [],
@@ -181,6 +190,7 @@ const loadTeacherGroupsWithStudents = async (teacherId) => prisma.learningGroup.
     select: {
         id: true,
         name: true,
+        passiveStudentIds: true,
         students: {
             where: { role: 'STUDENT' },
             select: { id: true, name: true, avatarEmoji: true, avatarUrl: true },
@@ -189,6 +199,28 @@ const loadTeacherGroupsWithStudents = async (teacherId) => prisma.learningGroup.
     },
     orderBy: { name: 'asc' },
 });
+const parsePassiveStudentIds = (raw) => {
+    if (!(raw === null || raw === void 0 ? void 0 : raw.trim()))
+        return [];
+    try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed))
+            return [];
+        return parsed.map((id) => String(id)).filter(Boolean);
+    }
+    catch {
+        return [];
+    }
+};
+const epoGroupUsesMssPoints = (groupName) => {
+    if (!(groupName === null || groupName === void 0 ? void 0 : groupName.trim()))
+        return false;
+    const n = groupName.trim().toLowerCase();
+    if (!n.includes('informatik'))
+        return false;
+    return /\bgk\s*11\b/.test(n);
+};
+const defaultAssessmentModeForGroupName = (groupName) => epoGroupUsesMssPoints(groupName) ? 'mss' : 'note';
 const syncPublishedGroups = async (teacherId, data, groupIds, index, ownedGroupIds) => {
     const publishedAt = data.publishedAt || new Date().toISOString();
     const ref = {
@@ -324,7 +356,7 @@ const studentSessionDto = (resolved, studentId) => {
         date: resolved.payload.date,
         groupId: resolved.groupId,
         groupName: resolved.groupName,
-        assessmentMode: assessmentModeForGroup(resolved.payload, resolved.groupId),
+        assessmentMode: assessmentModeForGroup(resolved.payload, resolved.groupId, resolved.groupName),
         publishedAt: resolved.payload.publishedAt,
         isActive,
         isArchived: !isActive,
@@ -356,7 +388,13 @@ class EpoNotenController {
             }));
             return res.json({
                 rounds: items,
-                groups: groups.map((g) => ({ id: g.id, name: g.name, studentCount: g.students.length })),
+                groups: groups.map((g) => ({
+                    id: g.id,
+                    name: g.name,
+                    studentCount: g.students.length,
+                    passiveStudentIds: parsePassiveStudentIds(g.passiveStudentIds),
+                    students: g.students.map((s) => ({ id: s.id, name: s.name })),
+                })),
             });
         }
         catch (error) {
@@ -376,6 +414,10 @@ class EpoNotenController {
             if (!round)
                 return res.status(404).json({ error: 'Runde nicht gefunden' });
             const groups = await loadTeacherGroupsWithStudents(user.id);
+            const groupNameById = new Map(groups.map((g) => [g.id, g.name]));
+            round.assessmentModeByGroup = normalizeAssessmentModes(round, groupNameById);
+            const passiveByGroup = new Map(groups.map((g) => [g.id, new Set(parsePassiveStudentIds(g.passiveStudentIds))]));
+            const roundPublished = Boolean(round.publishedAt);
             const students = [];
             for (const g of groups) {
                 if (!round.groupIds.includes(g.id))
@@ -397,7 +439,34 @@ class EpoNotenController {
                 }
             }
             const byId = new Map(students.map((s) => [s.studentId, s]));
-            const merged = [...byId.values()].sort((a, b) => a.studentName.localeCompare(b.studentName, 'de'));
+            const merged = [...byId.values()].sort((a, b) => {
+                const ea = a;
+                const eb = b;
+                const passiveIds = (gid) => {
+                    var _a;
+                    if (!gid)
+                        return new Set();
+                    return (_a = passiveByGroup.get(gid)) !== null && _a !== void 0 ? _a : new Set();
+                };
+                const pa = ea.groupId ? passiveIds(ea.groupId).has(ea.studentId) : false;
+                const pb = eb.groupId ? passiveIds(eb.groupId).has(eb.studentId) : false;
+                if (pa !== pb)
+                    return pa ? 1 : -1;
+                const pend = (e, passive) => {
+                    if (passive || !roundPublished)
+                        return false;
+                    if (!e.studentSubmittedAt)
+                        return true;
+                    if (e.teacherReleasedAt && !e.goalsSubmittedAt)
+                        return true;
+                    return false;
+                };
+                const pendA = pend(ea, pa);
+                const pendB = pend(eb, pb);
+                if (pendA !== pendB)
+                    return pendA ? -1 : 1;
+                return ea.studentName.localeCompare(eb.studentName, 'de');
+            });
             return res.json({ round, students: merged, stats: roundStats(round) });
         }
         catch (error) {
@@ -428,7 +497,10 @@ class EpoNotenController {
                 title,
                 date: typeof ((_c = req.body) === null || _c === void 0 ? void 0 : _c.date) === 'string' ? req.body.date.trim() : new Date().toISOString().slice(0, 10),
                 groupIds,
-                assessmentModeByGroup: Object.fromEntries(groupIds.map((gid) => [gid, 'note'])),
+                assessmentModeByGroup: Object.fromEntries(groupIds.map((gid) => {
+                    const g = owned.find((x) => x.id === gid);
+                    return [gid, defaultAssessmentModeForGroupName(g === null || g === void 0 ? void 0 : g.name)];
+                })),
                 publishedAt: null,
                 entries: [],
                 createdAt: now,
@@ -459,6 +531,7 @@ class EpoNotenController {
                 return res.status(404).json({ error: 'Runde nicht gefunden' });
             const owned = await loadTeacherGroupsWithStudents(user.id);
             const ownedIds = new Set(owned.map((g) => g.id));
+            const groupNameById = new Map(owned.map((g) => [g.id, g.name]));
             const title = typeof ((_a = req.body) === null || _a === void 0 ? void 0 : _a.title) === 'string' ? req.body.title.trim() : existing.title;
             if (!title)
                 return res.status(400).json({ error: 'Titel ist erforderlich' });
@@ -466,13 +539,18 @@ class EpoNotenController {
             if (Array.isArray((_b = req.body) === null || _b === void 0 ? void 0 : _b.groupIds)) {
                 groupIds = req.body.groupIds.map((g) => String(g).trim()).filter((id) => ownedIds.has(id));
             }
-            let assessmentModeByGroup = normalizeAssessmentModes({ ...existing, groupIds });
+            let assessmentModeByGroup = normalizeAssessmentModes({ ...existing, groupIds }, groupNameById);
             if (((_c = req.body) === null || _c === void 0 ? void 0 : _c.assessmentModeByGroup) && typeof req.body.assessmentModeByGroup === 'object') {
                 const patch = req.body.assessmentModeByGroup;
                 for (const gid of groupIds) {
                     const v = patch[gid];
                     if (v === 'mss' || v === 'note')
                         assessmentModeByGroup[gid] = v;
+                }
+            }
+            for (const gid of groupIds) {
+                if (epoGroupUsesMssPoints(groupNameById.get(gid))) {
+                    assessmentModeByGroup[gid] = 'mss';
                 }
             }
             const next = {
@@ -639,7 +717,7 @@ class EpoNotenController {
                         publishedAt: resolved.payload.publishedAt,
                         groupId: resolved.groupId,
                         groupName: resolved.groupName,
-                        assessmentMode: assessmentModeForGroup(resolved.payload, resolved.groupId),
+                        assessmentMode: assessmentModeForGroup(resolved.payload, resolved.groupId, resolved.groupName),
                     },
                     myEntry,
                     canEditSelf,
@@ -696,10 +774,11 @@ class EpoNotenController {
             }
             const selfScores = normalizeCategoryScores((_d = req.body) === null || _d === void 0 ? void 0 : _d.selfScores);
             const total = sumCategoryScores(selfScores);
+            const mode = assessmentModeForGroup(payload, resolvedRound.groupId, resolvedRound.groupName);
             const selfGradeFromTable = typeof ((_e = req.body) === null || _e === void 0 ? void 0 : _e.selfGradeFromTable) === 'string' && req.body.selfGradeFromTable.trim()
                 ? req.body.selfGradeFromTable.trim()
-                : gradeFromTotalPoints(total);
-            const suggestedGradeMode = assessmentModeForGroup(payload, resolvedRound.groupId);
+                : rasterResultFromTotal(mode, total);
+            const suggestedGradeMode = mode;
             const entry = {
                 studentId: user.id,
                 studentName: user.name,
@@ -840,6 +919,7 @@ class EpoNotenController {
                 return res.status(400).json({ error: 'Diese Lerngruppe gehört nicht zu dieser Runde' });
             }
             const groups = await loadTeacherGroupsWithStudents(user.id);
+            const groupNameById = new Map(groups.map((g) => [g.id, g.name]));
             const studentToGroup = new Map();
             for (const g of groups) {
                 if (!payload.groupIds.includes(g.id))
@@ -858,7 +938,9 @@ class EpoNotenController {
                     continue;
                 if (!all && studentIds.length > 0 && !studentIds.includes(entry.studentId))
                     continue;
-                const mode = entryGroupId ? assessmentModeForGroup(payload, entryGroupId) : 'note';
+                const mode = entryGroupId
+                    ? assessmentModeForGroup(payload, entryGroupId, groupNameById.get(entryGroupId))
+                    : 'note';
                 const grade = effectiveTeacherGrade(entry, mode);
                 if (!grade)
                     continue;

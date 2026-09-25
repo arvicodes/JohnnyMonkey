@@ -109,9 +109,6 @@ export function EpoNotenTeacherView() {
   /** null = alle Gruppen in der SuS-Liste, sonst nur diese Lerngruppe */
   const [studentListGroupFilter, setStudentListGroupFilter] = useState<string | null>(null);
 
-  const [passiveDialogOpen, setPassiveDialogOpen] = useState(false);
-  const [passiveDialogGroupId, setPassiveDialogGroupId] = useState('');
-  const [passiveDraftIds, setPassiveDraftIds] = useState<string[]>([]);
   const [passiveSaving, setPassiveSaving] = useState(false);
 
   const loadList = useCallback(async () => {
@@ -208,19 +205,12 @@ export function EpoNotenTeacherView() {
     [allPassiveStudentIds, round?.publishedAt],
   );
 
-  const openPassiveDialog = (groupId: string) => {
-    setPassiveDialogGroupId(groupId);
-    setPassiveDraftIds(passiveIdsForGroup(groupId));
-    setPassiveDialogOpen(true);
-  };
-
-  const savePassiveStudents = async () => {
-    if (!passiveDialogGroupId) return;
+  const updatePassiveStudentsForGroup = async (groupId: string, studentIds: string[]) => {
     setPassiveSaving(true);
     setError(null);
     try {
-      const res = await apiPut(`/api/learning-groups/${passiveDialogGroupId}/passive-students`, {
-        studentIds: passiveDraftIds,
+      const res = await apiPut(`/api/learning-groups/${groupId}/passive-students`, {
+        studentIds,
       });
       if (!res?.ok) {
         const err = await res.json().catch(() => ({}));
@@ -228,15 +218,23 @@ export function EpoNotenTeacherView() {
       }
       const updated = await res.json();
       const nextIds = parsePassiveStudentIds(updated.passiveStudentIds);
-      setGroups((prev) =>
-        prev.map((g) => (g.id === passiveDialogGroupId ? { ...g, passiveStudentIds: nextIds } : g)),
-      );
-      setPassiveDialogOpen(false);
+      setGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, passiveStudentIds: nextIds } : g)));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
     } finally {
       setPassiveSaving(false);
     }
+  };
+
+  const toggleSelectedStudentPassive = async () => {
+    if (!selectedStudent?.groupId) return;
+    const gid = selectedStudent.groupId;
+    const current = passiveIdsForGroup(gid);
+    const isPassive = isPassiveStudentId(selectedStudent.studentId, current);
+    const next = isPassive
+      ? current.filter((id) => id !== selectedStudent.studentId)
+      : [...current, selectedStudent.studentId];
+    await updatePassiveStudentsForGroup(gid, next);
   };
 
   const selectStudentListGroup = (gid: string) => {
@@ -1084,15 +1082,6 @@ export function EpoNotenTeacherView() {
                           <ToggleButton value="mss">MSS</ToggleButton>
                         </ToggleButtonGroup>
                       )}
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => openPassiveDialog(activeCourseGroupId)}
-                        disabled={saving}
-                        sx={{ ...epoNotenCompactBtnSx, ml: 'auto' }}
-                      >
-                        Länger abwesend
-                      </Button>
                     </Stack>
                   )}
                 </Stack>
@@ -1308,6 +1297,60 @@ export function EpoNotenTeacherView() {
                       </Typography>
                     ) : (
                       <Stack spacing={0.45}>
+                        {selectedStudent.groupId ? (
+                          <Stack
+                            direction="row"
+                            alignItems="center"
+                            justifyContent="space-between"
+                            gap={0.75}
+                            flexWrap="wrap"
+                            sx={{ mb: 0.25 }}
+                          >
+                            <Typography sx={{ fontWeight: 800, fontSize: '0.82rem' }}>
+                              {selectedStudent.studentName}
+                            </Typography>
+                            <Button
+                              size="small"
+                              variant={
+                                isPassiveStudentId(
+                                  selectedStudent.studentId,
+                                  passiveIdsForGroup(selectedStudent.groupId),
+                                )
+                                  ? 'contained'
+                                  : 'outlined'
+                              }
+                              color={
+                                isPassiveStudentId(
+                                  selectedStudent.studentId,
+                                  passiveIdsForGroup(selectedStudent.groupId),
+                                )
+                                  ? 'inherit'
+                                  : 'warning'
+                              }
+                              onClick={() => void toggleSelectedStudentPassive()}
+                              disabled={passiveSaving || saving}
+                              sx={epoNotenCompactBtnSx}
+                            >
+                              {passiveSaving
+                                ? 'Speichern…'
+                                : isPassiveStudentId(
+                                      selectedStudent.studentId,
+                                      passiveIdsForGroup(selectedStudent.groupId),
+                                    )
+                                  ? 'Wieder aktiv'
+                                  : 'Länger abwesend'}
+                            </Button>
+                          </Stack>
+                        ) : null}
+                        {selectedStudent.groupId &&
+                        isPassiveStudentId(
+                          selectedStudent.studentId,
+                          passiveIdsForGroup(selectedStudent.groupId),
+                        ) ? (
+                          <Alert severity="info" sx={{ py: 0.35, fontSize: '0.72rem' }}>
+                            Länger abwesend — in der Liste unten, ausgegraut, ohne „Bitte ausfüllen“.
+                          </Alert>
+                        ) : null}
                         {round?.publishedAt &&
                           selectedStudent?.groupId &&
                           !isPassiveStudentId(
@@ -1689,59 +1732,6 @@ export function EpoNotenTeacherView() {
             sx={epoNotenCompactBtnSx}
           >
             Anlegen
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={passiveDialogOpen} onClose={() => !passiveSaving && setPassiveDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={dialogCloseTitleSx}>
-          Länger abwesend
-          <DialogCloseIconButton
-            onClose={() => !passiveSaving && setPassiveDialogOpen(false)}
-            disabled={passiveSaving}
-          />
-        </DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            Abwesende SuS erscheinen in dieser EPO-Runde unten, ausgegraut, und zählen nicht als „Bitte
-            ausfüllen“.
-          </Typography>
-          <Stack spacing={0.25}>
-            {(groups.find((g) => g.id === passiveDialogGroupId)?.students ?? []).map((student) => {
-              const checked = passiveDraftIds.includes(student.id);
-              return (
-                <Box
-                  key={student.id}
-                  role="checkbox"
-                  aria-checked={checked}
-                  onClick={() => {
-                    setPassiveDraftIds((prev) =>
-                      checked ? prev.filter((id) => id !== student.id) : [...prev, student.id],
-                    );
-                  }}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    py: 0.35,
-                    cursor: 'pointer',
-                    borderRadius: 1,
-                    '&:hover': { bgcolor: 'action.hover' },
-                  }}
-                >
-                  <Checkbox checked={checked} tabIndex={-1} disableRipple sx={{ p: 0.25 }} />
-                  <Typography variant="body2">{student.name}</Typography>
-                </Box>
-              );
-            })}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPassiveDialogOpen(false)} disabled={passiveSaving}>
-            Abbrechen
-          </Button>
-          <Button variant="contained" onClick={() => void savePassiveStudents()} disabled={passiveSaving}>
-            {passiveSaving ? 'Speichern…' : 'Speichern'}
           </Button>
         </DialogActions>
       </Dialog>
