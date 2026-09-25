@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Box, Button, Typography } from '@mui/material';
-import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import StarIcon from '@mui/icons-material/Star';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -86,19 +85,6 @@ type Props = {
   studentId?: string;
   preview?: boolean;
 };
-
-function speakGerman(text: string) {
-  try {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'de-DE';
-    u.rate = 0.95;
-    window.speechSynthesis.speak(u);
-  } catch {
-    /* ignore */
-  }
-}
 
 function ProgressSegments({
   answers,
@@ -216,7 +202,7 @@ function TipButton({
   const [open, setOpen] = useState(false);
   if (!tip) return null;
   return (
-    <Box sx={{ position: 'absolute', top: `${8 * scale}px`, right: `${10 * scale}px`, zIndex: 2 }}>
+    <Box sx={{ position: 'absolute', top: `${8 * scale}px`, left: `${10 * scale}px`, zIndex: 2 }}>
       <Button
         size="small"
         disabled={!interactive}
@@ -897,32 +883,18 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     const mode = currentQ.mode || 'choice';
 
     const promptRow = (
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: `${8 * s}px`, px: `${16 * s}px` }}>
-        {interactive ? (
-          <Box
-            component="button"
-            type="button"
-            onClick={() => speakGerman(currentQ.prompt)}
-            aria-label="Vorlesen"
-            sx={{
-              border: 'none',
-              bgcolor: 'transparent',
-              cursor: 'pointer',
-              p: 0,
-              display: 'flex',
-              color: '#222',
-              mt: `${2 * s}px`,
-            }}
-          >
-            <VolumeUpIcon sx={{ fontSize: `${22 * s}px` }} />
-          </Box>
-        ) : (
-          <VolumeUpIcon sx={{ fontSize: `${22 * s}px`, color: '#222', mt: `${2 * s}px` }} />
-        )}
-        <Typography sx={{ fontSize: `${18 * s}px`, fontWeight: 600, color: '#1a1a2e', lineHeight: 1.35 }}>
-          {currentQ.prompt}
-        </Typography>
-      </Box>
+      <Typography
+        sx={{
+          fontSize: `${18 * s}px`,
+          fontWeight: 600,
+          color: '#1a1a2e',
+          lineHeight: 1.35,
+          px: `${16 * s}px`,
+          textAlign: 'center',
+        }}
+      >
+        {currentQ.prompt}
+      </Typography>
     );
 
     return (
@@ -949,18 +921,25 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
             aria-label="Schließen"
             sx={{
               position: 'absolute',
-              top: `${8 * s}px`,
-              left: `${10 * s}px`,
+              top: `${6 * s}px`,
+              right: `${6 * s}px`,
               border: 'none',
-              bgcolor: 'transparent',
+              bgcolor: 'rgba(0,0,0,0.06)',
+              borderRadius: `${6 * s}px`,
               cursor: 'pointer',
-              p: `${4 * s}px`,
-              lineHeight: 1,
-              color: '#444',
-              zIndex: 2,
+              p: `${2 * s}px`,
+              lineHeight: 0,
+              color: '#555',
+              zIndex: 3,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: `${24 * s}px`,
+              minHeight: `${24 * s}px`,
+              '&:hover': { bgcolor: 'rgba(0,0,0,0.1)', color: '#222' },
             }}
           >
-            <CloseIcon sx={{ fontSize: `${22 * s}px` }} />
+            <CloseIcon sx={{ fontSize: `${16 * s}px` }} />
           </Box>
         ) : null}
         <TipButton tip={currentQ.tip} scale={s} interactive={Boolean(interactive)} />
@@ -1368,23 +1347,16 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                     return (
                       <Box key={`cv-${bi}`}>
                         {sep}
-                        <Box
+                        <Typography
                           sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: `${6 * s}px`,
+                            fontSize: `${15 * s}px`,
+                            fontWeight: 700,
                             mb: `${10 * s}px`,
-                            justifyContent: 'center',
+                            textAlign: 'center',
                           }}
                         >
-                          <VolumeUpIcon
-                            sx={{ fontSize: `${16 * s}px`, color: '#555', cursor: 'pointer' }}
-                            onClick={() => speakGerman('Schreibe mit arabischen Ziffern.')}
-                          />
-                          <Typography sx={{ fontSize: `${15 * s}px`, fontWeight: 700 }}>
-                            Schreibe mit arabischen Ziffern.
-                          </Typography>
-                        </Box>
+                          Schreibe mit arabischen Ziffern.
+                        </Typography>
                         {block.items.map((it, ii) => {
                           const idx = start + ii;
                           const st = convertStatuses[idx] || 'idle';
@@ -1452,25 +1424,16 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                   return (
                     <Box key={`cp-${bi}`}>
                       {sep}
-                      <Box
+                      <Typography
                         sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: `${6 * s}px`,
+                          fontSize: `${15 * s}px`,
+                          fontWeight: 700,
                           mb: `${10 * s}px`,
-                          justifyContent: 'center',
+                          textAlign: 'center',
                         }}
                       >
-                        <VolumeUpIcon
-                          sx={{ fontSize: `${16 * s}px`, color: '#555', cursor: 'pointer' }}
-                          onClick={() =>
-                            speakGerman('Setze nun das passende Vergleichszeichen ein.')
-                          }
-                        />
-                        <Typography sx={{ fontSize: `${15 * s}px`, fontWeight: 700 }}>
-                          Setze nun das passende Vergleichszeichen ein.
-                        </Typography>
-                      </Box>
+                        Setze nun das passende Vergleichszeichen ein.
+                      </Typography>
                       <Box
                         sx={{
                           display: 'flex',
