@@ -84,7 +84,121 @@ type Props = {
   groupId?: string;
   studentId?: string;
   preview?: boolean;
+  /** Vorschau-Dialog schließen (nur auf der Themenliste). */
+  onDismiss?: () => void;
 };
+
+const compactCloseBtnSx = (scale: number) => ({
+  border: 'none',
+  bgcolor: 'rgba(0,0,0,0.06)',
+  borderRadius: `${6 * scale}px`,
+  cursor: 'pointer',
+  p: `${2 * scale}px`,
+  lineHeight: 0,
+  color: '#555',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: `${24 * scale}px`,
+  height: `${24 * scale}px`,
+  flexShrink: 0,
+  '&:hover': { bgcolor: 'rgba(0,0,0,0.1)', color: '#222' },
+});
+
+function ExerciseTopBar({
+  scale,
+  interactive,
+  tip,
+  showClose,
+  closeLabel,
+  onClose,
+}: {
+  scale: number;
+  interactive: boolean;
+  tip?: string;
+  showClose: boolean;
+  closeLabel: string;
+  onClose: () => void;
+}) {
+  const [tipOpen, setTipOpen] = useState(false);
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: `${6 * scale}px`,
+        px: `${8 * scale}px`,
+        pt: `${6 * scale}px`,
+        pb: `${4 * scale}px`,
+        flexShrink: 0,
+        minHeight: `${28 * scale}px`,
+      }}
+    >
+      <Box sx={{ flex: 1, minWidth: 0, position: 'relative' }}>
+        {tip ? (
+          <>
+            <Button
+              size="small"
+              disabled={!interactive}
+              onClick={() => setTipOpen((v) => !v)}
+              sx={{
+                minWidth: 0,
+                px: `${8 * scale}px`,
+                py: `${3 * scale}px`,
+                bgcolor: '#fff',
+                border: '1px solid rgba(0,0,0,0.15)',
+                color: '#333',
+                fontWeight: 700,
+                fontSize: `${12 * scale}px`,
+                textTransform: 'none',
+                borderRadius: `${8 * scale}px`,
+                gap: `${4 * scale}px`,
+              }}
+            >
+              Tipp
+              <LightbulbOutlinedIcon sx={{ fontSize: `${14 * scale}px` }} />
+            </Button>
+            {tipOpen ? (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  mt: `${4 * scale}px`,
+                  p: `${10 * scale}px`,
+                  width: `${min(220 * scale, 280)}px`,
+                  maxWidth: 'min(92vw, 280px)',
+                  bgcolor: '#fff',
+                  border: '1px solid rgba(0,0,0,0.12)',
+                  borderRadius: `${8 * scale}px`,
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                  fontSize: `${13 * scale}px`,
+                  color: '#333',
+                  lineHeight: 1.35,
+                  zIndex: 4,
+                }}
+              >
+                {tip}
+              </Box>
+            ) : null}
+          </>
+        ) : null}
+      </Box>
+      {showClose ? (
+        <Box
+          component="button"
+          type="button"
+          onClick={onClose}
+          aria-label={closeLabel}
+          sx={compactCloseBtnSx(scale)}
+        >
+          <CloseIcon sx={{ fontSize: `${16 * scale}px` }} />
+        </Box>
+      ) : null}
+    </Box>
+  );
+}
 
 function ProgressSegments({
   answers,
@@ -190,62 +304,6 @@ function RomanTable({ scale }: { scale: number }) {
   );
 }
 
-function TipButton({
-  tip,
-  scale,
-  interactive,
-}: {
-  tip?: string;
-  scale: number;
-  interactive: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  if (!tip) return null;
-  return (
-    <Box sx={{ position: 'absolute', top: `${8 * scale}px`, left: `${10 * scale}px`, zIndex: 2 }}>
-      <Button
-        size="small"
-        disabled={!interactive}
-        onClick={() => setOpen((v) => !v)}
-        sx={{
-          minWidth: 0,
-          px: `${8 * scale}px`,
-          py: `${4 * scale}px`,
-          bgcolor: '#fff',
-          border: '1px solid rgba(0,0,0,0.15)',
-          color: '#333',
-          fontWeight: 700,
-          fontSize: `${12 * scale}px`,
-          textTransform: 'none',
-          borderRadius: `${8 * scale}px`,
-          gap: `${4 * scale}px`,
-        }}
-      >
-        Tipp
-        <LightbulbOutlinedIcon sx={{ fontSize: `${16 * scale}px` }} />
-      </Button>
-      {open ? (
-        <Box
-          sx={{
-            mt: `${6 * scale}px`,
-            p: `${10 * scale}px`,
-            width: `${220 * scale}px`,
-            bgcolor: '#fff',
-            border: '1px solid rgba(0,0,0,0.12)',
-            borderRadius: `${8 * scale}px`,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-            fontSize: `${13 * scale}px`,
-            color: '#333',
-            lineHeight: 1.35,
-          }}
-        >
-          {tip}
-        </Box>
-      ) : null}
-    </Box>
-  );
-}
-
 function blankCount(parts?: EquationPart[]): number {
   return (parts || []).filter((p) => p.type === 'blank').length;
 }
@@ -321,6 +379,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   groupId = '',
   studentId = '',
   preview = false,
+  onDismiss,
 }) => {
   const exercise = useMemo(
     () => resolveInteractiveExercise(rawExercise) || rawExercise,
@@ -815,6 +874,14 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   if (!exercise) return null;
   const s = scale;
 
+  const handleTopClose = () => {
+    if (phase === 'hub') onDismiss?.();
+    else backToHub();
+  };
+
+  const showTopClose = Boolean(interactive && (phase !== 'hub' || onDismiss));
+  const topCloseLabel = phase === 'hub' ? 'Schließen' : 'Zurück zur Themenliste';
+
   if (phase === 'result' && topic) {
     return (
       <Box
@@ -823,14 +890,28 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
           bgcolor: '#fff',
-          px: `${24 * s}px`,
           boxSizing: 'border-box',
           pointerEvents: interactive ? 'auto' : 'none',
         }}
       >
+        <ExerciseTopBar
+          scale={s}
+          interactive={Boolean(interactive)}
+          showClose={showTopClose}
+          closeLabel={topCloseLabel}
+          onClose={handleTopClose}
+        />
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            px: `${24 * s}px`,
+          }}
+        >
         <Typography
           sx={{
             fontSize: `${22 * s}px`,
@@ -875,6 +956,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
             Weiter ›
           </Button>
         </Box>
+        </Box>
       </Box>
     );
   }
@@ -906,43 +988,19 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
           flexDirection: 'column',
           bgcolor: '#f7f7f7',
           boxSizing: 'border-box',
-          pt: `${10 * s}px`,
           pb: `${16 * s}px`,
           pointerEvents: interactive ? 'auto' : 'none',
-          position: 'relative',
           overflow: 'hidden',
         }}
       >
-        {interactive ? (
-          <Box
-            component="button"
-            type="button"
-            onClick={backToHub}
-            aria-label="Schließen"
-            sx={{
-              position: 'absolute',
-              top: `${6 * s}px`,
-              right: `${6 * s}px`,
-              border: 'none',
-              bgcolor: 'rgba(0,0,0,0.06)',
-              borderRadius: `${6 * s}px`,
-              cursor: 'pointer',
-              p: `${2 * s}px`,
-              lineHeight: 0,
-              color: '#555',
-              zIndex: 3,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minWidth: `${24 * s}px`,
-              minHeight: `${24 * s}px`,
-              '&:hover': { bgcolor: 'rgba(0,0,0,0.1)', color: '#222' },
-            }}
-          >
-            <CloseIcon sx={{ fontSize: `${16 * s}px` }} />
-          </Box>
-        ) : null}
-        <TipButton tip={currentQ.tip} scale={s} interactive={Boolean(interactive)} />
+        <ExerciseTopBar
+          scale={s}
+          interactive={Boolean(interactive)}
+          tip={currentQ.tip}
+          showClose={showTopClose}
+          closeLabel={topCloseLabel}
+          onClose={handleTopClose}
+        />
 
         <ProgressSegments answers={answers} total={topic.questions.length} scale={s} />
 
@@ -1705,13 +1763,20 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
         overflow: 'hidden',
       }}
     >
+      <ExerciseTopBar
+        scale={s}
+        interactive={Boolean(interactive)}
+        showClose={showTopClose}
+        closeLabel={topCloseLabel}
+        onClose={handleTopClose}
+      />
       <Typography
         sx={{
           fontSize: `${(preview ? 16 : 22) * s}px`,
           fontWeight: 800,
           color: '#1a1a2e',
           px: `${20 * s}px`,
-          pt: `${14 * s}px`,
+          pt: `${4 * s}px`,
           pb: `${8 * s}px`,
         }}
       >

@@ -314,13 +314,16 @@ const PresentationSlideExerciseBox: React.FC<Props> = ({
         fullWidth
         PaperProps={{ sx: { height: '85vh' } }}
       >
-        <DialogTitle sx={{ ...dialogCloseTitleSx, bgcolor: ACCENT, color: '#fff' }}>
+        <DialogTitle
+          sx={{
+            bgcolor: ACCENT,
+            color: '#fff',
+            py: 0.75,
+            fontSize: '0.85rem',
+            fontWeight: 800,
+          }}
+        >
           {exercise.title}
-          <DialogCloseIconButton
-            onClose={() => setPreviewOpen(false)}
-            sx={{ color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' } }}
-            iconSx={{ color: '#fff' }}
-          />
         </DialogTitle>
         <DialogContent sx={{ p: 0, height: '100%', bgcolor: '#fff' }}>
           <Box sx={{ height: '100%', minHeight: 420 }}>
@@ -330,6 +333,7 @@ const PresentationSlideExerciseBox: React.FC<Props> = ({
               scale={1}
               lessonPath={lessonPath}
               groupId={gid}
+              onDismiss={() => setPreviewOpen(false)}
             />
           </Box>
         </DialogContent>
