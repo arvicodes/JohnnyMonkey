@@ -167,7 +167,7 @@ function ExerciseTopBar({
                   left: 0,
                   mt: `${4 * scale}px`,
                   p: `${10 * scale}px`,
-                  width: `${min(220 * scale, 280)}px`,
+                  width: `${Math.min(220 * scale, 280)}px`,
                   maxWidth: 'min(92vw, 280px)',
                   bgcolor: '#fff',
                   border: '1px solid rgba(0,0,0,0.12)',
