@@ -40,6 +40,8 @@ import {
   type EpoNotenStudentSession,
   emptyCategoryScores,
   epoSummaryHeadline,
+  epoGroupUsesMssPoints,
+  studentSelfSummaryHeadline,
   epoSummarySubline,
   minPointsThresholdForTotal,
   normalizeCategoryScores,
@@ -146,7 +148,8 @@ export default function EpoNotenPage() {
             assessmentMode?: EpoNotenAssessmentMode;
           };
           setRoundMeta({ id: r.id, title: r.title, date: r.date, groupName: r.groupName });
-          mode = r.assessmentMode === 'mss' ? 'mss' : 'note';
+          mode =
+            epoGroupUsesMssPoints(r.groupName) || r.assessmentMode === 'mss' ? 'mss' : 'note';
         } else if (fromList) {
           setRoundMeta({
             id: fromList.id,
@@ -154,7 +157,10 @@ export default function EpoNotenPage() {
             date: fromList.date,
             groupName: fromList.groupName,
           });
-          mode = fromList.assessmentMode === 'mss' ? 'mss' : 'note';
+          mode =
+            epoGroupUsesMssPoints(fromList.groupName) || fromList.assessmentMode === 'mss'
+              ? 'mss'
+              : 'note';
         }
 
         if (!data.round && !fromList) {
@@ -390,11 +396,7 @@ export default function EpoNotenPage() {
                     {(() => {
                       const selfPts = sumCategoryScores(myEntry.selfScores);
                       const teacherPts = sumCategoryScores(myEntry.teacherScores);
-                      const selfHeadline = epoSummaryHeadline(
-                        assessmentMode,
-                        myEntry.selfGradeFromTable || rasterResultFromTotal(assessmentMode, selfPts),
-                        selfPts,
-                      );
+                      const selfHeadline = studentSelfSummaryHeadline(myEntry, assessmentMode);
                       const teacherHeadline = epoSummaryHeadline(
                         assessmentMode,
                         myEntry.teacherGrade || '',

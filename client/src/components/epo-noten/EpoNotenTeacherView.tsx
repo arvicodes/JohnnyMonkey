@@ -29,14 +29,17 @@ import UnpublishedIcon from '@mui/icons-material/Unpublished';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import { apiDelete, apiGetSafe, apiPost, apiPut } from '../../lib/api';
+import { isPassiveStudentId, parsePassiveStudentIds } from '../../lib/passiveStudents';
 import {
   EPO_NOTEN_TEACHER_CATEGORIES,
   type EpoNotenEntry,
   type EpoNotenRound,
   allCategoriesSelected,
   assessmentModeForGroup,
-  formatSuggestedGradeDisplay,
+  compareEpoStudentListOrder,
+  epoGroupUsesMssPoints,
   rasterResultFromTotal,
+  studentSelfAssessmentDisplay,
   type EpoNotenAssessmentMode,
   normalizeCategoryScores,
   shouldPrefillTeacherFromSelf,
@@ -63,7 +66,13 @@ import {
   epoNotenBitteAusfuellenAlertSx,
 } from './epoNotenUi';
 
-type GroupInfo = { id: string; name: string; studentCount: number };
+type GroupInfo = {
+  id: string;
+  name: string;
+  studentCount: number;
+  passiveStudentIds?: string[];
+  students?: { id: string; name: string }[];
+};
 
 type RoundListItem = {
   id: string;
@@ -99,6 +108,11 @@ export function EpoNotenTeacherView() {
   const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   /** null = alle Gruppen in der SuS-Liste, sonst nur diese Lerngruppe */
   const [studentListGroupFilter, setStudentListGroupFilter] = useState<string | null>(null);
+
+  const [passiveDialogOpen, setPassiveDialogOpen] = useState(false);
+  const [passiveDialogGroupId, setPassiveDialogGroupId] = useState('');
+  const [passiveDraftIds, setPassiveDraftIds] = useState<string[]>([]);
+  const [passiveSaving, setPassiveSaving] = useState(false);
 
   const loadList = useCallback(async () => {
     const res = await apiGetSafe('/api/epo-noten/list');
@@ -165,6 +179,66 @@ export function EpoNotenTeacherView() {
 
   const selectedStudent = students.find((s) => s.studentId === selectedStudentId) ?? null;
 
+  const groupMode = useCallback(
+    (groupId: string): EpoNotenAssessmentMode => {
+      const name = groups.find((g) => g.id === groupId)?.name;
+      return assessmentModeForGroup(round, groupId, name);
+    },
+    [groups, round],
+  );
+
+  const passiveIdsForGroup = useCallback(
+    (groupId: string) => parsePassiveStudentIds(groups.find((g) => g.id === groupId)?.passiveStudentIds),
+    [groups],
+  );
+
+  const allPassiveStudentIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const gid of round?.groupIds ?? []) {
+      for (const id of passiveIdsForGroup(gid)) s.add(id);
+    }
+    return s;
+  }, [passiveIdsForGroup, round?.groupIds]);
+
+  const sortStudentsForGroup = useCallback(
+    (list: EpoNotenEntry[]) =>
+      [...list].sort((a, b) =>
+        compareEpoStudentListOrder(a, b, Boolean(round?.publishedAt), allPassiveStudentIds),
+      ),
+    [allPassiveStudentIds, round?.publishedAt],
+  );
+
+  const openPassiveDialog = (groupId: string) => {
+    setPassiveDialogGroupId(groupId);
+    setPassiveDraftIds(passiveIdsForGroup(groupId));
+    setPassiveDialogOpen(true);
+  };
+
+  const savePassiveStudents = async () => {
+    if (!passiveDialogGroupId) return;
+    setPassiveSaving(true);
+    setError(null);
+    try {
+      const res = await apiPut(`/api/learning-groups/${passiveDialogGroupId}/passive-students`, {
+        studentIds: passiveDraftIds,
+      });
+      if (!res?.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(typeof err.error === 'string' ? err.error : 'Speichern fehlgeschlagen');
+      }
+      const updated = await res.json();
+      const nextIds = parsePassiveStudentIds(updated.passiveStudentIds);
+      setGroups((prev) =>
+        prev.map((g) => (g.id === passiveDialogGroupId ? { ...g, passiveStudentIds: nextIds } : g)),
+      );
+      setPassiveDialogOpen(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Fehler');
+    } finally {
+      setPassiveSaving(false);
+    }
+  };
+
   const selectStudentListGroup = (gid: string) => {
     setStudentListGroupFilter((prev) => (prev === gid ? null : gid));
   };
@@ -206,8 +280,7 @@ export function EpoNotenTeacherView() {
     if (selectedStudentId !== prevSelectedStudentIdRef.current) {
       prevSelectedStudentIdRef.current = selectedStudentId;
       teacherScoresDirtyRef.current = false;
-      const mode =
-        entry?.groupId && round ? assessmentModeForGroup(round, entry.groupId) : 'note';
+      const mode = entry?.groupId ? groupMode(entry.groupId) : 'note';
       const scores = teacherFormScoresFromEntry(entry);
       teacherScoresRef.current = scores;
       setTeacherScores(scores);
@@ -219,8 +292,7 @@ export function EpoNotenTeacherView() {
     }
 
     if (teacherScoresDirtyRef.current || !entry) return;
-    const mode =
-      entry.groupId && round ? assessmentModeForGroup(round, entry.groupId) : 'note';
+    const mode = entry.groupId ? groupMode(entry.groupId) : 'note';
     const server = teacherFormScoresFromEntry(entry);
     const local = teacherScoresRef.current;
     if (local.every((s) => s < 0) && server.some((s) => s >= 0)) {
@@ -235,9 +307,7 @@ export function EpoNotenTeacherView() {
 
   const totalTeacher = sumCategoryScores(teacherScores);
   const selectedAssessmentMode: EpoNotenAssessmentMode =
-    round && selectedStudent?.groupId
-      ? assessmentModeForGroup(round, selectedStudent.groupId)
-      : 'note';
+    selectedStudent?.groupId ? groupMode(selectedStudent.groupId) : 'note';
   const computedRasterResult = rasterResultFromTotal(selectedAssessmentMode, totalTeacher);
 
   const persistTeacherEntry = useCallback(
@@ -247,8 +317,7 @@ export function EpoNotenTeacherView() {
       }
       const scores = normalizeCategoryScores(scoresSnapshot);
       const row = students.find((s) => s.studentId === selectedStudentId);
-      const mode =
-        row?.groupId && round ? assessmentModeForGroup(round, row.groupId) : selectedAssessmentMode;
+      const mode = row?.groupId ? groupMode(row.groupId) : selectedAssessmentMode;
       const resolvedGrade =
         grade.trim() ||
         (allCategoriesSelected(scores) ? rasterResultFromTotal(mode, sumCategoryScores(scores)) : '');
@@ -546,23 +615,21 @@ export function EpoNotenTeacherView() {
     if (!round) return [];
     const sections: { groupId: string; groupName: string; students: EpoNotenEntry[] }[] = [];
     for (const gid of round.groupIds) {
-      const inGroup = studentsForList
-        .filter((s) => s.groupId === gid)
-        .sort((a, b) => a.studentName.localeCompare(b.studentName, 'de'));
+      const inGroup = sortStudentsForGroup(studentsForList.filter((s) => s.groupId === gid));
       sections.push({
         groupId: gid,
         groupName: groups.find((g) => g.id === gid)?.name || gid,
         students: inGroup,
       });
     }
-    const orphans = studentsForList
-      .filter((s) => !s.groupId || !round.groupIds.includes(s.groupId))
-      .sort((a, b) => a.studentName.localeCompare(b.studentName, 'de'));
+    const orphans = sortStudentsForGroup(
+      studentsForList.filter((s) => !s.groupId || !round.groupIds.includes(s.groupId)),
+    );
     if (orphans.length > 0) {
       sections.push({ groupId: '__other__', groupName: 'Weitere', students: orphans });
     }
     return sections;
-  }, [groups, round, studentsForList]);
+  }, [groups, round, studentsForList, sortStudentsForGroup]);
 
   const visibleStudentSections = useMemo(() => {
     if (!studentListGroupFilter) return studentSections;
@@ -574,12 +641,12 @@ export function EpoNotenTeacherView() {
       {
         groupId: studentListGroupFilter,
         groupName,
-        students: studentsForList
-          .filter((s) => s.groupId === studentListGroupFilter)
-          .sort((a, b) => a.studentName.localeCompare(b.studentName, 'de')),
+        students: sortStudentsForGroup(
+          studentsForList.filter((s) => s.groupId === studentListGroupFilter),
+        ),
       },
     ];
-  }, [groups, studentListGroupFilter, studentSections, studentsForList]);
+  }, [groups, studentListGroupFilter, studentSections, studentsForList, sortStudentsForGroup]);
 
   const activeCourseGroupId =
     studentListGroupFilter && round?.groupIds.includes(studentListGroupFilter)
@@ -593,13 +660,15 @@ export function EpoNotenTeacherView() {
   const releasableCountInGroup = useCallback(
     (groupId: string) => {
       if (!round || groupId === '__other__') return 0;
-      const mode = assessmentModeForGroup(round, groupId);
+      const mode = groupMode(groupId);
+      const passive = passiveIdsForGroup(groupId);
       return students.filter((s) => {
         if (s.groupId !== groupId || s.teacherReleasedAt) return false;
+        if (isPassiveStudentId(s.studentId, passive)) return false;
         return Boolean(teacherFormGradeFromEntry(s, mode).trim());
       }).length;
     },
-    [round, students],
+    [groupMode, passiveIdsForGroup, round, students],
   );
 
   const releaseAllInGroup = async (groupId: string) => {
@@ -987,30 +1056,43 @@ export function EpoNotenTeacherView() {
                       <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
                         Bewertung für diesen Kurs
                       </Typography>
-                      <ToggleButtonGroup
-                        exclusive
+                      {epoGroupUsesMssPoints(activeCourseName) ? (
+                        <Chip size="small" label="MSS-Punkte (0–15)" color="primary" variant="outlined" />
+                      ) : (
+                        <ToggleButtonGroup
+                          exclusive
+                          size="small"
+                          value={groupMode(activeCourseGroupId)}
+                          onChange={(_, v: EpoNotenAssessmentMode | null) => {
+                            if (!v) return;
+                            void updateGroupAssessmentMode(activeCourseGroupId, v);
+                          }}
+                          disabled={saving}
+                          sx={{
+                            bgcolor: '#fff',
+                            '& .MuiToggleButton-root': {
+                              px: 1.25,
+                              py: 0.25,
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              textTransform: 'none',
+                              borderColor: epoNotenPalette.border,
+                            },
+                          }}
+                        >
+                          <ToggleButton value="note">Note</ToggleButton>
+                          <ToggleButton value="mss">MSS</ToggleButton>
+                        </ToggleButtonGroup>
+                      )}
+                      <Button
                         size="small"
-                        value={assessmentModeForGroup(round, activeCourseGroupId)}
-                        onChange={(_, v: EpoNotenAssessmentMode | null) => {
-                          if (!v) return;
-                          void updateGroupAssessmentMode(activeCourseGroupId, v);
-                        }}
+                        variant="outlined"
+                        onClick={() => openPassiveDialog(activeCourseGroupId)}
                         disabled={saving}
-                        sx={{
-                          bgcolor: '#fff',
-                          '& .MuiToggleButton-root': {
-                            px: 1.25,
-                            py: 0.25,
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            textTransform: 'none',
-                            borderColor: epoNotenPalette.border,
-                          },
-                        }}
+                        sx={{ ...epoNotenCompactBtnSx, ml: 'auto' }}
                       >
-                        <ToggleButton value="note">Note</ToggleButton>
-                        <ToggleButton value="mss">MSS</ToggleButton>
-                      </ToggleButtonGroup>
+                        Länger abwesend
+                      </Button>
                     </Stack>
                   )}
                 </Stack>
@@ -1100,8 +1182,22 @@ export function EpoNotenTeacherView() {
                             const active = s.studentId === selectedStudentId;
                             const isLastInSection = studentIndex === section.students.length - 1;
                             const isLastSection = sectionIndex === visibleStudentSections.length - 1;
-                            const pendingKind = round?.publishedAt
-                              ? studentEpoPendingKind(s, Boolean(round.publishedAt))
+                            const passive = isPassiveStudentId(
+                              s.studentId,
+                              section.groupId !== '__other__'
+                                ? passiveIdsForGroup(section.groupId)
+                                : [...allPassiveStudentIds],
+                            );
+                            const pendingKind =
+                              !passive && round?.publishedAt
+                                ? studentEpoPendingKind(s, Boolean(round.publishedAt))
+                                : null;
+                            const rowMode =
+                              s.groupId && round ? groupMode(s.groupId) : selectedAssessmentMode;
+                            const gradeLabel = s.teacherGrade
+                              ? rowMode === 'mss'
+                                ? `${s.teacherGrade} P.`
+                                : s.teacherGrade
                               : null;
                             return (
                               <ListItemButton
@@ -1113,6 +1209,8 @@ export function EpoNotenTeacherView() {
                                   px: 0.5,
                                   borderBottom: '1px solid',
                                   borderColor: 'divider',
+                                  opacity: passive ? 0.42 : 1,
+                                  filter: passive ? 'grayscale(0.35)' : undefined,
                                   ...(pendingKind ? epoNotenBitteAusfuellenRowSx : {}),
                                   ...((isLastInSection && isLastSection) ? { borderBottom: 0 } : {}),
                                 }}
@@ -1138,25 +1236,39 @@ export function EpoNotenTeacherView() {
                                   <Chip
                                     size="small"
                                     label={
-                                      pendingKind
-                                        ? 'Bitte ausfüllen'
-                                        : s.studentSubmittedAt
-                                          ? '✓'
-                                          : '—'
+                                      passive
+                                        ? 'Abwesend'
+                                        : pendingKind
+                                          ? 'Bitte ausfüllen'
+                                          : s.studentSubmittedAt
+                                            ? '✓'
+                                            : '—'
                                     }
                                     sx={{
                                       height: 18,
-                                      minWidth: pendingKind ? 72 : 22,
+                                      minWidth: passive || pendingKind ? 72 : 22,
                                       fontSize: '0.58rem',
                                       '& .MuiChip-label': { px: 0.4 },
                                       ...(pendingKind ? epoNotenBitteAusfuellenChipSx : {}),
                                     }}
                                     color={
-                                      pendingKind ? 'warning' : s.studentSubmittedAt ? 'success' : 'default'
+                                      passive
+                                        ? 'default'
+                                        : pendingKind
+                                          ? 'warning'
+                                          : s.studentSubmittedAt
+                                            ? 'success'
+                                            : 'default'
                                     }
-                                    variant={pendingKind || s.studentSubmittedAt ? 'filled' : 'outlined'}
+                                    variant={
+                                      passive
+                                        ? 'outlined'
+                                        : pendingKind || s.studentSubmittedAt
+                                          ? 'filled'
+                                          : 'outlined'
+                                    }
                                   />
-                                  {s.teacherGrade ? (
+                                  {gradeLabel ? (
                                     <Typography
                                       sx={{
                                         fontSize: '0.7rem',
@@ -1165,7 +1277,7 @@ export function EpoNotenTeacherView() {
                                         flexShrink: 0,
                                       }}
                                     >
-                                      {s.teacherGrade}
+                                      {gradeLabel}
                                     </Typography>
                                   ) : null}
                                 </Stack>
@@ -1197,6 +1309,11 @@ export function EpoNotenTeacherView() {
                     ) : (
                       <Stack spacing={0.45}>
                         {round?.publishedAt &&
+                          selectedStudent?.groupId &&
+                          !isPassiveStudentId(
+                            selectedStudent.studentId,
+                            passiveIdsForGroup(selectedStudent.groupId),
+                          ) &&
                           (() => {
                             const pending = studentEpoPendingKind(
                               selectedStudent,
@@ -1232,15 +1349,15 @@ export function EpoNotenTeacherView() {
                             <Typography component="span" sx={{ fontWeight: 700, color: 'text.primary' }}>
                               SuS:{' '}
                             </Typography>
-                            {formatSuggestedGradeDisplay(
+                            {studentSelfAssessmentDisplay(
+                              selectedStudent,
                               selectedStudent.groupId
-                                ? assessmentModeForGroup(round, selectedStudent.groupId)
-                                : selectedStudent.suggestedGradeMode,
-                              selectedStudent.suggestedGrade,
+                                ? groupMode(selectedStudent.groupId)
+                                : 'note',
                             )}
                             {selectedStudent.groupId &&
-                            assessmentModeForGroup(round, selectedStudent.groupId) === 'mss'
-                              ? ` · Raster ${sumCategoryScores(selectedStudent.selfScores)}`
+                            groupMode(selectedStudent.groupId) === 'mss'
+                              ? ` · Raster ${sumCategoryScores(selectedStudent.selfScores)} P.`
                               : ` · Raster ${sumCategoryScores(selectedStudent.selfScores)} → ${selectedStudent.selfGradeFromTable || '—'}`}
                             {selectedStudent.justification ? (
                               <>
@@ -1572,6 +1689,59 @@ export function EpoNotenTeacherView() {
             sx={epoNotenCompactBtnSx}
           >
             Anlegen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={passiveDialogOpen} onClose={() => !passiveSaving && setPassiveDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={dialogCloseTitleSx}>
+          Länger abwesend
+          <DialogCloseIconButton
+            onClose={() => !passiveSaving && setPassiveDialogOpen(false)}
+            disabled={passiveSaving}
+          />
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Abwesende SuS erscheinen in dieser EPO-Runde unten, ausgegraut, und zählen nicht als „Bitte
+            ausfüllen“.
+          </Typography>
+          <Stack spacing={0.25}>
+            {(groups.find((g) => g.id === passiveDialogGroupId)?.students ?? []).map((student) => {
+              const checked = passiveDraftIds.includes(student.id);
+              return (
+                <Box
+                  key={student.id}
+                  role="checkbox"
+                  aria-checked={checked}
+                  onClick={() => {
+                    setPassiveDraftIds((prev) =>
+                      checked ? prev.filter((id) => id !== student.id) : [...prev, student.id],
+                    );
+                  }}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    py: 0.35,
+                    cursor: 'pointer',
+                    borderRadius: 1,
+                    '&:hover': { bgcolor: 'action.hover' },
+                  }}
+                >
+                  <Checkbox checked={checked} tabIndex={-1} disableRipple sx={{ p: 0.25 }} />
+                  <Typography variant="body2">{student.name}</Typography>
+                </Box>
+              );
+            })}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPassiveDialogOpen(false)} disabled={passiveSaving}>
+            Abbrechen
+          </Button>
+          <Button variant="contained" onClick={() => void savePassiveStudents()} disabled={passiveSaving}>
+            {passiveSaving ? 'Speichern…' : 'Speichern'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -80,10 +80,26 @@ export function normalizeCategoryScores(raw: unknown): number[] {
 export type EpoNotenSuggestedGradeMode = 'note' | 'mss';
 export type EpoNotenAssessmentMode = EpoNotenSuggestedGradeMode;
 
+/** Informatik GK 11 (und gleich benannte Kurse) — immer MSS-Punkte 0–15. */
+export function epoGroupUsesMssPoints(groupName: string | undefined | null): boolean {
+  if (!groupName?.trim()) return false;
+  const n = groupName.trim().toLowerCase();
+  if (!n.includes('informatik')) return false;
+  return /\bgk\s*11\b/.test(n);
+}
+
+export function defaultAssessmentModeForGroup(
+  groupName: string | undefined | null,
+): EpoNotenAssessmentMode {
+  return epoGroupUsesMssPoints(groupName) ? 'mss' : 'note';
+}
+
 export function assessmentModeForGroup(
   round: { assessmentModeByGroup?: Record<string, EpoNotenAssessmentMode> } | null | undefined,
   groupId: string,
+  groupName?: string | null,
 ): EpoNotenAssessmentMode {
+  if (epoGroupUsesMssPoints(groupName)) return 'mss';
   return round?.assessmentModeByGroup?.[groupId] === 'mss' ? 'mss' : 'note';
 }
 
@@ -131,8 +147,75 @@ export function formatSuggestedGradeDisplay(
 ): string {
   const v = (value || '').trim();
   if (!v) return '—';
-  if (mode === 'mss') return `${v} Punkte (MSS)`;
+  if (mode === 'mss') return `${v} MSS-Pkt.`;
   return v;
+}
+
+/** SuS-Selbsteinschätzung als MSS-Zahl (auch wenn früher als Note gespeichert). */
+export function studentSelfMssPoints(
+  entry: Pick<EpoNotenEntry, 'suggestedGrade' | 'selfScores' | 'selfGradeFromTable'>,
+): number | null {
+  const sg = (entry.suggestedGrade || '').trim();
+  if (sg && isValidSuggestedGrade('mss', sg)) return Number(sg);
+  const tbl = (entry.selfGradeFromTable || '').trim();
+  if (/^\d{1,2}$/.test(tbl)) {
+    const n = Number(tbl);
+    if (Number.isInteger(n) && n >= 0 && n <= 15) return n;
+  }
+  const scores = normalizeCategoryScores(entry.selfScores);
+  if (allCategoriesSelected(scores)) {
+    return Math.max(0, Math.min(15, Math.round(sumCategoryScores(scores))));
+  }
+  return null;
+}
+
+export function studentSelfAssessmentDisplay(
+  entry: Pick<EpoNotenEntry, 'suggestedGrade' | 'selfScores' | 'selfGradeFromTable'>,
+  mode: EpoNotenAssessmentMode,
+): string {
+  if (mode === 'mss') {
+    const pts = studentSelfMssPoints(entry);
+    return pts != null ? `${pts} MSS-Pkt.` : formatSuggestedGradeDisplay('mss', entry.suggestedGrade);
+  }
+  return formatSuggestedGradeDisplay('note', entry.suggestedGrade);
+}
+
+export function studentSelfSummaryHeadline(
+  entry: Pick<EpoNotenEntry, 'suggestedGrade' | 'selfScores' | 'selfGradeFromTable'>,
+  mode: EpoNotenAssessmentMode,
+): string {
+  const selfPts = sumCategoryScores(entry.selfScores);
+  if (mode === 'mss') {
+    const mss = studentSelfMssPoints(entry);
+    const value = mss != null ? String(mss) : entry.selfGradeFromTable || '';
+    return epoSummaryHeadline('mss', value, selfPts);
+  }
+  return epoSummaryHeadline(
+    'note',
+    entry.selfGradeFromTable || rasterResultFromTotal('note', selfPts),
+    selfPts,
+  );
+}
+
+export function compareEpoStudentListOrder(
+  a: EpoNotenEntry,
+  b: EpoNotenEntry,
+  roundPublished: boolean,
+  passiveStudentIds: ReadonlySet<string> | string[],
+): number {
+  const passive = (id: string) => {
+    if (Array.isArray(passiveStudentIds)) return passiveStudentIds.includes(id);
+    return passiveStudentIds.has(id);
+  };
+  const pa = passive(a.studentId);
+  const pb = passive(b.studentId);
+  if (pa !== pb) return pa ? 1 : -1;
+
+  const pendA = !pa && Boolean(studentEpoPendingKind(a, roundPublished));
+  const pendB = !pb && Boolean(studentEpoPendingKind(b, roundPublished));
+  if (pendA !== pendB) return pendA ? -1 : 1;
+
+  return a.studentName.localeCompare(b.studentName, 'de');
 }
 
 export type EpoNotenEntry = {

@@ -100,19 +100,33 @@ type EpoNotenRoundPayload = {
   entries: EpoNotenEntry[];
 };
 
-const normalizeAssessmentModes = (payload: EpoNotenRoundPayload): Record<string, AssessmentMode> => {
+const normalizeAssessmentModes = (
+  payload: EpoNotenRoundPayload,
+  groupNamesById?: Map<string, string>,
+): Record<string, AssessmentMode> => {
   const raw = payload.assessmentModeByGroup && typeof payload.assessmentModeByGroup === 'object'
     ? payload.assessmentModeByGroup
     : {};
   const modes: Record<string, AssessmentMode> = {};
   for (const gid of payload.groupIds) {
+    const gName = groupNamesById?.get(gid);
+    if (epoGroupUsesMssPoints(gName)) {
+      modes[gid] = 'mss';
+      continue;
+    }
     modes[gid] = raw[gid] === 'mss' ? 'mss' : 'note';
   }
   return modes;
 };
 
-const assessmentModeForGroup = (payload: EpoNotenRoundPayload, groupId: string): AssessmentMode =>
-  normalizeAssessmentModes(payload)[groupId] === 'mss' ? 'mss' : 'note';
+const assessmentModeForGroup = (
+  payload: EpoNotenRoundPayload,
+  groupId: string,
+  groupName?: string | null,
+): AssessmentMode => {
+  if (epoGroupUsesMssPoints(groupName)) return 'mss';
+  return normalizeAssessmentModes(payload)[groupId] === 'mss' ? 'mss' : 'note';
+};
 
 type EpoNotenIndexPayload = {
   version: 1;
@@ -243,6 +257,7 @@ const loadTeacherGroupsWithStudents = async (teacherId: string) =>
     select: {
       id: true,
       name: true,
+      passiveStudentIds: true,
       students: {
         where: { role: 'STUDENT' },
         select: { id: true, name: true, avatarEmoji: true, avatarUrl: true },
@@ -251,6 +266,27 @@ const loadTeacherGroupsWithStudents = async (teacherId: string) =>
     },
     orderBy: { name: 'asc' },
   });
+
+const parsePassiveStudentIds = (raw: string | null | undefined): string[] => {
+  if (!raw?.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((id) => String(id)).filter(Boolean);
+  } catch {
+    return [];
+  }
+};
+
+const epoGroupUsesMssPoints = (groupName: string | undefined | null): boolean => {
+  if (!groupName?.trim()) return false;
+  const n = groupName.trim().toLowerCase();
+  if (!n.includes('informatik')) return false;
+  return /\bgk\s*11\b/.test(n);
+};
+
+const defaultAssessmentModeForGroupName = (groupName: string | undefined | null): AssessmentMode =>
+  epoGroupUsesMssPoints(groupName) ? 'mss' : 'note';
 
 const syncPublishedGroups = async (
   teacherId: string,
@@ -416,7 +452,7 @@ const studentSessionDto = (resolved: ResolvedRound, studentId: string) => {
     date: resolved.payload.date,
     groupId: resolved.groupId,
     groupName: resolved.groupName,
-    assessmentMode: assessmentModeForGroup(resolved.payload, resolved.groupId),
+    assessmentMode: assessmentModeForGroup(resolved.payload, resolved.groupId, resolved.groupName),
     publishedAt: resolved.payload.publishedAt,
     isActive,
     isArchived: !isActive,
@@ -452,7 +488,13 @@ export class EpoNotenController {
 
       return res.json({
         rounds: items,
-        groups: groups.map((g) => ({ id: g.id, name: g.name, studentCount: g.students.length })),
+        groups: groups.map((g) => ({
+          id: g.id,
+          name: g.name,
+          studentCount: g.students.length,
+          passiveStudentIds: parsePassiveStudentIds(g.passiveStudentIds),
+          students: g.students.map((s) => ({ id: s.id, name: s.name })),
+        })),
       });
     } catch (error) {
       console.error('EpoNoten list error:', error);
@@ -471,6 +513,14 @@ export class EpoNotenController {
       if (!round) return res.status(404).json({ error: 'Runde nicht gefunden' });
 
       const groups = await loadTeacherGroupsWithStudents(user.id);
+      const groupNameById = new Map(groups.map((g) => [g.id, g.name]));
+      round.assessmentModeByGroup = normalizeAssessmentModes(round, groupNameById);
+
+      const passiveByGroup = new Map(
+        groups.map((g) => [g.id, new Set(parsePassiveStudentIds(g.passiveStudentIds))]),
+      );
+      const roundPublished = Boolean(round.publishedAt);
+
       const students: EpoNotenEntry[] = [];
       for (const g of groups) {
         if (!round.groupIds.includes(g.id)) continue;
@@ -492,7 +542,28 @@ export class EpoNotenController {
       }
 
       const byId = new Map(students.map((s) => [s.studentId, s]));
-      const merged = [...byId.values()].sort((a, b) => a.studentName.localeCompare(b.studentName, 'de'));
+      type EntryWithGroup = EpoNotenEntry & { groupId?: string };
+      const merged = [...byId.values()].sort((a, b) => {
+        const ea = a as EntryWithGroup;
+        const eb = b as EntryWithGroup;
+        const passiveIds = (gid: string | undefined) => {
+          if (!gid) return new Set<string>();
+          return passiveByGroup.get(gid) ?? new Set<string>();
+        };
+        const pa = ea.groupId ? passiveIds(ea.groupId).has(ea.studentId) : false;
+        const pb = eb.groupId ? passiveIds(eb.groupId).has(eb.studentId) : false;
+        if (pa !== pb) return pa ? 1 : -1;
+        const pend = (e: EntryWithGroup, passive: boolean) => {
+          if (passive || !roundPublished) return false;
+          if (!e.studentSubmittedAt) return true;
+          if (e.teacherReleasedAt && !e.goalsSubmittedAt) return true;
+          return false;
+        };
+        const pendA = pend(ea, pa);
+        const pendB = pend(eb, pb);
+        if (pendA !== pendB) return pendA ? -1 : 1;
+        return ea.studentName.localeCompare(eb.studentName, 'de');
+      });
 
       return res.json({ round, students: merged, stats: roundStats(round) });
     } catch (error) {
@@ -523,7 +594,12 @@ export class EpoNotenController {
         title,
         date: typeof req.body?.date === 'string' ? req.body.date.trim() : new Date().toISOString().slice(0, 10),
         groupIds,
-        assessmentModeByGroup: Object.fromEntries(groupIds.map((gid) => [gid, 'note' as AssessmentMode])),
+        assessmentModeByGroup: Object.fromEntries(
+          groupIds.map((gid) => {
+            const g = owned.find((x) => x.id === gid);
+            return [gid, defaultAssessmentModeForGroupName(g?.name)];
+          }),
+        ),
         publishedAt: null,
         entries: [],
         createdAt: now,
@@ -554,6 +630,7 @@ export class EpoNotenController {
 
       const owned = await loadTeacherGroupsWithStudents(user.id);
       const ownedIds = new Set(owned.map((g) => g.id));
+      const groupNameById = new Map(owned.map((g) => [g.id, g.name]));
 
       const title = typeof req.body?.title === 'string' ? req.body.title.trim() : existing.title;
       if (!title) return res.status(400).json({ error: 'Titel ist erforderlich' });
@@ -563,12 +640,17 @@ export class EpoNotenController {
         groupIds = (req.body.groupIds as string[]).map((g) => String(g).trim()).filter((id) => ownedIds.has(id));
       }
 
-      let assessmentModeByGroup = normalizeAssessmentModes({ ...existing, groupIds });
+      let assessmentModeByGroup = normalizeAssessmentModes({ ...existing, groupIds }, groupNameById);
       if (req.body?.assessmentModeByGroup && typeof req.body.assessmentModeByGroup === 'object') {
         const patch = req.body.assessmentModeByGroup as Record<string, unknown>;
         for (const gid of groupIds) {
           const v = patch[gid];
           if (v === 'mss' || v === 'note') assessmentModeByGroup[gid] = v;
+        }
+      }
+      for (const gid of groupIds) {
+        if (epoGroupUsesMssPoints(groupNameById.get(gid))) {
+          assessmentModeByGroup[gid] = 'mss';
         }
       }
 
@@ -745,7 +827,7 @@ export class EpoNotenController {
             publishedAt: resolved.payload.publishedAt,
             groupId: resolved.groupId,
             groupName: resolved.groupName,
-            assessmentMode: assessmentModeForGroup(resolved.payload, resolved.groupId),
+            assessmentMode: assessmentModeForGroup(resolved.payload, resolved.groupId, resolved.groupName),
           },
           myEntry,
           canEditSelf,
@@ -806,12 +888,18 @@ export class EpoNotenController {
 
       const selfScores = normalizeCategoryScores(req.body?.selfScores);
       const total = sumCategoryScores(selfScores);
+
+      const mode = assessmentModeForGroup(
+        payload,
+        resolvedRound.groupId,
+        resolvedRound.groupName,
+      );
       const selfGradeFromTable =
         typeof req.body?.selfGradeFromTable === 'string' && req.body.selfGradeFromTable.trim()
           ? req.body.selfGradeFromTable.trim()
-          : gradeFromTotalPoints(total);
+          : rasterResultFromTotal(mode, total);
 
-      const suggestedGradeMode = assessmentModeForGroup(payload, resolvedRound.groupId);
+      const suggestedGradeMode = mode;
 
       const entry: EpoNotenEntry = {
         studentId: user.id,
@@ -961,6 +1049,7 @@ export class EpoNotenController {
       }
 
       const groups = await loadTeacherGroupsWithStudents(user.id);
+      const groupNameById = new Map(groups.map((g) => [g.id, g.name]));
       const studentToGroup = new Map<string, string>();
       for (const g of groups) {
         if (!payload.groupIds.includes(g.id)) continue;
@@ -978,7 +1067,9 @@ export class EpoNotenController {
         if (groupId && entryGroupId !== groupId) continue;
         if (!all && studentIds.length > 0 && !studentIds.includes(entry.studentId)) continue;
 
-        const mode = entryGroupId ? assessmentModeForGroup(payload, entryGroupId) : 'note';
+        const mode = entryGroupId
+          ? assessmentModeForGroup(payload, entryGroupId, groupNameById.get(entryGroupId))
+          : 'note';
         const grade = effectiveTeacherGrade(entry, mode);
         if (!grade) continue;
         entry.teacherGrade = grade;
