@@ -7,11 +7,11 @@ Neues Paket (eingebaut):
   packId: lengths-class-5
   Titel:  Rechnen mit Längen
 
-So einbinden:
-1. Folien-Editor → Folie „Interaktive Übung“ (oder Übungs-Vorlage).
-2. Im gelben Übungs-Kasten unten im Notizbereich das Paket wählen:
-   „Rechnen mit Längen (Klasse 5)“.
-3. START für die Lerngruppe — SuS sehen die Übung im Vollbild.
+Im Dashboard-Tab „Übungen“ erscheint die Übung, sobald
+Praesentation.deck.json in diesem Ordner liegt (mit Folie slideInteractiveExercise).
+
+Paket im Editor: „Rechnen mit Längen (Klasse 5)“ (packId lengths-class-5).
+START für die Lerngruppe — SuS sehen die Übung im Vollbild.
 
 Themen im Paket (angelehnt an die Word-Sammlung):
   Lückentext, Ordnen, umrechnen, Vergleichen, Mischaufgaben, Runden, Test.
