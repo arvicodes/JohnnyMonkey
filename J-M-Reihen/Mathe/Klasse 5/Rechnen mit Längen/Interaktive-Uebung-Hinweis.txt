@@ -1,0 +1,19 @@
+Interaktive Übung „Rechnen mit Längen“ (Klasse 5)
+================================================
+
+In der App gibt es interaktive Übungen wie bei den römischen Zahlen.
+
+Neues Paket (eingebaut):
+  packId: lengths-class-5
+  Titel:  Rechnen mit Längen
+
+So einbinden:
+1. Folien-Editor → Folie „Interaktive Übung“ (oder Übungs-Vorlage).
+2. Im gelben Übungs-Kasten unten im Notizbereich das Paket wählen:
+   „Rechnen mit Längen (Klasse 5)“.
+3. START für die Lerngruppe — SuS sehen die Übung im Vollbild.
+
+Themen im Paket (angelehnt an die Word-Sammlung):
+  Lückentext, Ordnen, umrechnen, Vergleichen, Mischaufgaben, Runden, Test.
+
+Quelle (Arbeitsblatt): Rechnen_mit_Laengen_Klasse_5.docx (liegt in diesem Ordner).

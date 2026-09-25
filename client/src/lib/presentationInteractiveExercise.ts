@@ -682,6 +682,299 @@ export function createRomanNumeralsExercise(): SlideInteractiveExercise {
   };
 }
 
+/** Eingebaute Pakete (packId auf der Folie). */
+export const INTERACTIVE_EXERCISE_PACKS: Array<{ packId: string; title: string; exerciseId: string }> = [
+  { packId: 'roman-numerals', title: 'Römische Zahlen', exerciseId: 'ex-roman-numerals' },
+  { packId: 'lengths-class-5', title: 'Rechnen mit Längen (Klasse 5)', exerciseId: 'ex-lengths-class-5' },
+];
+
+const LENGTH_RULE_TEXT =
+  '1 km = 1 000 m · 1 m = 10 dm = 100 cm = 1 000 mm · 1 dm = 10 cm · 1 cm = 10 mm';
+
+function lengthWrite(
+  id: string,
+  challenge: string,
+  correctAnswer: string,
+  tip?: string,
+): InteractiveExerciseQuestion {
+  return {
+    id,
+    mode: 'write',
+    answerKind: 'arabic',
+    prompt: 'Ergänze die fehlende Maßzahl.',
+    ruleText: LENGTH_RULE_TEXT,
+    tip,
+    challenge,
+    correctAnswer,
+    choices: [],
+  };
+}
+
+function lengthSignChoice(
+  id: string,
+  left: string,
+  right: string,
+  sign: '<' | '>' | '=',
+): InteractiveExerciseQuestion {
+  const choices = [
+    { id: `${id}-lt`, label: '<' },
+    { id: `${id}-gt`, label: '>' },
+    { id: `${id}-eq`, label: '=' },
+  ];
+  const correctChoiceId = sign === '<' ? `${id}-lt` : sign === '>' ? `${id}-gt` : `${id}-eq`;
+  return {
+    id,
+    mode: 'choice',
+    prompt: 'Welches Vergleichszeichen passt?',
+    ruleText: LENGTH_RULE_TEXT,
+    tip: 'Wandle beide Längen in dieselbe Einheit um.',
+    challenge: `${left}  ?  ${right}`,
+    choices,
+    correctChoiceId,
+  };
+}
+
+function lengthSort(
+  id: string,
+  prompt: string,
+  sortItems: string[],
+  sortCorrectOrder: string[],
+  tip: string,
+): InteractiveExerciseQuestion {
+  return {
+    id,
+    mode: 'sort',
+    prompt,
+    ruleText: LENGTH_RULE_TEXT,
+    tip,
+    sortItems,
+    sortCorrectOrder,
+    choices: [],
+  };
+}
+
+/** Paket „Rechnen mit Längen“ (Klasse 5) — Inhalte aus Übungssammlung Längen. */
+export function createLengthsClass5Exercise(): SlideInteractiveExercise {
+  const clozeQuestions: InteractiveExerciseQuestion[] = [
+    {
+      id: 'len-cloze-1',
+      mode: 'cloze',
+      prompt: 'Fülle die Lücken.',
+      ruleText: LENGTH_RULE_TEXT,
+      tip: 'Maßzahl und Maßeinheit gehören zusammen.',
+      clozeParts: [
+        txt('Eine Längenangabe besteht aus einer '),
+        blank('Maßzahl'),
+        txt(' und einer '),
+        blank('Maßeinheit'),
+        txt('.'),
+      ],
+      clozeOptions: ['Maßzahl', 'Maßeinheit', 'Kommazahl', 'Einheit'],
+      choices: [],
+    },
+    {
+      id: 'len-cloze-2',
+      mode: 'cloze',
+      prompt: 'Fülle die Lücken.',
+      ruleText: LENGTH_RULE_TEXT,
+      tip: 'Kleinere Einheit → größere Maßzahl.',
+      clozeParts: [
+        txt('Bei der Umwandlung von m in cm wird die Einheit '),
+        blank('kleiner'),
+        txt(' und die Maßzahl '),
+        blank('größer'),
+        txt('.'),
+      ],
+      clozeOptions: ['kleiner', 'größer', 'gleich', 'halbiert'],
+      choices: [],
+    },
+    {
+      id: 'len-cloze-3',
+      mode: 'cloze',
+      prompt: 'Fülle die Lücken.',
+      ruleText: LENGTH_RULE_TEXT,
+      clozeParts: [
+        txt('Von cm in m teilst du die Maßzahl durch '),
+        blank('100'),
+        txt('. Von km in m multiplizierst du mit '),
+        blank('1 000'),
+        txt('.'),
+      ],
+      clozeOptions: ['10', '100', '1 000', '1 000 000'],
+      choices: [],
+    },
+    {
+      id: 'len-cloze-4',
+      mode: 'cloze',
+      prompt: 'Fülle die Lücken.',
+      ruleText: LENGTH_RULE_TEXT,
+      tip: 'm → mm: drei Stellen nach rechts.',
+      clozeParts: [
+        txt('Von m in mm verschiebst du das Komma um '),
+        blank('drei'),
+        txt(' Stellen nach '),
+        blank('rechts'),
+        txt('.'),
+      ],
+      clozeOptions: ['zwei', 'drei', 'vier', 'links', 'rechts'],
+      choices: [],
+    },
+  ];
+
+  const sortSmallQuestions: InteractiveExerciseQuestion[] = [
+    lengthSort(
+      'len-sort-s-1',
+      'Ordne von klein nach groß.',
+      ['8 dm', '750 mm', '0,9 m', '82 cm', '0,075 km'],
+      ['750 mm', '8 dm', '82 cm', '0,9 m', '0,075 km'],
+      'Wandle z. B. alles in cm um: 750 mm = 75 cm, 8 dm = 80 cm.',
+    ),
+    lengthSort(
+      'len-sort-s-2',
+      'Ordne von klein nach groß.',
+      ['1,05 m', '105 cm', '1 040 mm', '11 dm', '0,001 km'],
+      ['0,001 km', '1 040 mm', '1,05 m', '105 cm', '11 dm'],
+      '0,001 km = 1 m.',
+    ),
+    lengthSort(
+      'len-sort-s-3',
+      'Ordne von klein nach groß.',
+      ['3,02 km', '3 019 m', '302 000 cm', '30 200 dm'],
+      ['3 019 m', '3,02 km', '302 000 cm', '30 200 dm'],
+      '3,02 km = 3 020 m.',
+    ),
+    lengthSort(
+      'len-sort-s-4',
+      'Ordne von klein nach groß.',
+      ['7,8 cm', '78 mm', '0,79 dm', '0,0785 m'],
+      ['7,8 cm', '78 mm', '0,0785 m', '0,79 dm'],
+      '78 mm = 7,8 cm.',
+    ),
+  ];
+
+  const sortLargeQuestions: InteractiveExerciseQuestion[] = [
+    lengthSort(
+      'len-sort-l-1',
+      'Ordne von groß nach klein.',
+      ['1,4 m', '145 cm', '14 dm', '1 390 mm', '0,0015 km'],
+      ['0,0015 km', '145 cm', '1,4 m', '14 dm', '1 390 mm'],
+      '0,0015 km = 1,5 m.',
+    ),
+    lengthSort(
+      'len-sort-l-2',
+      'Ordne von groß nach klein.',
+      ['0,5 km', '505 m', '50 000 cm', '5 100 dm'],
+      ['5 100 dm', '505 m', '0,5 km', '50 000 cm'],
+      '0,5 km = 500 m.',
+    ),
+    lengthSort(
+      'len-sort-l-3',
+      'Ordne von groß nach klein.',
+      ['2 000 mm', '20 dm', '201 cm', '1,99 m'],
+      ['201 cm', '2 000 mm', '20 dm', '1,99 m'],
+      '20 dm = 2 m = 2 000 mm.',
+    ),
+  ];
+
+  const toSmallerQuestions: InteractiveExerciseQuestion[] = [
+    lengthWrite('len-sm-1', '6 dm = ? cm', '60'),
+    lengthWrite('len-sm-2', '2 m = ? cm', '200'),
+    lengthWrite('len-sm-3', '4,5 cm = ? mm', '45'),
+    lengthWrite('len-sm-4', '0,7 m = ? mm', '700'),
+    lengthWrite('len-sm-5', '12 dm = ? mm', '1200'),
+    lengthWrite('len-sm-6', '1,25 km = ? m', '1250'),
+    lengthWrite('len-sm-7', '3,08 m = ? cm', '308'),
+    lengthWrite('len-sm-8', '0,04 km = ? m', '40'),
+    lengthWrite('len-sm-9', '0,32 m = ? mm', '320'),
+    lengthWrite('len-sm-10', '2,006 km = ? m', '2006'),
+  ];
+
+  const toLargerQuestions: InteractiveExerciseQuestion[] = [
+    lengthWrite('len-lg-1', '360 cm = ? m', '3,6', 'Komma verschieben oder durch 100 teilen.'),
+    lengthWrite('len-lg-2', '85 mm = ? cm', '8,5'),
+    lengthWrite('len-lg-3', '470 dm = ? m', '47'),
+    lengthWrite('len-lg-4', '2 500 m = ? km', '2,5'),
+    lengthWrite('len-lg-5', '9 000 mm = ? m', '9'),
+    lengthWrite('len-lg-6', '75 cm = ? dm', '7,5'),
+    lengthWrite('len-lg-7', '6 400 cm = ? m', '64'),
+    lengthWrite('len-lg-8', '125 m = ? km', '0,125'),
+    lengthWrite('len-lg-9', '8 mm = ? m', '0,008'),
+    lengthWrite('len-lg-10', '92 000 cm = ? km', '0,92'),
+  ];
+
+  const compareQuestions: InteractiveExerciseQuestion[] = [
+    lengthSignChoice('len-cmp-1', '0,8 m', '79 cm', '>'),
+    lengthSignChoice('len-cmp-2', '2,5 km', '2 500 m', '='),
+    lengthSignChoice('len-cmp-3', '750 mm', '8 dm', '<'),
+    lengthSignChoice('len-cmp-4', '1,05 m', '105 cm', '='),
+    lengthSignChoice('len-cmp-5', '3 019 m', '3,02 km', '<'),
+  ];
+
+  const mixedQuestions: InteractiveExerciseQuestion[] = [
+    lengthWrite('len-mix-1', '4 m 35 cm = ? cm', '435', 'Zuerst die Meter in cm umrechnen.'),
+    lengthWrite('len-mix-2', '7 cm 8 mm = ? mm', '78'),
+    lengthWrite('len-mix-3', '2 km 450 m = ? m', '2450'),
+    lengthWrite('len-mix-4', '6 m 4 cm = ? cm', '604'),
+    lengthWrite('len-mix-5', '0,008 km = ? m', '8'),
+    lengthWrite('len-mix-6', '1,24 m = ? mm', '1240', 'Zuerst in cm, dann in mm.'),
+  ];
+
+  const roundQuestions: InteractiveExerciseQuestion[] = [
+    lengthWrite('len-rnd-1', '3,76 m auf ganze Meter (Zahl)', '4'),
+    lengthWrite('len-rnd-2', '842 cm auf ganze Meter (Zahl)', '8'),
+    lengthWrite('len-rnd-3', '1 649 m auf ganze Kilometer (Zahl)', '2'),
+    lengthWrite('len-rnd-4', '96 mm auf ganze Zentimeter (Zahl)', '10'),
+    lengthWrite('len-rnd-5', '2,349 m auf ganze Zentimeter (Zahl)', '235'),
+  ];
+
+  const testQuestions: InteractiveExerciseQuestion[] = [
+    lengthSignChoice('len-t-1', '0,8 m', '79 cm', '>'),
+    lengthSignChoice('len-t-2', '2,5 km', '2 500 m', '='),
+    lengthWrite('len-t-3', '4,07 m = ? cm', '407'),
+    lengthWrite('len-t-4', '68 mm = ? cm', '6,8'),
+    lengthSort(
+      'len-t-5',
+      'Ordne von klein nach groß.',
+      ['1,02 m', '98 cm', '1 005 mm'],
+      ['98 cm', '1 005 mm', '1,02 m'],
+      '98 cm = 980 mm.',
+    ),
+    {
+      id: 'len-t-6',
+      mode: 'choice',
+      prompt: 'Wie viele Zentimeter bleiben?',
+      ruleText: LENGTH_RULE_TEXT,
+      tip: '3 m = 300 cm. Zuerst 85 cm, dann 1,2 m = 120 cm abziehen.',
+      challenge: 'Ein Band ist 3 m lang. Es werden 85 cm und danach 1,2 m abgeschnitten.',
+      choices: [
+        { id: 'len-t-6-a', label: '95 cm' },
+        { id: 'len-t-6-b', label: '115 cm' },
+        { id: 'len-t-6-c', label: '185 cm' },
+      ],
+      correctChoiceId: 'len-t-6-a',
+    },
+    lengthWrite('len-t-7', '1,35 km Hin- und Rückweg = ? m', '2700'),
+    lengthWrite('len-t-8', '2 549 m auf ganze Kilometer (Zahl)', '3'),
+  ];
+
+  return {
+    id: 'ex-lengths-class-5',
+    title: 'Rechnen mit Längen',
+    packId: 'lengths-class-5',
+    topics: [
+      { id: 'len-cloze', title: 'Lückentext & Merke', kind: 'practice', questions: clozeQuestions },
+      { id: 'len-sort-small', title: 'Ordnen (klein → groß)', kind: 'practice', questions: sortSmallQuestions },
+      { id: 'len-sort-large', title: 'Ordnen (groß → klein)', kind: 'practice', questions: sortLargeQuestions },
+      { id: 'len-smaller', title: 'In kleinere Einheiten', kind: 'practice', questions: toSmallerQuestions },
+      { id: 'len-larger', title: 'In größere Einheiten', kind: 'practice', questions: toLargerQuestions },
+      { id: 'len-compare', title: 'Vergleichen', kind: 'practice', questions: compareQuestions },
+      { id: 'len-mixed', title: 'Gemischte Aufgaben', kind: 'practice', questions: mixedQuestions },
+      { id: 'len-round', title: 'Längen runden', kind: 'practice', questions: roundQuestions },
+      { id: 'len-test', title: 'Abschlusstest', kind: 'test', questions: testQuestions },
+    ],
+  };
+}
+
 export function resolveInteractiveExercise(
   raw: SlideInteractiveExercise | null | undefined,
 ): SlideInteractiveExercise | undefined {
@@ -690,6 +983,9 @@ export function resolveInteractiveExercise(
   // Eingebaute Pakete immer frisch auflösen, damit Inhalts-Updates greifen.
   if (base.packId === 'roman-numerals') {
     return createRomanNumeralsExercise();
+  }
+  if (base.packId === 'lengths-class-5') {
+    return createLengthsClass5Exercise();
   }
   return base;
 }
@@ -957,6 +1253,15 @@ export function sanitizeSlideInteractiveExercise(
       id: id || 'ex-roman-numerals',
       title: title || 'Römische Zahlen',
       packId: 'roman-numerals',
+      topics: [],
+    };
+  }
+
+  if (packId === 'lengths-class-5' && topics.length === 0) {
+    return {
+      id: id || 'ex-lengths-class-5',
+      title: title || 'Rechnen mit Längen',
+      packId: 'lengths-class-5',
       topics: [],
     };
   }

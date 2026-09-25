@@ -10,11 +10,14 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  MenuItem,
+  Select,
   Typography,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import {
   INTERACTIVE_EXERCISE_ACCENT,
+  INTERACTIVE_EXERCISE_PACKS,
   resolveInteractiveExercise,
   type SlideInteractiveExercise,
 } from '../../lib/presentationInteractiveExercise';
@@ -261,13 +264,44 @@ const PresentationSlideExerciseBox: React.FC<Props> = ({
       </Box>
 
       <Box sx={{ px: 0.85, py: 0.5 }}>
-        <Typography
-          sx={{ fontSize: '0.68rem', fontWeight: 700, color: '#5d4037', lineHeight: 1.25 }}
-          noWrap
-          title={exercise.title}
-        >
-          {exercise.title}
-        </Typography>
+        {canEdit ? (
+          <Select
+            size="small"
+            fullWidth
+            value={rawExercise?.packId || INTERACTIVE_EXERCISE_PACKS[0]?.packId || ''}
+            onChange={(e) => {
+              const pack = INTERACTIVE_EXERCISE_PACKS.find((p) => p.packId === e.target.value);
+              if (!pack) return;
+              onChange?.({
+                id: pack.exerciseId,
+                title: pack.title,
+                packId: pack.packId,
+                topics: [],
+              });
+              onMessage?.(`Übungspaket: ${pack.title}`);
+            }}
+            sx={{
+              fontSize: '0.68rem',
+              fontWeight: 700,
+              mb: 0.35,
+              '& .MuiSelect-select': { py: 0.35 },
+            }}
+          >
+            {INTERACTIVE_EXERCISE_PACKS.map((p) => (
+              <MenuItem key={p.packId} value={p.packId} sx={{ fontSize: '0.75rem' }}>
+                {p.title}
+              </MenuItem>
+            ))}
+          </Select>
+        ) : (
+          <Typography
+            sx={{ fontSize: '0.68rem', fontWeight: 700, color: '#5d4037', lineHeight: 1.25 }}
+            noWrap
+            title={exercise.title}
+          >
+            {exercise.title}
+          </Typography>
+        )}
         <Typography sx={{ fontSize: '0.58rem', color: alpha('#5d4037', 0.75), mt: 0.15 }}>
           Interaktive Übung · {exercise.topics.length} Themen
         </Typography>
