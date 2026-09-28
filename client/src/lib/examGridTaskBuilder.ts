@@ -75,6 +75,10 @@ export type GridSubsection =
       solution: string;
       /** text = freies Feld; drag = Zahlen in Slots ziehen */
       interaction?: 'text' | 'drag';
+      /** Bei langen Texten: Listen mit | statt Komma */
+      sortJoin?: 'comma' | 'pipe';
+      /** steps = vertikale Reihenfolge-Slots für Sätze */
+      sortLayout?: 'inline' | 'steps';
     } & SubImage
   | {
       id: string;
@@ -116,6 +120,8 @@ export type GridSubsection =
       quadrant: GridQuadrant;
       kind: 'paragraph';
       text: string;
+      /** instruction = größerer Hinweis über den Teilaufgaben */
+      variant?: 'instruction';
     } & SubImage
   | {
       id: string;
@@ -282,7 +288,13 @@ export function parseSolutionAlternatives(raw: string, expand: SolutionExpandKin
       for (const v of germanNumberAnswerVariants(base)) add(v);
     }
 
-    if (expand === 'sort' || (expand === 'text' && /[,;]/.test(base))) {
+    if (base.includes('|')) {
+      const tokens = base.split('|').map((s) => s.trim()).filter(Boolean);
+      if (tokens.length > 1) {
+        add(tokens.join('|'));
+        add(tokens.join(' | '));
+      }
+    } else if (expand === 'sort' || (expand === 'text' && /[,;]/.test(base))) {
       const tokens = base.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
       if (tokens.length > 1) {
         add(tokens.join(', '));
@@ -527,6 +539,15 @@ function splitListTokens(raw: string): string[] {
     .filter(Boolean);
 }
 
+function splitSortListTokens(raw: string, join: 'comma' | 'pipe' = 'comma'): string[] {
+  const text = String(raw || '').trim();
+  if (!text) return [];
+  if (join === 'pipe' || text.includes('|')) {
+    return text.split('|').map((s) => s.trim()).filter(Boolean);
+  }
+  return splitListTokens(text);
+}
+
 function subsectionSpecAttr(sub: GridSubsection): string {
   const payload = encodeURIComponent(JSON.stringify(sub));
   return `data-sub-kind="${escapeHtml(sub.kind)}" data-sub-id="${escapeHtml(sub.id)}" data-exam-spec="${payload}"`;
@@ -613,12 +634,15 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       .join('');
   } else if (sub.kind === 'sort') {
     const id = allocId(taskNumber, fieldIndex.n++);
+    const sortJoin = sub.sortJoin === 'pipe' ? 'pipe' : 'comma';
     const answers = parseSolutionAlternatives(sub.solution, 'sort');
     fields.push({ id, answers, solutionHtml: `<strong>${solutionDisplayHtml(answers)}</strong>` });
-    const tokens = splitListTokens(sub.given);
+    const tokens = splitSortListTokens(sub.given, sortJoin);
     if (sub.interaction === 'drag' && tokens.length > 0) {
-      const solTokens = splitListTokens(sub.solution.split('/')[0] || sub.solution);
+      const solTokens = splitSortListTokens(sub.solution.split('/')[0] || sub.solution, sortJoin);
       const slotCount = Math.max(solTokens.length, tokens.length);
+      const layoutClass = sub.sortLayout === 'steps' ? ' exam-sort-drag--steps' : '';
+      const joinAttr = sortJoin === 'pipe' ? ' data-sort-join="|"' : '';
       const chips = tokens
         .map(
           (t) =>
@@ -628,13 +652,20 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       const slots = Array.from(
         { length: slotCount },
         (_, i) =>
-          `<div class="exam-sort-slot" data-slot="${i}" aria-label="Position ${i + 1}"></div>`,
+          `<div class="exam-sort-slot" data-slot="${i}" aria-label="Position ${i + 1}"><span class="exam-sort-slot-num" aria-hidden="true">${i + 1}</span></div>`,
       ).join('');
-      body = `<div class="exam-sort-drag" data-answer-id="${id}">
-<div class="exam-sort-pool" aria-label="Zahlen zum Ziehen">${chips}</div>
-<div class="exam-sort-slots-row" aria-label="Reihenfolge von klein nach groß">${slots}</div>
+      const poolLabel = sub.sortLayout === 'steps' ? 'Schritte zum Ziehen' : 'Zahlen zum Ziehen';
+      const slotsLabel =
+        sub.sortLayout === 'steps' ? 'Reihenfolge 1 bis ' + slotCount : 'Reihenfolge von klein nach groß';
+      const hint =
+        sub.sortLayout === 'steps'
+          ? 'Ordne durch Ziehen: Klicke einen Schritt an und dann die Position, oder ziehe ihn in die Reihe.'
+          : 'Ziehe die Zahlen.';
+      body = `<div class="exam-sort-drag${layoutClass}" data-answer-id="${id}"${joinAttr}>
+<div class="exam-sort-pool" aria-label="${escapeHtml(poolLabel)}">${chips}</div>
+<div class="exam-sort-slots-row" aria-label="${escapeHtml(slotsLabel)}">${slots}</div>
 <input type="hidden" id="${id}" value="">
-</div><p class="exam-sort-hint">Ziehe die Zahlen.</p>`;
+</div><p class="exam-sort-hint">${escapeHtml(hint)}</p>`;
     } else {
       body = `<div class="item input-group full-width"><p style="margin:0 0 6px;">${escapeHtml(sub.given)}</p><input type="text" id="${id}" class="blank-wide" autocomplete="off"></div>`;
     }
@@ -705,9 +736,10 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
     body = `<div class="item input-group full-width exam-mc-block">${heading}<div class="exam-multi-select" data-answer-id="${id}">${opts}</div><input type="hidden" id="${id}" value=""></div>`;
   } else if (sub.kind === 'paragraph') {
     if (sub.text.trim()) {
+      const pClass = sub.variant === 'instruction' ? ' class="exam-task-instruction"' : '';
       body = sub.title && !sub.letter
-        ? `<p><strong>${escapeHtml(sub.title)}</strong></p><p>${allowBasicHtml(sub.text)}</p>`
-        : `<p>${allowBasicHtml(sub.text)}</p>`;
+        ? `<p><strong>${escapeHtml(sub.title)}</strong></p><p${pClass}>${allowBasicHtml(sub.text)}</p>`
+        : `<p${pClass}>${allowBasicHtml(sub.text)}</p>`;
     }
   } else if (sub.kind === 'standalone-image') {
     const figClass = sub.size === 'compact' ? 'exam-chart-figure exam-chart-figure--compact' : 'exam-chart-figure';

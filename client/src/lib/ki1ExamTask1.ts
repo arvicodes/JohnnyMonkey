@@ -1,10 +1,26 @@
 import type { ExamGridTaskSpec } from './examGridTaskBuilder';
 
+const TURING_STEPS_SCRAMBLED = [
+  'Person C entscheidet, ob der Gesprächspartner Mensch oder Maschine ist.',
+  'Person C führt eine Unterhaltung.',
+  'Eine KI übernimmt die Rolle von A.',
+  'C kennt die Identität der Gesprächspartner nicht.',
+  'Das Verhalten der Maschine wird mit dem eines Menschen verglichen.',
+].join('|');
+
+const TURING_STEPS_ORDERED = [
+  'C kennt die Identität der Gesprächspartner nicht.',
+  'Eine KI übernimmt die Rolle von A.',
+  'Person C führt eine Unterhaltung.',
+  'Das Verhalten der Maschine wird mit dem eines Menschen verglichen.',
+  'Person C entscheidet, ob der Gesprächspartner Mensch oder Maschine ist.',
+].join('|');
+
 /** Aufgabe 1 — QZ „KI 1 - Turing …“ (Turing-Test & Captcha). */
 export function ki1QuizTask1(): ExamGridTaskSpec {
   return {
     taskNumber: 1,
-    points: 9,
+    points: 5,
     afbLevel: 1,
     layout: 'stack',
     subsections: [
@@ -14,7 +30,8 @@ export function ki1QuizTask1(): ExamGridTaskSpec {
         title: '',
         quadrant: 'tl',
         kind: 'paragraph',
-        text: 'Kreuze jeweils eine oder mehrere richtige Antworten an.',
+        variant: 'instruction',
+        text: '<strong>Kreuze</strong> jeweils eine oder mehrere richtige Antworten an.',
       },
       {
         id: 'ki1-a',
@@ -64,23 +81,12 @@ export function ki1QuizTask1(): ExamGridTaskSpec {
         title:
           'Im folgenden Ablauf sind die Schritte durcheinander geraten. Ordne sie von 1 bis 5.',
         quadrant: 'tl',
-        kind: 'round-lines',
-        lines: [
-          {
-            text: 'Person C entscheidet, ob der Gesprächspartner Mensch oder Maschine ist.',
-            solution: '5',
-          },
-          { text: 'Person C führt eine Unterhaltung.', solution: '3' },
-          { text: 'Eine KI übernimmt die Rolle von A.', solution: '2' },
-          {
-            text: 'C kennt die Identität der Gesprächspartner nicht.',
-            solution: '1',
-          },
-          {
-            text: 'Das Verhalten der Maschine wird mit dem eines Menschen verglichen.',
-            solution: '4',
-          },
-        ],
+        kind: 'sort',
+        interaction: 'drag',
+        sortJoin: 'pipe',
+        sortLayout: 'steps',
+        given: TURING_STEPS_SCRAMBLED,
+        solution: TURING_STEPS_ORDERED,
       },
       {
         id: 'ki1-d',
