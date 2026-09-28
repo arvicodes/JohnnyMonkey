@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "title": "Rechnen mit Längen",
+  "lessonPath": "git-intern/Mathe/Klasse 5/Rechnen mit Längen",
+  "updatedAt": "2026-09-25T10:15:00.000Z",
+  "defaultTransition": "fade",
+  "showSlideNumbers": true,
+  "showSlideFooter": true,
+  "slides": [
+    {
+      "layout": "blank",
+      "title": "",
+      "body": "",
+      "speakerNotes": "",
+      "preparationNotes": "",
+      "materialNotes": "",
+      "subtitle": "",
+      "bodyLeft": "",
+      "bodyRight": "",
+      "imagePath": "",
+      "imageCaption": "",
+      "bodyStyle": "plain",
+      "titleAlign": "left",
+      "accentColor": "#F9A825",
+      "titleHtml": "",
+      "bodyHtml": "",
+      "subtitleHtml": "",
+      "bodyLeftHtml": "",
+      "bodyRightHtml": "",
+      "imageCaptionHtml": "",
+      "speakerNotesHtml": "<p><br></p>",
+      "preparationHtml": "<p><br></p>",
+      "materialHtml": "<p><br></p>",
+      "elements": [],
+      "transition": "fade",
+      "revealEnabled": false,
+      "zoneRevealSteps": {},
+      "hiddenLayoutZones": ["bodyHtml", "titleHtml"],
+      "id": "slide-lengths-class5-interactive",
+      "order": 0,
+      "sourceLessonName": "Interaktive Übung",
+      "sourceLessonPath": "git-intern/Mathe/Klasse 5/Rechnen mit Längen",
+      "slideInteractiveExercise": {
+        "id": "ex-lengths-class-5",
+        "title": "Rechnen mit Längen",
+        "packId": "lengths-class-5",
+        "topics": []
+      }
+    }
+  ],
+  "trash": [],
+  "slideFooter": {}
+}

@@ -20,6 +20,18 @@ import {
   type MatchPair,
   type SlideInteractiveExercise,
 } from '../../lib/presentationInteractiveExercise';
+import {
+  ExerciseDiagram,
+  MeasureText,
+  SortRowHandle,
+  clozeBlankSx,
+  exercisePlaySurfaceSx,
+  exercisePromptSubSx,
+  exercisePromptSx,
+  matchTileSx,
+  sortRowCardSx,
+  wordBankChipSx,
+} from './presentationInteractiveExerciseVisuals';
 
 type Phase = 'hub' | 'play' | 'result';
 type CompareSign = '<' | '>' | '=';
@@ -964,19 +976,16 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   if (phase === 'play' && topic && currentQ) {
     const mode = currentQ.mode || 'choice';
 
-    const promptRow = (
-      <Typography
-        sx={{
-          fontSize: `${18 * s}px`,
-          fontWeight: 600,
-          color: '#1a1a2e',
-          lineHeight: 1.35,
-          px: `${16 * s}px`,
-          textAlign: 'center',
-        }}
-      >
-        {currentQ.prompt}
-      </Typography>
+    const showRuleBox = mode === 'choice' || mode === 'equation';
+
+    const promptBlock = (
+      <Box sx={{ width: '100%', maxWidth: `${560 * s}px` }}>
+        <Typography sx={exercisePromptSx(s)}>{currentQ.prompt}</Typography>
+        {currentQ.promptSubline ? (
+          <Typography sx={exercisePromptSubSx(s)}>{currentQ.promptSubline}</Typography>
+        ) : null}
+        <ExerciseDiagram kind={currentQ.exerciseDiagram} scale={s} />
+      </Box>
     );
 
     return (
@@ -986,7 +995,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          bgcolor: '#f7f7f7',
+          ...exercisePlaySurfaceSx,
           boxSizing: 'border-box',
           pb: `${16 * s}px`,
           pointerEvents: interactive ? 'auto' : 'none',
@@ -1054,24 +1063,25 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
             />
           ) : null}
 
-          {currentQ.ruleText ? (
+          {showRuleBox && currentQ.ruleText ? (
             <Box
               sx={{
                 width: '100%',
                 maxWidth: `${520 * s}px`,
-                bgcolor: '#fff',
+                bgcolor: '#fafafa',
                 borderRadius: `${10 * s}px`,
                 p: `${12 * s}px`,
                 fontSize: `${15 * s}px`,
                 lineHeight: 1.4,
                 color: '#222',
+                border: '1px solid rgba(0,0,0,0.06)',
               }}
             >
               {currentQ.ruleText}
             </Box>
           ) : null}
 
-          {promptRow}
+          {promptBlock}
           {currentQ.showRomanTable ? <RomanTable scale={s} /> : null}
 
           {/* Choice */}
@@ -1235,20 +1245,31 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
           {/* Cloze */}
           {mode === 'cloze' ? (
             <Box sx={{ width: '100%', maxWidth: `${520 * s}px` }}>
-              <Typography
+              <Box
                 sx={{
-                  fontSize: `${18 * s}px`,
-                  lineHeight: 1.7,
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
+                  fontSize: `${17 * s}px`,
+                  lineHeight: 1.75,
                   color: '#222',
-                  textAlign: 'center',
-                  px: `${8 * s}px`,
+                  px: `${4 * s}px`,
+                  mx: 'auto',
                 }}
               >
                 {(() => {
                   let bi = 0;
                   return (currentQ.clozeParts || []).map((part, idx) => {
+                    if (part.type === 'break') {
+                      return <Box key={idx} sx={{ flexBasis: '100%', height: `${10 * s}px` }} />;
+                    }
                     if (part.type === 'text') {
-                      return <Box key={idx} component="span">{part.text}</Box>;
+                      return (
+                        <Box key={idx} component="span" sx={{ fontWeight: 500 }}>
+                          {part.text}
+                        </Box>
+                      );
                     }
                     const i = bi++;
                     const val = fillValues[i] || '';
@@ -1261,42 +1282,22 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                         type="button"
                         disabled={!interactive || locked}
                         onClick={() => setActiveBlank(i)}
-                        sx={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          minWidth: `${Math.max(56, (val.length || 4) * 12) * s}px`,
-                          height: `${30 * s}px`,
-                          mx: `${3 * s}px`,
-                          px: `${6 * s}px`,
-                          border: selected ? '2px solid #FF8F00' : '1px solid rgba(0,0,0,0.2)',
-                          borderRadius: `${6 * s}px`,
-                          bgcolor: 'rgba(0,0,0,0.06)',
-                          color:
-                            st === 'correct' || st === 'revealed'
-                              ? '#2E7D32'
-                              : st === 'wrong'
-                                ? '#C62828'
-                                : '#111',
-                          fontWeight: 700,
-                          fontSize: `${16 * s}px`,
-                          cursor: interactive && !locked ? 'pointer' : 'default',
-                          verticalAlign: 'middle',
-                        }}
+                        sx={clozeBlankSx(s, { selected, status: st })}
                       >
                         {val || '\u00a0'}
                       </Box>
                     );
                   });
                 })()}
-              </Typography>
+              </Box>
               <Box
                 sx={{
                   display: 'flex',
                   flexWrap: 'wrap',
-                  gap: `${8 * s}px`,
+                  gap: `${10 * s}px`,
                   justifyContent: 'center',
-                  mt: `${22 * s}px`,
+                  mt: `${28 * s}px`,
+                  pt: `${8 * s}px`,
                 }}
               >
                 {(currentQ.clozeOptions || []).map((opt) => {
@@ -1306,15 +1307,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                       key={opt}
                       disabled={!interactive || locked || used}
                       onClick={() => placeClozeOption(opt)}
-                      sx={{
-                        minWidth: `${88 * s}px`,
-                        bgcolor: used ? 'rgba(0,0,0,0.04)' : 'rgba(0,0,0,0.1)',
-                        color: used ? 'rgba(0,0,0,0.3)' : '#111',
-                        fontWeight: 700,
-                        textTransform: 'none',
-                        borderRadius: `${8 * s}px`,
-                        fontSize: `${15 * s}px`,
-                      }}
+                      sx={wordBankChipSx(s, used)}
                     >
                       {opt}
                     </Button>
@@ -1357,21 +1350,10 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                     disabled={!interactive || locked || isMatched}
                     onClick={() => clickMatchTile(tile)}
                     sx={{
-                      border: `${2 * s}px solid ${borderColor}`,
-                      bgcolor: 'rgba(0,0,0,0.07)',
-                      color: '#111',
-                      borderRadius: `${8 * s}px`,
-                      px: `${14 * s}px`,
-                      py: `${10 * s}px`,
-                      fontSize: `${(tile.side === 'right' ? 18 : 15) * s}px`,
-                      fontWeight: tile.side === 'right' ? 800 : 700,
-                      textAlign: 'center',
+                      ...matchTileSx(s, borderColor, tile.side),
                       cursor: interactive && !locked && !isMatched ? 'pointer' : 'default',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-                      maxWidth: tile.side === 'left' ? `${260 * s}px` : `${140 * s}px`,
-                      minWidth: tile.side === 'right' ? `${72 * s}px` : undefined,
-                      lineHeight: 1.25,
-                      opacity: isMatched ? 0.95 : 1,
+                      maxWidth: tile.side === 'left' ? `${280 * s}px` : undefined,
+                      opacity: isMatched ? 0.88 : 1,
                     }}
                   >
                     {tile.text}
@@ -1588,9 +1570,9 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
 
           {/* Write */}
           {mode === 'write' ? (
-            <Box sx={{ width: '100%', maxWidth: `${420 * s}px`, textAlign: 'center' }}>
-              <Typography sx={{ fontSize: `${36 * s}px`, fontWeight: 800, color: '#111', my: `${10 * s}px` }}>
-                {currentQ.challenge}
+            <Box sx={{ width: '100%', maxWidth: `${480 * s}px`, textAlign: 'center' }}>
+              <Typography sx={{ fontSize: `${22 * s}px`, fontWeight: 700, color: '#111', my: `${16 * s}px` }}>
+                <MeasureText value={currentQ.challenge || ''} scale={s} />
               </Typography>
               <Box
                 sx={{
@@ -1674,74 +1656,47 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
 
           {/* Sort */}
           {mode === 'sort' ? (
-            <Box
-              sx={{
-                width: '100%',
-                maxWidth: `${420 * s}px`,
-                display: 'flex',
-                gap: `${18 * s}px`,
-                justifyContent: 'center',
-                alignItems: 'flex-start',
-              }}
-            >
-              <Box sx={{ flex: 1 }}>
-                {sortPlaced.map((val, i) => {
-                  const isNext = val == null && sortPlaced.findIndex((x) => x == null) === i;
-                  return (
-                    <Box
-                      key={i}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: `${10 * s}px`,
-                        mb: `${8 * s}px`,
-                        color: val ? '#111' : 'rgba(0,0,0,0.28)',
-                        fontSize: `${18 * s}px`,
-                        fontWeight: 700,
-                      }}
-                    >
-                      <Box sx={{ width: `${28 * s}px`, textAlign: 'right' }}>{i + 1}.</Box>
-                      <Box
-                        sx={{
-                          minWidth: `${72 * s}px`,
-                          height: `${36 * s}px`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          bgcolor: val || isNext ? 'rgba(0,0,0,0.08)' : 'transparent',
-                          borderRadius: `${6 * s}px`,
-                          color: isNext && !val ? '#888' : '#111',
-                          fontWeight: 800,
-                        }}
-                      >
-                        {val || (isNext ? '???' : '')}
-                      </Box>
+            <Box sx={{ width: '100%', maxWidth: `${440 * s}px` }}>
+              {sortPlaced.map((val, i) => {
+                const isNext = val == null && sortPlaced.findIndex((x) => x == null) === i;
+                const filled = Boolean(val);
+                return (
+                  <Box key={i} sx={sortRowCardSx(s, filled || isNext)}>
+                    <SortRowHandle scale={s} />
+                    <Box sx={{ flex: 1, textAlign: 'center', py: `${8 * s}px`, pr: `${10 * s}px` }}>
+                      {val ? (
+                        <MeasureText value={val} scale={s} />
+                      ) : isNext ? (
+                        <Typography sx={{ fontSize: `${18 * s}px`, fontWeight: 700, color: '#888' }}>
+                          ???
+                        </Typography>
+                      ) : null}
                     </Box>
-                  );
-                })}
-              </Box>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: `${8 * s}px` }}>
-                {sortPool.map((item) => (
-                  <Button
-                    key={item}
-                    disabled={!interactive || locked}
-                    onClick={() => placeSortItem(item)}
-                    sx={{
-                      minWidth: `${64 * s}px`,
-                      height: `${40 * s}px`,
-                      bgcolor: '#fff',
-                      border: '1px solid rgba(0,0,0,0.15)',
-                      color: '#111',
-                      fontWeight: 800,
-                      fontSize: `${18 * s}px`,
-                      textTransform: 'none',
-                      borderRadius: `${8 * s}px`,
-                    }}
-                  >
-                    {item}
-                  </Button>
-                ))}
-              </Box>
+                  </Box>
+                );
+              })}
+              {sortPool.length > 0 ? (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: `${8 * s}px`,
+                    justifyContent: 'center',
+                    mt: `${20 * s}px`,
+                  }}
+                >
+                  {sortPool.map((item) => (
+                    <Button
+                      key={item}
+                      disabled={!interactive || locked}
+                      onClick={() => placeSortItem(item)}
+                      sx={wordBankChipSx(s, false)}
+                    >
+                      <MeasureText value={item} scale={s} />
+                    </Button>
+                  ))}
+                </Box>
+              ) : null}
             </Box>
           ) : null}
         </Box>

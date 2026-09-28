@@ -19,10 +19,14 @@ export type InteractiveExerciseChoice = {
   label: string;
 };
 
-/** Teil einer Rechnung oder eines Lückentexts: fester Text oder Eingabelücke. */
+/** Teil einer Rechnung oder eines Lückentexts: fester Text, Zeilenumbruch oder Lücke. */
 export type EquationPart =
   | { type: 'text'; text: string }
-  | { type: 'blank'; correct: string };
+  | { type: 'blank'; correct: string }
+  | { type: 'break' };
+
+/** Illustration über dem Lückentext (Anton-Stil). */
+export type ExerciseDiagramKind = 'length-mass-unit' | 'length-comma-shift';
 
 /** Ein Paar für Zuordnen (linker Text ↔ rechte Kachel). */
 export type MatchPair = {
@@ -58,6 +62,10 @@ export type InteractiveExerciseQuestion = {
   tip?: string;
   /** Beispielzeile über der Aufgabe, z. B. „VIII = 5 + 1 + 1 + 1 = 8“. */
   exampleLine?: string;
+  /** Zweite Zeile unter der Aufgabenstellung (z. B. bei Ordnen). */
+  promptSubline?: string;
+  /** Diagramm zwischen Aufgabe und Inhalt. */
+  exerciseDiagram?: ExerciseDiagramKind;
   /**
    * `choice` = Multiple Choice (Standard).
    * `equation` = Rechnung mit Lücken (Mit römischen Zahlen rechnen).
@@ -194,6 +202,10 @@ function blank(correct: string): EquationPart {
 
 function txt(text: string): EquationPart {
   return { type: 'text', text };
+}
+
+function lineBreak(): EquationPart {
+  return { type: 'break' };
 }
 
 /** Paket „Römische Zahlen“ — Fragen wie in typischen Lernapps. */
@@ -740,13 +752,14 @@ function lengthSort(
   sortItems: string[],
   sortCorrectOrder: string[],
   tip: string,
+  promptSubline?: string,
 ): InteractiveExerciseQuestion {
   return {
     id,
     mode: 'sort',
     prompt,
-    ruleText: LENGTH_RULE_TEXT,
     tip,
+    ...(promptSubline ? { promptSubline } : {}),
     sortItems,
     sortCorrectOrder,
     choices: [],
@@ -760,32 +773,42 @@ export function createLengthsClass5Exercise(): SlideInteractiveExercise {
       id: 'len-cloze-1',
       mode: 'cloze',
       prompt: 'Fülle die Lücken.',
-      ruleText: LENGTH_RULE_TEXT,
       tip: 'Maßzahl und Maßeinheit gehören zusammen.',
+      exerciseDiagram: 'length-mass-unit',
       clozeParts: [
-        txt('Eine Längenangabe besteht aus einer '),
+        txt('Längenangaben bestehen aus einer '),
         blank('Maßzahl'),
         txt(' und einer '),
         blank('Maßeinheit'),
         txt('.'),
+        lineBreak(),
+        txt('Wird eine Längenangabe in eine größere Einheit umgerechnet, so wird die Maßzahl '),
+        blank('kleiner'),
+        txt('.'),
+        lineBreak(),
+        txt('Wird eine Längenangabe in eine kleinere Einheit umgerechnet, so wird die Maßzahl '),
+        blank('größer'),
+        txt('.'),
       ],
-      clozeOptions: ['Maßzahl', 'Maßeinheit', 'Kommazahl', 'Einheit'],
+      clozeOptions: ['Maßzahl', 'Maßeinheit', 'kleiner', 'größer', 'Kommaverschiebung'],
       choices: [],
     },
     {
       id: 'len-cloze-2',
       mode: 'cloze',
       prompt: 'Fülle die Lücken.',
-      ruleText: LENGTH_RULE_TEXT,
-      tip: 'Kleinere Einheit → größere Maßzahl.',
+      tip: 'Kommaverschiebung: größere Einheit → Komma nach links.',
+      exerciseDiagram: 'length-comma-shift',
       clozeParts: [
-        txt('Bei der Umwandlung von m in cm wird die Einheit '),
-        blank('kleiner'),
-        txt(' und die Maßzahl '),
-        blank('größer'),
-        txt('.'),
+        txt('Bei der Umrechnung in eine andere Maßeinheit spricht man auch von einer '),
+        blank('Kommaverschiebung'),
+        txt('. Wird die Maßeinheit größer, so wird das Komma der Maßzahl nach '),
+        blank('links'),
+        txt(' verschoben. Wird die Maßeinheit kleiner, so wird das Komma der Maßzahl nach '),
+        blank('rechts'),
+        txt(' verschoben.'),
       ],
-      clozeOptions: ['kleiner', 'größer', 'gleich', 'halbiert'],
+      clozeOptions: ['Kommaverschiebung', 'Längenänderung', 'links', 'rechts'],
       choices: [],
     },
     {
@@ -828,6 +851,7 @@ export function createLengthsClass5Exercise(): SlideInteractiveExercise {
       ['8 dm', '750 mm', '0,9 m', '82 cm', '0,075 km'],
       ['750 mm', '8 dm', '82 cm', '0,9 m', '0,075 km'],
       'Wandle z. B. alles in cm um: 750 mm = 75 cm, 8 dm = 80 cm.',
+      'Beginne oben mit der kleinsten Länge.',
     ),
     lengthSort(
       'len-sort-s-2',
@@ -835,6 +859,7 @@ export function createLengthsClass5Exercise(): SlideInteractiveExercise {
       ['1,05 m', '105 cm', '1 040 mm', '11 dm', '0,001 km'],
       ['0,001 km', '1 040 mm', '1,05 m', '105 cm', '11 dm'],
       '0,001 km = 1 m.',
+      'Beginne oben mit der kleinsten Länge.',
     ),
     lengthSort(
       'len-sort-s-3',
@@ -842,6 +867,7 @@ export function createLengthsClass5Exercise(): SlideInteractiveExercise {
       ['3,02 km', '3 019 m', '302 000 cm', '30 200 dm'],
       ['3 019 m', '3,02 km', '302 000 cm', '30 200 dm'],
       '3,02 km = 3 020 m.',
+      'Beginne oben mit der kleinsten Länge.',
     ),
     lengthSort(
       'len-sort-s-4',
@@ -849,6 +875,7 @@ export function createLengthsClass5Exercise(): SlideInteractiveExercise {
       ['7,8 cm', '78 mm', '0,79 dm', '0,0785 m'],
       ['7,8 cm', '78 mm', '0,0785 m', '0,79 dm'],
       '78 mm = 7,8 cm.',
+      'Beginne oben mit der kleinsten Länge.',
     ),
   ];
 
@@ -859,6 +886,7 @@ export function createLengthsClass5Exercise(): SlideInteractiveExercise {
       ['1,4 m', '145 cm', '14 dm', '1 390 mm', '0,0015 km'],
       ['0,0015 km', '145 cm', '1,4 m', '14 dm', '1 390 mm'],
       '0,0015 km = 1,5 m.',
+      'Beginne oben mit der größten Länge.',
     ),
     lengthSort(
       'len-sort-l-2',
@@ -866,6 +894,7 @@ export function createLengthsClass5Exercise(): SlideInteractiveExercise {
       ['0,5 km', '505 m', '50 000 cm', '5 100 dm'],
       ['5 100 dm', '505 m', '0,5 km', '50 000 cm'],
       '0,5 km = 500 m.',
+      'Beginne oben mit der größten Länge.',
     ),
     lengthSort(
       'len-sort-l-3',
@@ -873,6 +902,7 @@ export function createLengthsClass5Exercise(): SlideInteractiveExercise {
       ['2 000 mm', '20 dm', '201 cm', '1,99 m'],
       ['201 cm', '2 000 mm', '20 dm', '1,99 m'],
       '20 dm = 2 m = 2 000 mm.',
+      'Beginne oben mit der größten Länge.',
     ),
   ];
 
@@ -938,6 +968,7 @@ export function createLengthsClass5Exercise(): SlideInteractiveExercise {
       ['1,02 m', '98 cm', '1 005 mm'],
       ['98 cm', '1 005 mm', '1,02 m'],
       '98 cm = 980 mm.',
+      'Beginne oben mit der kleinsten Länge.',
     ),
     {
       id: 'len-t-6',
@@ -1037,10 +1068,21 @@ export function sanitizeSlideInteractiveExercise(
             String((p as { correct: string }).correct).trim()
           ) {
             out.push({ type: 'blank', correct: String((p as { correct: string }).correct).trim() });
+          } else if ((p as EquationPart).type === 'break') {
+            out.push({ type: 'break' });
           }
         }
         return out;
       };
+
+      const diagramKind =
+        qq.exerciseDiagram === 'length-mass-unit' || qq.exerciseDiagram === 'length-comma-shift'
+          ? qq.exerciseDiagram
+          : undefined;
+      const promptSubline =
+        typeof qq.promptSubline === 'string' && qq.promptSubline.trim()
+          ? qq.promptSubline.trim()
+          : undefined;
 
       if (mode === 'equation') {
         const equationParts = parseParts(qq.equationParts);
@@ -1086,6 +1128,8 @@ export function sanitizeSlideInteractiveExercise(
             ? { ruleText: qq.ruleText.trim() }
             : {}),
           ...(typeof qq.tip === 'string' && qq.tip.trim() ? { tip: qq.tip.trim() } : {}),
+          ...(promptSubline ? { promptSubline } : {}),
+          ...(diagramKind ? { exerciseDiagram: diagramKind } : {}),
           clozeParts,
           clozeOptions,
           choices: [],
@@ -1110,6 +1154,7 @@ export function sanitizeSlideInteractiveExercise(
           prompt,
           mode: 'sort',
           ...(typeof qq.tip === 'string' && qq.tip.trim() ? { tip: qq.tip.trim() } : {}),
+          ...(promptSubline ? { promptSubline } : {}),
           sortItems,
           sortCorrectOrder,
           choices: [],
