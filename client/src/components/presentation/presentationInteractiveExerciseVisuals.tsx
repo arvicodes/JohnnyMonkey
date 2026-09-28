@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
-import type { ExerciseDiagramKind } from '../../lib/presentationInteractiveExercise';
+import type { EquationPart, ExerciseDiagramKind } from '../../lib/presentationInteractiveExercise';
 
 /** Anton-ähnliche Darstellung — gemeinsam für alle interaktiven Übungen. */
 export const exercisePlaySurfaceSx = {
@@ -32,6 +32,105 @@ const FIELD_LONG_CHAR_THRESHOLD = 10;
 
 /** Basis-Breite des Lückentext-Blocks (px × scale); +20 % gegenüber früher 520. */
 export const EXERCISE_CLOZE_TEXT_MAX_WIDTH = 624;
+
+const LEADING_PUNCT_RE = /^(\s*)([.,;:!?…]+)(.*)$/u;
+
+/** Leerzeichen vor Satzzeichen → geschütztes Leerzeichen (kein Zeilenbruch davor). */
+export function typographicClozeText(text: string): string {
+  return text.replace(/(\S) ([.,;:!?…]+)/gu, '$1\u00A0$2');
+}
+
+type ClozeInlinePiece =
+  | { kind: 'text'; text: string }
+  | { kind: 'blank'; correct: string; index: number };
+
+export type ClozeRenderUnit =
+  | { kind: 'break' }
+  | { kind: 'text'; text: string }
+  | { kind: 'blank'; correct: string; index: number }
+  | { kind: 'nowrap'; children: ClozeInlinePiece[] };
+
+function glueLeadingPunctuation(units: ClozeRenderUnit[], punct: string, rest: string) {
+  if (!punct) {
+    if (rest) units.push({ kind: 'text', text: typographicClozeText(rest) });
+    return;
+  }
+  const last = units[units.length - 1];
+  if (!last) {
+    units.push({ kind: 'text', text: typographicClozeText(punct + rest) });
+    return;
+  }
+  if (last.kind === 'blank') {
+    units[units.length - 1] = {
+      kind: 'nowrap',
+      children: [
+        { kind: 'blank', correct: last.correct, index: last.index },
+        { kind: 'text', text: punct },
+      ],
+    };
+  } else if (last.kind === 'text') {
+    units[units.length - 1] = { kind: 'text', text: last.text + punct };
+  } else if (last.kind === 'nowrap') {
+    last.children.push({ kind: 'text', text: punct });
+  } else {
+    units.push({ kind: 'text', text: punct });
+  }
+  if (rest) units.push({ kind: 'text', text: typographicClozeText(rest) });
+}
+
+/** Lückentext in typografisch sinnvolle Einheiten (Satzzeichen an vorheriges Wort/Lücke). */
+export function buildClozeRenderUnits(parts: EquationPart[]): ClozeRenderUnit[] {
+  const units: ClozeRenderUnit[] = [];
+  let blankIndex = 0;
+
+  for (const part of parts) {
+    if (part.type === 'break') {
+      units.push({ kind: 'break' });
+      continue;
+    }
+    if (part.type === 'blank') {
+      units.push({ kind: 'blank', correct: part.correct, index: blankIndex++ });
+      continue;
+    }
+    const raw = part.text;
+    const m = raw.match(LEADING_PUNCT_RE);
+    if (m && m[2]) {
+      glueLeadingPunctuation(units, m[1] + m[2], m[3]);
+      continue;
+    }
+    units.push({ kind: 'text', text: typographicClozeText(raw) });
+  }
+  return units;
+}
+
+export const clozeParagraphSx = (scale: number) => ({
+  m: 0,
+  width: '100%',
+  fontSize: `${17 * scale}px`,
+  lineHeight: 1.75,
+  color: '#222',
+  px: `${4 * scale}px`,
+  textAlign: 'left' as const,
+  textWrap: 'pretty' as const,
+  wordBreak: 'normal' as const,
+  overflowWrap: 'break-word' as const,
+  hyphens: 'none' as const,
+});
+
+export const clozeTextSpanSx = {
+  fontWeight: 500,
+};
+
+export const clozeParagraphBreakSx = (scale: number) => ({
+  display: 'block',
+  height: 0,
+  marginTop: `${10 * scale}px`,
+});
+
+export const clozeNowrapGroupSx = {
+  whiteSpace: 'nowrap' as const,
+  display: 'inline' as const,
+};
 
 function fieldContentMinCh(chars: number) {
   return Math.min(Math.max(chars + 4, 4), 48);

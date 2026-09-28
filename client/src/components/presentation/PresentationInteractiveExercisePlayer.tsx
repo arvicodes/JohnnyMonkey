@@ -25,7 +25,12 @@ import {
   MeasureText,
   SortRowHandle,
   EXERCISE_CLOZE_TEXT_MAX_WIDTH,
+  buildClozeRenderUnits,
   clozeBlankSx,
+  clozeNowrapGroupSx,
+  clozeParagraphBreakSx,
+  clozeParagraphSx,
+  clozeTextSpanSx,
   exerciseInputFieldSx,
   exercisePlaySurfaceSx,
   exercisePromptSubSx,
@@ -1265,38 +1270,26 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                 mx: 'auto',
               }}
             >
-              <Box
-                component="p"
-                sx={{
-                  m: 0,
-                  width: '100%',
-                  fontSize: `${17 * s}px`,
-                  lineHeight: 1.75,
-                  color: '#222',
-                  px: `${4 * s}px`,
-                  textAlign: 'left',
-                }}
-              >
-                {(() => {
-                  let bi = 0;
-                  return (currentQ.clozeParts || []).map((part, idx) => {
-                    if (part.type === 'break') {
-                      return <br key={idx} />;
-                    }
-                    if (part.type === 'text') {
-                      return (
-                        <Box key={idx} component="span" sx={{ fontWeight: 500, whiteSpace: 'pre-wrap' }}>
-                          {part.text}
-                        </Box>
-                      );
-                    }
-                    const i = bi++;
+              <Box component="p" sx={clozeParagraphSx(s)}>
+                {buildClozeRenderUnits(currentQ.clozeParts || []).map((unit, idx) => {
+                  if (unit.kind === 'break') {
+                    return <Box key={idx} component="span" sx={clozeParagraphBreakSx(s)} aria-hidden />;
+                  }
+                  if (unit.kind === 'text') {
+                    return (
+                      <Box key={idx} component="span" sx={clozeTextSpanSx}>
+                        {unit.text}
+                      </Box>
+                    );
+                  }
+                  const renderBlank = (blankUnit: { correct: string; index: number }, key: string) => {
+                    const i = blankUnit.index;
                     const val = fillValues[i] || '';
                     const st = fillStatuses[i] || 'idle';
                     const selected = activeBlank === i;
                     return (
                       <Box
-                        key={idx}
+                        key={key}
                         component="button"
                         type="button"
                         disabled={!interactive || locked}
@@ -1304,14 +1297,30 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                         sx={clozeBlankSx(s, {
                           selected,
                           status: st,
-                          label: val || part.correct,
+                          label: val || blankUnit.correct,
                         })}
                       >
                         {val || '\u00a0'}
                       </Box>
                     );
-                  });
-                })()}
+                  };
+                  if (unit.kind === 'blank') {
+                    return renderBlank(unit, `b-${idx}`);
+                  }
+                  return (
+                    <Box key={idx} component="span" sx={clozeNowrapGroupSx}>
+                      {unit.children.map((child, ci) =>
+                        child.kind === 'text' ? (
+                          <Box key={ci} component="span" sx={clozeTextSpanSx}>
+                            {child.text}
+                          </Box>
+                        ) : (
+                          renderBlank(child, `n-${idx}-${ci}`)
+                        ),
+                      )}
+                    </Box>
+                  );
+                })}
               </Box>
               <Box sx={{ ...wordBankRowSx(s), mt: `${28 * s}px` }}>
                 {(currentQ.clozeOptions || []).map((opt) => {
