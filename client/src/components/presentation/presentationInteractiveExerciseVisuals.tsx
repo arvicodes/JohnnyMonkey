@@ -112,22 +112,38 @@ export const wordBankRowSx = {
   py: 0.5,
 };
 
-export const wordBankChipSx = (scale: number, used: boolean, widthPx: number) => ({
+/** Wortbank / Zieh-Kärtchen — gleiche Breite wie Lücken (ohne MUI-Button-Mindestbreite). */
+export const wordBankChipSx = (
+  scale: number,
+  used: boolean,
+  widthPx: number,
+  interactive: boolean,
+) => ({
   width: `${widthPx}px`,
   minWidth: `${widthPx}px`,
   maxWidth: `${widthPx}px`,
   height: `${30 * scale}px`,
   px: `${4 * scale}px`,
+  flex: `0 0 ${widthPx}px`,
   flexShrink: 0,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   bgcolor: used ? 'rgba(0,0,0,0.04)' : '#d8d8d8',
   color: used ? 'rgba(0,0,0,0.28)' : '#111',
   fontWeight: 700,
-  textTransform: 'none' as const,
+  fontFamily: 'inherit',
   borderRadius: `${5 * scale}px`,
   fontSize: `${13 * scale}px`,
+  lineHeight: 1.2,
   boxShadow: used ? 'none' : '0 1px 2px rgba(0,0,0,0.08)',
   border: '1px solid rgba(0,0,0,0.06)',
   boxSizing: 'border-box' as const,
+  cursor: used || !interactive ? 'default' : 'pointer',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap' as const,
+  '&:disabled': { opacity: used ? 0.35 : 0.5 },
 });
 
 export const sortRowCardSx = (scale: number, filled: boolean) => ({
