@@ -147,29 +147,41 @@ function ExerciseTopBar({
         minHeight: `${28 * scale}px`,
       }}
     >
-      <Box sx={{ flex: 1, minWidth: 0, position: 'relative' }}>
+      <Box
+        sx={{
+          width: '10%',
+          minWidth: `${32 * scale}px`,
+          maxWidth: `${56 * scale}px`,
+          flexShrink: 0,
+          position: 'relative',
+        }}
+      >
         {tip ? (
           <>
             <Button
               size="small"
               disabled={!interactive}
               onClick={() => setTipOpen((v) => !v)}
+              aria-label="Tipp"
               sx={{
+                width: '100%',
                 minWidth: 0,
-                px: `${8 * scale}px`,
-                py: `${3 * scale}px`,
+                maxWidth: '100%',
+                px: `${2 * scale}px`,
+                py: `${2 * scale}px`,
                 bgcolor: '#fff',
                 border: '1px solid rgba(0,0,0,0.15)',
                 color: '#333',
                 fontWeight: 700,
-                fontSize: `${12 * scale}px`,
+                fontSize: `${9 * scale}px`,
                 textTransform: 'none',
-                borderRadius: `${8 * scale}px`,
-                gap: `${4 * scale}px`,
+                borderRadius: `${6 * scale}px`,
+                gap: 0,
+                lineHeight: 1.1,
+                overflow: 'hidden',
               }}
             >
-              Tipp
-              <LightbulbOutlinedIcon sx={{ fontSize: `${14 * scale}px` }} />
+              <LightbulbOutlinedIcon sx={{ fontSize: `${13 * scale}px`, flexShrink: 0 }} />
             </Button>
             {tipOpen ? (
               <Box
@@ -197,6 +209,7 @@ function ExerciseTopBar({
           </>
         ) : null}
       </Box>
+      <Box sx={{ flex: 1, minWidth: 0 }} />
       {showClose ? (
         <Box
           component="button"
@@ -1121,9 +1134,11 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                       disabled={!interactive || locked}
                       onClick={() => pickChoice(c.id)}
                       sx={{
-                        flex: `1 1 ${110 * s}px`,
-                        maxWidth: `${160 * s}px`,
-                        minHeight: `${52 * s}px`,
+                        flex: `0 1 auto`,
+                        maxWidth: `${120 * s}px`,
+                        minWidth: `${48 * s}px`,
+                        minHeight: `${40 * s}px`,
+                        px: `${8 * s}px`,
                         bgcolor: bg,
                         color,
                         fontWeight: 700,
@@ -1180,6 +1195,8 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                         </Box>
                       );
                     }
+                    if (part.type === 'break') return null;
+                    if (part.type !== 'blank') return null;
                     const i = bi++;
                     const val = fillValues[i] || '';
                     const st = fillStatuses[i] || 'idle';
@@ -1204,8 +1221,8 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                           if (e.key === 'Enter') submitFills(currentQ.equationParts, fillValues);
                         }}
                         sx={{
-                          width: `${Math.max(36, 18 * String(part.correct).length) * s}px`,
-                          height: `${36 * s}px`,
+                          width: `${Math.max(28, 10 * String(part.correct).length) * s}px`,
+                          height: `${30 * s}px`,
                           textAlign: 'center',
                           border: 'none',
                           borderRadius: `${6 * s}px`,
@@ -1282,7 +1299,11 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                         type="button"
                         disabled={!interactive || locked}
                         onClick={() => setActiveBlank(i)}
-                        sx={clozeBlankSx(s, { selected, status: st })}
+                        sx={clozeBlankSx(s, {
+                          selected,
+                          status: st,
+                          valLen: Math.max(val.length, 2),
+                        })}
                       >
                         {val || '\u00a0'}
                       </Box>
@@ -1428,8 +1449,8 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                                   );
                                 }}
                                 sx={{
-                                  width: `${88 * s}px`,
-                                  height: `${36 * s}px`,
+                                  width: `${Math.max(40, 9 * String(it.arabic).length) * s}px`,
+                                  height: `${30 * s}px`,
                                   textAlign: 'center',
                                   border: 'none',
                                   borderRadius: `${6 * s}px`,
@@ -1491,8 +1512,8 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                           disabled={!interactive || locked}
                           onClick={() => setActiveCompareIdx(cIdx)}
                           sx={{
-                            width: `${44 * s}px`,
-                            height: `${44 * s}px`,
+                            width: `${34 * s}px`,
+                            height: `${34 * s}px`,
                             border: active ? `${2 * s}px solid #FF8F00` : 'none',
                             borderRadius: `${6 * s}px`,
                             bgcolor: 'rgba(0,0,0,0.08)',
@@ -1602,8 +1623,9 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                 }}
                 placeholder="…"
                 sx={{
-                  width: `${220 * s}px`,
-                  height: `${48 * s}px`,
+                  width: `${Math.max(72, 10 * Math.max(typedAnswer.length, 3)) * s}px`,
+                  maxWidth: `${160 * s}px`,
+                  height: `${34 * s}px`,
                   textAlign: 'center',
                   border: 'none',
                   borderRadius: `${8 * s}px`,

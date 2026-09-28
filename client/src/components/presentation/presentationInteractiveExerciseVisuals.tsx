@@ -28,8 +28,15 @@ export const exercisePromptSubSx = (scale: number) => ({
 
 export const clozeBlankSx = (
   scale: number,
-  opts: { selected?: boolean; status?: 'idle' | 'correct' | 'wrong' | 'revealed' },
+  opts: {
+    selected?: boolean;
+    status?: 'idle' | 'correct' | 'wrong' | 'revealed';
+    /** Länge des eingetragenen Worts — schmale Lücken. */
+    valLen?: number;
+  },
 ) => {
+  const chars = Math.max(2, opts.valLen ?? 2);
+  const w = Math.min(96, Math.max(26, chars * 7 + 10));
   const st = opts.status || 'idle';
   const color =
     st === 'correct' || st === 'revealed'
@@ -41,17 +48,19 @@ export const clozeBlankSx = (
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: `${Math.max(64, 48) * scale}px`,
-    height: `${34 * scale}px`,
-    mx: `${4 * scale}px`,
-    my: `${2 * scale}px`,
-    px: `${8 * scale}px`,
+    width: `${w * scale}px`,
+    minWidth: `${26 * scale}px`,
+    maxWidth: `${96 * scale}px`,
+    height: `${28 * scale}px`,
+    mx: `${2 * scale}px`,
+    my: `${1 * scale}px`,
+    px: `${4 * scale}px`,
     border: opts.selected ? '2px solid #90caf9' : '1px solid #d0d0d0',
     borderRadius: `${4 * scale}px`,
     bgcolor: '#ebebeb',
     color,
     fontWeight: 600,
-    fontSize: `${16 * scale}px`,
+    fontSize: `${14 * scale}px`,
     cursor: 'pointer',
     verticalAlign: 'middle',
     textDecoration: st === 'wrong' ? 'line-through' : 'none',
@@ -59,14 +68,15 @@ export const clozeBlankSx = (
 };
 
 export const wordBankChipSx = (scale: number, used: boolean) => ({
-  minWidth: `${96 * scale}px`,
-  height: `${40 * scale}px`,
+  minWidth: 0,
+  height: `${30 * scale}px`,
+  px: `${6 * scale}px`,
   bgcolor: used ? 'rgba(0,0,0,0.04)' : '#d8d8d8',
   color: used ? 'rgba(0,0,0,0.28)' : '#111',
   fontWeight: 700,
   textTransform: 'none' as const,
-  borderRadius: `${6 * scale}px`,
-  fontSize: `${15 * scale}px`,
+  borderRadius: `${5 * scale}px`,
+  fontSize: `${13 * scale}px`,
   boxShadow: used ? 'none' : '0 1px 2px rgba(0,0,0,0.08)',
   border: '1px solid rgba(0,0,0,0.06)',
 });
@@ -93,10 +103,10 @@ export const matchTileSx = (
   bgcolor: '#efefef',
   color: '#111',
   borderRadius: `${6 * scale}px`,
-  px: `${16 * scale}px`,
-  py: `${14 * scale}px`,
-  minWidth: side === 'right' ? `${80 * scale}px` : `${120 * scale}px`,
-  minHeight: `${72 * scale}px`,
+  px: `${10 * scale}px`,
+  py: `${8 * scale}px`,
+  minWidth: side === 'right' ? `${52 * scale}px` : `${72 * scale}px`,
+  minHeight: `${52 * scale}px`,
   fontSize: `${(side === 'right' ? 17 : 15) * scale}px`,
   fontWeight: side === 'right' ? 800 : 600,
   textAlign: 'center' as const,
