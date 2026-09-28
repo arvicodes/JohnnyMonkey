@@ -15,9 +15,9 @@ const FULL_RESET_RED = '#c62828';
 
 const groupedBtn = {
   minWidth: 'max-content',
-  height: 28,
-  px: 0.85,
-  fontSize: '0.62rem',
+  height: 25,
+  px: 0.75,
+  fontSize: '0.56rem',
   fontWeight: 800,
   textTransform: 'none' as const,
   lineHeight: 1.1,
