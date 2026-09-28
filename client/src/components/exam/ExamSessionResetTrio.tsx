@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, Button } from '@mui/material';
+import { Box, Button, ButtonGroup } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 
 type Props = {
   disabled?: boolean;
@@ -8,83 +9,87 @@ type Props = {
   onFullReset: () => void;
 };
 
-/** Wie Druck/Word/Word+L in der Prüfungs-Leiste — drei Aktionen in einem Block. */
+const EXAM_RED = '#9c403d';
+const EXERCISE_ACCENT = '#e6a78d';
+const FULL_RESET_RED = '#c62828';
+
+const groupedBtn = {
+  minWidth: 'max-content',
+  height: 28,
+  px: 0.85,
+  fontSize: '0.62rem',
+  fontWeight: 800,
+  textTransform: 'none' as const,
+  lineHeight: 1.1,
+  whiteSpace: 'nowrap' as const,
+  flex: '1 0 auto',
+};
+
+/** Wie „Prüfung / Interaktive Übung an diese Folie“ in der Folienleiste. */
 export default function ExamSessionResetTrio({
   disabled,
   onResetSubmissions,
   onRestartTimer,
   onFullReset,
 }: Props) {
-  const base = {
-    flex: '1 0 auto',
-    minWidth: 'max-content',
-    borderRadius: 0,
-    fontSize: 10,
-    lineHeight: 1.15,
-    fontWeight: 800,
-    py: 0.42,
-    px: 0.75,
-    minHeight: 0,
-    whiteSpace: 'nowrap' as const,
-    textTransform: 'uppercase' as const,
-    overflow: 'visible',
-  };
-
-  const divider = { borderRight: '1px solid rgba(255,255,255,0.35)' };
-
   return (
-    <Box
-      role="group"
-      aria-label="Prüfung zurücksetzen"
-      sx={{
-        display: 'inline-flex',
-        flexDirection: 'row',
-        width: 'max-content',
-        maxWidth: 'none',
-        flexShrink: 0,
-        borderRadius: '6px',
-        overflow: 'hidden',
-        border: '1px solid #E10600',
-      }}
-    >
-      <Button
+    <Box role="group" aria-label="Prüfung zurücksetzen" sx={{ flexShrink: 0 }}>
+      <ButtonGroup
         disabled={disabled}
-        onClick={onResetSubmissions}
+        size="small"
+        variant="outlined"
         sx={{
-          ...base,
-          bgcolor: '#fff',
-          color: '#8B1538',
-          borderRight: '1px solid #e0e0e0',
-          '&:hover': { bgcolor: '#fff5f5' },
+          width: 'max-content',
+          maxWidth: 'none',
+          '& .MuiButtonGroup-grouped': groupedBtn,
+          '& .MuiButtonGroup-grouped:not(:last-of-type)': {
+            borderRightColor: 'rgba(0,0,0,0.08)',
+          },
         }}
       >
-        Abgaben zurücksetzen
-      </Button>
-      <Button
-        disabled={disabled}
-        onClick={onRestartTimer}
-        sx={{
-          ...base,
-          ...divider,
-          bgcolor: '#FF8F00',
-          color: '#fff',
-          '&:hover': { bgcolor: '#F57C00' },
-        }}
-      >
-        Zeit für alle neu starten
-      </Button>
-      <Button
-        disabled={disabled}
-        onClick={onFullReset}
-        sx={{
-          ...base,
-          bgcolor: '#E10600',
-          color: '#fff',
-          '&:hover': { bgcolor: '#c70500' },
-        }}
-      >
-        Alles zurücksetzen
-      </Button>
+        <Button
+          onClick={onResetSubmissions}
+          sx={{
+            color: EXAM_RED,
+            borderColor: `${EXAM_RED} !important`,
+            bgcolor: '#fdf2f2',
+            '&:hover': {
+              bgcolor: alpha(EXAM_RED, 0.12),
+              borderColor: `${EXAM_RED} !important`,
+            },
+          }}
+        >
+          Abgaben zurücksetzen
+        </Button>
+        <Button
+          onClick={onRestartTimer}
+          sx={{
+            color: '#c76b4a',
+            borderColor: `${EXERCISE_ACCENT} !important`,
+            bgcolor: '#fff9f0',
+            '&:hover': {
+              bgcolor: alpha(EXERCISE_ACCENT, 0.35),
+              borderColor: `${EXERCISE_ACCENT} !important`,
+            },
+          }}
+        >
+          Zeit für alle neu starten
+        </Button>
+        <Button
+          onClick={onFullReset}
+          sx={{
+            color: FULL_RESET_RED,
+            borderColor: `${FULL_RESET_RED} !important`,
+            bgcolor: alpha(FULL_RESET_RED, 0.08),
+            '&:hover': {
+              bgcolor: alpha(FULL_RESET_RED, 0.16),
+              borderColor: `${FULL_RESET_RED} !important`,
+            },
+          }}
+        >
+          Alles zurücksetzen
+        </Button>
+      </ButtonGroup>
     </Box>
   );
 }
