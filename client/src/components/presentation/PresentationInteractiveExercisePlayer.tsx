@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Button, Typography } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
@@ -343,6 +343,16 @@ function blankCount(parts?: EquationPart[]): number {
   return (parts || []).filter((p) => p.type === 'blank').length;
 }
 
+function cloneQuestionForRepeat(
+  q: InteractiveExerciseQuestion,
+  repeatIndex: number,
+): InteractiveExerciseQuestion {
+  return { ...q, id: `${q.id}__wiederholung-${repeatIndex}` };
+}
+
+/** Nach „Lösen“: Lösung sichtbar lassen, Aufgabe ans Ende, dann selbst nochmal. */
+const SOLVE_REVEAL_MS = 3400;
+
 function WrongBanner({
   scale,
   tip,
@@ -369,9 +379,9 @@ function WrongBanner({
     textTransform: 'none' as const,
     whiteSpace: 'nowrap' as const,
     borderRadius: `${5 * scale * pop}px`,
-    bgcolor: 'rgba(255, 255, 255, 0.35)',
-    color: '#3d2f00',
-    border: '1.5px solid rgba(150, 110, 0, 0.55)',
+    bgcolor: 'rgba(255, 255, 255, 0.75)',
+    color: '#4a2c12',
+    border: '1.5px solid rgba(139, 90, 43, 0.65)',
     boxShadow: 'none',
     flex: '0 0 auto',
     '&.MuiButton-root': { minWidth: 'unset' },
@@ -394,14 +404,14 @@ function WrongBanner({
         minWidth: 0,
         maxWidth: `min(92vw, ${420 * scale * pop}px)`,
         boxSizing: 'border-box',
-        bgcolor: 'rgba(255, 246, 200, 0.45)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        border: '1px solid rgba(218, 165, 32, 0.4)',
+        bgcolor: 'rgba(255, 232, 205, 0.94)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        border: '1px solid rgba(180, 120, 60, 0.55)',
         borderRadius: `${10 * scale * pop}px`,
         px: `${14 * scale * pop}px`,
         py: `${11 * scale * pop}px`,
-        boxShadow: '0 6px 24px rgba(160, 120, 0, 0.18)',
+        boxShadow: '0 8px 28px rgba(120, 70, 30, 0.22)',
         pointerEvents: 'auto',
       }}
     >
@@ -413,7 +423,7 @@ function WrongBanner({
           lineHeight: 1.35,
           mb: `${8 * scale * pop}px`,
           textAlign: 'center',
-          color: '#3d2f00',
+          color: '#5c3317',
         }}
       >
         Ups, deine Lösung war falsch.
@@ -441,15 +451,14 @@ function WrongBanner({
         <Box
           sx={{
             mt: `${10 * scale * pop}px`,
-            pt: `${8 * scale * pop}px`,
-            borderTop: '1px solid rgba(180, 130, 0, 0.35)',
-            px: `${8 * scale * pop}px`,
-            py: `${8 * scale * pop}px`,
+            px: `${10 * scale * pop}px`,
+            py: `${10 * scale * pop}px`,
             borderRadius: `${8 * scale * pop}px`,
-            bgcolor: 'rgba(255, 255, 255, 0.42)',
-            border: '1px solid rgba(200, 140, 20, 0.35)',
+            bgcolor: 'rgba(219, 234, 254, 0.95)',
+            border: '2px solid rgba(37, 99, 235, 0.45)',
             textAlign: 'center',
             maxWidth: `min(88vw, ${480 * scale * pop}px)`,
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
           }}
         >
           <Typography
@@ -458,7 +467,7 @@ function WrongBanner({
               fontSize: `${14 * scale * pop}px`,
               lineHeight: 1.5,
               fontWeight: 600,
-              color: '#1a1208',
+              color: '#1e3a5f',
             }}
           >
             <Box
@@ -467,14 +476,14 @@ function WrongBanner({
                 display: 'block',
                 fontWeight: 800,
                 fontSize: `${15 * scale * pop}px`,
-                color: '#B45309',
+                color: '#1d4ed8',
                 letterSpacing: '0.02em',
                 mb: `${4 * scale * pop}px`,
               }}
             >
               Merke dir:
             </Box>
-            <Box component="span" sx={{ color: '#2d1f0a' }}>
+            <Box component="span" sx={{ color: '#0f172a' }}>
               {tipLine}
             </Box>
           </Typography>
@@ -533,6 +542,15 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     Array<'idle' | 'correct' | 'wrong' | 'revealed'>
   >([]);
   const [activeCompareIdx, setActiveCompareIdx] = useState(0);
+  const solveRevealTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (solveRevealTimerRef.current != null) {
+        window.clearTimeout(solveRevealTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!exercise?.id) return;
@@ -744,6 +762,35 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setActiveBlank(0);
   };
 
+  const appendRepeatAndScheduleRetry = (resetLocal: () => void) => {
+    if (!topic || !currentQ) return;
+    setShowWrongBanner(false);
+    setLocked(true);
+
+    const qSnapshot = currentQ;
+    const atIndex = qi;
+
+    setTopic((prev) => {
+      if (!prev) return prev;
+      const repeatQ = cloneQuestionForRepeat(qSnapshot, prev.questions.length + 1);
+      return { ...prev, questions: [...prev.questions, repeatQ] };
+    });
+    setAnswers((prev) => {
+      const next = [...prev];
+      if (atIndex >= 0 && atIndex < next.length) next[atIndex] = 'wrong';
+      next.push(null);
+      return next;
+    });
+
+    if (solveRevealTimerRef.current != null) {
+      window.clearTimeout(solveRevealTimerRef.current);
+    }
+    solveRevealTimerRef.current = window.setTimeout(() => {
+      solveRevealTimerRef.current = null;
+      resetLocal();
+    }, SOLVE_REVEAL_MS);
+  };
+
   const solveFills = (parts: EquationPart[] | undefined) => {
     if (!parts) return;
     const blanks = parts.filter((p) => p.type === 'blank') as Array<{
@@ -752,8 +799,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     }>;
     setFillValues(blanks.map((b) => b.correct));
     setFillStatuses(blanks.map(() => 'revealed'));
-    setShowWrongBanner(false);
-    markAndAdvance(false, 900);
+    appendRepeatAndScheduleRetry(() => retryFills());
   };
 
   const placeClozeOption = (option: string) => {
@@ -805,8 +851,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     if (!currentQ?.correctAnswer) return;
     setTypedAnswer(currentQ.correctAnswer);
     setTypedStatus('revealed');
-    setShowWrongBanner(false);
-    markAndAdvance(false, 900);
+    appendRepeatAndScheduleRetry(() => retryWrite());
   };
 
   const placeSortItem = (item: string) => {
@@ -840,8 +885,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     if (!currentQ || currentQ.mode !== 'sort') return;
     setSortPlaced([...(currentQ.sortCorrectOrder || [])]);
     setSortPool([]);
-    setShowWrongBanner(false);
-    markAndAdvance(false, 900);
+    appendRepeatAndScheduleRetry(() => retrySort());
   };
 
   const clickMatchTile = (tile: MatchTile) => {
@@ -902,8 +946,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setMatchedPairIds((currentQ.matchPairs || []).map((p) => p.id));
     setMatchSelectedKey(null);
     setMatchWrongKeys([]);
-    setShowWrongBanner(false);
-    markAndAdvance(false, 900);
+    appendRepeatAndScheduleRetry(() => retryMatch());
   };
 
   const submitCompare = () => {
@@ -949,8 +992,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setConvertStatuses(convertItems.map(() => 'revealed'));
     setCompareValues(compareItems.map((it) => it.sign));
     setCompareStatuses(compareItems.map(() => 'revealed'));
-    setShowWrongBanner(false);
-    markAndAdvance(false, 900);
+    appendRepeatAndScheduleRetry(() => retryCompare());
   };
 
   const pickCompareSign = (sign: CompareSign) => {
