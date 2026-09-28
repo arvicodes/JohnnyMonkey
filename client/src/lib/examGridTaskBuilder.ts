@@ -548,11 +548,25 @@ function buildSubsectionShell(sub: GridSubsection, titleHtml: string, bodyHtml: 
 }
 
 function subsectionTitleHtml(sub: GridSubsection): string {
+  if (
+    (sub.kind === 'choice' || sub.kind === 'multi-select') &&
+    sub.prompt?.trim() &&
+    sub.letter
+  ) {
+    return '';
+  }
   if (!sub.letter && !sub.title) return '';
   if (!sub.letter) {
     return sub.title ? `<p style="margin-top:12px;"><strong>${escapeHtml(sub.title)}</strong></p>` : '';
   }
   return `<div class="exam-subsection-title"><span class="item-label">${escapeHtml(sub.letter)})</span> ${escapeHtml(sub.title)}</div>`;
+}
+
+function examMcHeadingHtml(letter: string, prompt: string): string {
+  const label = letter
+    ? `<span class="item-label">${escapeHtml(letter)})</span>`
+    : '';
+  return `<div class="exam-mc-heading">${label} <span class="exam-mc-prompt">${allowBasicHtml(prompt)}</span></div>`;
 }
 
 function fieldId(sub: { answerId?: string }, taskNumber: number, fieldIndex: { n: number }): string {
@@ -645,8 +659,8 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       answers,
       solutionHtml: `<strong>${escapeHtml(correctLabel)}</strong>`,
     });
-    const promptBlock = sub.prompt
-      ? `<p class="exam-mc-prompt" style="margin:0 0 8px;">${allowBasicHtml(sub.prompt)}</p>`
+    const heading = sub.prompt
+      ? examMcHeadingHtml(sub.letter || '', sub.prompt)
       : '';
     const opts = sub.options
       .map(
@@ -654,7 +668,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
           `<label class="exam-mc-option"><input type="radio" name="${id}" value="${escapeHtml(o.value)}"> ${allowBasicHtml(o.label)}</label>`,
       )
       .join('');
-    body = `<div class="item input-group full-width exam-mc-block">${promptBlock}<div class="exam-mc-options">${opts}</div></div>`;
+    body = `<div class="item input-group full-width exam-mc-block">${heading}<div class="exam-mc-options">${opts}</div></div>`;
   } else if (sub.kind === 'multi-select') {
     const id = allocId(taskNumber, fieldIndex.n++);
     const canonical = sub.solution
@@ -679,8 +693,8 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       answers: answers.length ? answers : [canonical],
       solutionHtml: `<strong>${escapeHtml(canonical.replace(/\|/g, ', '))}</strong>`,
     });
-    const promptBlock = sub.prompt
-      ? `<p class="exam-mc-prompt" style="margin:0 0 8px;">${allowBasicHtml(sub.prompt)}</p>`
+    const heading = sub.prompt
+      ? examMcHeadingHtml(sub.letter || '', sub.prompt)
       : '';
     const opts = sub.options
       .map(
@@ -688,7 +702,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
           `<label class="exam-mc-option"><input type="checkbox" value="${escapeHtml(o.value)}"> ${allowBasicHtml(o.label)}</label>`,
       )
       .join('');
-    body = `<div class="item input-group full-width exam-mc-block">${promptBlock}<div class="exam-multi-select" data-answer-id="${id}">${opts}</div><input type="hidden" id="${id}" value=""></div>`;
+    body = `<div class="item input-group full-width exam-mc-block">${heading}<div class="exam-multi-select" data-answer-id="${id}">${opts}</div><input type="hidden" id="${id}" value=""></div>`;
   } else if (sub.kind === 'paragraph') {
     if (sub.text.trim()) {
       body = sub.title && !sub.letter
@@ -1130,6 +1144,13 @@ function attachImage<T extends GridSubsection>(subEl: Element, sub: T): T {
 }
 
 function parseSubTitle(subEl: Element): { letter: string; title: string } {
+  const mcHead = subEl.querySelector('.exam-mc-heading');
+  if (mcHead) {
+    const labelEl = mcHead.querySelector('.item-label');
+    const labelText = (labelEl?.textContent || 'A)').trim();
+    const letter = labelText.replace(/\)\s*$/, '').trim() || 'A';
+    return { letter, title: '' };
+  }
   const titleEl = subEl.querySelector('.exam-subsection-title');
   if (!titleEl) return { letter: 'A', title: '' };
   const labelEl = titleEl.querySelector('.item-label');
@@ -1213,7 +1234,9 @@ function parseSubsection(
         };
       },
     );
-    const promptEl = subEl.querySelector('.exam-mc-prompt');
+    const promptEl =
+      subEl.querySelector('.exam-mc-heading .exam-mc-prompt') ||
+      subEl.querySelector('.exam-mc-prompt');
     const prompt = (promptEl?.textContent || '').trim();
     const solution = answersToSolutionField(answers, answerId).replace(/,/g, '|');
     return attachImage(subEl, {
@@ -1241,7 +1264,9 @@ function parseSubsection(
         value: input?.value || '',
       };
     });
-    const promptEl = subEl.querySelector('.exam-mc-prompt');
+    const promptEl =
+      subEl.querySelector('.exam-mc-heading .exam-mc-prompt') ||
+      subEl.querySelector('.exam-mc-prompt');
     const prompt = (promptEl?.textContent || '').trim();
     const solution = answersToSolutionField(answers, name);
     return attachImage(subEl, {

@@ -85,7 +85,6 @@ export function buildClozeRenderUnits(parts: EquationPart[]): ClozeRenderUnit[] 
 
   for (const part of parts) {
     if (part.type === 'break') {
-      units.push({ kind: 'break' });
       continue;
     }
     if (part.type === 'blank') {
@@ -111,9 +110,9 @@ export const clozeParagraphSx = (scale: number) => ({
   color: '#222',
   px: `${4 * scale}px`,
   textAlign: 'left' as const,
-  textWrap: 'pretty' as const,
+  textWrap: 'wrap' as const,
   wordBreak: 'normal' as const,
-  overflowWrap: 'break-word' as const,
+  overflowWrap: 'normal' as const,
   hyphens: 'none' as const,
 });
 

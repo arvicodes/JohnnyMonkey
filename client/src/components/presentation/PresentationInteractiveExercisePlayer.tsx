@@ -357,18 +357,22 @@ function WrongBanner({
   const tipLine = tip ? tip.replace(/([.!?])\s+/g, '$1\u00a0') : '';
   const btnSx = {
     minWidth: 0,
-    minHeight: `${24 * scale}px`,
+    minHeight: `${22 * scale}px`,
     py: 0,
-    px: `${7 * scale}px`,
+    px: `${9 * scale}px`,
     fontSize: `${10 * scale}px`,
     fontWeight: 700,
     lineHeight: 1.2,
     textTransform: 'none' as const,
-    borderRadius: `${6 * scale}px`,
-    bgcolor: 'rgba(180, 130, 0, 0.12)',
+    borderRadius: `${5 * scale}px`,
+    bgcolor: 'rgba(255, 255, 255, 0.35)',
     color: '#3d2f00',
+    border: '1.5px solid rgba(150, 110, 0, 0.55)',
     boxShadow: 'none',
-    '&:hover': { bgcolor: 'rgba(180, 130, 0, 0.2)' },
+    '&:hover': {
+      bgcolor: 'rgba(255, 255, 255, 0.55)',
+      borderColor: 'rgba(120, 85, 0, 0.7)',
+    },
   };
   return (
     <Box
@@ -381,16 +385,16 @@ function WrongBanner({
         transform: 'translate(-50%, -50%)',
         zIndex: 40,
         width: 'max-content',
-        maxWidth: 'min(96vw, max-content)',
-        whiteSpace: 'nowrap',
-        bgcolor: 'rgba(255, 246, 200, 0.72)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-        border: '1px solid rgba(218, 165, 32, 0.45)',
-        borderRadius: `${8 * scale}px`,
-        px: `${10 * scale}px`,
-        py: `${7 * scale}px`,
-        boxShadow: '0 4px 18px rgba(160, 120, 0, 0.22), 0 0 0 1px rgba(255, 235, 150, 0.35) inset',
+        minWidth: `${280 * scale}px`,
+        maxWidth: `min(92vw, ${420 * scale}px)`,
+        bgcolor: 'rgba(255, 246, 200, 0.45)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1px solid rgba(218, 165, 32, 0.4)',
+        borderRadius: `${10 * scale}px`,
+        px: `${14 * scale}px`,
+        py: `${11 * scale}px`,
+        boxShadow: '0 6px 24px rgba(160, 120, 0, 0.18)',
         pointerEvents: 'auto',
       }}
     >
@@ -398,12 +402,11 @@ function WrongBanner({
         component="div"
         sx={{
           fontWeight: 700,
-          fontSize: `${11 * scale}px`,
-          lineHeight: 1.25,
-          mb: `${5 * scale}px`,
+          fontSize: `${13 * scale}px`,
+          lineHeight: 1.35,
+          mb: `${8 * scale}px`,
           textAlign: 'center',
           color: '#3d2f00',
-          whiteSpace: 'nowrap',
         }}
       >
         Ups, deine Lösung war falsch.
@@ -411,15 +414,15 @@ function WrongBanner({
       <Box
         sx={{
           display: 'flex',
-          flexWrap: 'nowrap',
-          gap: `${5 * scale}px`,
+          flexWrap: 'wrap',
+          gap: `${8 * scale}px`,
           justifyContent: 'center',
         }}
       >
-        <Button onClick={onRetry} sx={{ ...btnSx, flex: '0 0 auto' }}>
-          Nochmal
+        <Button onClick={onRetry} sx={{ ...btnSx, flex: '1 1 auto' }}>
+          Nochmal probieren
         </Button>
-        <Button onClick={onSolve} sx={{ ...btnSx, flex: '0 0 auto' }}>
+        <Button onClick={onSolve} sx={{ ...btnSx, flex: '1 1 auto' }}>
           Lösen
         </Button>
       </Box>
@@ -427,20 +430,18 @@ function WrongBanner({
         <Typography
           component="div"
           sx={{
-            fontSize: `${9 * scale}px`,
-            lineHeight: 1.35,
+            fontSize: `${10 * scale}px`,
+            lineHeight: 1.45,
             color: '#4a3a10',
-            mt: `${5 * scale}px`,
-            pt: `${4 * scale}px`,
-            borderTop: '1px solid rgba(180, 130, 0, 0.2)',
+            mt: `${8 * scale}px`,
+            pt: `${6 * scale}px`,
+            borderTop: '1px solid rgba(180, 130, 0, 0.22)',
             textAlign: 'center',
-            whiteSpace: 'nowrap',
           }}
         >
           <Box component="span" sx={{ fontWeight: 700 }}>
             Merke dir:
-          </Box>
-          {'\u00a0'}
+          </Box>{' '}
           {tipLine}
         </Typography>
       ) : null}
