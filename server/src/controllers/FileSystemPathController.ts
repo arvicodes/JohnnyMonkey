@@ -3398,7 +3398,9 @@ ${optionsHTML}
         .exam-sort-slot { min-width: 48px; min-height: 32px; padding: 3px; border: 2px dashed #9e9e9e; border-radius: 5px; background: #fff; display: flex; align-items: center; justify-content: center; }
         .exam-sort-slots-row { display: flex; flex-wrap: wrap; gap: 5px; }
         .exam-sort-slot.exam-sort-slot-over { border-color: #1976d2; background: #e3f2fd; }
-        .exam-sort-drag--steps .exam-sort-slots-row { flex-direction: column; width: 100%; gap: 5px; }
+        .exam-sort-drag--steps { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; }
+        .exam-sort-drag--steps .exam-sort-pool { flex: 1 1 48%; min-width: 0; margin-bottom: 0; flex-direction: column; align-items: stretch; }
+        .exam-sort-drag--steps .exam-sort-slots-row { flex: 1 1 48%; min-width: 0; flex-direction: column; width: auto; gap: 5px; }
         .exam-sort-drag--steps .exam-sort-slot { width: 100%; min-height: 40px; justify-content: flex-start; align-items: center; gap: 6px; padding: 5px 8px; }
         .exam-sort-drag--steps .exam-sort-slot-num { flex-shrink: 0; font-weight: 800; font-size: 13px; color: #555; min-width: 1.25em; }
         .exam-sort-drag--steps .exam-sort-chip { white-space: normal; text-align: left; font-weight: 500; font-size: 13px; line-height: 1.35; max-width: 100%; justify-content: flex-start; }

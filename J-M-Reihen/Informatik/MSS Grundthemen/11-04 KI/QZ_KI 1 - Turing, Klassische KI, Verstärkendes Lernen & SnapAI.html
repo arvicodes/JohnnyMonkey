@@ -1317,13 +1317,24 @@
         .exam-sort-slot .exam-sort-chip {
             margin: 0;
         }
+        .exam-sort-drag--steps {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 10px;
+        }
         .exam-sort-drag--steps .exam-sort-pool {
+            flex: 1 1 48%;
+            min-width: 0;
+            margin-bottom: 0;
             flex-direction: column;
             align-items: stretch;
         }
         .exam-sort-drag--steps .exam-sort-slots-row {
+            flex: 1 1 48%;
+            min-width: 0;
             flex-direction: column;
-            width: 100%;
+            width: auto;
             gap: 5px;
         }
         .exam-sort-drag--steps .exam-sort-slot {
