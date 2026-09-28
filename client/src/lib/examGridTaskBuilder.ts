@@ -566,7 +566,7 @@ function examMcHeadingHtml(letter: string, prompt: string): string {
   const label = letter
     ? `<span class="item-label">${escapeHtml(letter)})</span>`
     : '';
-  return `<div class="exam-mc-heading">${label} <span class="exam-mc-prompt">${allowBasicHtml(prompt)}</span></div>`;
+  return `<div class="exam-subsection-title">${label} ${allowBasicHtml(prompt)}</div>`;
 }
 
 function fieldId(sub: { answerId?: string }, taskNumber: number, fieldIndex: { n: number }): string {
@@ -1144,13 +1144,6 @@ function attachImage<T extends GridSubsection>(subEl: Element, sub: T): T {
 }
 
 function parseSubTitle(subEl: Element): { letter: string; title: string } {
-  const mcHead = subEl.querySelector('.exam-mc-heading');
-  if (mcHead) {
-    const labelEl = mcHead.querySelector('.item-label');
-    const labelText = (labelEl?.textContent || 'A)').trim();
-    const letter = labelText.replace(/\)\s*$/, '').trim() || 'A';
-    return { letter, title: '' };
-  }
   const titleEl = subEl.querySelector('.exam-subsection-title');
   if (!titleEl) return { letter: 'A', title: '' };
   const labelEl = titleEl.querySelector('.item-label');
@@ -1234,10 +1227,8 @@ function parseSubsection(
         };
       },
     );
-    const promptEl =
-      subEl.querySelector('.exam-mc-heading .exam-mc-prompt') ||
-      subEl.querySelector('.exam-mc-prompt');
-    const prompt = (promptEl?.textContent || '').trim();
+    const promptEl = subEl.querySelector('.exam-mc-prompt');
+    const prompt = (title || promptEl?.textContent || '').trim();
     const solution = answersToSolutionField(answers, answerId).replace(/,/g, '|');
     return attachImage(subEl, {
       id,
@@ -1264,10 +1255,8 @@ function parseSubsection(
         value: input?.value || '',
       };
     });
-    const promptEl =
-      subEl.querySelector('.exam-mc-heading .exam-mc-prompt') ||
-      subEl.querySelector('.exam-mc-prompt');
-    const prompt = (promptEl?.textContent || '').trim();
+    const promptEl = subEl.querySelector('.exam-mc-prompt');
+    const prompt = (title || promptEl?.textContent || '').trim();
     const solution = answersToSolutionField(answers, name);
     return attachImage(subEl, {
       id,
