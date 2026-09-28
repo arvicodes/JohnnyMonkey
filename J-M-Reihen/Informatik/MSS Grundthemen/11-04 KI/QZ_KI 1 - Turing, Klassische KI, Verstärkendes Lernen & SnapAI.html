@@ -492,8 +492,8 @@
         }
         .task-number .task-inline-instruction {
             color: #1a1a1a;
-            font-size: 13px;
-            font-weight: 500;
+            font-size: 15px;
+            font-weight: 800;
             margin-left: 0.35em;
         }
 
@@ -1188,20 +1188,21 @@
         .exam-mc-options, .exam-multi-select { display: flex; flex-direction: column; gap: 4px; margin-top: 0; width: 100%; }
         .exam-mc-block .input-group.full-width label.exam-mc-option {
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             margin-bottom: 0;
         }
-        .exam-mc-option { display: flex; align-items: flex-start; gap: 2px; line-height: 1.35; cursor: pointer; }
+        .exam-mc-option { display: flex; align-items: center; gap: 6px; line-height: 1.35; cursor: pointer; }
         .exam-mc-option input[type="checkbox"],
         .exam-mc-option input[type="radio"] {
             width: 14px;
             height: 14px;
             min-width: 14px;
-            margin: 2px 0 0;
+            margin: 0;
             padding: 0;
             flex-shrink: 0;
             border: none;
             border-radius: 0;
+            vertical-align: middle;
         }
         .exam-task-stack .exam-subsection { margin-bottom: 16px; }
         .exam-round-line {
@@ -1248,30 +1249,30 @@
             min-width: 0;
         }
         .exam-sort-drag {
-            margin-top: 6px;
+            margin-top: 4px;
         }
         .exam-sort-pool {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 10px;
-            min-height: 36px;
-            padding: 6px;
+            gap: 5px;
+            margin-bottom: 6px;
+            min-height: 28px;
+            padding: 4px 5px;
             border: 1px dashed #bdbdbd;
-            border-radius: 6px;
+            border-radius: 5px;
             background: #fafafa;
         }
         .exam-sort-chip {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 44px;
-            padding: 6px 10px;
+            min-width: 36px;
+            padding: 4px 8px;
             border: 1px solid #90caf9;
-            border-radius: 6px;
+            border-radius: 5px;
             background: #e3f2fd;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 13px;
             cursor: grab;
             user-select: none;
             touch-action: none;
@@ -1291,14 +1292,14 @@
         .exam-sort-slots-row {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 5px;
         }
         .exam-sort-slot {
-            min-width: 56px;
-            min-height: 38px;
-            padding: 4px;
+            min-width: 48px;
+            min-height: 32px;
+            padding: 3px;
             border: 2px dashed #9e9e9e;
-            border-radius: 6px;
+            border-radius: 5px;
             background: #fff;
             display: flex;
             align-items: center;
@@ -1318,15 +1319,15 @@
         .exam-sort-drag--steps .exam-sort-slots-row {
             flex-direction: column;
             width: 100%;
-            gap: 8px;
+            gap: 5px;
         }
         .exam-sort-drag--steps .exam-sort-slot {
             width: 100%;
-            min-height: 48px;
+            min-height: 40px;
             justify-content: flex-start;
             align-items: center;
-            gap: 8px;
-            padding: 8px 10px;
+            gap: 6px;
+            padding: 5px 8px;
         }
         .exam-sort-drag--steps .exam-sort-slot-num {
             flex-shrink: 0;
