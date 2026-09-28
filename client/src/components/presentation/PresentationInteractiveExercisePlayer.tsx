@@ -355,16 +355,18 @@ function WrongBanner({
   onSolve: () => void;
 }) {
   const tipLine = tip ? tip.replace(/([.!?])\s+/g, '$1\u00a0') : '';
+  const pop = 1.2;
   const btnSx = {
     minWidth: 0,
-    minHeight: `${22 * scale}px`,
+    minHeight: `${22 * scale * pop}px`,
     py: 0,
-    px: `${9 * scale}px`,
-    fontSize: `${10 * scale}px`,
+    px: `${9 * scale * pop}px`,
+    fontSize: `${10 * scale * pop}px`,
     fontWeight: 700,
     lineHeight: 1.2,
     textTransform: 'none' as const,
-    borderRadius: `${5 * scale}px`,
+    whiteSpace: 'nowrap' as const,
+    borderRadius: `${5 * scale * pop}px`,
     bgcolor: 'rgba(255, 255, 255, 0.35)',
     color: '#3d2f00',
     border: '1.5px solid rgba(150, 110, 0, 0.55)',
@@ -384,17 +386,17 @@ function WrongBanner({
         left: '50%',
         transform: 'translate(-50%, -50%)',
         zIndex: 40,
-        width: `min(92vw, ${420 * scale}px)`,
-        minWidth: `${280 * scale}px`,
-        maxWidth: `min(92vw, ${420 * scale}px)`,
+        width: `min(92vw, ${420 * scale * pop}px)`,
+        minWidth: `${280 * scale * pop}px`,
+        maxWidth: `min(92vw, ${420 * scale * pop}px)`,
         boxSizing: 'border-box',
         bgcolor: 'rgba(255, 246, 200, 0.45)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
         border: '1px solid rgba(218, 165, 32, 0.4)',
-        borderRadius: `${10 * scale}px`,
-        px: `${14 * scale}px`,
-        py: `${11 * scale}px`,
+        borderRadius: `${10 * scale * pop}px`,
+        px: `${14 * scale * pop}px`,
+        py: `${11 * scale * pop}px`,
         boxShadow: '0 6px 24px rgba(160, 120, 0, 0.18)',
         pointerEvents: 'auto',
       }}
@@ -403,9 +405,9 @@ function WrongBanner({
         component="div"
         sx={{
           fontWeight: 700,
-          fontSize: `${13 * scale}px`,
+          fontSize: `${13 * scale * pop}px`,
           lineHeight: 1.35,
-          mb: `${8 * scale}px`,
+          mb: `${8 * scale * pop}px`,
           textAlign: 'center',
           color: '#3d2f00',
         }}
@@ -417,16 +419,16 @@ function WrongBanner({
           display: 'flex',
           flexDirection: 'row',
           flexWrap: 'nowrap',
-          gap: `${10 * scale}px`,
+          gap: `${10 * scale * pop}px`,
           justifyContent: 'center',
-          alignItems: 'stretch',
+          alignItems: 'center',
           width: '100%',
         }}
       >
-        <Button onClick={onRetry} sx={{ ...btnSx, flex: '0 0 20%', width: '20%', maxWidth: '20%' }}>
+        <Button onClick={onRetry} sx={{ ...btnSx, flex: '0 0 auto' }}>
           Nochmal probieren
         </Button>
-        <Button onClick={onSolve} sx={{ ...btnSx, flex: '0 0 20%', width: '20%', maxWidth: '20%' }}>
+        <Button onClick={onSolve} sx={{ ...btnSx, flex: '0 0 auto' }}>
           Lösen
         </Button>
       </Box>
@@ -434,11 +436,11 @@ function WrongBanner({
         <Typography
           component="div"
           sx={{
-            fontSize: `${10 * scale}px`,
+            fontSize: `${10 * scale * pop}px`,
             lineHeight: 1.45,
             color: '#4a3a10',
-            mt: `${8 * scale}px`,
-            pt: `${6 * scale}px`,
+            mt: `${8 * scale * pop}px`,
+            pt: `${6 * scale * pop}px`,
             borderTop: '1px solid rgba(180, 130, 0, 0.22)',
             textAlign: 'center',
           }}
