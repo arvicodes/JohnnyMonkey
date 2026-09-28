@@ -384,9 +384,10 @@ function WrongBanner({
         left: '50%',
         transform: 'translate(-50%, -50%)',
         zIndex: 40,
-        width: 'max-content',
+        width: `min(92vw, ${420 * scale}px)`,
         minWidth: `${280 * scale}px`,
         maxWidth: `min(92vw, ${420 * scale}px)`,
+        boxSizing: 'border-box',
         bgcolor: 'rgba(255, 246, 200, 0.45)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
@@ -414,15 +415,18 @@ function WrongBanner({
       <Box
         sx={{
           display: 'flex',
-          flexWrap: 'wrap',
-          gap: `${8 * scale}px`,
+          flexDirection: 'row',
+          flexWrap: 'nowrap',
+          gap: `${10 * scale}px`,
           justifyContent: 'center',
+          alignItems: 'stretch',
+          width: '100%',
         }}
       >
-        <Button onClick={onRetry} sx={{ ...btnSx, flex: '1 1 auto' }}>
+        <Button onClick={onRetry} sx={{ ...btnSx, flex: '0 0 20%', width: '20%', maxWidth: '20%' }}>
           Nochmal probieren
         </Button>
-        <Button onClick={onSolve} sx={{ ...btnSx, flex: '1 1 auto' }}>
+        <Button onClick={onSolve} sx={{ ...btnSx, flex: '0 0 20%', width: '20%', maxWidth: '20%' }}>
           Lösen
         </Button>
       </Box>
