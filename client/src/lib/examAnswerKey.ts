@@ -120,10 +120,22 @@ export function examAnswerMatches(expected: unknown, student: unknown): boolean 
   if (expected === undefined || expected === null) return false;
   const studentN = normalizeLoose(student);
   if (!studentN) return false;
+  const normalizePipeSet = (raw: string) =>
+    raw
+      .split(/[|,;/]/)
+      .map((p) => normalizeLoose(p))
+      .filter(Boolean)
+      .sort()
+      .join('|');
+  const studentPipe =
+    /[|,;]/.test(String(student)) ? normalizePipeSet(String(student)) : studentN;
   const accepted = Array.isArray(expected) ? expected : [expected];
   return accepted.some((a) => {
     const n = normalizeLoose(a);
     if (!n) return false;
+    if (/[|,;]/.test(String(a))) {
+      return normalizePipeSet(String(a)) === studentPipe;
+    }
     if (n === studentN) return true;
     if (typeof expected === 'number' || (typeof a === 'number' && String(a).includes('.'))) {
       const sn = parseFloat(String(student));

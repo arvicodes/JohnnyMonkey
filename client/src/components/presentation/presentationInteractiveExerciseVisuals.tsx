@@ -26,17 +26,49 @@ export const exercisePromptSubSx = (scale: number) => ({
   mt: `${4 * scale}px`,
 });
 
+const FIELD_WIDTH_FACTOR = 3;
+
+/** Breite in px (ohne scale) — Lücken, Eingaben, Wortbank gleich. */
+export function exerciseFieldWidthChars(chars: number): number {
+  const c = Math.max(2, chars);
+  const base = Math.min(96, Math.max(26, c * 7 + 10));
+  return base * FIELD_WIDTH_FACTOR;
+}
+
+export function exerciseUniformFieldWidthPx(scale: number, labels: string[]): number {
+  const maxLen = Math.max(2, 8, ...labels.map((t) => (t || '').length));
+  return exerciseFieldWidthChars(maxLen) * scale;
+}
+
+export const exerciseInputFieldSx = (
+  scale: number,
+  widthPx: number,
+  extra?: Record<string, unknown>,
+) => ({
+  width: `${widthPx}px`,
+  minWidth: `${widthPx}px`,
+  maxWidth: `${widthPx}px`,
+  height: `${30 * scale}px`,
+  textAlign: 'center' as const,
+  border: 'none',
+  borderRadius: `${6 * scale}px`,
+  bgcolor: 'rgba(0,0,0,0.08)',
+  fontSize: `${16 * scale}px`,
+  fontWeight: 700,
+  outline: 'none',
+  boxSizing: 'border-box' as const,
+  ...extra,
+});
+
 export const clozeBlankSx = (
   scale: number,
   opts: {
     selected?: boolean;
     status?: 'idle' | 'correct' | 'wrong' | 'revealed';
-    /** Länge des eingetragenen Worts — schmale Lücken. */
-    valLen?: number;
+    /** Feste Breite (px), gleich wie Wortbank-Chips. */
+    widthPx: number;
   },
 ) => {
-  const chars = Math.max(2, opts.valLen ?? 2);
-  const w = Math.min(96, Math.max(26, chars * 7 + 10));
   const st = opts.status || 'idle';
   const color =
     st === 'correct' || st === 'revealed'
@@ -48,10 +80,11 @@ export const clozeBlankSx = (
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: `${w * scale}px`,
-    minWidth: `${26 * scale}px`,
-    maxWidth: `${96 * scale}px`,
-    height: `${28 * scale}px`,
+    width: `${opts.widthPx}px`,
+    minWidth: `${opts.widthPx}px`,
+    maxWidth: `${opts.widthPx}px`,
+    height: `${30 * scale}px`,
+    boxSizing: 'border-box',
     mx: `${2 * scale}px`,
     my: `${1 * scale}px`,
     px: `${4 * scale}px`,
@@ -67,10 +100,25 @@ export const clozeBlankSx = (
   };
 };
 
-export const wordBankChipSx = (scale: number, used: boolean) => ({
-  minWidth: 0,
+export const wordBankRowSx = {
+  display: 'flex',
+  flexDirection: 'row' as const,
+  flexWrap: 'nowrap' as const,
+  gap: '8px',
+  justifyContent: 'center',
+  alignItems: 'center',
+  width: '100%',
+  overflowX: 'auto' as const,
+  py: 0.5,
+};
+
+export const wordBankChipSx = (scale: number, used: boolean, widthPx: number) => ({
+  width: `${widthPx}px`,
+  minWidth: `${widthPx}px`,
+  maxWidth: `${widthPx}px`,
   height: `${30 * scale}px`,
-  px: `${6 * scale}px`,
+  px: `${4 * scale}px`,
+  flexShrink: 0,
   bgcolor: used ? 'rgba(0,0,0,0.04)' : '#d8d8d8',
   color: used ? 'rgba(0,0,0,0.28)' : '#111',
   fontWeight: 700,
@@ -79,6 +127,7 @@ export const wordBankChipSx = (scale: number, used: boolean) => ({
   fontSize: `${13 * scale}px`,
   boxShadow: used ? 'none' : '0 1px 2px rgba(0,0,0,0.08)',
   border: '1px solid rgba(0,0,0,0.06)',
+  boxSizing: 'border-box' as const,
 });
 
 export const sortRowCardSx = (scale: number, filled: boolean) => ({

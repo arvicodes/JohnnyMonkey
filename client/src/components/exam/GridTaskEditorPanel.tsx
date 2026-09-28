@@ -390,7 +390,7 @@ export default function GridTaskEditorPanel({
                       {KIND_LABEL[k]}
                     </MenuItem>
                   )),
-                ])}
+                ]))}
               </Select>
             </FormControl>
           </Box>
