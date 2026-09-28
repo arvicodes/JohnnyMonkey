@@ -121,23 +121,33 @@ export const fetchAssignments = async (
   const unit: { [id: string]: string[] } = {};
   const topic: { [id: string]: string[] } = {};
   const lesson: { [id: string]: string[] } = {};
-  for (const group of groups) {
-    const res = await fetch(`/api/learning-groups/${group.id}/assignments`);
-    if (!res.ok) continue;
-    const assignments = await res.json();
-    for (const a of assignments) {
-      if (a.type === 'subject') {
-        subj[a.refId] = [...(subj[a.refId] || []), group.id];
-      } else if (a.type === 'block') {
-        block[a.refId] = [...(block[a.refId] || []), group.id];
-      } else if (a.type === 'unit') {
-        unit[a.refId] = [...(unit[a.refId] || []), group.id];
-      } else if (a.type === 'topic') {
-        topic[a.refId] = [...(topic[a.refId] || []), group.id];
-      } else if (a.type === 'lesson') {
-        lesson[a.refId] = [...(lesson[a.refId] || []), group.id];
+  try {
+    for (const group of groups) {
+      let res: Response;
+      try {
+        res = await fetch(`/api/learning-groups/${group.id}/assignments`);
+      } catch (err) {
+        console.warn('[fetchAssignments] Netzwerkfehler für Gruppe', group.id, err);
+        continue;
+      }
+      if (!res.ok) continue;
+      const assignments = await res.json();
+      for (const a of assignments) {
+        if (a.type === 'subject') {
+          subj[a.refId] = [...(subj[a.refId] || []), group.id];
+        } else if (a.type === 'block') {
+          block[a.refId] = [...(block[a.refId] || []), group.id];
+        } else if (a.type === 'unit') {
+          unit[a.refId] = [...(unit[a.refId] || []), group.id];
+        } else if (a.type === 'topic') {
+          topic[a.refId] = [...(topic[a.refId] || []), group.id];
+        } else if (a.type === 'lesson') {
+          lesson[a.refId] = [...(lesson[a.refId] || []), group.id];
+        }
       }
     }
+  } catch (err) {
+    console.warn('[fetchAssignments] Abgebrochen:', err);
   }
   subjectSetter(subj);
   blockSetter(block);

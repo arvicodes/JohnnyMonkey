@@ -7905,15 +7905,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   // Nach dem Laden der Gruppen: Zuweisungen und Listen laden
   useEffect(() => {
     if (groups.length === 0) return;
-    // Zuweisungen laden
-    fetchAssignments(
+    void fetchAssignments(
       groups,
       setSubjectAssignments,
       setBlockAssignments,
       setUnitAssignments,
       setTopicAssignments,
-      setLessonAssignments
-    );
+      setLessonAssignments,
+    ).catch((err) => console.warn('[TeacherDashboard] fetchAssignments', err));
     // Listen laden
     const fetchAll = async () => {
       // Subjects
