@@ -692,20 +692,27 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   const currentQ: InteractiveExerciseQuestion | null =
     topic && topic.questions[qi] ? topic.questions[qi] : null;
 
-  const advanceAfterAnswer = (nextAnswers: Array<'correct' | 'wrong' | null>) => {
-    if (!topic) return;
-    const nextIndex = qi + 1;
-    if (nextIndex >= topic.questions.length) {
+  const advanceAfterAnswer = (
+    nextAnswers: Array<'correct' | 'wrong' | null>,
+    opts?: { topic?: InteractiveExerciseTopic; qi?: number },
+  ) => {
+    const t = opts?.topic ?? topic;
+    const currentQi = opts?.qi ?? qi;
+    if (!t) return;
+    const nextIndex = currentQi + 1;
+    if (nextIndex >= t.questions.length) {
       const stars = starsFromAnswers(nextAnswers);
       setResultStars(stars);
-      persistTopic(topic.id, stars, nextAnswers);
+      persistTopic(t.id, stars, nextAnswers);
       setPhase('result');
       setLocked(false);
       setPickedId(null);
       setShowWrongBanner(false);
     } else {
       setQi(nextIndex);
-      resetQuestionLocal(topic.questions[nextIndex]);
+      resetQuestionLocal(t.questions[nextIndex]);
+      setLocked(false);
+      setShowWrongBanner(false);
     }
   };
 
@@ -769,32 +776,32 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     }
   };
 
-  const appendRepeatAndScheduleRetry = (resetLocal: () => void) => {
+  const appendRepeatAndAdvanceAfterReveal = () => {
     if (!topic || !currentQ) return;
     setShowWrongBanner(false);
     setLocked(true);
 
     const qSnapshot = currentQ;
     const atIndex = qi;
+    const nextAnswers = [...answers];
+    if (atIndex >= 0 && atIndex < nextAnswers.length) nextAnswers[atIndex] = 'wrong';
+    nextAnswers.push(null);
 
-    setTopic((prev) => {
-      if (!prev) return prev;
-      const repeatQ = cloneQuestionForRepeat(qSnapshot, prev.questions.length + 1);
-      return { ...prev, questions: [...prev.questions, repeatQ] };
-    });
-    setAnswers((prev) => {
-      const next = [...prev];
-      if (atIndex >= 0 && atIndex < next.length) next[atIndex] = 'wrong';
-      next.push(null);
-      return next;
-    });
+    const repeatQ = cloneQuestionForRepeat(qSnapshot, topic.questions.length + 1);
+    const updatedTopic: InteractiveExerciseTopic = {
+      ...topic,
+      questions: [...topic.questions, repeatQ],
+    };
+
+    setTopic(updatedTopic);
+    setAnswers(nextAnswers);
 
     if (solveRevealTimerRef.current != null) {
       window.clearTimeout(solveRevealTimerRef.current);
     }
     solveRevealTimerRef.current = window.setTimeout(() => {
       solveRevealTimerRef.current = null;
-      resetLocal();
+      advanceAfterAnswer(nextAnswers, { topic: updatedTopic, qi: atIndex });
     }, SOLVE_REVEAL_MS);
   };
 
@@ -806,7 +813,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     }>;
     setFillValues(blanks.map((b) => b.correct));
     setFillStatuses(blanks.map(() => 'revealed'));
-    appendRepeatAndScheduleRetry(() => retryFills());
+    appendRepeatAndAdvanceAfterReveal();
   };
 
   const placeClozeOption = (option: string) => {
@@ -857,7 +864,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     if (!currentQ?.correctAnswer) return;
     setTypedAnswer(currentQ.correctAnswer);
     setTypedStatus('revealed');
-    appendRepeatAndScheduleRetry(() => retryWrite());
+    appendRepeatAndAdvanceAfterReveal();
   };
 
   const placeSortItem = (item: string) => {
@@ -891,7 +898,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     if (!currentQ || currentQ.mode !== 'sort') return;
     setSortPlaced([...(currentQ.sortCorrectOrder || [])]);
     setSortPool([]);
-    appendRepeatAndScheduleRetry(() => retrySort());
+    appendRepeatAndAdvanceAfterReveal();
   };
 
   const clickMatchTile = (tile: MatchTile) => {
@@ -952,7 +959,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setMatchedPairIds((currentQ.matchPairs || []).map((p) => p.id));
     setMatchSelectedKey(null);
     setMatchWrongKeys([]);
-    appendRepeatAndScheduleRetry(() => retryMatch());
+    appendRepeatAndAdvanceAfterReveal();
   };
 
   const submitCompare = () => {
@@ -998,7 +1005,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setConvertStatuses(convertItems.map(() => 'revealed'));
     setCompareValues(compareItems.map((it) => it.sign));
     setCompareStatuses(compareItems.map(() => 'revealed'));
-    appendRepeatAndScheduleRetry(() => retryCompare());
+    appendRepeatAndAdvanceAfterReveal();
   };
 
   const pickCompareSign = (sign: CompareSign) => {
