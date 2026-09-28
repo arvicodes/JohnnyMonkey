@@ -545,6 +545,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   const solveRevealTimerRef = useRef<number | null>(null);
   const activeBlankRef = useRef(0);
   const activeCompareIdxRef = useRef(0);
+  const preferSelectedBlankRef = useRef(false);
 
   useEffect(() => {
     activeBlankRef.current = activeBlank;
@@ -604,6 +605,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setShowWrongBanner(false);
     setActiveBlank(0);
     activeBlankRef.current = 0;
+    preferSelectedBlankRef.current = false;
     setMatchSelectedKey(null);
     setMatchWrongKeys([]);
     setMatchHadWrong(false);
@@ -772,6 +774,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     }
     setActiveBlank(0);
     activeBlankRef.current = 0;
+    preferSelectedBlankRef.current = false;
   };
 
   const appendRepeatAndScheduleRetry = (resetLocal: () => void) => {
@@ -821,11 +824,10 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
       if (!prev.length) return prev;
       const next = [...prev];
       let idx = activeBlankRef.current;
-      if (idx < 0 || idx >= next.length) {
+      if (preferSelectedBlankRef.current && idx >= 0 && idx < next.length) {
+        preferSelectedBlankRef.current = false;
+      } else if (idx < 0 || idx >= next.length || next[idx]) {
         idx = next.findIndex((v) => !v);
-      } else if (next[idx]) {
-        const empty = next.findIndex((v) => !v);
-        if (empty >= 0) idx = empty;
       }
       if (idx < 0) return prev;
       next[idx] = option;
@@ -1448,6 +1450,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                         disabled={!interactive || locked}
                         onClick={() => {
                           activeBlankRef.current = i;
+                          preferSelectedBlankRef.current = true;
                           setActiveBlank(i);
                         }}
                         sx={clozeBlankSx(s, {
