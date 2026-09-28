@@ -357,10 +357,12 @@ function WrongBanner({
   const tipLine = tip ? tip.replace(/([.!?])\s+/g, '$1\u00a0') : '';
   const pop = 1.2;
   const btnSx = {
-    minWidth: 0,
+    minWidth: 'unset',
+    width: 'max-content',
+    maxWidth: 'none',
     minHeight: `${22 * scale * pop}px`,
-    py: 0,
-    px: `${9 * scale * pop}px`,
+    py: `${2 * scale * pop}px`,
+    px: `${7 * scale * pop}px`,
     fontSize: `${10 * scale * pop}px`,
     fontWeight: 700,
     lineHeight: 1.2,
@@ -371,6 +373,8 @@ function WrongBanner({
     color: '#3d2f00',
     border: '1.5px solid rgba(150, 110, 0, 0.55)',
     boxShadow: 'none',
+    flex: '0 0 auto',
+    '&.MuiButton-root': { minWidth: 'unset' },
     '&:hover': {
       bgcolor: 'rgba(255, 255, 255, 0.55)',
       borderColor: 'rgba(120, 85, 0, 0.7)',
@@ -386,8 +390,8 @@ function WrongBanner({
         left: '50%',
         transform: 'translate(-50%, -50%)',
         zIndex: 40,
-        width: `min(92vw, ${420 * scale * pop}px)`,
-        minWidth: `${280 * scale * pop}px`,
+        width: 'max-content',
+        minWidth: 0,
         maxWidth: `min(92vw, ${420 * scale * pop}px)`,
         boxSizing: 'border-box',
         bgcolor: 'rgba(255, 246, 200, 0.45)',
@@ -422,13 +426,14 @@ function WrongBanner({
           gap: `${10 * scale * pop}px`,
           justifyContent: 'center',
           alignItems: 'center',
-          width: '100%',
+          width: 'auto',
+          mx: 'auto',
         }}
       >
-        <Button onClick={onRetry} sx={{ ...btnSx, flex: '0 0 auto' }}>
+        <Button size="small" disableElevation onClick={onRetry} sx={btnSx}>
           Nochmal probieren
         </Button>
-        <Button onClick={onSolve} sx={{ ...btnSx, flex: '0 0 auto' }}>
+        <Button size="small" disableElevation onClick={onSolve} sx={btnSx}>
           Lösen
         </Button>
       </Box>
