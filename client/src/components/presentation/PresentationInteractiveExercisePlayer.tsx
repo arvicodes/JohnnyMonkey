@@ -354,52 +354,80 @@ function WrongBanner({
   onRetry: () => void;
   onSolve: () => void;
 }) {
+  const btnSx = {
+    minWidth: 0,
+    minHeight: `${24 * scale}px`,
+    py: 0,
+    px: `${7 * scale}px`,
+    fontSize: `${10 * scale}px`,
+    fontWeight: 700,
+    lineHeight: 1.2,
+    textTransform: 'none' as const,
+    borderRadius: `${6 * scale}px`,
+    bgcolor: 'rgba(0,0,0,0.07)',
+    color: '#222',
+    boxShadow: 'none',
+    '&:hover': { bgcolor: 'rgba(0,0,0,0.11)' },
+  };
   return (
     <Box
+      role="dialog"
+      aria-live="polite"
       sx={{
-        width: '100%',
-        maxWidth: `${420 * scale}px`,
-        bgcolor: '#fff',
-        border: '1px solid rgba(0,0,0,0.12)',
-        borderRadius: `${10 * scale}px`,
-        p: `${12 * scale}px`,
-        mb: `${10 * scale}px`,
+        position: 'absolute',
+        top: `${6 * scale}px`,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 40,
+        width: 'max-content',
+        maxWidth: `min(calc(100% - ${16 * scale}px), ${240 * scale}px)`,
+        bgcolor: 'rgba(255,255,255,0.78)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        border: '1px solid rgba(0,0,0,0.1)',
+        borderRadius: `${8 * scale}px`,
+        px: `${8 * scale}px`,
+        py: `${6 * scale}px`,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+        pointerEvents: 'auto',
       }}
     >
-      <Typography sx={{ fontWeight: 700, fontSize: `${15 * scale}px`, mb: `${8 * scale}px` }}>
+      <Typography
+        sx={{
+          fontWeight: 700,
+          fontSize: `${11 * scale}px`,
+          lineHeight: 1.25,
+          mb: `${5 * scale}px`,
+          textAlign: 'center',
+          color: '#222',
+        }}
+      >
         Ups, deine Lösung war falsch.
       </Typography>
-      <Box sx={{ display: 'flex', gap: `${8 * scale}px`, mb: tip ? `${10 * scale}px` : 0 }}>
-        <Button
-          onClick={onRetry}
-          sx={{
-            flex: 1,
-            bgcolor: 'rgba(0,0,0,0.08)',
-            color: '#222',
-            fontWeight: 700,
-            textTransform: 'none',
-            borderRadius: `${8 * scale}px`,
-          }}
-        >
-          Nochmal probieren
+      <Box sx={{ display: 'flex', gap: `${5 * scale}px`, justifyContent: 'center' }}>
+        <Button onClick={onRetry} sx={{ ...btnSx, flex: 1 }}>
+          Nochmal
         </Button>
-        <Button
-          onClick={onSolve}
-          sx={{
-            flex: 1,
-            bgcolor: 'rgba(0,0,0,0.08)',
-            color: '#222',
-            fontWeight: 700,
-            textTransform: 'none',
-            borderRadius: `${8 * scale}px`,
-          }}
-        >
+        <Button onClick={onSolve} sx={{ ...btnSx, flex: 1 }}>
           Lösen
         </Button>
       </Box>
       {tip ? (
-        <Typography sx={{ fontSize: `${12 * scale}px`, color: '#555', pt: `${8 * scale}px`, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-          <b>Merke dir:</b> {tip}
+        <Typography
+          sx={{
+            fontSize: `${9 * scale}px`,
+            lineHeight: 1.35,
+            color: '#444',
+            mt: `${5 * scale}px`,
+            pt: `${4 * scale}px`,
+            borderTop: '1px solid rgba(0,0,0,0.07)',
+            textAlign: 'center',
+          }}
+        >
+          <Box component="span" sx={{ fontWeight: 700 }}>
+            Merke dir:
+          </Box>{' '}
+          {tip}
         </Typography>
       ) : null}
     </Box>
@@ -1042,6 +1070,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
             flex: 1,
             minHeight: 0,
             overflow: 'auto',
+            position: 'relative',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
