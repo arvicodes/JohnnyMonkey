@@ -276,7 +276,8 @@ export function parseSolutionAlternatives(raw: string, expand: SolutionExpandKin
     if (collapsed !== base) add(collapsed);
 
     const noSpaces = base.replace(/\s+/g, '');
-    if (noSpaces && noSpaces !== base) add(noSpaces);
+    const skipCollapsedNoSpaces = expand === 'sort' && base.includes('|');
+    if (noSpaces && noSpaces !== base && !skipCollapsedNoSpaces) add(noSpaces);
 
     const withSpacesThousands = noSpaces.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1 ');
     if (withSpacesThousands !== base && withSpacesThousands !== noSpaces) {
@@ -294,7 +295,7 @@ export function parseSolutionAlternatives(raw: string, expand: SolutionExpandKin
         add(tokens.join('|'));
         add(tokens.join(' | '));
       }
-    } else if (expand === 'sort' || (expand === 'text' && /[,;]/.test(base))) {
+    } else if (expand === 'text' && /[,;]/.test(base) && !base.includes('|')) {
       const tokens = base.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
       if (tokens.length > 1) {
         add(tokens.join(', '));
@@ -334,6 +335,50 @@ export function parseSolutionAlternatives(raw: string, expand: SolutionExpandKin
 
 function solutionDisplayHtml(answers: string[]): string {
   return answers.map((a) => escapeHtml(a)).join(' / ');
+}
+
+function splitLeadingInstructionSubsections(subsections: GridSubsection[]): {
+  introSubs: GridSubsection[];
+  contentSubs: GridSubsection[];
+} {
+  const introSubs: GridSubsection[] = [];
+  let i = 0;
+  for (; i < subsections.length; i++) {
+    const sub = subsections[i];
+    if (
+      sub.kind === 'paragraph' &&
+      sub.variant === 'instruction' &&
+      String((sub as Extract<GridSubsection, { kind: 'paragraph' }>).text || '').trim()
+    ) {
+      introSubs.push(sub);
+    } else {
+      break;
+    }
+  }
+  return { introSubs, contentSubs: subsections.slice(i) };
+}
+
+function buildTaskInstructionIntro(sub: Extract<GridSubsection, { kind: 'paragraph' }>): string {
+  const payload = encodeURIComponent(JSON.stringify(sub));
+  const pClass = 'exam-task-instruction';
+  return `        <div class="task-instruction" data-exam-spec="${payload}"><p class="${pClass}">${allowBasicHtml(sub.text)}</p></div>`;
+}
+
+function multiSelectSolutionLabel(sub: Extract<GridSubsection, { kind: 'multi-select' }>): string {
+  const vals = sub.solution
+    .split(/[|,;/]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const unique = [...new Set(vals)];
+  return unique.join(', ');
+}
+
+function sortSolutionDisplayHtml(sub: Extract<GridSubsection, { kind: 'sort' }>): string {
+  const sortJoin = sub.sortJoin === 'pipe' ? 'pipe' : 'comma';
+  const sol = (sub.solution.split('/')[0] || '').trim();
+  const steps = splitSortListTokens(sol, sortJoin);
+  if (!steps.length) return '…';
+  return steps.map((s, i) => `${i + 1}. ${escapeHtml(s)}`).join('<br>');
 }
 
 /** Leere Raster-Aufgabe (eine Teil-Box) für eine neue Aufgaben-Nr. */
@@ -636,7 +681,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
     const id = allocId(taskNumber, fieldIndex.n++);
     const sortJoin = sub.sortJoin === 'pipe' ? 'pipe' : 'comma';
     const answers = parseSolutionAlternatives(sub.solution, 'sort');
-    fields.push({ id, answers, solutionHtml: `<strong>${solutionDisplayHtml(answers)}</strong>` });
+    fields.push({ id, answers, solutionHtml: sortSolutionDisplayHtml(sub) });
     const tokens = splitSortListTokens(sub.given, sortJoin);
     if (sub.interaction === 'drag' && tokens.length > 0) {
       const solTokens = splitSortListTokens(sub.solution.split('/')[0] || sub.solution, sortJoin);
@@ -683,12 +728,10 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
   } else if (sub.kind === 'choice') {
     const id = allocId(taskNumber, fieldIndex.n++);
     const answers = parseSolutionAlternatives(sub.solution, 'text');
-    const correctLabel =
-      sub.options.find((o) => o.value === sub.solution.trim())?.label || sub.solution;
     fields.push({
       id,
       answers,
-      solutionHtml: `<strong>${escapeHtml(correctLabel)}</strong>`,
+      solutionHtml: `<strong>${escapeHtml(sub.solution.trim())}</strong>`,
     });
     const heading = sub.prompt
       ? examMcHeadingHtml(sub.letter || '', sub.prompt)
@@ -722,7 +765,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
     fields.push({
       id,
       answers: answers.length ? answers : [canonical],
-      solutionHtml: `<strong>${escapeHtml(canonical.replace(/\|/g, ', '))}</strong>`,
+      solutionHtml: `<strong>${escapeHtml(multiSelectSolutionLabel(sub))}</strong>`,
     });
     const heading = sub.prompt
       ? examMcHeadingHtml(sub.letter || '', sub.prompt)
@@ -1030,6 +1073,7 @@ function buildTaskShell(
   spec: ExamGridTaskSpec,
   innerContent: string,
   extraClass = '',
+  taskIntroHtml = '',
 ): string {
   const afbRoman = spec.afbLevel === 1 ? 'I' : spec.afbLevel === 2 ? 'II' : 'III';
   return `    <!-- Aufgabe ${spec.taskNumber} -->
@@ -1041,7 +1085,7 @@ function buildTaskShell(
                 <div class="points">${spec.points} Punkte</div>
             </div>
         </div>
-        <div class="task-content${extraClass ? ` ${extraClass}` : ''}">
+${taskIntroHtml ? `${taskIntroHtml}\n` : ''}        <div class="task-content${extraClass ? ` ${extraClass}` : ''}">
 ${innerContent}
         </div>
     </div>`;
@@ -1057,7 +1101,15 @@ export function buildExamGridTaskHtml(spec: ExamGridTaskSpec): {
   const solutionLines: string[] = [];
   const isStack = spec.layout === 'stack';
 
-  const rendered = spec.subsections.map((sub) => {
+  const { introSubs, contentSubs } = splitLeadingInstructionSubsections(spec.subsections);
+  const taskIntroHtml =
+    isStack && introSubs.length
+      ? introSubs
+          .map((sub) => buildTaskInstructionIntro(sub as Extract<GridSubsection, { kind: 'paragraph' }>))
+          .join('\n')
+      : '';
+
+  const rendered = contentSubs.map((sub) => {
     const built = renderSubsection(sub, spec.taskNumber, fieldIndex);
     allFields.push(...built.fields);
     built.fields.forEach((f, i) => {
@@ -1081,7 +1133,7 @@ export function buildExamGridTaskHtml(spec: ExamGridTaskSpec): {
             </div>`;
   } else {
     const byQ: Record<GridQuadrant, string[]> = { tl: [], tr: [], bl: [], br: [] };
-    spec.subsections.forEach((sub, idx) => {
+    contentSubs.forEach((sub, idx) => {
       byQ[sub.quadrant].push(rendered[idx]);
     });
     const cell = (q: GridQuadrant) => byQ[q].join('') || '&nbsp;';
@@ -1099,7 +1151,7 @@ export function buildExamGridTaskHtml(spec: ExamGridTaskSpec): {
             </div>`;
   }
 
-  const taskHtml = buildTaskShell(spec, inner, isStack ? 'exam-task-stack' : '');
+  const taskHtml = buildTaskShell(spec, inner, isStack ? 'exam-task-stack' : '', taskIntroHtml);
 
   const correctAnswers: Record<string, string[]> = {};
   allFields.forEach((f) => {
@@ -1379,6 +1431,16 @@ function parseStackSubsectionsFromHtml(taskHtml: string): GridSubsection[] | nul
   const stack = doc.querySelector('.exam-task-stack');
   if (!stack) return null;
   const out: GridSubsection[] = [];
+  doc.querySelectorAll('.task-instruction[data-exam-spec]').forEach((el) => {
+    const raw = el.getAttribute('data-exam-spec');
+    if (!raw) return;
+    try {
+      const spec = JSON.parse(decodeURIComponent(raw)) as GridSubsection;
+      if (spec?.kind) out.push(spec);
+    } catch {
+      /* ignore */
+    }
+  });
   stack.querySelectorAll('.exam-subsection[data-exam-spec]').forEach((el) => {
     const raw = el.getAttribute('data-exam-spec');
     if (!raw) return;

@@ -31,7 +31,7 @@ export function ki1QuizTask1(): ExamGridTaskSpec {
         quadrant: 'tl',
         kind: 'paragraph',
         variant: 'instruction',
-        text: '<strong>Kreuze</strong> jeweils eine oder mehrere richtige Antworten an.',
+        text: 'Kreuze jeweils eine oder mehrere richtige Antworten an.',
       },
       {
         id: 'ki1-a',

@@ -1151,12 +1151,16 @@
         .exam-task-stack .exam-mc-block {
             text-align: left;
         }
+        .task-instruction {
+            margin: 0 0 10px;
+            padding: 0 2px;
+        }
         .exam-task-instruction {
             font-size: 16px;
             font-weight: 500;
             line-height: 1.45;
             text-align: left;
-            margin: 0 0 16px;
+            margin: 0;
         }
         .exam-task-instruction strong {
             font-weight: 800;
@@ -1175,8 +1179,8 @@
         .exam-mc-heading .exam-mc-prompt { font-weight: 600; flex: 1 1 12em; min-width: 0; }
         .exam-mc-prompt { font-weight: 600; }
         .exam-mc-options, .exam-multi-select { display: flex; flex-direction: column; gap: 6px; margin-top: 0; width: 100%; }
-        .exam-mc-option { display: flex; align-items: flex-start; gap: 8px; line-height: 1.45; cursor: pointer; }
-        .exam-mc-option input { margin-top: 3px; flex-shrink: 0; }
+        .exam-mc-option { display: flex; align-items: flex-start; gap: 4px; line-height: 1.4; cursor: pointer; }
+        .exam-mc-option input { margin: 1px 0 0; flex-shrink: 0; }
         .exam-task-stack .exam-subsection { margin-bottom: 16px; }
         .exam-round-line {
             margin: 6px 0;
@@ -1436,8 +1440,8 @@
                 <div class="points">5 Punkte</div>
             </div>
         </div>
+        <div class="task-instruction" data-exam-spec="%7B%22id%22%3A%22ki1-intro%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22paragraph%22%2C%22variant%22%3A%22instruction%22%2C%22text%22%3A%22Kreuze%20jeweils%20eine%20oder%20mehrere%20richtige%20Antworten%20an.%22%7D"><p class="exam-task-instruction">Kreuze jeweils eine oder mehrere richtige Antworten an.</p></div>
         <div class="task-content exam-task-stack">
-<div class="exam-subsection" data-sub-kind="paragraph" data-sub-id="ki1-intro" data-exam-spec="%7B%22id%22%3A%22ki1-intro%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22paragraph%22%2C%22variant%22%3A%22instruction%22%2C%22text%22%3A%22%3Cstrong%3EKreuze%3C%2Fstrong%3E%20jeweils%20eine%20oder%20mehrere%20richtige%20Antworten%20an.%22%7D"><p class="exam-task-instruction"><strong>Kreuze</strong> jeweils eine oder mehrere richtige Antworten an.</p></div>
 <div class="exam-subsection" data-sub-kind="multi-select" data-sub-id="ki1-a" data-exam-spec="%7B%22id%22%3A%22ki1-a%22%2C%22letter%22%3A%22A%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22multi-select%22%2C%22prompt%22%3A%22Alan%20Turing%20schlug%20%E2%80%A6%20im%20Zusammenhang%20mit%20k%C3%BCnstlicher%20Intelligenz%20vor.%22%2C%22options%22%3A%5B%7B%22value%22%3A%22A%22%2C%22label%22%3A%22eine%20feste%20Liste%20intelligenter%20Programme%22%7D%2C%7B%22value%22%3A%22B%22%2C%22label%22%3A%22eine%20operative%20Definition%20anhand%20beobachtbaren%20Verhaltens%22%7D%2C%7B%22value%22%3A%22C%22%2C%22label%22%3A%22einen%20Intelligenzquotienten%20f%C3%BCr%20Computer%22%7D%2C%7B%22value%22%3A%22D%22%2C%22label%22%3A%22einen%20Test%20der%20Rechengeschwindigkeit%22%7D%5D%2C%22solution%22%3A%22B%22%7D"><div class="item input-group full-width exam-mc-block"><div class="exam-subsection-title"><span class="item-label">A)</span> Alan Turing schlug … im Zusammenhang mit künstlicher Intelligenz vor.</div><div class="exam-multi-select" data-answer-id="a1a"><label class="exam-mc-option"><input type="checkbox" value="A"> eine feste Liste intelligenter Programme</label><label class="exam-mc-option"><input type="checkbox" value="B"> eine operative Definition anhand beobachtbaren Verhaltens</label><label class="exam-mc-option"><input type="checkbox" value="C"> einen Intelligenzquotienten für Computer</label><label class="exam-mc-option"><input type="checkbox" value="D"> einen Test der Rechengeschwindigkeit</label></div><input type="hidden" id="a1a" value=""></div></div>
 <div class="exam-subsection" data-sub-kind="choice" data-sub-id="ki1-b" data-exam-spec="%7B%22id%22%3A%22ki1-b%22%2C%22letter%22%3A%22B%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22choice%22%2C%22prompt%22%3A%22Welche%20Aussage%20beschreibt%20Turings%20Idee%20am%20besten%3F%22%2C%22options%22%3A%5B%7B%22value%22%3A%22A%22%2C%22label%22%3A%22Eine%20Maschine%20ist%20intelligent%2C%20wenn%20sie%20schneller%20rechnet%20als%20ein%20Mensch.%22%7D%2C%7B%22value%22%3A%22B%22%2C%22label%22%3A%22Eine%20Maschine%20ist%20intelligent%2C%20wenn%20ihr%20Verhalten%20in%20einem%20Gespr%C3%A4ch%20nicht%20zuverl%C3%A4ssig%20von%20dem%20eines%20Menschen%20unterschieden%20werden%20kann.%22%7D%2C%7B%22value%22%3A%22C%22%2C%22label%22%3A%22Eine%20Maschine%20ist%20intelligent%2C%20wenn%20sie%20Gef%C3%BChle%20besitzt.%22%7D%2C%7B%22value%22%3A%22D%22%2C%22label%22%3A%22Eine%20Maschine%20ist%20intelligent%2C%20sobald%20sie%20Sprache%20erzeugen%20kann.%22%7D%5D%2C%22solution%22%3A%22B%22%7D"><div class="item input-group full-width exam-mc-block"><div class="exam-subsection-title"><span class="item-label">B)</span> Welche Aussage beschreibt Turings Idee am besten?</div><div class="exam-mc-options"><label class="exam-mc-option"><input type="radio" name="a1b" value="A"> Eine Maschine ist intelligent, wenn sie schneller rechnet als ein Mensch.</label><label class="exam-mc-option"><input type="radio" name="a1b" value="B"> Eine Maschine ist intelligent, wenn ihr Verhalten in einem Gespräch nicht zuverlässig von dem eines Menschen unterschieden werden kann.</label><label class="exam-mc-option"><input type="radio" name="a1b" value="C"> Eine Maschine ist intelligent, wenn sie Gefühle besitzt.</label><label class="exam-mc-option"><input type="radio" name="a1b" value="D"> Eine Maschine ist intelligent, sobald sie Sprache erzeugen kann.</label></div></div></div>
 <div class="exam-subsection" data-sub-kind="sort" data-sub-id="ki1-c" data-exam-spec="%7B%22id%22%3A%22ki1-c%22%2C%22letter%22%3A%22C%22%2C%22title%22%3A%22Im%20folgenden%20Ablauf%20sind%20die%20Schritte%20durcheinander%20geraten.%20Ordne%20sie%20von%201%20bis%205.%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22sort%22%2C%22interaction%22%3A%22drag%22%2C%22sortJoin%22%3A%22pipe%22%2C%22sortLayout%22%3A%22steps%22%2C%22given%22%3A%22Person%20C%20entscheidet%2C%20ob%20der%20Gespr%C3%A4chspartner%20Mensch%20oder%20Maschine%20ist.%7CPerson%20C%20f%C3%BChrt%20eine%20Unterhaltung.%7CEine%20KI%20%C3%BCbernimmt%20die%20Rolle%20von%20A.%7CC%20kennt%20die%20Identit%C3%A4t%20der%20Gespr%C3%A4chspartner%20nicht.%7CDas%20Verhalten%20der%20Maschine%20wird%20mit%20dem%20eines%20Menschen%20verglichen.%22%2C%22solution%22%3A%22C%20kennt%20die%20Identit%C3%A4t%20der%20Gespr%C3%A4chspartner%20nicht.%7CEine%20KI%20%C3%BCbernimmt%20die%20Rolle%20von%20A.%7CPerson%20C%20f%C3%BChrt%20eine%20Unterhaltung.%7CDas%20Verhalten%20der%20Maschine%20wird%20mit%20dem%20eines%20Menschen%20verglichen.%7CPerson%20C%20entscheidet%2C%20ob%20der%20Gespr%C3%A4chspartner%20Mensch%20oder%20Maschine%20ist.%22%7D"><div class="exam-subsection-title"><span class="item-label">C)</span> Im folgenden Ablauf sind die Schritte durcheinander geraten. Ordne sie von 1 bis 5.</div><div class="exam-sort-drag exam-sort-drag--steps" data-answer-id="a1c" data-sort-join="|">
@@ -1450,10 +1454,10 @@
             <div class="solution">
                 <h4>Musterlösung:</h4>
                 <p>A) <strong>B</strong></p>
-                <p>B) <strong>Eine Maschine ist intelligent, wenn ihr Verhalten in einem Gespräch nicht zuverlässig von dem eines Menschen unterschieden werden kann.</strong></p>
-                <p>C) <strong>C kennt die Identität der Gesprächspartner nicht.|Eine KI übernimmt die Rolle von A.|Person C führt eine Unterhaltung.|Das Verhalten der Maschine wird mit dem eines Menschen verglichen.|Person C entscheidet, ob der Gesprächspartner Mensch oder Maschine ist. / CkenntdieIdentitätderGesprächspartnernicht.|EineKIübernimmtdieRollevonA.|PersonCführteineUnterhaltung.|DasVerhaltenderMaschinewirdmitdemeinesMenschenverglichen.|PersonCentscheidet,obderGesprächspartnerMenschoderMaschineist. / C kennt die Identität der Gesprächspartner nicht. | Eine KI übernimmt die Rolle von A. | Person C führt eine Unterhaltung. | Das Verhalten der Maschine wird mit dem eines Menschen verglichen. | Person C entscheidet, ob der Gesprächspartner Mensch oder Maschine ist. / C kennt die Identitaet der Gespraechspartner nicht.|Eine KI uebernimmt die Rolle von A.|Person C fuehrt eine Unterhaltung.|Das Verhalten der Maschine wird mit dem eines Menschen verglichen.|Person C entscheidet, ob der Gespraechspartner Mensch oder Maschine ist.</strong></p>
+                <p>B) <strong>B</strong></p>
+                <p>C) 1. C kennt die Identität der Gesprächspartner nicht.<br>2. Eine KI übernimmt die Rolle von A.<br>3. Person C führt eine Unterhaltung.<br>4. Das Verhalten der Maschine wird mit dem eines Menschen verglichen.<br>5. Person C entscheidet, ob der Gesprächspartner Mensch oder Maschine ist.</p>
                 <p>D) <strong>A, B</strong></p>
-                <p>E) <strong>Eine Aufgabe, die für Menschen meist leicht verständlich ist, Computerprogramme aber möglichst zuverlässig vor Probleme stellt.</strong></p>
+                <p>E) <strong>B</strong></p>
             </div>
         </div>
     </div>
@@ -2214,11 +2218,11 @@
         }
 
         const correctAnswers = {
-            a1a: ["B"],
-            a1b: ["B"],
-            a1c: ["C kennt die Identität der Gesprächspartner nicht.|Eine KI übernimmt die Rolle von A.|Person C führt eine Unterhaltung.|Das Verhalten der Maschine wird mit dem eines Menschen verglichen.|Person C entscheidet, ob der Gesprächspartner Mensch oder Maschine ist.","CkenntdieIdentitätderGesprächspartnernicht.|EineKIübernimmtdieRollevonA.|PersonCführteineUnterhaltung.|DasVerhaltenderMaschinewirdmitdemeinesMenschenverglichen.|PersonCentscheidet,obderGesprächspartnerMenschoderMaschineist.","C kennt die Identität der Gesprächspartner nicht. | Eine KI übernimmt die Rolle von A. | Person C führt eine Unterhaltung. | Das Verhalten der Maschine wird mit dem eines Menschen verglichen. | Person C entscheidet, ob der Gesprächspartner Mensch oder Maschine ist.","C kennt die Identitaet der Gespraechspartner nicht.|Eine KI uebernimmt die Rolle von A.|Person C fuehrt eine Unterhaltung.|Das Verhalten der Maschine wird mit dem eines Menschen verglichen.|Person C entscheidet, ob der Gespraechspartner Mensch oder Maschine ist."],
-            a1d: ["A|B"],
-            a1e: ["B"]
+            a1a: ['B'],
+            a1b: ['B'],
+            a1c: ['C kennt die Identität der Gesprächspartner nicht.|Eine KI übernimmt die Rolle von A.|Person C führt eine Unterhaltung.|Das Verhalten der Maschine wird mit dem eines Menschen verglichen.|Person C entscheidet, ob der Gesprächspartner Mensch oder Maschine ist.', 'C kennt die Identität der Gesprächspartner nicht. | Eine KI übernimmt die Rolle von A. | Person C führt eine Unterhaltung. | Das Verhalten der Maschine wird mit dem eines Menschen verglichen. | Person C entscheidet, ob der Gesprächspartner Mensch oder Maschine ist.', 'C kennt die Identitaet der Gespraechspartner nicht.|Eine KI uebernimmt die Rolle von A.|Person C fuehrt eine Unterhaltung.|Das Verhalten der Maschine wird mit dem eines Menschen verglichen.|Person C entscheidet, ob der Gespraechspartner Mensch oder Maschine ist.'],
+            a1d: ['A|B'],
+            a1e: ['B']
         };
 
         function getAnswerValue(id) {

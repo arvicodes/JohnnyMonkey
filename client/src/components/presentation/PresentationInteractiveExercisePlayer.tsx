@@ -520,7 +520,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   const [fillStatuses, setFillStatuses] = useState<Array<'idle' | 'correct' | 'wrong' | 'revealed'>>(
     [],
   );
-  const [activeBlank, setActiveBlank] = useState(0);
   const [showWrongBanner, setShowWrongBanner] = useState(false);
   const [sortPlaced, setSortPlaced] = useState<Array<string | null>>([]);
   const [sortPool, setSortPool] = useState<string[]>([]);
@@ -543,13 +542,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   >([]);
   const [activeCompareIdx, setActiveCompareIdx] = useState(0);
   const solveRevealTimerRef = useRef<number | null>(null);
-  const activeBlankRef = useRef(0);
   const activeCompareIdxRef = useRef(0);
-  const preferSelectedBlankRef = useRef(false);
-
-  useEffect(() => {
-    activeBlankRef.current = activeBlank;
-  }, [activeBlank]);
 
   useEffect(() => {
     activeCompareIdxRef.current = activeCompareIdx;
@@ -603,9 +596,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setPickedId(null);
     setLocked(false);
     setShowWrongBanner(false);
-    setActiveBlank(0);
-    activeBlankRef.current = 0;
-    preferSelectedBlankRef.current = false;
     setMatchSelectedKey(null);
     setMatchWrongKeys([]);
     setMatchHadWrong(false);
@@ -772,9 +762,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
       setFillValues(Array.from({ length: n }, () => ''));
       setFillStatuses(Array.from({ length: n }, () => 'idle'));
     }
-    setActiveBlank(0);
-    activeBlankRef.current = 0;
-    preferSelectedBlankRef.current = false;
   };
 
   const appendRepeatAndScheduleRetry = (resetLocal: () => void) => {
@@ -822,19 +809,10 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     const parts = currentQ.clozeParts;
     setFillValues((prev) => {
       if (!prev.length) return prev;
-      const next = [...prev];
-      let idx = activeBlankRef.current;
-      if (preferSelectedBlankRef.current && idx >= 0 && idx < next.length) {
-        preferSelectedBlankRef.current = false;
-      } else if (idx < 0 || idx >= next.length || next[idx]) {
-        idx = next.findIndex((v) => !v);
-      }
+      const idx = prev.findIndex((v) => !v);
       if (idx < 0) return prev;
+      const next = [...prev];
       next[idx] = option;
-      const nextEmpty = next.findIndex((v, i) => i > idx && !v);
-      const newActive = nextEmpty >= 0 ? nextEmpty : idx;
-      activeBlankRef.current = newActive;
-      queueMicrotask(() => setActiveBlank(newActive));
       if (next.every((v) => v)) {
         const snapshot = next;
         queueMicrotask(() => submitFills(parts, snapshot));
@@ -1426,7 +1404,9 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
               }}
             >
               <Box component="p" sx={clozeParagraphSx(s)}>
-                {buildClozeRenderUnits(currentQ.clozeParts || []).map((unit, idx) => {
+                {(() => {
+                  const nextClozeBlankIdx = fillValues.findIndex((v) => !v);
+                  return buildClozeRenderUnits(currentQ.clozeParts || []).map((unit, idx) => {
                   if (unit.kind === 'break') {
                     return <Box key={idx} component="span" sx={clozeParagraphBreakSx(s)} aria-hidden />;
                   }
@@ -1441,23 +1421,26 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                     const i = blankUnit.index;
                     const val = fillValues[i] || '';
                     const st = fillStatuses[i] || 'idle';
-                    const selected = activeBlank === i;
+                    const selected = nextClozeBlankIdx >= 0 && nextClozeBlankIdx === i;
                     return (
                       <Box
                         key={key}
-                        component="button"
-                        type="button"
-                        disabled={!interactive || locked}
-                        onClick={() => {
-                          activeBlankRef.current = i;
-                          preferSelectedBlankRef.current = true;
-                          setActiveBlank(i);
+                        component="span"
+                        aria-label={
+                          selected
+                            ? `Lücke ${i + 1}, als Nächstes hier einsetzen`
+                            : val
+                              ? `Lücke ${i + 1}, ausgefüllt`
+                              : `Lücke ${i + 1}`
+                        }
+                        sx={{
+                          ...clozeBlankSx(s, {
+                            selected,
+                            status: st,
+                            label: val || blankUnit.correct,
+                          }),
+                          cursor: 'default',
                         }}
-                        sx={clozeBlankSx(s, {
-                          selected,
-                          status: st,
-                          label: val || blankUnit.correct,
-                        })}
                       >
                         {val || '\u00a0'}
                       </Box>
@@ -1479,7 +1462,8 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                       )}
                     </Box>
                   );
-                })}
+                });
+                })()}
               </Box>
               <Box sx={{ ...wordBankRowSx(s), mt: `${28 * s}px` }}>
                 {(currentQ.clozeOptions || []).map((opt, optIdx) => {
