@@ -451,12 +451,14 @@ export default function ExamGridTaskBuilderDialog({
                 disabled={loading || saving || sessionResetBusy}
                 onActiveFilePathChange={handleVersionPathChange}
               />
-              <ExamSessionResetTrio
-                disabled={loading || saving || sessionResetBusy}
-                onResetSubmissions={() => void handleResetSubmissions()}
-                onRestartTimer={() => void handleRestartTimerForAll()}
-                onFullReset={() => setFullResetOpen(true)}
-              />
+              <Box sx={{ flex: '0 0 20%', width: '20%', maxWidth: '20%', minWidth: 0 }}>
+                <ExamSessionResetTrio
+                  disabled={loading || saving || sessionResetBusy}
+                  onResetSubmissions={() => void handleResetSubmissions()}
+                  onRestartTimer={() => void handleRestartTimerForAll()}
+                  onFullReset={() => setFullResetOpen(true)}
+                />
+              </Box>
             </Box>
           ) : null}
 

@@ -19,11 +19,12 @@ export default function ExamSessionResetTrio({
     flex: 1,
     minWidth: 0,
     borderRadius: 0,
-    fontSize: 10,
-    lineHeight: 1.15,
+    fontSize: 8,
+    lineHeight: 1.1,
     fontWeight: 800,
-    py: 0.75,
-    px: 0.5,
+    py: 0.35,
+    px: 0.25,
+    minHeight: 0,
     whiteSpace: 'nowrap' as const,
     textTransform: 'uppercase' as const,
   };
@@ -37,9 +38,9 @@ export default function ExamSessionResetTrio({
       sx={{
         display: 'inline-flex',
         flexDirection: 'row',
-        flex: '1 1 auto',
+        width: '100%',
         minWidth: 0,
-        borderRadius: '7px',
+        borderRadius: '5px',
         overflow: 'hidden',
         border: '1px solid #E10600',
       }}
