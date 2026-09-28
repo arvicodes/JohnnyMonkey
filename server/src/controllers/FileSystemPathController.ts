@@ -3391,7 +3391,8 @@ ${optionsHTML}
         .exam-subsection-media-right { flex-direction: row-reverse; }
         .exam-subsection-image { width: 88px; max-width: 32%; height: auto; object-fit: contain; border-radius: 4px; border: 1px solid #e0e0e0; flex-shrink: 0; }
         .exam-subsection-media-body { flex: 1; min-width: 0; }
-        .exam-sort-drag { margin-top: 4px; }
+        .exam-sort-drag { margin-top: 4px; width: 50%; max-width: 50%; }
+        .exam-sort-drag + .exam-sort-hint { max-width: 50%; }
         .exam-sort-pool { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; min-height: 28px; padding: 4px 5px; border: 1px dashed #bdbdbd; border-radius: 5px; background: #fafafa; }
         .exam-sort-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; padding: 4px 8px; border: 1px solid #90caf9; border-radius: 5px; background: #e3f2fd; font-weight: 700; font-size: 13px; cursor: grab; user-select: none; touch-action: none; }
         .exam-sort-slot { min-width: 48px; min-height: 32px; padding: 3px; border: 2px dashed #9e9e9e; border-radius: 5px; background: #fff; display: flex; align-items: center; justify-content: center; }
