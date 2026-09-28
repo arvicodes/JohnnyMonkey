@@ -437,29 +437,25 @@ export default function ExamGridTaskBuilderDialog({
               sx={{
                 mb: 1,
                 display: 'flex',
-                flexDirection: 'row',
-                flexWrap: 'nowrap',
-                alignItems: 'stretch',
-                gap: 1,
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                gap: 0.75,
                 width: '100%',
-                overflowX: 'auto',
               }}
             >
-              <Box sx={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden' }}>
+              <ExamSessionResetTrio
+                disabled={loading || saving || sessionResetBusy}
+                onResetSubmissions={() => void handleResetSubmissions()}
+                onRestartTimer={() => void handleRestartTimerForAll()}
+                onFullReset={() => setFullResetOpen(true)}
+              />
+              <Box sx={{ width: '100%', minWidth: 0 }}>
                 <ExamVersionTabsBar
                   compact
                   filePath={versionMetaPath}
                   activeVariantPath={activeFilePath}
                   disabled={loading || saving || sessionResetBusy}
                   onActiveFilePathChange={handleVersionPathChange}
-                />
-              </Box>
-              <Box sx={{ flex: '0 0 auto', width: 'auto', minWidth: 'max-content' }}>
-                <ExamSessionResetTrio
-                  disabled={loading || saving || sessionResetBusy}
-                  onResetSubmissions={() => void handleResetSubmissions()}
-                  onRestartTimer={() => void handleRestartTimerForAll()}
-                  onFullReset={() => setFullResetOpen(true)}
                 />
               </Box>
             </Box>
