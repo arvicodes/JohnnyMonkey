@@ -26,30 +26,37 @@ export const exercisePromptSubSx = (scale: number) => ({
   mt: `${4 * scale}px`,
 });
 
-/** Standardbreite; längere Wörter werden breiter (ch). */
+/** Standard-Mindestbreite (Anteil am Textblock); Inhalt darf breiter werden. */
 export const EXERCISE_FIELD_WIDTH_PCT = 20;
 const FIELD_LONG_CHAR_THRESHOLD = 10;
+
+/** Basis-Breite des Lückentext-Blocks (px × scale); +20 % gegenüber früher 520. */
+export const EXERCISE_CLOZE_TEXT_MAX_WIDTH = 624;
+
+function fieldContentMinCh(chars: number) {
+  return Math.min(Math.max(chars + 4, 4), 48);
+}
 
 export function exerciseFieldSizeSx(scale: number, label: string) {
   const text = (label || '').trim() || '…';
   const chars = Math.max(2, text.length);
+  const ch = fieldContentMinCh(chars);
   const tooLong = chars > FIELD_LONG_CHAR_THRESHOLD;
   if (!tooLong) {
     return {
-      width: `${EXERCISE_FIELD_WIDTH_PCT}%`,
-      minWidth: `${EXERCISE_FIELD_WIDTH_PCT}%`,
-      maxWidth: `${EXERCISE_FIELD_WIDTH_PCT}%`,
-      flex: `0 0 ${EXERCISE_FIELD_WIDTH_PCT}%`,
+      width: 'auto',
+      minWidth: `max(${EXERCISE_FIELD_WIDTH_PCT}%, ${ch}ch)`,
+      maxWidth: 'none',
+      flex: '0 0 auto',
       height: `${30 * scale}px`,
       boxSizing: 'border-box' as const,
     };
   }
-  const ch = Math.min(chars + 2, 28);
   return {
     width: 'auto',
     minWidth: `${ch}ch`,
-    maxWidth: `${ch}ch`,
-    flex: '0 1 auto',
+    maxWidth: 'none',
+    flex: '0 0 auto',
     height: `${30 * scale}px`,
     boxSizing: 'border-box' as const,
   };
@@ -95,8 +102,8 @@ export const clozeBlankSx = (
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    verticalAlign: 'middle',
-    my: `${1 * scale}px`,
+    verticalAlign: 'baseline',
+    mx: `${2 * scale}px`,
     px: `${4 * scale}px`,
     border: opts.selected ? '2px solid #90caf9' : '1px solid #d0d0d0',
     borderRadius: `${4 * scale}px`,
@@ -106,8 +113,6 @@ export const clozeBlankSx = (
     fontSize: `${14 * scale}px`,
     cursor: 'pointer',
     textDecoration: st === 'wrong' ? 'line-through' : 'none',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
     whiteSpace: 'nowrap' as const,
   };
 };
@@ -147,8 +152,6 @@ export const wordBankChipSx = (
   border: '1px solid rgba(0,0,0,0.06)',
   boxSizing: 'border-box' as const,
   cursor: used || !interactive ? 'default' : 'pointer',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
   whiteSpace: 'nowrap' as const,
   '&:disabled': { opacity: used ? 0.35 : 0.5 },
 });

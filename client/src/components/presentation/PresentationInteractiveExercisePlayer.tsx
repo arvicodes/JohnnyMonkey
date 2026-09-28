@@ -24,6 +24,7 @@ import {
   ExerciseDiagram,
   MeasureText,
   SortRowHandle,
+  EXERCISE_CLOZE_TEXT_MAX_WIDTH,
   clozeBlankSx,
   exerciseInputFieldSx,
   exercisePlaySurfaceSx,
@@ -1257,30 +1258,34 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
 
           {/* Cloze */}
           {mode === 'cloze' ? (
-            <Box sx={{ width: '100%', maxWidth: `${520 * s}px`, mx: 'auto' }}>
+            <Box
+              sx={{
+                width: '100%',
+                maxWidth: `${EXERCISE_CLOZE_TEXT_MAX_WIDTH * s}px`,
+                mx: 'auto',
+              }}
+            >
               <Box
+                component="p"
                 sx={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  justifyContent: 'flex-start',
+                  m: 0,
                   width: '100%',
-                  gap: `${6 * s}px`,
                   fontSize: `${17 * s}px`,
                   lineHeight: 1.75,
                   color: '#222',
                   px: `${4 * s}px`,
+                  textAlign: 'left',
                 }}
               >
                 {(() => {
                   let bi = 0;
                   return (currentQ.clozeParts || []).map((part, idx) => {
                     if (part.type === 'break') {
-                      return <Box key={idx} sx={{ flexBasis: '100%', height: `${10 * s}px` }} />;
+                      return <br key={idx} />;
                     }
                     if (part.type === 'text') {
                       return (
-                        <Box key={idx} component="span" sx={{ fontWeight: 500 }}>
+                        <Box key={idx} component="span" sx={{ fontWeight: 500, whiteSpace: 'pre-wrap' }}>
                           {part.text}
                         </Box>
                       );
