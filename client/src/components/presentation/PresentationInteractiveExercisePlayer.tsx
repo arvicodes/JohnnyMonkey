@@ -364,10 +364,10 @@ function WrongBanner({
     lineHeight: 1.2,
     textTransform: 'none' as const,
     borderRadius: `${6 * scale}px`,
-    bgcolor: 'rgba(0,0,0,0.07)',
-    color: '#222',
+    bgcolor: 'rgba(180, 130, 0, 0.12)',
+    color: '#3d2f00',
     boxShadow: 'none',
-    '&:hover': { bgcolor: 'rgba(0,0,0,0.11)' },
+    '&:hover': { bgcolor: 'rgba(180, 130, 0, 0.2)' },
   };
   return (
     <Box
@@ -375,20 +375,20 @@ function WrongBanner({
       aria-live="polite"
       sx={{
         position: 'absolute',
-        top: `${6 * scale}px`,
         left: '50%',
+        bottom: `${20 * scale}px`,
         transform: 'translateX(-50%)',
         zIndex: 40,
         width: 'max-content',
         maxWidth: `min(calc(100% - ${16 * scale}px), ${240 * scale}px)`,
-        bgcolor: 'rgba(255,255,255,0.78)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        border: '1px solid rgba(0,0,0,0.1)',
+        bgcolor: 'rgba(255, 246, 200, 0.72)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        border: '1px solid rgba(218, 165, 32, 0.45)',
         borderRadius: `${8 * scale}px`,
         px: `${8 * scale}px`,
         py: `${6 * scale}px`,
-        boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+        boxShadow: '0 4px 18px rgba(160, 120, 0, 0.22), 0 0 0 1px rgba(255, 235, 150, 0.35) inset',
         pointerEvents: 'auto',
       }}
     >
@@ -417,10 +417,10 @@ function WrongBanner({
           sx={{
             fontSize: `${9 * scale}px`,
             lineHeight: 1.35,
-            color: '#444',
+            color: '#4a3a10',
             mt: `${5 * scale}px`,
             pt: `${4 * scale}px`,
-            borderTop: '1px solid rgba(0,0,0,0.07)',
+            borderTop: '1px solid rgba(180, 130, 0, 0.2)',
             textAlign: 'center',
           }}
         >
