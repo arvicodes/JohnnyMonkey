@@ -26,29 +26,23 @@ export const exercisePromptSubSx = (scale: number) => ({
   mt: `${4 * scale}px`,
 });
 
-const FIELD_WIDTH_FACTOR = 3;
+/** Lücken, Eingaben und Wortbank-Kärtchen: gleiche Breite (Anteil am Container). */
+export const EXERCISE_FIELD_WIDTH_PCT = 20;
 
-/** Breite in px (ohne scale) — Lücken, Eingaben, Wortbank gleich. */
-export function exerciseFieldWidthChars(chars: number): number {
-  const c = Math.max(2, chars);
-  const base = Math.min(96, Math.max(26, c * 7 + 10));
-  return base * FIELD_WIDTH_FACTOR;
-}
-
-export function exerciseUniformFieldWidthPx(scale: number, labels: string[]): number {
-  const maxLen = Math.max(2, 8, ...labels.map((t) => (t || '').length));
-  return exerciseFieldWidthChars(maxLen) * scale;
-}
+export const exerciseFieldPercentSx = (scale: number) => ({
+  width: `${EXERCISE_FIELD_WIDTH_PCT}%`,
+  minWidth: `${EXERCISE_FIELD_WIDTH_PCT}%`,
+  maxWidth: `${EXERCISE_FIELD_WIDTH_PCT}%`,
+  flex: `0 0 ${EXERCISE_FIELD_WIDTH_PCT}%`,
+  height: `${30 * scale}px`,
+  boxSizing: 'border-box' as const,
+});
 
 export const exerciseInputFieldSx = (
   scale: number,
-  widthPx: number,
   extra?: Record<string, unknown>,
 ) => ({
-  width: `${widthPx}px`,
-  minWidth: `${widthPx}px`,
-  maxWidth: `${widthPx}px`,
-  height: `${30 * scale}px`,
+  ...exerciseFieldPercentSx(scale),
   textAlign: 'center' as const,
   border: 'none',
   borderRadius: `${6 * scale}px`,
@@ -56,7 +50,6 @@ export const exerciseInputFieldSx = (
   fontSize: `${16 * scale}px`,
   fontWeight: 700,
   outline: 'none',
-  boxSizing: 'border-box' as const,
   ...extra,
 });
 
@@ -65,8 +58,6 @@ export const clozeBlankSx = (
   opts: {
     selected?: boolean;
     status?: 'idle' | 'correct' | 'wrong' | 'revealed';
-    /** Feste Breite (px), gleich wie Wortbank-Chips. */
-    widthPx: number;
   },
 ) => {
   const st = opts.status || 'idle';
@@ -77,15 +68,11 @@ export const clozeBlankSx = (
         ? '#C62828'
         : '#111';
   return {
+    ...exerciseFieldPercentSx(scale),
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: `${opts.widthPx}px`,
-    minWidth: `${opts.widthPx}px`,
-    maxWidth: `${opts.widthPx}px`,
-    height: `${30 * scale}px`,
-    boxSizing: 'border-box',
-    mx: `${2 * scale}px`,
+    verticalAlign: 'middle',
     my: `${1 * scale}px`,
     px: `${4 * scale}px`,
     border: opts.selected ? '2px solid #90caf9' : '1px solid #d0d0d0',
@@ -95,37 +82,28 @@ export const clozeBlankSx = (
     fontWeight: 600,
     fontSize: `${14 * scale}px`,
     cursor: 'pointer',
-    verticalAlign: 'middle',
     textDecoration: st === 'wrong' ? 'line-through' : 'none',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const,
   };
 };
 
 export const wordBankRowSx = {
   display: 'flex',
   flexDirection: 'row' as const,
-  flexWrap: 'nowrap' as const,
-  gap: '8px',
-  justifyContent: 'center',
+  flexWrap: 'wrap' as const,
+  gap: 0,
+  justifyContent: 'flex-start',
   alignItems: 'center',
   width: '100%',
-  overflowX: 'auto' as const,
   py: 0.5,
 };
 
-/** Wortbank / Zieh-Kärtchen — gleiche Breite wie Lücken (ohne MUI-Button-Mindestbreite). */
-export const wordBankChipSx = (
-  scale: number,
-  used: boolean,
-  widthPx: number,
-  interactive: boolean,
-) => ({
-  width: `${widthPx}px`,
-  minWidth: `${widthPx}px`,
-  maxWidth: `${widthPx}px`,
-  height: `${30 * scale}px`,
+/** Wortbank / Zieh-Kärtchen — exakt 20 % wie Lücken. */
+export const wordBankChipSx = (scale: number, used: boolean, interactive: boolean) => ({
+  ...exerciseFieldPercentSx(scale),
   px: `${4 * scale}px`,
-  flex: `0 0 ${widthPx}px`,
-  flexShrink: 0,
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -144,6 +122,7 @@ export const wordBankChipSx = (
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap' as const,
   '&:disabled': { opacity: used ? 0.35 : 0.5 },
+  margin: 0,
 });
 
 export const sortRowCardSx = (scale: number, filled: boolean) => ({

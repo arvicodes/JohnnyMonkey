@@ -29,7 +29,6 @@ import {
   exercisePlaySurfaceSx,
   exercisePromptSubSx,
   exercisePromptSx,
-  exerciseUniformFieldWidthPx,
   matchTileSx,
   sortRowCardSx,
   wordBankChipSx,
@@ -994,38 +993,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   if (phase === 'play' && topic && currentQ) {
     const mode = currentQ.mode || 'choice';
 
-    const clozeBlankLabels =
-      mode === 'cloze'
-        ? [
-            ...(currentQ.clozeOptions || []),
-            ...(currentQ.clozeParts || [])
-              .filter((p): p is { type: 'blank'; correct: string } => p.type === 'blank')
-              .map((p) => p.correct),
-            ...fillValues.filter(Boolean),
-          ]
-        : [];
-    const clozeFieldWidthPx =
-      mode === 'cloze' ? exerciseUniformFieldWidthPx(s, clozeBlankLabels) : 0;
-
-    const sortChipLabels =
-      mode === 'sort'
-        ? [...sortPool, ...sortPlaced.filter((v): v is string => Boolean(v))]
-        : [];
-    const sortChipWidthPx =
-      mode === 'sort' ? exerciseUniformFieldWidthPx(s, sortChipLabels) : 0;
-
-    const equationFieldLabels =
-      mode === 'equation'
-        ? [
-            ...(currentQ.equationParts || [])
-              .filter((p): p is { type: 'blank'; correct: string } => p.type === 'blank')
-              .map((p) => p.correct),
-            ...fillValues.filter(Boolean),
-          ]
-        : [];
-    const equationFieldWidthPx =
-      mode === 'equation' ? exerciseUniformFieldWidthPx(s, equationFieldLabels) : 0;
-
     const showRuleBox = mode === 'choice' || mode === 'equation';
 
     const promptBlock = (
@@ -1258,7 +1225,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                         onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                           if (e.key === 'Enter') submitFills(currentQ.equationParts, fillValues);
                         }}
-                        sx={exerciseInputFieldSx(s, equationFieldWidthPx, {
+                        sx={exerciseInputFieldSx(s, {
                           color,
                           textDecoration: st === 'wrong' ? 'line-through' : 'none',
                         })}
@@ -1290,18 +1257,18 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
 
           {/* Cloze */}
           {mode === 'cloze' ? (
-            <Box sx={{ width: '100%', maxWidth: `${520 * s}px` }}>
+            <Box sx={{ width: '100%', maxWidth: `${520 * s}px`, mx: 'auto' }}>
               <Box
                 sx={{
                   display: 'flex',
                   flexWrap: 'wrap',
                   alignItems: 'center',
                   justifyContent: 'flex-start',
+                  width: '100%',
                   fontSize: `${17 * s}px`,
                   lineHeight: 1.75,
                   color: '#222',
                   px: `${4 * s}px`,
-                  mx: 'auto',
                 }}
               >
                 {(() => {
@@ -1328,11 +1295,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                         type="button"
                         disabled={!interactive || locked}
                         onClick={() => setActiveBlank(i)}
-                        sx={clozeBlankSx(s, {
-                          selected,
-                          status: st,
-                          widthPx: clozeFieldWidthPx,
-                        })}
+                        sx={clozeBlankSx(s, { selected, status: st })}
                       >
                         {val || '\u00a0'}
                       </Box>
@@ -1340,7 +1303,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                   });
                 })()}
               </Box>
-              <Box sx={{ ...wordBankRowSx, mt: `${28 * s}px`, gap: `${8 * s}px` }}>
+              <Box sx={{ ...wordBankRowSx, mt: `${28 * s}px` }}>
                 {(currentQ.clozeOptions || []).map((opt) => {
                   const used = fillValues.includes(opt);
                   return (
@@ -1350,7 +1313,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                       type="button"
                       disabled={!interactive || locked || used}
                       onClick={() => placeClozeOption(opt)}
-                      sx={wordBankChipSx(s, used, clozeFieldWidthPx, Boolean(interactive))}
+                      sx={wordBankChipSx(s, used, Boolean(interactive))}
                     >
                       {opt}
                     </Box>
@@ -1471,23 +1434,16 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                                   );
                                 }}
                                 sx={{
-                                  ...exerciseInputFieldSx(
-                                    s,
-                                    exerciseUniformFieldWidthPx(s, [
-                                      it.arabic,
-                                      convertValues[idx] || '',
-                                    ]),
-                                    {
-                                      fontSize: `${16 * s}px`,
-                                      color:
-                                        st === 'correct' || st === 'revealed'
-                                          ? '#2E7D32'
-                                          : st === 'wrong'
-                                            ? '#C62828'
-                                            : '#111',
-                                      textDecoration: st === 'wrong' ? 'line-through' : 'none',
-                                    },
-                                  ),
+                                  ...exerciseInputFieldSx(s, {
+                                    fontSize: `${16 * s}px`,
+                                    color:
+                                      st === 'correct' || st === 'revealed'
+                                        ? '#2E7D32'
+                                        : st === 'wrong'
+                                          ? '#C62828'
+                                          : '#111',
+                                    textDecoration: st === 'wrong' ? 'line-through' : 'none',
+                                  }),
                                 }}
                               />
                               {st === 'wrong' ? (
@@ -1646,26 +1602,18 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                 }}
                 placeholder="…"
                 sx={{
-                  ...exerciseInputFieldSx(
-                    s,
-                    exerciseUniformFieldWidthPx(s, [
-                      typedAnswer,
-                      currentQ.correctAnswer || '',
-                      '000',
-                    ]),
-                    {
-                      height: `${34 * s}px`,
-                      fontSize: `${18 * s}px`,
-                      letterSpacing: `${0.5 * s}px`,
-                      color:
-                        typedStatus === 'correct' || typedStatus === 'revealed'
-                          ? '#2E7D32'
-                          : typedStatus === 'wrong'
-                            ? '#C62828'
-                            : '#111',
-                      textDecoration: typedStatus === 'wrong' ? 'line-through' : 'none',
-                    },
-                  ),
+                  ...exerciseInputFieldSx(s, {
+                    height: `${34 * s}px`,
+                    fontSize: `${18 * s}px`,
+                    letterSpacing: `${0.5 * s}px`,
+                    color:
+                      typedStatus === 'correct' || typedStatus === 'revealed'
+                        ? '#2E7D32'
+                        : typedStatus === 'wrong'
+                          ? '#C62828'
+                          : '#111',
+                    textDecoration: typedStatus === 'wrong' ? 'line-through' : 'none',
+                  }),
                 }}
               />
               {typedStatus === 'wrong' && currentQ.correctAnswer ? (
@@ -1723,7 +1671,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                 );
               })}
               {sortPool.length > 0 ? (
-                <Box sx={{ ...wordBankRowSx, mt: `${20 * s}px`, gap: `${8 * s}px` }}>
+                <Box sx={{ ...wordBankRowSx, mt: `${20 * s}px` }}>
                   {sortPool.map((item) => (
                     <Box
                       key={item}
@@ -1731,7 +1679,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                       type="button"
                       disabled={!interactive || locked}
                       onClick={() => placeSortItem(item)}
-                      sx={wordBankChipSx(s, false, sortChipWidthPx, Boolean(interactive))}
+                      sx={wordBankChipSx(s, false, Boolean(interactive))}
                     >
                       <MeasureText value={item} scale={s} />
                     </Box>
