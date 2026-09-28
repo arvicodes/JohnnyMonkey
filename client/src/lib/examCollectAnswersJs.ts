@@ -1,6 +1,42 @@
 /** Inline JS for KA/QZ HTML: collect all student answers including Zahlenstrahl hidden fields. */
 export function examCollectAnswersJsSource(): string {
   return `
+        function examEditableInputs() {
+            return Array.from(document.querySelectorAll(
+                'input[type="text"]:not([disabled]):not([readonly]), input[type="number"]:not([disabled]):not([readonly]), textarea:not([disabled]):not([readonly]), .exam-nl-fixed-input:not([disabled]):not([readonly])'
+            )).filter(function (el) {
+                return el.getClientRects && el.getClientRects().length > 0;
+            });
+        }
+        function focusFirstExamInput() {
+            var inputs = examEditableInputs();
+            if (!inputs.length) return;
+            var target = inputs.find(function (el) { return !String(el.value || '').trim(); }) || inputs[0];
+            try {
+                target.focus({ preventScroll: false });
+                if (typeof target.select === 'function') target.select();
+            } catch (e) {}
+        }
+        function setupExamTextInputFocusAndEnter() {
+            examEditableInputs().forEach(function (input, index, all) {
+                if (input.getAttribute('data-exam-enter-nav') === '1') return;
+                input.setAttribute('data-exam-enter-nav', '1');
+                input.addEventListener('keydown', function (e) {
+                    if (e.key !== 'Enter' || e.isComposing) return;
+                    e.preventDefault();
+                    var list = examEditableInputs();
+                    var i = list.indexOf(input);
+                    var next = i >= 0 ? list[i + 1] : null;
+                    if (next) {
+                        next.focus();
+                        if (typeof next.select === 'function') next.select();
+                        return;
+                    }
+                    var btn = document.getElementById('submitBtnBottom');
+                    if (btn && !btn.disabled) btn.click();
+                });
+            });
+        }
         function flushExamNumberLineDrafts() {
             document.querySelectorAll('.exam-nl-fixed-input').forEach(function (inp) {
                 var id = inp.getAttribute('data-answer-id');

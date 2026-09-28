@@ -692,6 +692,36 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   const currentQ: InteractiveExerciseQuestion | null =
     topic && topic.questions[qi] ? topic.questions[qi] : null;
 
+  const writeInputRef = useRef<HTMLInputElement>(null);
+  const fillInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const convertInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    fillInputRefs.current = [];
+    convertInputRefs.current = [];
+  }, [qi, currentQ?.id]);
+
+  useEffect(() => {
+    if (phase !== 'play' || !interactive || locked || !currentQ) return;
+    const mode = currentQ.mode || 'choice';
+    if (mode !== 'write' && mode !== 'equation' && mode !== 'compare') return;
+    const t = window.setTimeout(() => {
+      if (mode === 'write') {
+        writeInputRef.current?.focus();
+        writeInputRef.current?.select();
+      } else if (mode === 'equation') {
+        const first = fillInputRefs.current.find((el) => el);
+        first?.focus();
+        first?.select();
+      } else if (mode === 'compare') {
+        const first = convertInputRefs.current.find((el) => el);
+        first?.focus();
+        first?.select();
+      }
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [phase, qi, interactive, locked, currentQ?.id, currentQ?.mode]);
+
   const advanceAfterAnswer = (
     nextAnswers: Array<'correct' | 'wrong' | null>,
     opts?: { topic?: InteractiveExerciseTopic; qi?: number },
@@ -1365,6 +1395,9 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                       <Box
                         key={idx}
                         component="input"
+                        ref={(el: HTMLInputElement | null) => {
+                          fillInputRefs.current[i] = el;
+                        }}
                         value={val}
                         disabled={!interactive || locked}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1373,7 +1406,19 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                           setFillValues(next);
                         }}
                         onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                          if (e.key === 'Enter') submitFills(currentQ.equationParts, fillValues);
+                          if (e.key !== 'Enter') return;
+                          e.preventDefault();
+                          const nextInput = fillInputRefs.current[i + 1];
+                          if (nextInput) {
+                            nextInput.focus();
+                            nextInput.select();
+                            return;
+                          }
+                          const parts = currentQ.equationParts;
+                          const values = fillInputRefs.current.map(
+                            (r, blankIdx) => r?.value ?? fillValues[blankIdx] ?? '',
+                          );
+                          submitFills(parts, values);
                         }}
                         sx={exerciseInputFieldSx(s, val || part.correct, {
                           color,
@@ -1596,6 +1641,9 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                               <Box component="span">=</Box>
                               <Box
                                 component="input"
+                                ref={(el: HTMLInputElement | null) => {
+                                  convertInputRefs.current[idx] = el;
+                                }}
                                 value={convertValues[idx] || ''}
                                 disabled={!interactive || locked}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1605,6 +1653,17 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                                   setConvertStatuses((ss) =>
                                     ss.map((s0, i) => (i === idx ? 'idle' : s0)),
                                   );
+                                }}
+                                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                                  if (e.key !== 'Enter') return;
+                                  e.preventDefault();
+                                  const nextInput = convertInputRefs.current[idx + 1];
+                                  if (nextInput) {
+                                    nextInput.focus();
+                                    nextInput.select();
+                                  } else {
+                                    submitCompare();
+                                  }
                                 }}
                                 sx={{
                                   ...exerciseInputFieldSx(
@@ -1762,6 +1821,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
               />
               <Box
                 component="input"
+                ref={writeInputRef}
                 value={typedAnswer}
                 disabled={!interactive || locked}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1931,6 +1931,10 @@
             
             // Button Event-Handler registrieren
             setupExamMultiSelect();
+            setupExamTextInputFocusAndEnter();
+            if (!isTeacher) {
+                focusFirstExamInput();
+            }
         setupSubmitButton();
             
             // Timer IMMER starten (nur für Schüler)
@@ -2007,6 +2011,43 @@
             }, 3000);
         }
 
+        function examEditableInputs() {
+            return Array.from(document.querySelectorAll(
+                'input[type="text"]:not([disabled]):not([readonly]), input[type="number"]:not([disabled]):not([readonly]), textarea:not([disabled]):not([readonly]), .exam-nl-fixed-input:not([disabled]):not([readonly])'
+            )).filter(function (el) {
+                return el.getClientRects && el.getClientRects().length > 0;
+            });
+        }
+        function focusFirstExamInput() {
+            var inputs = examEditableInputs();
+            if (!inputs.length) return;
+            var target = inputs.find(function (el) { return !String(el.value || '').trim(); }) || inputs[0];
+            try {
+                target.focus({ preventScroll: false });
+                if (typeof target.select === 'function') target.select();
+            } catch (e) {}
+        }
+        function setupExamTextInputFocusAndEnter() {
+            examEditableInputs().forEach(function (input) {
+                if (input.getAttribute('data-exam-enter-nav') === '1') return;
+                input.setAttribute('data-exam-enter-nav', '1');
+                input.addEventListener('keydown', function (e) {
+                    if (e.key !== 'Enter' || e.isComposing) return;
+                    e.preventDefault();
+                    var list = examEditableInputs();
+                    var i = list.indexOf(input);
+                    var next = i >= 0 ? list[i + 1] : null;
+                    if (next) {
+                        next.focus();
+                        if (typeof next.select === 'function') next.select();
+                        return;
+                    }
+                    var btn = document.getElementById('submitBtnBottom');
+                    if (btn && !btn.disabled) btn.click();
+                });
+            });
+        }
+
         function flushExamNumberLineDrafts() {
             document.querySelectorAll('.exam-nl-fixed-input').forEach(function (inp) {
                 var id = inp.getAttribute('data-answer-id');
@@ -2015,7 +2056,7 @@
                 if (hidden) hidden.value = (inp.value || '').trim();
             });
         }
-        
+
         function setupExamMultiSelect() {
             document.querySelectorAll('.exam-multi-select[data-answer-id]').forEach(function (wrap) {
                 var id = wrap.getAttribute('data-answer-id');
@@ -2447,6 +2488,10 @@
         // Initialisierung
         attachInputListeners();
         setupExamSortDrag();
+        setupExamTextInputFocusAndEnter();
+        if (!isTeacher) {
+            focusFirstExamInput();
+        }
         // Punkteanzeige nur im Lehrer-Modus aktualisieren
         if (isTeacher) {
             updatePointsDisplay();
