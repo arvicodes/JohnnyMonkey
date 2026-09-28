@@ -376,45 +376,56 @@ function WrongBanner({
       aria-live="polite"
       sx={{
         position: 'absolute',
+        top: '50%',
         left: '50%',
-        bottom: `${20 * scale}px`,
-        transform: 'translateX(-50%)',
+        transform: 'translate(-50%, -50%)',
         zIndex: 40,
         width: 'max-content',
-        maxWidth: `min(calc(100% - ${16 * scale}px), ${240 * scale}px)`,
+        maxWidth: 'min(96vw, max-content)',
+        whiteSpace: 'nowrap',
         bgcolor: 'rgba(255, 246, 200, 0.72)',
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
         border: '1px solid rgba(218, 165, 32, 0.45)',
         borderRadius: `${8 * scale}px`,
-        px: `${8 * scale}px`,
-        py: `${6 * scale}px`,
+        px: `${10 * scale}px`,
+        py: `${7 * scale}px`,
         boxShadow: '0 4px 18px rgba(160, 120, 0, 0.22), 0 0 0 1px rgba(255, 235, 150, 0.35) inset',
         pointerEvents: 'auto',
       }}
     >
       <Typography
+        component="div"
         sx={{
           fontWeight: 700,
           fontSize: `${11 * scale}px`,
           lineHeight: 1.25,
           mb: `${5 * scale}px`,
           textAlign: 'center',
-          color: '#222',
+          color: '#3d2f00',
+          whiteSpace: 'nowrap',
         }}
       >
         Ups, deine Lösung war falsch.
       </Typography>
-      <Box sx={{ display: 'flex', gap: `${5 * scale}px`, justifyContent: 'center' }}>
-        <Button onClick={onRetry} sx={{ ...btnSx, flex: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'nowrap',
+          gap: `${5 * scale}px`,
+          justifyContent: 'center',
+        }}
+      >
+        <Button onClick={onRetry} sx={{ ...btnSx, flex: '0 0 auto' }}>
           Nochmal
         </Button>
-        <Button onClick={onSolve} sx={{ ...btnSx, flex: 1 }}>
+        <Button onClick={onSolve} sx={{ ...btnSx, flex: '0 0 auto' }}>
           Lösen
         </Button>
       </Box>
       {tip ? (
         <Typography
+          component="div"
           sx={{
             fontSize: `${9 * scale}px`,
             lineHeight: 1.35,
@@ -423,12 +434,14 @@ function WrongBanner({
             pt: `${4 * scale}px`,
             borderTop: '1px solid rgba(180, 130, 0, 0.2)',
             textAlign: 'center',
+            whiteSpace: 'nowrap',
           }}
         >
           <Box component="span" sx={{ fontWeight: 700 }}>
             Merke dir:
-          </Box>{' '}
-          {tip}
+          </Box>
+          {'\u00a0'}
+          {tipLine}
         </Typography>
       ) : null}
     </Box>
