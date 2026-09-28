@@ -19,14 +19,16 @@ export default function ExamSessionResetTrio({
     flex: 1,
     minWidth: 0,
     borderRadius: 0,
-    fontSize: 9,
+    fontSize: 10,
     lineHeight: 1.15,
     fontWeight: 800,
-    py: 0.85,
+    py: 0.75,
     px: 0.5,
-    whiteSpace: 'normal' as const,
+    whiteSpace: 'nowrap' as const,
     textTransform: 'uppercase' as const,
   };
+
+  const divider = { borderRight: '1px solid rgba(255,255,255,0.35)' };
 
   return (
     <Box
@@ -34,10 +36,10 @@ export default function ExamSessionResetTrio({
       aria-label="Prüfung zurücksetzen"
       sx={{
         display: 'inline-flex',
-        flexDirection: 'column',
-        width: '100%',
-        maxWidth: 320,
-        borderRadius: 1,
+        flexDirection: 'row',
+        flex: '1 1 auto',
+        minWidth: 0,
+        borderRadius: '7px',
         overflow: 'hidden',
         border: '1px solid #E10600',
       }}
@@ -49,7 +51,7 @@ export default function ExamSessionResetTrio({
           ...base,
           bgcolor: '#fff',
           color: '#8B1538',
-          borderBottom: '1px solid #e0e0e0',
+          borderRight: '1px solid #e0e0e0',
           '&:hover': { bgcolor: '#fff5f5' },
         }}
       >
@@ -60,9 +62,9 @@ export default function ExamSessionResetTrio({
         onClick={onRestartTimer}
         sx={{
           ...base,
+          ...divider,
           bgcolor: '#FF8F00',
           color: '#fff',
-          borderBottom: '1px solid rgba(255,255,255,0.35)',
           '&:hover': { bgcolor: '#F57C00' },
         }}
       >

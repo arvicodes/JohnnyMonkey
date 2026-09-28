@@ -433,7 +433,17 @@ export default function ExamGridTaskBuilderDialog({
             </Alert>
           ) : null}
           {activeFilePath ? (
-            <Box sx={{ mb: 1 }}>
+            <Box
+              sx={{
+                mb: 1,
+                display: 'flex',
+                flexDirection: 'row',
+                flexWrap: 'nowrap',
+                alignItems: 'stretch',
+                gap: 1,
+                width: '100%',
+              }}
+            >
               <ExamVersionTabsBar
                 compact
                 filePath={versionMetaPath}
