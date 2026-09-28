@@ -358,10 +358,10 @@ function splitLeadingInstructionSubsections(subsections: GridSubsection[]): {
   return { introSubs, contentSubs: subsections.slice(i) };
 }
 
-function buildTaskInstructionIntro(sub: Extract<GridSubsection, { kind: 'paragraph' }>): string {
+/** Hinweis direkt hinter „Aufgabe N“ (schwarz, etwas kleiner). */
+function buildInlineTaskInstructionSpan(sub: Extract<GridSubsection, { kind: 'paragraph' }>): string {
   const payload = encodeURIComponent(JSON.stringify(sub));
-  const pClass = 'exam-task-instruction';
-  return `        <div class="task-instruction" data-exam-spec="${payload}"><p class="${pClass}">${allowBasicHtml(sub.text)}</p></div>`;
+  return `<span class="task-inline-instruction" data-exam-spec="${payload}">${allowBasicHtml(sub.text)}</span>`;
 }
 
 function multiSelectSolutionLabel(sub: Extract<GridSubsection, { kind: 'multi-select' }>): string {
@@ -1073,19 +1073,23 @@ function buildTaskShell(
   spec: ExamGridTaskSpec,
   innerContent: string,
   extraClass = '',
-  taskIntroHtml = '',
+  inlineInstructionHtml = '',
 ): string {
   const afbRoman = spec.afbLevel === 1 ? 'I' : spec.afbLevel === 2 ? 'II' : 'III';
+  const pointsSpan = inlineInstructionHtml
+    ? ''
+    : ` <span style="font-size: 11px; color: #666; font-weight: normal;">(${spec.points} Punkte)</span>`;
+  const instructionSuffix = inlineInstructionHtml ? ` ${inlineInstructionHtml}` : '';
   return `    <!-- Aufgabe ${spec.taskNumber} -->
     <div class="task">
         <div class="task-header">
-            <div class="task-number">Aufgabe ${spec.taskNumber} <span style="font-size: 11px; color: #666; font-weight: normal;">(${spec.points} Punkte)</span></div>
+            <div class="task-number">Aufgabe ${spec.taskNumber}${pointsSpan}${instructionSuffix}</div>
             <div class="task-meta teacher-only">
                 <span class="afb-badge afb-${spec.afbLevel}">AFB ${afbRoman}</span>
                 <div class="points">${spec.points} Punkte</div>
             </div>
         </div>
-${taskIntroHtml ? `${taskIntroHtml}\n` : ''}        <div class="task-content${extraClass ? ` ${extraClass}` : ''}">
+        <div class="task-content${extraClass ? ` ${extraClass}` : ''}">
 ${innerContent}
         </div>
     </div>`;
@@ -1102,11 +1106,11 @@ export function buildExamGridTaskHtml(spec: ExamGridTaskSpec): {
   const isStack = spec.layout === 'stack';
 
   const { introSubs, contentSubs } = splitLeadingInstructionSubsections(spec.subsections);
-  const taskIntroHtml =
+  const inlineInstructionHtml =
     isStack && introSubs.length
       ? introSubs
-          .map((sub) => buildTaskInstructionIntro(sub as Extract<GridSubsection, { kind: 'paragraph' }>))
-          .join('\n')
+          .map((sub) => buildInlineTaskInstructionSpan(sub as Extract<GridSubsection, { kind: 'paragraph' }>))
+          .join(' ')
       : '';
 
   const rendered = contentSubs.map((sub) => {
@@ -1151,7 +1155,7 @@ export function buildExamGridTaskHtml(spec: ExamGridTaskSpec): {
             </div>`;
   }
 
-  const taskHtml = buildTaskShell(spec, inner, isStack ? 'exam-task-stack' : '', taskIntroHtml);
+  const taskHtml = buildTaskShell(spec, inner, isStack ? 'exam-task-stack' : '', inlineInstructionHtml);
 
   const correctAnswers: Record<string, string[]> = {};
   allFields.forEach((f) => {
@@ -1431,7 +1435,11 @@ function parseStackSubsectionsFromHtml(taskHtml: string): GridSubsection[] | nul
   const stack = doc.querySelector('.exam-task-stack');
   if (!stack) return null;
   const out: GridSubsection[] = [];
-  doc.querySelectorAll('.task-instruction[data-exam-spec]').forEach((el) => {
+  doc
+    .querySelectorAll(
+      '.task-inline-instruction[data-exam-spec], .task-instruction[data-exam-spec]',
+    )
+    .forEach((el) => {
     const raw = el.getAttribute('data-exam-spec');
     if (!raw) return;
     try {
