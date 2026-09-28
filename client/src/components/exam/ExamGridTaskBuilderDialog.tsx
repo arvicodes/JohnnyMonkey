@@ -451,7 +451,7 @@ export default function ExamGridTaskBuilderDialog({
                 disabled={loading || saving || sessionResetBusy}
                 onActiveFilePathChange={handleVersionPathChange}
               />
-              <Box sx={{ flex: '0 0 20%', width: '20%', maxWidth: '20%', minWidth: 0 }}>
+              <Box sx={{ flex: '0 0 24%', width: '24%', maxWidth: '24%', minWidth: 0 }}>
                 <ExamSessionResetTrio
                   disabled={loading || saving || sessionResetBusy}
                   onResetSubmissions={() => void handleResetSubmissions()}
