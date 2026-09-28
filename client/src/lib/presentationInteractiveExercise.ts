@@ -114,11 +114,56 @@ export type SlideInteractiveExercise = {
   topics: InteractiveExerciseTopic[];
 };
 
+export type InteractiveExerciseAnswerMark = {
+  /** Fehlversuche auf dieser Aufgabe (vor dem Abschluss). */
+  wrongTries: number;
+  outcome: 'correct' | 'wrong' | null;
+};
+
+/** Fortschrittssegment: null = noch nicht bearbeitet. */
+export type InteractiveExerciseAnswerCell = InteractiveExerciseAnswerMark | null;
+
+export function normalizeAnswerCell(
+  raw: InteractiveExerciseAnswerCell | 'correct' | 'wrong' | null | undefined,
+): InteractiveExerciseAnswerCell {
+  if (raw == null) return null;
+  if (typeof raw === 'string') {
+    return {
+      wrongTries: raw === 'wrong' ? 1 : 0,
+      outcome: raw,
+    };
+  }
+  return {
+    wrongTries: Math.max(0, Number(raw.wrongTries) || 0),
+    outcome:
+      raw.outcome === 'correct' || raw.outcome === 'wrong' ? raw.outcome : null,
+  };
+}
+
+/** Farbe für Fortschrittsbalken-Segment (Versuche sichtbar). */
+export function progressColorForAnswer(
+  raw: InteractiveExerciseAnswerCell | 'correct' | 'wrong' | null | undefined,
+): string {
+  const mark = normalizeAnswerCell(raw);
+  if (!mark) return 'rgba(0,0,0,0.12)';
+  if (mark.outcome === 'correct') {
+    return mark.wrongTries === 0 ? '#81C784' : mark.wrongTries === 1 ? '#66BB6A' : '#43A047';
+  }
+  if (mark.outcome === 'wrong') {
+    return mark.wrongTries >= 2 ? '#B71C1C' : '#C62828';
+  }
+  if (mark.wrongTries >= 4) return '#E53935';
+  if (mark.wrongTries === 3) return '#FB8C00';
+  if (mark.wrongTries === 2) return '#FDD835';
+  if (mark.wrongTries === 1) return '#FFE082';
+  return 'rgba(0,0,0,0.12)';
+}
+
 export type InteractiveExerciseTopicProgress = {
   topicId: string;
   /** 0–3 Sterne (bzw. Pokale bei Tests). */
   stars: number;
-  answers?: Array<'correct' | 'wrong' | null>;
+  answers?: Array<InteractiveExerciseAnswerCell | 'correct' | 'wrong' | null>;
   completedAt?: string;
 };
 
@@ -1322,12 +1367,19 @@ export function slideHasInteractiveExercise(
   return Boolean(resolveInteractiveExercise(slide?.slideInteractiveExercise));
 }
 
-/** Sterne aus Antwortliste (Anteil richtig → 0–3). */
-export function starsFromAnswers(answers: Array<'correct' | 'wrong' | null>): number {
-  const done = answers.filter((a) => a === 'correct' || a === 'wrong');
+/** Sterne aus Antwortliste (Anteil richtig → 0–3; viele Fehlversuche senken leicht). */
+export function starsFromAnswers(
+  answers: Array<InteractiveExerciseAnswerCell | 'correct' | 'wrong' | null>,
+): number {
+  const normalized = answers.map(normalizeAnswerCell);
+  const done = normalized.filter((a) => a?.outcome === 'correct' || a?.outcome === 'wrong');
   if (done.length === 0) return 0;
-  const correct = done.filter((a) => a === 'correct').length;
-  const ratio = correct / done.length;
+  const correct = done.filter((a) => a?.outcome === 'correct').length;
+  let ratio = correct / done.length;
+  const avgWrong =
+    done.reduce((s, a) => s + (a?.wrongTries ?? 0), 0) / Math.max(1, done.length);
+  if (avgWrong >= 2.5) ratio *= 0.85;
+  else if (avgWrong >= 1.5) ratio *= 0.92;
   if (ratio >= 0.9) return 3;
   if (ratio >= 0.6) return 2;
   if (ratio >= 0.3) return 1;

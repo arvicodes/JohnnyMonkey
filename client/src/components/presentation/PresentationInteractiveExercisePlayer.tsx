@@ -13,6 +13,9 @@ import {
   saveInteractiveExerciseProgress,
   starsFromAnswers,
   topicStars,
+  normalizeAnswerCell,
+  progressColorForAnswer,
+  type InteractiveExerciseAnswerCell,
   type EquationPart,
   type InteractiveExerciseProgress,
   type InteractiveExerciseQuestion,
@@ -130,18 +133,19 @@ function ProgressSegments({
   answers,
   total,
   scale,
+  currentIndex,
 }: {
-  answers: Array<'correct' | 'wrong' | null>;
+  answers: Array<InteractiveExerciseAnswerCell | 'correct' | 'wrong' | null>;
   total: number;
   scale: number;
+  currentIndex?: number;
 }) {
   const n = Math.max(1, total);
   return (
     <>
       {Array.from({ length: n }, (_, i) => {
-        const a = answers[i];
-        const color =
-          a === 'correct' ? '#43A047' : a === 'wrong' ? '#E53935' : 'rgba(0,0,0,0.12)';
+        const color = progressColorForAnswer(answers[i]);
+        const isCurrent = currentIndex === i;
         return (
           <Box
             key={i}
@@ -151,6 +155,7 @@ function ProgressSegments({
               bgcolor: color,
               minWidth: 0,
               height: '100%',
+              boxShadow: isCurrent ? `inset 0 0 0 ${1.5 * scale}px rgba(0,0,0,0.35)` : 'none',
             }}
           />
         );
@@ -169,6 +174,7 @@ function ExerciseProgressToolbar({
   answers,
   total,
   showProgress,
+  currentQuestionIndex,
 }: {
   scale: number;
   interactive: boolean;
@@ -176,9 +182,10 @@ function ExerciseProgressToolbar({
   showClose: boolean;
   closeLabel: string;
   onClose: () => void;
-  answers?: Array<'correct' | 'wrong' | null>;
+  answers?: Array<InteractiveExerciseAnswerCell | 'correct' | 'wrong' | null>;
   total?: number;
   showProgress?: boolean;
+  currentQuestionIndex?: number;
 }) {
   const [tipOpen, setTipOpen] = useState(false);
   const iconPx = `${16 * scale}px`;
@@ -206,7 +213,12 @@ function ExerciseProgressToolbar({
             alignItems: 'stretch',
           }}
         >
-          <ProgressSegments answers={answers} total={total} scale={scale} />
+          <ProgressSegments
+            answers={answers}
+            total={total}
+            scale={scale}
+            currentIndex={currentQuestionIndex}
+          />
         </Box>
       ) : (
         <Box sx={{ flex: 1, minWidth: 0 }} />
@@ -512,7 +524,9 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   const [phase, setPhase] = useState<Phase>('hub');
   const [topic, setTopic] = useState<InteractiveExerciseTopic | null>(null);
   const [qi, setQi] = useState(0);
-  const [answers, setAnswers] = useState<Array<'correct' | 'wrong' | null>>([]);
+  const [answers, setAnswers] = useState<
+    Array<InteractiveExerciseAnswerCell | 'correct' | 'wrong' | null>
+  >([]);
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
   const [resultStars, setResultStars] = useState(0);
@@ -564,7 +578,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   }, [exercise?.id, lessonPath, groupId, studentId]);
 
   const persistTopic = useCallback(
-    (topicId: string, stars: number, ans: Array<'correct' | 'wrong' | null>) => {
+    (topicId: string, stars: number, ans: Array<InteractiveExerciseAnswerCell | 'correct' | 'wrong' | null>) => {
       if (!exercise?.id) return;
       const prev =
         loadInteractiveExerciseProgress(exercise.id, lessonPath, groupId, studentId) || {
@@ -723,7 +737,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   }, [phase, qi, interactive, locked, currentQ?.id, currentQ?.mode]);
 
   const advanceAfterAnswer = (
-    nextAnswers: Array<'correct' | 'wrong' | null>,
+    nextAnswers: Array<InteractiveExerciseAnswerCell | 'correct' | 'wrong' | null>,
     opts?: { topic?: InteractiveExerciseTopic; qi?: number },
   ) => {
     const t = opts?.topic ?? topic;
@@ -746,10 +760,32 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     }
   };
 
+  const registerWrongTry = () => {
+    setAnswers((prev) => {
+      const next = [...prev];
+      while (next.length <= qi) next.push(null);
+      const cur = normalizeAnswerCell(next[qi]);
+      next[qi] = {
+        wrongTries: (cur?.wrongTries ?? 0) + 1,
+        outcome: null,
+      };
+      return next;
+    });
+  };
+
   const markAndAdvance = (ok: boolean, delayMs = 700) => {
     if (!topic) return;
     const nextAnswers = [...answers];
-    nextAnswers[qi] = ok ? 'correct' : 'wrong';
+    while (nextAnswers.length <= qi) nextAnswers.push(null);
+    const cur = normalizeAnswerCell(nextAnswers[qi]);
+    if (ok) {
+      nextAnswers[qi] = { wrongTries: cur?.wrongTries ?? 0, outcome: 'correct' };
+    } else {
+      nextAnswers[qi] = {
+        wrongTries: (cur?.wrongTries ?? 0) + 1,
+        outcome: 'wrong',
+      };
+    }
     setAnswers(nextAnswers);
     setLocked(true);
     window.setTimeout(() => {
@@ -786,6 +822,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
       setShowWrongBanner(false);
       markAndAdvance(true, 600);
     } else {
+      registerWrongTry();
       setShowWrongBanner(true);
       setLocked(true);
     }
@@ -814,7 +851,13 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     const qSnapshot = currentQ;
     const atIndex = qi;
     const nextAnswers = [...answers];
-    if (atIndex >= 0 && atIndex < nextAnswers.length) nextAnswers[atIndex] = 'wrong';
+    if (atIndex >= 0 && atIndex < nextAnswers.length) {
+      const cur = normalizeAnswerCell(nextAnswers[atIndex]);
+      nextAnswers[atIndex] = {
+        wrongTries: (cur?.wrongTries ?? 0) + 1,
+        outcome: 'wrong',
+      };
+    }
     nextAnswers.push(null);
 
     const repeatQ = cloneQuestionForRepeat(qSnapshot, topic.questions.length + 1);
@@ -878,6 +921,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
       markAndAdvance(true, 600);
     } else {
       setTypedStatus('wrong');
+      registerWrongTry();
       setShowWrongBanner(true);
       setLocked(true);
     }
@@ -910,6 +954,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
       if (correct) {
         markAndAdvance(true, 650);
       } else {
+        registerWrongTry();
         setShowWrongBanner(true);
         setLocked(true);
       }
@@ -961,7 +1006,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
       setMatchSelectedKey(null);
       const total = currentQ.matchPairs?.length || 0;
       if (total > 0 && nextMatched.length >= total) {
-        markAndAdvance(!matchHadWrong, 650);
+        markAndAdvance(true, 650);
       }
       return;
     }
@@ -969,6 +1014,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setMatchHadWrong(true);
     setMatchWrongKeys([selected.key, tile.key]);
     setMatchSelectedKey(null);
+    registerWrongTry();
     setShowWrongBanner(true);
     setLocked(true);
   };
@@ -1011,6 +1057,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
       setShowWrongBanner(false);
       markAndAdvance(true, 650);
     } else {
+      registerWrongTry();
       setShowWrongBanner(true);
       setLocked(true);
     }
@@ -1208,6 +1255,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
           showProgress
           answers={answers}
           total={topic.questions.length}
+          currentQuestionIndex={qi}
         />
 
         <Box
