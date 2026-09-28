@@ -28,6 +28,19 @@ export function examCollectAnswersJsSource(): string {
                 const selected = document.querySelector('input[name="' + name + '"]:checked');
                 if (selected) answers[name] = selected.value || '';
             });
+            document.querySelectorAll('.exam-multi-select[data-answer-id]').forEach(function (wrap) {
+                var id = wrap.getAttribute('data-answer-id');
+                if (!id) return;
+                var vals = [];
+                wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(function (cb) {
+                    vals.push(cb.value || '');
+                });
+                vals = vals.filter(Boolean).sort();
+                var joined = vals.join('|');
+                var hidden = document.getElementById(id);
+                if (hidden) hidden.value = joined;
+                answers[id] = joined;
+            });
             return answers;
         }`;
 }

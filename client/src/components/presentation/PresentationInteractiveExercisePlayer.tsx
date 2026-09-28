@@ -100,30 +100,67 @@ type Props = {
   onDismiss?: () => void;
 };
 
-const compactCloseBtnSx = (scale: number) => ({
+const chromeIconBtnSx = (scale: number) => ({
   border: 'none',
   bgcolor: 'rgba(0,0,0,0.06)',
   borderRadius: `${6 * scale}px`,
   cursor: 'pointer',
-  p: `${2 * scale}px`,
+  p: 0,
   lineHeight: 0,
   color: '#555',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: `${24 * scale}px`,
-  height: `${24 * scale}px`,
+  width: `${26 * scale}px`,
+  height: `${26 * scale}px`,
   flexShrink: 0,
   '&:hover': { bgcolor: 'rgba(0,0,0,0.1)', color: '#222' },
+  '&:disabled': { opacity: 0.45, cursor: 'default' },
 });
 
-function ExerciseTopBar({
+function ProgressSegments({
+  answers,
+  total,
+  scale,
+}: {
+  answers: Array<'correct' | 'wrong' | null>;
+  total: number;
+  scale: number;
+}) {
+  const n = Math.max(1, total);
+  return (
+    <>
+      {Array.from({ length: n }, (_, i) => {
+        const a = answers[i];
+        const color =
+          a === 'correct' ? '#43A047' : a === 'wrong' ? '#E53935' : 'rgba(0,0,0,0.12)';
+        return (
+          <Box
+            key={i}
+            sx={{
+              flex: 1,
+              borderRadius: `${4 * scale}px`,
+              bgcolor: color,
+              minWidth: 0,
+              height: '100%',
+            }}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+function ExerciseProgressToolbar({
   scale,
   interactive,
   tip,
   showClose,
   closeLabel,
   onClose,
+  answers,
+  total,
+  showProgress,
 }: {
   scale: number;
   interactive: boolean;
@@ -131,64 +168,70 @@ function ExerciseTopBar({
   showClose: boolean;
   closeLabel: string;
   onClose: () => void;
+  answers?: Array<'correct' | 'wrong' | null>;
+  total?: number;
+  showProgress?: boolean;
 }) {
   const [tipOpen, setTipOpen] = useState(false);
+  const iconPx = `${16 * scale}px`;
+
   return (
     <Box
       sx={{
         display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
+        alignItems: 'center',
         gap: `${6 * scale}px`,
         px: `${8 * scale}px`,
-        pt: `${6 * scale}px`,
-        pb: `${4 * scale}px`,
+        py: `${6 * scale}px`,
         flexShrink: 0,
-        minHeight: `${28 * scale}px`,
+        minHeight: `${30 * scale}px`,
       }}
     >
+      {showProgress && answers && total != null ? (
+        <Box
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            display: 'flex',
+            gap: `${2 * scale}px`,
+            height: `${10 * scale}px`,
+            alignItems: 'stretch',
+          }}
+        >
+          <ProgressSegments answers={answers} total={total} scale={scale} />
+        </Box>
+      ) : (
+        <Box sx={{ flex: 1, minWidth: 0 }} />
+      )}
+
       <Box
         sx={{
-          width: '10%',
-          minWidth: `${32 * scale}px`,
-          maxWidth: `${56 * scale}px`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: `${4 * scale}px`,
           flexShrink: 0,
           position: 'relative',
         }}
       >
         {tip ? (
           <>
-            <Button
-              size="small"
+            <Box
+              component="button"
+              type="button"
               disabled={!interactive}
               onClick={() => setTipOpen((v) => !v)}
               aria-label="Tipp"
-              sx={{
-                width: '100%',
-                minWidth: 0,
-                maxWidth: '100%',
-                px: `${2 * scale}px`,
-                py: `${2 * scale}px`,
-                bgcolor: '#fff',
-                border: '1px solid rgba(0,0,0,0.15)',
-                color: '#333',
-                fontWeight: 700,
-                fontSize: `${9 * scale}px`,
-                textTransform: 'none',
-                borderRadius: `${6 * scale}px`,
-                gap: 0,
-                lineHeight: 1.1,
-                overflow: 'hidden',
-              }}
+              aria-expanded={tipOpen}
+              sx={chromeIconBtnSx(scale)}
             >
-              <LightbulbOutlinedIcon sx={{ fontSize: `${13 * scale}px`, flexShrink: 0 }} />
-            </Button>
+              <LightbulbOutlinedIcon sx={{ fontSize: iconPx }} />
+            </Box>
             {tipOpen ? (
               <Box
                 sx={{
                   position: 'absolute',
                   top: '100%',
-                  left: 0,
+                  right: 0,
                   mt: `${4 * scale}px`,
                   p: `${10 * scale}px`,
                   width: `${Math.min(220 * scale, 280)}px`,
@@ -208,59 +251,18 @@ function ExerciseTopBar({
             ) : null}
           </>
         ) : null}
-      </Box>
-      <Box sx={{ flex: 1, minWidth: 0 }} />
-      {showClose ? (
-        <Box
-          component="button"
-          type="button"
-          onClick={onClose}
-          aria-label={closeLabel}
-          sx={compactCloseBtnSx(scale)}
-        >
-          <CloseIcon sx={{ fontSize: `${16 * scale}px` }} />
-        </Box>
-      ) : null}
-    </Box>
-  );
-}
-
-function ProgressSegments({
-  answers,
-  total,
-  scale,
-}: {
-  answers: Array<'correct' | 'wrong' | null>;
-  total: number;
-  scale: number;
-}) {
-  const n = Math.max(1, total);
-  return (
-    <Box
-      sx={{
-        display: 'flex',
-        gap: `${2 * scale}px`,
-        width: '100%',
-        height: `${10 * scale}px`,
-        px: `${4 * scale}px`,
-      }}
-    >
-      {Array.from({ length: n }, (_, i) => {
-        const a = answers[i];
-        const color =
-          a === 'correct' ? '#43A047' : a === 'wrong' ? '#E53935' : 'rgba(0,0,0,0.12)';
-        return (
+        {showClose ? (
           <Box
-            key={i}
-            sx={{
-              flex: 1,
-              borderRadius: `${4 * scale}px`,
-              bgcolor: color,
-              minWidth: 0,
-            }}
-          />
-        );
-      })}
+            component="button"
+            type="button"
+            onClick={onClose}
+            aria-label={closeLabel}
+            sx={chromeIconBtnSx(scale)}
+          >
+            <CloseIcon sx={{ fontSize: iconPx }} />
+          </Box>
+        ) : null}
+      </Box>
     </Box>
   );
 }
@@ -920,7 +922,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
           pointerEvents: interactive ? 'auto' : 'none',
         }}
       >
-        <ExerciseTopBar
+        <ExerciseProgressToolbar
           scale={s}
           interactive={Boolean(interactive)}
           showClose={showTopClose}
@@ -1015,16 +1017,17 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
           overflow: 'hidden',
         }}
       >
-        <ExerciseTopBar
+        <ExerciseProgressToolbar
           scale={s}
           interactive={Boolean(interactive)}
           tip={currentQ.tip}
           showClose={showTopClose}
           closeLabel={topCloseLabel}
           onClose={handleTopClose}
+          showProgress
+          answers={answers}
+          total={topic.questions.length}
         />
-
-        <ProgressSegments answers={answers} total={topic.questions.length} scale={s} />
 
         <Box
           sx={{
@@ -1035,7 +1038,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
             flexDirection: 'column',
             alignItems: 'center',
             gap: `${12 * s}px`,
-            pt: `${14 * s}px`,
+            pt: `${10 * s}px`,
             px: `${12 * s}px`,
           }}
         >
@@ -1740,7 +1743,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
         overflow: 'hidden',
       }}
     >
-      <ExerciseTopBar
+      <ExerciseProgressToolbar
         scale={s}
         interactive={Boolean(interactive)}
         showClose={showTopClose}
@@ -1753,7 +1756,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
           fontWeight: 800,
           color: '#1a1a2e',
           px: `${20 * s}px`,
-          pt: `${4 * s}px`,
+          pt: `${2 * s}px`,
           pb: `${8 * s}px`,
         }}
       >

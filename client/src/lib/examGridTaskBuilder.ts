@@ -92,6 +92,28 @@ export type GridSubsection =
       letter: string;
       title: string;
       quadrant: GridQuadrant;
+      kind: 'choice';
+      prompt: string;
+      options: { label: string; value: string }[];
+      /** Wert der richtigen Option (z. B. A) */
+      solution: string;
+    } & SubImage
+  | {
+      id: string;
+      letter: string;
+      title: string;
+      quadrant: GridQuadrant;
+      kind: 'multi-select';
+      prompt: string;
+      options: { label: string; value: string }[];
+      /** Richtige Werte mit | getrennt, z. B. A|C */
+      solution: string;
+    } & SubImage
+  | {
+      id: string;
+      letter: string;
+      title: string;
+      quadrant: GridQuadrant;
       kind: 'paragraph';
       text: string;
     } & SubImage
@@ -611,6 +633,60 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       : '';
     const titleInHeader = Boolean(sub.letter && sub.title && !sub.prompt);
     body = `<div class="item input-group full-width" style="margin-top:${titleInHeader ? 4 : 8}px;">${promptBlock}<input type="text" id="${id}" class="blank-wide" autocomplete="off">${suffix}</div>`;
+  } else if (sub.kind === 'choice') {
+    const id = allocId(taskNumber, fieldIndex.n++);
+    const answers = parseSolutionAlternatives(sub.solution, 'text');
+    const correctLabel =
+      sub.options.find((o) => o.value === sub.solution.trim())?.label || sub.solution;
+    fields.push({
+      id,
+      answers,
+      solutionHtml: `<strong>${escapeHtml(correctLabel)}</strong>`,
+    });
+    const promptBlock = sub.prompt
+      ? `<p class="exam-mc-prompt" style="margin:0 0 8px;">${allowBasicHtml(sub.prompt)}</p>`
+      : '';
+    const opts = sub.options
+      .map(
+        (o) =>
+          `<label class="exam-mc-option"><input type="radio" name="${id}" value="${escapeHtml(o.value)}"> ${allowBasicHtml(o.label)}</label>`,
+      )
+      .join('');
+    body = `<div class="item input-group full-width exam-mc-block">${promptBlock}<div class="exam-mc-options">${opts}</div></div>`;
+  } else if (sub.kind === 'multi-select') {
+    const id = allocId(taskNumber, fieldIndex.n++);
+    const canonical = sub.solution
+      .split(/[|,;/]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .sort()
+      .join('|');
+    const altParts = sub.solution.includes('/')
+      ? sub.solution.split('/').map((part) =>
+          part
+            .split(/[|,;]/)
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .sort()
+            .join('|'),
+        )
+      : [canonical];
+    const answers = altParts.filter(Boolean);
+    fields.push({
+      id,
+      answers: answers.length ? answers : [canonical],
+      solutionHtml: `<strong>${escapeHtml(canonical.replace(/\|/g, ', '))}</strong>`,
+    });
+    const promptBlock = sub.prompt
+      ? `<p class="exam-mc-prompt" style="margin:0 0 8px;">${allowBasicHtml(sub.prompt)}</p>`
+      : '';
+    const opts = sub.options
+      .map(
+        (o) =>
+          `<label class="exam-mc-option"><input type="checkbox" value="${escapeHtml(o.value)}"> ${allowBasicHtml(o.label)}</label>`,
+      )
+      .join('');
+    body = `<div class="item input-group full-width exam-mc-block">${promptBlock}<div class="exam-multi-select" data-answer-id="${id}">${opts}</div><input type="hidden" id="${id}" value=""></div>`;
   } else if (sub.kind === 'paragraph') {
     if (sub.text.trim()) {
       body = sub.title && !sub.letter
@@ -1119,6 +1195,63 @@ function parseSubsection(
         return { left, right, solution };
       });
     return attachImage(subEl, { id, letter, title, quadrant, kind: 'compare', rows });
+  }
+
+  const multiWrap = subEl.querySelector('.exam-multi-select[data-answer-id]');
+  if (multiWrap) {
+    const answerId = multiWrap.getAttribute('data-answer-id') || '';
+    const options = Array.from(multiWrap.querySelectorAll('label.exam-mc-option, .exam-mc-option')).map(
+      (lab) => {
+        const input = lab.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+        const clone = lab.cloneNode(true) as Element;
+        clone.querySelectorAll('input').forEach((inp) => inp.remove());
+        return {
+          label: (clone.textContent || '').trim(),
+          value: input?.value || '',
+        };
+      },
+    );
+    const promptEl = subEl.querySelector('.exam-mc-prompt');
+    const prompt = (promptEl?.textContent || '').trim();
+    const solution = answersToSolutionField(answers, answerId).replace(/,/g, '|');
+    return attachImage(subEl, {
+      id,
+      letter,
+      title,
+      quadrant,
+      kind: 'multi-select',
+      prompt,
+      options: options.length ? options : [{ label: '', value: '' }],
+      solution,
+    });
+  }
+
+  const mcBlock = subEl.querySelector('.exam-mc-options');
+  if (mcBlock && mcBlock.querySelector('input[type="radio"]')) {
+    const radio = mcBlock.querySelector('input[type="radio"]') as HTMLInputElement | null;
+    const name = radio?.name || '';
+    const options = Array.from(mcBlock.querySelectorAll('.exam-mc-option')).map((lab) => {
+      const input = lab.querySelector('input[type="radio"]') as HTMLInputElement | null;
+      const clone = lab.cloneNode(true) as Element;
+      clone.querySelectorAll('input').forEach((inp) => inp.remove());
+      return {
+        label: (clone.textContent || '').trim(),
+        value: input?.value || '',
+      };
+    });
+    const promptEl = subEl.querySelector('.exam-mc-prompt');
+    const prompt = (promptEl?.textContent || '').trim();
+    const solution = answersToSolutionField(answers, name);
+    return attachImage(subEl, {
+      id,
+      letter,
+      title,
+      quadrant,
+      kind: 'choice',
+      prompt,
+      options: options.length ? options : [{ label: '', value: 'A' }],
+      solution,
+    });
   }
 
   const bulletList = subEl.querySelector('.exam-grid-blank-list');

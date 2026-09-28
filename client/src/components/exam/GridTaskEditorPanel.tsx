@@ -6,6 +6,7 @@ import {
   FormControl,
   IconButton,
   InputLabel,
+  ListSubheader,
   MenuItem,
   Select,
   TextField,
@@ -98,19 +99,42 @@ function RowDeleteButton({
 }
 
 const KIND_LABEL: Record<GridSubsection['kind'], string> = {
-  'round-lines': 'Zeilen mit Lücke (runden …)',
-  compare: 'Vergleichszeichen',
-  sort: 'Sortieren (Zahlenliste)',
-  'one-line': 'Eine Zeile Antwort',
-  'bullet-blanks': 'Aufzählung mit Lücken',
+  choice: 'Multiple Choice (eine Antwort)',
+  'multi-select': 'Multi-Select (mehrere Antworten)',
+  'one-line': 'Antwort eingeben (kurz)',
   cloze: 'Lückentext (___)',
-  paragraph: 'Absatz',
+  sort: 'Sortieren',
+  'bullet-blanks': 'Stichpunkte mit Lücken',
+  paragraph: 'Absatz (nur Text)',
   'standalone-image': 'Bild',
-  'life-dates': 'Lebensdaten',
+  'round-lines': 'Mehrere Zeilen mit Lücke',
+  compare: 'Vergleichen (<, >, =)',
+  'life-dates': 'Lebensdaten (Mathe-Vorlage)',
   'roman-table': 'Römische Zahlen (Tabelle)',
-  'rich-part': 'Text & Felder (mit Bild)',
+  'rich-part': 'Text & Felder (Mathe-Vorlage)',
   'number-line': 'Zahlenstrahl (interaktiv)',
 };
+
+/** Im Raster zuerst allgemeine Aufgabentypen, darunter Mathe-Sonderformen. */
+const TASK_TYPE_GROUPS: { label: string; kinds: GridSubsection['kind'][] }[] = [
+  {
+    label: 'Aufgabentypen',
+    kinds: [
+      'choice',
+      'multi-select',
+      'one-line',
+      'cloze',
+      'sort',
+      'bullet-blanks',
+      'paragraph',
+      'standalone-image',
+    ],
+  },
+  {
+    label: 'Mathe / Druckmaterial-Vorlagen',
+    kinds: ['round-lines', 'compare', 'life-dates', 'roman-table', 'rich-part', 'number-line'],
+  },
+];
 
 const STACK_KINDS: GridSubsection['kind'][] = [
   'paragraph',
@@ -133,6 +157,29 @@ function newSubsection(kind: GridSubsection['kind']): GridSubsection {
       return { ...base, kind, given: '1, 2, 3', solution: '1, 2, 3' };
     case 'one-line':
       return { ...base, kind, prompt: '…', solution: '' };
+    case 'choice':
+      return {
+        ...base,
+        kind,
+        prompt: 'Frage …',
+        options: [
+          { label: 'Antwort A', value: 'A' },
+          { label: 'Antwort B', value: 'B' },
+          { label: 'Antwort C', value: 'C' },
+        ],
+        solution: 'A',
+      };
+    case 'multi-select':
+      return {
+        ...base,
+        kind,
+        prompt: 'Wähle alle zutreffenden …',
+        options: [
+          { label: '…', value: '1' },
+          { label: '…', value: '2' },
+        ],
+        solution: '1|2',
+      };
     case 'bullet-blanks':
       return { ...base, kind, items: [{ text: '…:', solution: '' }] };
     case 'cloze':
@@ -334,11 +381,16 @@ export default function GridTaskEditorPanel({
                   });
                 }}
               >
-                {(Object.keys(KIND_LABEL) as GridSubsection['kind'][]).map((k) => (
-                  <MenuItem key={k} value={k}>
-                    {KIND_LABEL[k]}
-                  </MenuItem>
-                ))}
+                {(TASK_TYPE_GROUPS.flatMap((group) => [
+                  <ListSubheader key={`h-${group.label}`} sx={{ lineHeight: 2, fontWeight: 800 }}>
+                    {group.label}
+                  </ListSubheader>,
+                  ...group.kinds.map((k) => (
+                    <MenuItem key={k} value={k}>
+                      {KIND_LABEL[k]}
+                    </MenuItem>
+                  )),
+                ])}
               </Select>
             </FormControl>
           </Box>
@@ -544,6 +596,99 @@ export default function GridTaskEditorPanel({
             />
           )}
 
+          {(sub.kind === 'choice' || sub.kind === 'multi-select') && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Frage / Aufgabenstellung"
+                value={sub.prompt}
+                onChange={(e) => updateSub(sub.id, { prompt: e.target.value })}
+                sx={{ ...editorRowFill(subIndex, 0) }}
+              />
+              {sub.options.map((opt, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    display: 'flex',
+                    gap: 0.5,
+                    flexWrap: 'nowrap',
+                    alignItems: 'flex-start',
+                    ...editorRowFill(subIndex, i + 1),
+                  }}
+                >
+                  <TextField
+                    size="small"
+                    label="Kürzel"
+                    value={opt.value}
+                    onChange={(e) => {
+                      const options = [...sub.options];
+                      options[i] = { ...options[i], value: e.target.value };
+                      updateSub(sub.id, { options });
+                    }}
+                    sx={{ width: 72, flexShrink: 0 }}
+                  />
+                  <TextField
+                    size="small"
+                    label="Antworttext"
+                    value={opt.label}
+                    onChange={(e) => {
+                      const options = [...sub.options];
+                      options[i] = { ...options[i], label: e.target.value };
+                      updateSub(sub.id, { options });
+                    }}
+                    sx={{ flex: 1, minWidth: 0 }}
+                  />
+                  <RowDeleteButton
+                    disabled={sub.options.length <= 2}
+                    onClick={() =>
+                      updateSub(sub.id, { options: sub.options.filter((_, j) => j !== i) })
+                    }
+                    label="Antwort löschen"
+                  />
+                </Box>
+              ))}
+              <Button
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={() => {
+                  const nextLetter = String.fromCharCode(65 + sub.options.length);
+                  updateSub(sub.id, {
+                    options: [...sub.options, { label: '', value: nextLetter }],
+                  });
+                }}
+              >
+                Antwortoption
+              </Button>
+              {sub.kind === 'choice' ? (
+                <FormControl size="small" sx={{ maxWidth: 220, ...editorRowFill(subIndex, 99) }}>
+                  <InputLabel>Richtige Antwort</InputLabel>
+                  <Select
+                    label="Richtige Antwort"
+                    value={sub.solution}
+                    onChange={(e) => updateSub(sub.id, { solution: e.target.value })}
+                  >
+                    {sub.options.map((o) => (
+                      <MenuItem key={o.value} value={o.value}>
+                        {o.value}: {o.label || '—'}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              ) : (
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Richtige Antworten (Kürzel mit |)"
+                  value={sub.solution}
+                  onChange={(e) => updateSub(sub.id, { solution: e.target.value })}
+                  helperText="z. B. A|C"
+                  sx={editorRowFill(subIndex, 100)}
+                />
+              )}
+            </Box>
+          )}
+
           {sub.kind === 'one-line' && (
             <Box sx={{ ...editorRowFill(subIndex, 0) }}>
               <TextField
@@ -666,7 +811,7 @@ export default function GridTaskEditorPanel({
             ...spec,
             subsections: [
               ...spec.subsections,
-              newSubsection(spec.layout === 'stack' ? 'paragraph' : 'round-lines'),
+              newSubsection(spec.layout === 'stack' ? 'paragraph' : 'choice'),
             ],
           })
         }
