@@ -728,8 +728,13 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     markAndAdvance(correct, correct ? 550 : 850);
   };
 
-  const submitFills = (parts: EquationPart[] | undefined, values: string[]) => {
-    if (!parts || !interactive || locked) return;
+  const submitFills = (
+    parts: EquationPart[] | undefined,
+    values: string[],
+    opts?: { ignoreLocked?: boolean },
+  ) => {
+    if (!parts || !interactive) return;
+    if (!opts?.ignoreLocked && locked) return;
     const blanks = parts.filter((p) => p.type === 'blank') as Array<{
       type: 'blank';
       correct: string;
@@ -807,18 +812,16 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   const placeClozeOption = (option: string) => {
     if (!interactive || locked || !currentQ || currentQ.mode !== 'cloze') return;
     const parts = currentQ.clozeParts;
-    let completeSnapshot: string[] | null = null;
-    setFillValues((prev) => {
-      if (!prev.length) return prev;
-      const idx = prev.findIndex((v) => !v);
-      if (idx < 0) return prev;
-      const next = [...prev];
-      next[idx] = option;
-      if (next.every((v) => v)) completeSnapshot = next;
-      return next;
-    });
-    if (completeSnapshot) {
-      window.setTimeout(() => submitFills(parts, completeSnapshot as string[]), 180);
+    const idx = fillValues.findIndex((v) => !v);
+    if (idx < 0) return;
+    const next = [...fillValues];
+    next[idx] = option;
+    setFillValues(next);
+    if (next.every((v) => v)) {
+      window.setTimeout(
+        () => submitFills(parts, next, { ignoreLocked: true }),
+        180,
+      );
     }
   };
 
