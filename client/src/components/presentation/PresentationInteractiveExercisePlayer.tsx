@@ -807,18 +807,19 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   const placeClozeOption = (option: string) => {
     if (!interactive || locked || !currentQ || currentQ.mode !== 'cloze') return;
     const parts = currentQ.clozeParts;
+    let completeSnapshot: string[] | null = null;
     setFillValues((prev) => {
       if (!prev.length) return prev;
       const idx = prev.findIndex((v) => !v);
       if (idx < 0) return prev;
       const next = [...prev];
       next[idx] = option;
-      if (next.every((v) => v)) {
-        const snapshot = next;
-        queueMicrotask(() => submitFills(parts, snapshot));
-      }
+      if (next.every((v) => v)) completeSnapshot = next;
       return next;
     });
+    if (completeSnapshot) {
+      window.setTimeout(() => submitFills(parts, completeSnapshot as string[]), 180);
+    }
   };
 
   const submitWrite = () => {
