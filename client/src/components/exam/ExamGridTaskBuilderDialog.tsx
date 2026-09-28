@@ -26,6 +26,7 @@ import {
 import { loadGridTaskSpecsFromExamHtml } from '../../lib/loadGridTaskSpecsFromExamHtml';
 import { examBaseGitPath, examFamilyKey } from '../../lib/examVersionPaths';
 import { resetExamSession } from '../../lib/examSessionReset';
+import ExamSessionResetTrio from './ExamSessionResetTrio';
 import ExamFullResetConfirmDialog from './ExamFullResetConfirmDialog';
 
 type Props = {
@@ -440,35 +441,12 @@ export default function ExamGridTaskBuilderDialog({
                 disabled={loading || saving || sessionResetBusy}
                 onActiveFilePathChange={handleVersionPathChange}
               />
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.75 }}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="error"
-                  disabled={loading || saving || sessionResetBusy}
-                  onClick={() => void handleResetSubmissions()}
-                >
-                  Abgaben zurücksetzen
-                </Button>
-                <Button
-                  size="small"
-                  variant="contained"
-                  color="warning"
-                  disabled={loading || saving || sessionResetBusy}
-                  onClick={() => void handleRestartTimerForAll()}
-                >
-                  Zeit für alle neu starten
-                </Button>
-                <Button
-                  size="small"
-                  variant="contained"
-                  color="error"
-                  disabled={loading || saving || sessionResetBusy}
-                  onClick={() => setFullResetOpen(true)}
-                >
-                  Alles zurücksetzen
-                </Button>
-              </Box>
+              <ExamSessionResetTrio
+                disabled={loading || saving || sessionResetBusy}
+                onResetSubmissions={() => void handleResetSubmissions()}
+                onRestartTimer={() => void handleRestartTimerForAll()}
+                onFullReset={() => setFullResetOpen(true)}
+              />
             </Box>
           ) : null}
 

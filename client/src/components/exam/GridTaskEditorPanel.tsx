@@ -10,6 +10,7 @@ import {
   MenuItem,
   Select,
   TextField,
+  Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -21,6 +22,10 @@ import {
   type GridQuadrant,
   type GridSubsection,
 } from '../../lib/examGridTaskBuilder';
+import {
+  applyAutoSubsectionLetters,
+  subsectionGetsLetter,
+} from '../../lib/examGridEditorLabels';
 import { StackSubsectionFields } from './stackSubsectionEditors';
 
 export type Props = {
@@ -147,7 +152,7 @@ const STACK_KINDS: GridSubsection['kind'][] = [
 
 function newSubsection(kind: GridSubsection['kind']): GridSubsection {
   const id = `sub-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  const base = { id, letter: 'X', title: 'Titel', quadrant: 'tl' as GridQuadrant };
+  const base = { id, letter: '', title: '', quadrant: 'tl' as GridQuadrant };
   switch (kind) {
     case 'round-lines':
       return { ...base, kind, lines: [{ text: 'Zahl … =', solution: '' }] };
@@ -252,8 +257,12 @@ export default function GridTaskEditorPanel({
 }: Props) {
   const built = useMemo(() => buildExamGridTaskHtml(spec), [spec]);
 
+  const commitSpec = (next: ExamGridTaskSpec) => {
+    onChange(applyAutoSubsectionLetters(next));
+  };
+
   const updateSub = (id: string, patch: Partial<GridSubsection>) => {
-    onChange({
+    commitSpec({
       ...spec,
       subsections: spec.subsections.map((s) =>
         s.id === id ? ({ ...s, ...patch } as GridSubsection) : s,
@@ -262,7 +271,7 @@ export default function GridTaskEditorPanel({
   };
 
   const removeSub = (id: string) => {
-    onChange({ ...spec, subsections: spec.subsections.filter((s) => s.id !== id) });
+    commitSpec({ ...spec, subsections: spec.subsections.filter((s) => s.id !== id) });
   };
 
   return (
@@ -331,105 +340,24 @@ export default function GridTaskEditorPanel({
           >
             <DeleteIcon sx={{ fontSize: 16 }} />
           </IconButton>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5, alignItems: 'center', pr: 1 }}>
-            <TextField
-              label="Buchstabe"
-              size="small"
-              value={sub.letter}
-              onChange={(e) => updateSub(sub.id, { letter: e.target.value })}
-              sx={{ width: 72 }}
-            />
-            <TextField
-              label="Titel"
-              size="small"
-              fullWidth
-              sx={{ flex: '1 1 200px' }}
-              value={sub.title}
-              onChange={(e) => updateSub(sub.id, { title: e.target.value })}
-            />
-            {spec.layout !== 'stack' ? (
-              <FormControl size="small" sx={{ minWidth: 130 }}>
-                <InputLabel>Kästchen</InputLabel>
-                <Select
-                  label="Kästchen"
-                  value={sub.quadrant}
-                  onChange={(e) => updateSub(sub.id, { quadrant: e.target.value as GridQuadrant })}
-                >
-                  {(Object.keys(QUADRANT_LABEL) as GridQuadrant[]).map((q) => (
-                    <MenuItem key={q} value={q}>
-                      {QUADRANT_LABEL[q]}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            ) : null}
-            <FormControl size="small" sx={{ minWidth: 180 }}>
-              <InputLabel>Typ</InputLabel>
-              <Select
-                label="Typ"
-                value={sub.kind}
-                onChange={(e) => {
-                  const kind = e.target.value as GridSubsection['kind'];
-                  const fresh = newSubsection(kind);
-                  updateSub(sub.id, {
-                    ...fresh,
-                    id: sub.id,
-                    letter: sub.letter,
-                    title: sub.title,
-                    quadrant: sub.quadrant,
-                    image: sub.image,
-                  });
-                }}
-              >
-                {(TASK_TYPE_GROUPS.flatMap((group) => [
-                  <ListSubheader key={`h-${group.label}`} sx={{ lineHeight: 2, fontWeight: 800 }}>
-                    {group.label}
-                  </ListSubheader>,
-                  ...group.kinds.map((k) => (
-                    <MenuItem key={k} value={k}>
-                      {KIND_LABEL[k]}
-                    </MenuItem>
-                  )),
-                ]))}
-              </Select>
-            </FormControl>
-          </Box>
-
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5, alignItems: 'center' }}>
-            <TextField
-              label="Bild (URL / material-Pfad, optional)"
-              size="small"
-              fullWidth
-              sx={{ flex: '1 1 220px' }}
-              value={sub.image?.src || ''}
-              onChange={(e) => {
-                const src = e.target.value.trim();
-                updateSub(sub.id, {
-                  image: src ? { src, align: sub.image?.align || 'left' } : undefined,
-                });
-              }}
-              placeholder="z. B. /material/…/bild.png"
-            />
-            <FormControl size="small" sx={{ minWidth: 120 }} disabled={!sub.image?.src}>
-              <InputLabel>Bild</InputLabel>
-              <Select
-                label="Bild"
-                value={sub.image?.align || 'left'}
-                onChange={(e) => {
-                  if (!sub.image?.src) return;
-                  updateSub(sub.id, {
-                    image: { src: sub.image.src, align: e.target.value as 'left' | 'right' },
-                  });
-                }}
-              >
-                <MenuItem value="left">links</MenuItem>
-                <MenuItem value="right">rechts</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
+              {subsectionGetsLetter(sub) ? (
+                <Typography component="div" sx={{ fontWeight: 800, fontSize: 15, mb: 1 }}>
+                  {sub.letter})
+                </Typography>
+              ) : null}
 
           {sub.kind === 'round-lines' && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Frage / Anweisung"
+                value={sub.title}
+                onChange={(e) => updateSub(sub.id, { title: e.target.value })}
+                sx={{ ...editorRowFill(subIndex, -1) }}
+              />
               {sub.lines.map((line, i) => (
                 <Box
                   key={i}
@@ -550,19 +478,14 @@ export default function GridTaskEditorPanel({
 
           {sub.kind === 'sort' && (
             <Box sx={{ ...editorRowFill(subIndex, 0) }}>
-              <FormControl size="small" fullWidth sx={{ mb: 1 }}>
-                <InputLabel>Bearbeitung</InputLabel>
-                <Select
-                  label="Bearbeitung"
-                  value={sub.interaction || 'text'}
-                  onChange={(e) =>
-                    updateSub(sub.id, { interaction: e.target.value as 'text' | 'drag' })
-                  }
-                >
-                  <MenuItem value="text">Freitext (Komma-getrennt)</MenuItem>
-                  <MenuItem value="drag">Zahlen greifen &amp; in Slots ziehen</MenuItem>
-                </Select>
-              </FormControl>
+              <TextField
+                fullWidth
+                size="small"
+                label="Frage / Anweisung"
+                value={sub.title}
+                onChange={(e) => updateSub(sub.id, { title: e.target.value })}
+                sx={{ mb: 1 }}
+              />
               <TextField
                 fullWidth
                 size="small"
@@ -800,6 +723,112 @@ export default function GridTaskEditorPanel({
               ))}
             </Box>
           )}
+            </Box>
+
+            <Box
+              sx={{
+                flex: '0 0 200px',
+                width: 200,
+                maxWidth: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+              }}
+            >
+              <FormControl size="small" fullWidth>
+                <InputLabel>Fragentyp</InputLabel>
+                <Select
+                  label="Fragentyp"
+                  value={sub.kind}
+                  onChange={(e) => {
+                    const kind = e.target.value as GridSubsection['kind'];
+                    const fresh = newSubsection(kind);
+                    updateSub(sub.id, {
+                      ...fresh,
+                      id: sub.id,
+                      title: sub.title,
+                      quadrant: sub.quadrant,
+                      image: sub.image,
+                      ...('prompt' in sub && 'prompt' in fresh
+                        ? { prompt: (sub as { prompt?: string }).prompt }
+                        : {}),
+                    });
+                  }}
+                >
+                  {TASK_TYPE_GROUPS.flatMap((group) => [
+                    <ListSubheader key={`h-${group.label}`} sx={{ lineHeight: 2, fontWeight: 800 }}>
+                      {group.label}
+                    </ListSubheader>,
+                    ...group.kinds.map((k) => (
+                      <MenuItem key={k} value={k}>
+                        {KIND_LABEL[k]}
+                      </MenuItem>
+                    )),
+                  ])}
+                </Select>
+              </FormControl>
+              {spec.layout !== 'stack' ? (
+                <FormControl size="small" fullWidth>
+                  <InputLabel>Kästchen</InputLabel>
+                  <Select
+                    label="Kästchen"
+                    value={sub.quadrant}
+                    onChange={(e) => updateSub(sub.id, { quadrant: e.target.value as GridQuadrant })}
+                  >
+                    {(Object.keys(QUADRANT_LABEL) as GridQuadrant[]).map((q) => (
+                      <MenuItem key={q} value={q}>
+                        {QUADRANT_LABEL[q]}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              ) : null}
+              <TextField
+                label="Bild (optional)"
+                size="small"
+                fullWidth
+                value={sub.image?.src || ''}
+                onChange={(e) => {
+                  const src = e.target.value.trim();
+                  updateSub(sub.id, {
+                    image: src ? { src, align: sub.image?.align || 'left' } : undefined,
+                  });
+                }}
+                placeholder="/material/…"
+              />
+              <FormControl size="small" fullWidth disabled={!sub.image?.src}>
+                <InputLabel>Bildposition</InputLabel>
+                <Select
+                  label="Bildposition"
+                  value={sub.image?.align || 'left'}
+                  onChange={(e) => {
+                    if (!sub.image?.src) return;
+                    updateSub(sub.id, {
+                      image: { src: sub.image.src, align: e.target.value as 'left' | 'right' },
+                    });
+                  }}
+                >
+                  <MenuItem value="left">links</MenuItem>
+                  <MenuItem value="right">rechts</MenuItem>
+                </Select>
+              </FormControl>
+              {sub.kind === 'sort' ? (
+                <FormControl size="small" fullWidth>
+                  <InputLabel>Bearbeitung</InputLabel>
+                  <Select
+                    label="Bearbeitung"
+                    value={sub.interaction || 'text'}
+                    onChange={(e) =>
+                      updateSub(sub.id, { interaction: e.target.value as 'text' | 'drag' })
+                    }
+                  >
+                    <MenuItem value="text">Freitext (Komma)</MenuItem>
+                    <MenuItem value="drag">Ziehen &amp; Slots</MenuItem>
+                  </Select>
+                </FormControl>
+              ) : null}
+            </Box>
+          </Box>
         </Box>
       ))}
 
@@ -807,7 +836,7 @@ export default function GridTaskEditorPanel({
         startIcon={<AddIcon />}
         variant="outlined"
         onClick={() =>
-          onChange({
+          commitSpec({
             ...spec,
             subsections: [
               ...spec.subsections,

@@ -404,14 +404,14 @@ function WrongBanner({
         minWidth: 0,
         maxWidth: `min(92vw, ${420 * scale * pop}px)`,
         boxSizing: 'border-box',
-        bgcolor: 'rgba(255, 232, 205, 0.94)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        border: '1px solid rgba(180, 120, 60, 0.55)',
+        bgcolor: 'rgba(255, 249, 196, 0.78)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        border: '1px solid rgba(220, 180, 80, 0.45)',
         borderRadius: `${10 * scale * pop}px`,
         px: `${14 * scale * pop}px`,
         py: `${11 * scale * pop}px`,
-        boxShadow: '0 8px 28px rgba(120, 70, 30, 0.22)',
+        boxShadow: '0 8px 28px rgba(140, 110, 40, 0.16)',
         pointerEvents: 'auto',
       }}
     >
@@ -543,6 +543,16 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   >([]);
   const [activeCompareIdx, setActiveCompareIdx] = useState(0);
   const solveRevealTimerRef = useRef<number | null>(null);
+  const activeBlankRef = useRef(0);
+  const activeCompareIdxRef = useRef(0);
+
+  useEffect(() => {
+    activeBlankRef.current = activeBlank;
+  }, [activeBlank]);
+
+  useEffect(() => {
+    activeCompareIdxRef.current = activeCompareIdx;
+  }, [activeCompareIdx]);
 
   useEffect(() => {
     return () => {
@@ -593,6 +603,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setLocked(false);
     setShowWrongBanner(false);
     setActiveBlank(0);
+    activeBlankRef.current = 0;
     setMatchSelectedKey(null);
     setMatchWrongKeys([]);
     setMatchHadWrong(false);
@@ -760,6 +771,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
       setFillStatuses(Array.from({ length: n }, () => 'idle'));
     }
     setActiveBlank(0);
+    activeBlankRef.current = 0;
   };
 
   const appendRepeatAndScheduleRetry = (resetLocal: () => void) => {
@@ -804,19 +816,29 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
 
   const placeClozeOption = (option: string) => {
     if (!interactive || locked || !currentQ || currentQ.mode !== 'cloze') return;
-    const next = [...fillValues];
-    let idx = activeBlank;
-    if (idx < 0 || idx >= next.length || next[idx]) {
-      idx = next.findIndex((v) => !v);
-    }
-    if (idx < 0) return;
-    next[idx] = option;
-    setFillValues(next);
-    const nextEmpty = next.findIndex((v, i) => i > idx && !v);
-    setActiveBlank(nextEmpty >= 0 ? nextEmpty : idx);
-    if (next.every((v) => v)) {
-      submitFills(currentQ.clozeParts, next);
-    }
+    const parts = currentQ.clozeParts;
+    setFillValues((prev) => {
+      if (!prev.length) return prev;
+      const next = [...prev];
+      let idx = activeBlankRef.current;
+      if (idx < 0 || idx >= next.length) {
+        idx = next.findIndex((v) => !v);
+      } else if (next[idx]) {
+        const empty = next.findIndex((v) => !v);
+        if (empty >= 0) idx = empty;
+      }
+      if (idx < 0) return prev;
+      next[idx] = option;
+      const nextEmpty = next.findIndex((v, i) => i > idx && !v);
+      const newActive = nextEmpty >= 0 ? nextEmpty : idx;
+      activeBlankRef.current = newActive;
+      queueMicrotask(() => setActiveBlank(newActive));
+      if (next.every((v) => v)) {
+        const snapshot = next;
+        queueMicrotask(() => submitFills(parts, snapshot));
+      }
+      return next;
+    });
   };
 
   const submitWrite = () => {
@@ -997,18 +1019,28 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
 
   const pickCompareSign = (sign: CompareSign) => {
     if (!interactive || locked || !currentQ || currentQ.mode !== 'compare') return;
-    if (!compareValues.length) return;
-    let idx = activeCompareIdx;
-    if (idx < 0 || idx >= compareValues.length) {
-      idx = compareValues.findIndex((v) => !v);
-    }
-    if (idx < 0) idx = 0;
-    const next = [...compareValues];
-    next[idx] = sign;
-    setCompareValues(next);
-    setCompareStatuses((st) => st.map((s, i) => (i === idx ? 'idle' : s)));
-    const nextEmpty = next.findIndex((v, i) => i > idx && !v);
-    setActiveCompareIdx(nextEmpty >= 0 ? nextEmpty : idx);
+    setCompareValues((prev) => {
+      if (!prev.length) return prev;
+      const next = [...prev];
+      let idx = activeCompareIdxRef.current;
+      if (idx < 0 || idx >= next.length) {
+        idx = next.findIndex((v) => !v);
+      } else if (next[idx]) {
+        const empty = next.findIndex((v) => !v);
+        if (empty >= 0) idx = empty;
+      }
+      if (idx < 0) idx = 0;
+      next[idx] = sign;
+      const nextEmpty = next.findIndex((v, i) => i > idx && !v);
+      const newActive = nextEmpty >= 0 ? nextEmpty : idx;
+      activeCompareIdxRef.current = newActive;
+      const placedIdx = idx;
+      queueMicrotask(() => {
+        setActiveCompareIdx(newActive);
+        setCompareStatuses((st) => st.map((s, i) => (i === placedIdx ? 'idle' : s)));
+      });
+      return next;
+    });
   };
 
   const backToHub = () => {
@@ -1414,7 +1446,10 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                         component="button"
                         type="button"
                         disabled={!interactive || locked}
-                        onClick={() => setActiveBlank(i)}
+                        onClick={() => {
+                          activeBlankRef.current = i;
+                          setActiveBlank(i);
+                        }}
                         sx={clozeBlankSx(s, {
                           selected,
                           status: st,
@@ -1444,11 +1479,11 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                 })}
               </Box>
               <Box sx={{ ...wordBankRowSx(s), mt: `${28 * s}px` }}>
-                {(currentQ.clozeOptions || []).map((opt) => {
+                {(currentQ.clozeOptions || []).map((opt, optIdx) => {
                   const used = fillValues.includes(opt);
                   return (
                     <Box
-                      key={opt}
+                      key={`${optIdx}-${opt}`}
                       component="button"
                       type="button"
                       disabled={!interactive || locked || used}
