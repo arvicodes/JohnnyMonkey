@@ -16,17 +16,18 @@ export default function ExamSessionResetTrio({
   onFullReset,
 }: Props) {
   const base = {
-    flex: 1,
-    minWidth: 0,
+    flex: '1 0 auto',
+    minWidth: 'max-content',
     borderRadius: 0,
     fontSize: 10,
     lineHeight: 1.15,
     fontWeight: 800,
     py: 0.42,
-    px: 0.3,
+    px: 0.75,
     minHeight: 0,
     whiteSpace: 'nowrap' as const,
     textTransform: 'uppercase' as const,
+    overflow: 'visible',
   };
 
   const divider = { borderRight: '1px solid rgba(255,255,255,0.35)' };
@@ -38,8 +39,9 @@ export default function ExamSessionResetTrio({
       sx={{
         display: 'inline-flex',
         flexDirection: 'row',
-        width: '100%',
-        minWidth: 0,
+        width: 'max-content',
+        maxWidth: 'none',
+        flexShrink: 0,
         borderRadius: '6px',
         overflow: 'hidden',
         border: '1px solid #E10600',

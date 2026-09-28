@@ -442,16 +442,19 @@ export default function ExamGridTaskBuilderDialog({
                 alignItems: 'stretch',
                 gap: 1,
                 width: '100%',
+                overflowX: 'auto',
               }}
             >
-              <ExamVersionTabsBar
-                compact
-                filePath={versionMetaPath}
-                activeVariantPath={activeFilePath}
-                disabled={loading || saving || sessionResetBusy}
-                onActiveFilePathChange={handleVersionPathChange}
-              />
-              <Box sx={{ flex: '0 0 24%', width: '24%', maxWidth: '24%', minWidth: 0 }}>
+              <Box sx={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden' }}>
+                <ExamVersionTabsBar
+                  compact
+                  filePath={versionMetaPath}
+                  activeVariantPath={activeFilePath}
+                  disabled={loading || saving || sessionResetBusy}
+                  onActiveFilePathChange={handleVersionPathChange}
+                />
+              </Box>
+              <Box sx={{ flex: '0 0 auto', width: 'auto', minWidth: 'max-content' }}>
                 <ExamSessionResetTrio
                   disabled={loading || saving || sessionResetBusy}
                   onResetSubmissions={() => void handleResetSubmissions()}
