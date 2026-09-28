@@ -438,23 +438,47 @@ function WrongBanner({
         </Button>
       </Box>
       {tip ? (
-        <Typography
-          component="div"
+        <Box
           sx={{
-            fontSize: `${10 * scale * pop}px`,
-            lineHeight: 1.45,
-            color: '#4a3a10',
-            mt: `${8 * scale * pop}px`,
-            pt: `${6 * scale * pop}px`,
-            borderTop: '1px solid rgba(180, 130, 0, 0.22)',
+            mt: `${10 * scale * pop}px`,
+            pt: `${8 * scale * pop}px`,
+            borderTop: '1px solid rgba(180, 130, 0, 0.35)',
+            px: `${8 * scale * pop}px`,
+            py: `${8 * scale * pop}px`,
+            borderRadius: `${8 * scale * pop}px`,
+            bgcolor: 'rgba(255, 255, 255, 0.42)',
+            border: '1px solid rgba(200, 140, 20, 0.35)',
             textAlign: 'center',
+            maxWidth: `min(88vw, ${480 * scale * pop}px)`,
           }}
         >
-          <Box component="span" sx={{ fontWeight: 700 }}>
-            Merke dir:
-          </Box>{' '}
-          {tipLine}
-        </Typography>
+          <Typography
+            component="div"
+            sx={{
+              fontSize: `${14 * scale * pop}px`,
+              lineHeight: 1.5,
+              fontWeight: 600,
+              color: '#1a1208',
+            }}
+          >
+            <Box
+              component="span"
+              sx={{
+                display: 'block',
+                fontWeight: 800,
+                fontSize: `${15 * scale * pop}px`,
+                color: '#B45309',
+                letterSpacing: '0.02em',
+                mb: `${4 * scale * pop}px`,
+              }}
+            >
+              Merke dir:
+            </Box>
+            <Box component="span" sx={{ color: '#2d1f0a' }}>
+              {tipLine}
+            </Box>
+          </Typography>
+        </Box>
       ) : null}
     </Box>
   );
