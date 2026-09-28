@@ -1,0 +1,141 @@
+import type { ExamGridTaskSpec } from './examGridTaskBuilder';
+
+/** Aufgabe 1 — QZ „KI 1 - Turing …“ (Turing-Test & Captcha). */
+export function ki1QuizTask1(): ExamGridTaskSpec {
+  return {
+    taskNumber: 1,
+    points: 9,
+    afbLevel: 1,
+    layout: 'stack',
+    subsections: [
+      {
+        id: 'ki1-intro',
+        letter: '',
+        title: '',
+        quadrant: 'tl',
+        kind: 'paragraph',
+        text: 'Kreuze jeweils eine oder mehrere richtige Antworten an.',
+      },
+      {
+        id: 'ki1-a',
+        letter: 'A',
+        title: '',
+        quadrant: 'tl',
+        kind: 'multi-select',
+        prompt:
+          'Alan Turing schlug … im Zusammenhang mit künstlicher Intelligenz vor.',
+        options: [
+          { value: 'A', label: 'eine feste Liste intelligenter Programme' },
+          { value: 'B', label: 'eine operative Definition anhand beobachtbaren Verhaltens' },
+          { value: 'C', label: 'einen Intelligenzquotienten für Computer' },
+          { value: 'D', label: 'einen Test der Rechengeschwindigkeit' },
+        ],
+        solution: 'B',
+      },
+      {
+        id: 'ki1-b',
+        letter: 'B',
+        title: '',
+        quadrant: 'tl',
+        kind: 'choice',
+        prompt: 'Welche Aussage beschreibt Turings Idee am besten?',
+        options: [
+          {
+            value: 'A',
+            label:
+              'Eine Maschine ist intelligent, wenn sie schneller rechnet als ein Mensch.',
+          },
+          {
+            value: 'B',
+            label:
+              'Eine Maschine ist intelligent, wenn ihr Verhalten in einem Gespräch nicht zuverlässig von dem eines Menschen unterschieden werden kann.',
+          },
+          { value: 'C', label: 'Eine Maschine ist intelligent, wenn sie Gefühle besitzt.' },
+          {
+            value: 'D',
+            label: 'Eine Maschine ist intelligent, sobald sie Sprache erzeugen kann.',
+          },
+        ],
+        solution: 'B',
+      },
+      {
+        id: 'ki1-c',
+        letter: 'C',
+        title:
+          'Im folgenden Ablauf sind die Schritte durcheinander geraten. Ordne sie von 1 bis 5.',
+        quadrant: 'tl',
+        kind: 'round-lines',
+        lines: [
+          {
+            text: 'Person C entscheidet, ob der Gesprächspartner Mensch oder Maschine ist.',
+            solution: '5',
+          },
+          { text: 'Person C führt eine Unterhaltung.', solution: '3' },
+          { text: 'Eine KI übernimmt die Rolle von A.', solution: '2' },
+          {
+            text: 'C kennt die Identität der Gesprächspartner nicht.',
+            solution: '1',
+          },
+          {
+            text: 'Das Verhalten der Maschine wird mit dem eines Menschen verglichen.',
+            solution: '4',
+          },
+        ],
+      },
+      {
+        id: 'ki1-d',
+        letter: 'D',
+        title: '',
+        quadrant: 'tl',
+        kind: 'multi-select',
+        prompt:
+          'Welche zwei Aussagen beschreiben sinnvolle Eigenschaften eines Captchas? Kreuze zwei Antworten an.',
+        options: [
+          { value: 'A', label: 'Es sollte für Menschen relativ einfach zu lösen sein.' },
+          {
+            value: 'B',
+            label: 'Es sollte für Computerprogramme möglichst schwierig zu lösen sein.',
+          },
+          {
+            value: 'C',
+            label: 'Es sollte für Menschen und Computer genau gleich schwierig sein.',
+          },
+          { value: 'D', label: 'Es sollte immer aus einer Rechenaufgabe bestehen.' },
+        ],
+        solution: 'A|B',
+      },
+      {
+        id: 'ki1-e',
+        letter: 'E',
+        title: '',
+        quadrant: 'tl',
+        kind: 'choice',
+        prompt:
+          'Welche Captcha-Aufgabe erfüllt die Grundidee eines Captchas am besten?',
+        options: [
+          {
+            value: 'A',
+            label:
+              'Eine zufällig erzeugte Rechenaufgabe, die Menschen und Computerprogramme gleichermaßen schnell lösen können.',
+          },
+          {
+            value: 'B',
+            label:
+              'Eine Aufgabe, die für Menschen meist leicht verständlich ist, Computerprogramme aber möglichst zuverlässig vor Probleme stellt.',
+          },
+          {
+            value: 'C',
+            label:
+              'Eine Aufgabe, die für Menschen besonders schwierig ist, damit nur sehr aufmerksame Nutzer*innen Zugang erhalten.',
+          },
+          {
+            value: 'D',
+            label:
+              'Eine Aufgabe, bei der ein Computer entscheidet, ob die Antwort inhaltlich richtig oder falsch ist.',
+          },
+        ],
+        solution: 'B',
+      },
+    ],
+  };
+}

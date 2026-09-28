@@ -354,6 +354,7 @@ function WrongBanner({
   onRetry: () => void;
   onSolve: () => void;
 }) {
+  const tipLine = tip ? tip.replace(/([.!?])\s+/g, '$1\u00a0') : '';
   const btnSx = {
     minWidth: 0,
     minHeight: `${24 * scale}px`,

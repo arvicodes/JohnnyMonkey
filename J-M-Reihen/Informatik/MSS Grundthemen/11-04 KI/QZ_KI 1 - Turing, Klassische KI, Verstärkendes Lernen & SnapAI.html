@@ -1145,6 +1145,12 @@
             margin-bottom: 6px;
             line-height: 1.4;
         }
+        .exam-mc-block { margin: 8px 0 14px; }
+        .exam-mc-prompt { font-weight: 600; }
+        .exam-mc-options, .exam-multi-select { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+        .exam-mc-option { display: flex; align-items: flex-start; gap: 8px; line-height: 1.45; cursor: pointer; }
+        .exam-mc-option input { margin-top: 3px; flex-shrink: 0; }
+        .exam-task-stack .exam-subsection { margin-bottom: 16px; }
         .exam-round-line {
             margin: 6px 0;
             display: flex;
@@ -1365,30 +1371,37 @@
     <!-- Aufgabe 1 -->
     <div class="task">
         <div class="task-header">
-            <div class="task-number">Aufgabe 1 <span style="font-size: 11px; color: #666; font-weight: normal;">(5 Punkte)</span></div>
+            <div class="task-number">Aufgabe 1 <span style="font-size: 11px; color: #666; font-weight: normal;">(9 Punkte)</span></div>
             <div class="task-meta teacher-only">
                 <span class="afb-badge afb-1">AFB I</span>
-                <div class="points">5 Punkte</div>
+                <div class="points">9 Punkte</div>
             </div>
         </div>
-        <div class="task-content">
-
-            <div class="exam-task-grid">
-                <div class="exam-task-grid-cell"><div class="exam-subsection" data-sub-kind="round-lines" data-sub-id="sub-blank-1790604976483" data-exam-spec="%7B%22id%22%3A%22sub-blank-1790604976483%22%2C%22letter%22%3A%22A%22%2C%22title%22%3A%22Alan%20Turing%20und%20der%20Turing%20Test%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22round-lines%22%2C%22lines%22%3A%5B%7B%22text%22%3A%22Wozu%20dient%20der%20Turing-Test%3F%22%2C%22solution%22%3A%2214%22%7D%5D%7D"><div class="exam-subsection-title"><span class="item-label">A)</span> Alan Turing und der Turing Test</div><div class="exam-round-line item input-group"><span>Wozu dient der Turing-Test?</span><input type="text" id="a1a" class="blank-wide" autocomplete="off"></div></div></div>
-                <div class="exam-task-grid-cell">&nbsp;</div>
-                <div class="exam-task-grid-cell">&nbsp;</div>
-                <div class="exam-task-grid-cell">&nbsp;</div>
-            </div>
+        <div class="task-content exam-task-stack">
+<div class="exam-subsection" data-sub-kind="paragraph" data-sub-id="ki1-intro" data-exam-spec="%7B%22id%22%3A%22ki1-intro%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22paragraph%22%2C%22text%22%3A%22Kreuze%20jeweils%20eine%20oder%20mehrere%20richtige%20Antworten%20an.%22%7D"><p>Kreuze jeweils eine oder mehrere richtige Antworten an.</p></div>
+<div class="exam-subsection" data-sub-kind="multi-select" data-sub-id="ki1-a" data-exam-spec="%7B%22id%22%3A%22ki1-a%22%2C%22letter%22%3A%22A%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22multi-select%22%2C%22prompt%22%3A%22Alan%20Turing%20schlug%20%E2%80%A6%20im%20Zusammenhang%20mit%20k%C3%BCnstlicher%20Intelligenz%20vor.%22%2C%22options%22%3A%5B%7B%22value%22%3A%22A%22%2C%22label%22%3A%22eine%20feste%20Liste%20intelligenter%20Programme%22%7D%2C%7B%22value%22%3A%22B%22%2C%22label%22%3A%22eine%20operative%20Definition%20anhand%20beobachtbaren%20Verhaltens%22%7D%2C%7B%22value%22%3A%22C%22%2C%22label%22%3A%22einen%20Intelligenzquotienten%20f%C3%BCr%20Computer%22%7D%2C%7B%22value%22%3A%22D%22%2C%22label%22%3A%22einen%20Test%20der%20Rechengeschwindigkeit%22%7D%5D%2C%22solution%22%3A%22B%22%7D"><div class="exam-subsection-title"><span class="item-label">A)</span> </div><div class="item input-group full-width exam-mc-block"><p class="exam-mc-prompt" style="margin:0 0 8px;">Alan Turing schlug … im Zusammenhang mit künstlicher Intelligenz vor.</p><div class="exam-multi-select" data-answer-id="a1a"><label class="exam-mc-option"><input type="checkbox" value="A"> eine feste Liste intelligenter Programme</label><label class="exam-mc-option"><input type="checkbox" value="B"> eine operative Definition anhand beobachtbaren Verhaltens</label><label class="exam-mc-option"><input type="checkbox" value="C"> einen Intelligenzquotienten für Computer</label><label class="exam-mc-option"><input type="checkbox" value="D"> einen Test der Rechengeschwindigkeit</label></div><input type="hidden" id="a1a" value=""></div></div>
+<div class="exam-subsection" data-sub-kind="choice" data-sub-id="ki1-b" data-exam-spec="%7B%22id%22%3A%22ki1-b%22%2C%22letter%22%3A%22B%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22choice%22%2C%22prompt%22%3A%22Welche%20Aussage%20beschreibt%20Turings%20Idee%20am%20besten%3F%22%2C%22options%22%3A%5B%7B%22value%22%3A%22A%22%2C%22label%22%3A%22Eine%20Maschine%20ist%20intelligent%2C%20wenn%20sie%20schneller%20rechnet%20als%20ein%20Mensch.%22%7D%2C%7B%22value%22%3A%22B%22%2C%22label%22%3A%22Eine%20Maschine%20ist%20intelligent%2C%20wenn%20ihr%20Verhalten%20in%20einem%20Gespr%C3%A4ch%20nicht%20zuverl%C3%A4ssig%20von%20dem%20eines%20Menschen%20unterschieden%20werden%20kann.%22%7D%2C%7B%22value%22%3A%22C%22%2C%22label%22%3A%22Eine%20Maschine%20ist%20intelligent%2C%20wenn%20sie%20Gef%C3%BChle%20besitzt.%22%7D%2C%7B%22value%22%3A%22D%22%2C%22label%22%3A%22Eine%20Maschine%20ist%20intelligent%2C%20sobald%20sie%20Sprache%20erzeugen%20kann.%22%7D%5D%2C%22solution%22%3A%22B%22%7D"><div class="exam-subsection-title"><span class="item-label">B)</span> </div><div class="item input-group full-width exam-mc-block"><p class="exam-mc-prompt" style="margin:0 0 8px;">Welche Aussage beschreibt Turings Idee am besten?</p><div class="exam-mc-options"><label class="exam-mc-option"><input type="radio" name="a1b" value="A"> Eine Maschine ist intelligent, wenn sie schneller rechnet als ein Mensch.</label><label class="exam-mc-option"><input type="radio" name="a1b" value="B"> Eine Maschine ist intelligent, wenn ihr Verhalten in einem Gespräch nicht zuverlässig von dem eines Menschen unterschieden werden kann.</label><label class="exam-mc-option"><input type="radio" name="a1b" value="C"> Eine Maschine ist intelligent, wenn sie Gefühle besitzt.</label><label class="exam-mc-option"><input type="radio" name="a1b" value="D"> Eine Maschine ist intelligent, sobald sie Sprache erzeugen kann.</label></div></div></div>
+<div class="exam-subsection" data-sub-kind="round-lines" data-sub-id="ki1-c" data-exam-spec="%7B%22id%22%3A%22ki1-c%22%2C%22letter%22%3A%22C%22%2C%22title%22%3A%22Im%20folgenden%20Ablauf%20sind%20die%20Schritte%20durcheinander%20geraten.%20Ordne%20sie%20von%201%20bis%205.%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22round-lines%22%2C%22lines%22%3A%5B%7B%22text%22%3A%22Person%20C%20entscheidet%2C%20ob%20der%20Gespr%C3%A4chspartner%20Mensch%20oder%20Maschine%20ist.%22%2C%22solution%22%3A%225%22%7D%2C%7B%22text%22%3A%22Person%20C%20f%C3%BChrt%20eine%20Unterhaltung.%22%2C%22solution%22%3A%223%22%7D%2C%7B%22text%22%3A%22Eine%20KI%20%C3%BCbernimmt%20die%20Rolle%20von%20A.%22%2C%22solution%22%3A%222%22%7D%2C%7B%22text%22%3A%22C%20kennt%20die%20Identit%C3%A4t%20der%20Gespr%C3%A4chspartner%20nicht.%22%2C%22solution%22%3A%221%22%7D%2C%7B%22text%22%3A%22Das%20Verhalten%20der%20Maschine%20wird%20mit%20dem%20eines%20Menschen%20verglichen.%22%2C%22solution%22%3A%224%22%7D%5D%7D"><div class="exam-subsection-title"><span class="item-label">C)</span> Im folgenden Ablauf sind die Schritte durcheinander geraten. Ordne sie von 1 bis 5.</div><div class="exam-round-line item input-group"><span>Person C entscheidet, ob der Gesprächspartner Mensch oder Maschine ist.</span><input type="text" id="a1c" class="blank-wide" autocomplete="off"></div><div class="exam-round-line item input-group"><span>Person C führt eine Unterhaltung.</span><input type="text" id="a1d" class="blank-wide" autocomplete="off"></div><div class="exam-round-line item input-group"><span>Eine KI übernimmt die Rolle von A.</span><input type="text" id="a1e" class="blank-wide" autocomplete="off"></div><div class="exam-round-line item input-group"><span>C kennt die Identität der Gesprächspartner nicht.</span><input type="text" id="a1f" class="blank-wide" autocomplete="off"></div><div class="exam-round-line item input-group"><span>Das Verhalten der Maschine wird mit dem eines Menschen verglichen.</span><input type="text" id="a1g" class="blank-wide" autocomplete="off"></div></div>
+<div class="exam-subsection" data-sub-kind="multi-select" data-sub-id="ki1-d" data-exam-spec="%7B%22id%22%3A%22ki1-d%22%2C%22letter%22%3A%22D%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22multi-select%22%2C%22prompt%22%3A%22Welche%20zwei%20Aussagen%20beschreiben%20sinnvolle%20Eigenschaften%20eines%20Captchas%3F%20Kreuze%20zwei%20Antworten%20an.%22%2C%22options%22%3A%5B%7B%22value%22%3A%22A%22%2C%22label%22%3A%22Es%20sollte%20f%C3%BCr%20Menschen%20relativ%20einfach%20zu%20l%C3%B6sen%20sein.%22%7D%2C%7B%22value%22%3A%22B%22%2C%22label%22%3A%22Es%20sollte%20f%C3%BCr%20Computerprogramme%20m%C3%B6glichst%20schwierig%20zu%20l%C3%B6sen%20sein.%22%7D%2C%7B%22value%22%3A%22C%22%2C%22label%22%3A%22Es%20sollte%20f%C3%BCr%20Menschen%20und%20Computer%20genau%20gleich%20schwierig%20sein.%22%7D%2C%7B%22value%22%3A%22D%22%2C%22label%22%3A%22Es%20sollte%20immer%20aus%20einer%20Rechenaufgabe%20bestehen.%22%7D%5D%2C%22solution%22%3A%22A%7CB%22%7D"><div class="exam-subsection-title"><span class="item-label">D)</span> </div><div class="item input-group full-width exam-mc-block"><p class="exam-mc-prompt" style="margin:0 0 8px;">Welche zwei Aussagen beschreiben sinnvolle Eigenschaften eines Captchas? Kreuze zwei Antworten an.</p><div class="exam-multi-select" data-answer-id="a1h"><label class="exam-mc-option"><input type="checkbox" value="A"> Es sollte für Menschen relativ einfach zu lösen sein.</label><label class="exam-mc-option"><input type="checkbox" value="B"> Es sollte für Computerprogramme möglichst schwierig zu lösen sein.</label><label class="exam-mc-option"><input type="checkbox" value="C"> Es sollte für Menschen und Computer genau gleich schwierig sein.</label><label class="exam-mc-option"><input type="checkbox" value="D"> Es sollte immer aus einer Rechenaufgabe bestehen.</label></div><input type="hidden" id="a1h" value=""></div></div>
+<div class="exam-subsection" data-sub-kind="choice" data-sub-id="ki1-e" data-exam-spec="%7B%22id%22%3A%22ki1-e%22%2C%22letter%22%3A%22E%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22choice%22%2C%22prompt%22%3A%22Welche%20Captcha-Aufgabe%20erf%C3%BCllt%20die%20Grundidee%20eines%20Captchas%20am%20besten%3F%22%2C%22options%22%3A%5B%7B%22value%22%3A%22A%22%2C%22label%22%3A%22Eine%20zuf%C3%A4llig%20erzeugte%20Rechenaufgabe%2C%20die%20Menschen%20und%20Computerprogramme%20gleicherma%C3%9Fen%20schnell%20l%C3%B6sen%20k%C3%B6nnen.%22%7D%2C%7B%22value%22%3A%22B%22%2C%22label%22%3A%22Eine%20Aufgabe%2C%20die%20f%C3%BCr%20Menschen%20meist%20leicht%20verst%C3%A4ndlich%20ist%2C%20Computerprogramme%20aber%20m%C3%B6glichst%20zuverl%C3%A4ssig%20vor%20Probleme%20stellt.%22%7D%2C%7B%22value%22%3A%22C%22%2C%22label%22%3A%22Eine%20Aufgabe%2C%20die%20f%C3%BCr%20Menschen%20besonders%20schwierig%20ist%2C%20damit%20nur%20sehr%20aufmerksame%20Nutzer*innen%20Zugang%20erhalten.%22%7D%2C%7B%22value%22%3A%22D%22%2C%22label%22%3A%22Eine%20Aufgabe%2C%20bei%20der%20ein%20Computer%20entscheidet%2C%20ob%20die%20Antwort%20inhaltlich%20richtig%20oder%20falsch%20ist.%22%7D%5D%2C%22solution%22%3A%22B%22%7D"><div class="exam-subsection-title"><span class="item-label">E)</span> </div><div class="item input-group full-width exam-mc-block"><p class="exam-mc-prompt" style="margin:0 0 8px;">Welche Captcha-Aufgabe erfüllt die Grundidee eines Captchas am besten?</p><div class="exam-mc-options"><label class="exam-mc-option"><input type="radio" name="a1i" value="A"> Eine zufällig erzeugte Rechenaufgabe, die Menschen und Computerprogramme gleichermaßen schnell lösen können.</label><label class="exam-mc-option"><input type="radio" name="a1i" value="B"> Eine Aufgabe, die für Menschen meist leicht verständlich ist, Computerprogramme aber möglichst zuverlässig vor Probleme stellt.</label><label class="exam-mc-option"><input type="radio" name="a1i" value="C"> Eine Aufgabe, die für Menschen besonders schwierig ist, damit nur sehr aufmerksame Nutzer*innen Zugang erhalten.</label><label class="exam-mc-option"><input type="radio" name="a1i" value="D"> Eine Aufgabe, bei der ein Computer entscheidet, ob die Antwort inhaltlich richtig oder falsch ist.</label></div></div></div>
             <div class="solution">
                 <h4>Musterlösung:</h4>
-                <p>A a) Wozu dient der Turing-Test? <strong>14</strong></p>
+                <p>A) <strong>B</strong></p>
+                <p>B) <strong>Eine Maschine ist intelligent, wenn ihr Verhalten in einem Gespräch nicht zuverlässig von dem eines Menschen unterschieden werden kann.</strong></p>
+                <p>C a) Person C entscheidet, ob der Gesprächspartner Mensch oder Maschine ist. <strong>5</strong></p>
+                <p>C b) Person C führt eine Unterhaltung. <strong>3</strong></p>
+                <p>C c) Eine KI übernimmt die Rolle von A. <strong>2</strong></p>
+                <p>C d) C kennt die Identität der Gesprächspartner nicht. <strong>1</strong></p>
+                <p>C e) Das Verhalten der Maschine wird mit dem eines Menschen verglichen. <strong>4</strong></p>
+                <p>D) <strong>A, B</strong></p>
+                <p>E) <strong>Eine Aufgabe, die für Menschen meist leicht verständlich ist, Computerprogramme aber möglichst zuverlässig vor Probleme stellt.</strong></p>
             </div>
         </div>
     </div>
 
 <div class="footer">
         <div class="footer-note">
-            <div class="footer-points" id="pointsDisplay">Du hast <span id="achievedPoints">___</span> von <span id="totalPoints">5</span> Punkten erreicht.</div>
+            <div class="footer-points" id="pointsDisplay">Du hast <span id="achievedPoints">___</span> von <span id="totalPoints">9</span> Punkten erreicht.</div>
             <div class="footer-note-line"><strong>Note:</strong> <span id="noteText">___</span> / <span id="noteNumber">___</span></div>
             <div class="footer-points teacher-only" id="averageDisplay" style="margin-top: 10px; font-size: 13px; color: #666; display: none;">Notenschnitt: <span id="averageNote">-</span></div>
         </div>
@@ -1832,7 +1845,8 @@
             });
             
             // Button Event-Handler registrieren
-            setupSubmitButton();
+            setupExamMultiSelect();
+        setupSubmitButton();
             
             // Timer IMMER starten (nur für Schüler)
             console.log('👤 Starte Timer für Schüler...');
@@ -1916,6 +1930,28 @@
                 if (hidden) hidden.value = (inp.value || '').trim();
             });
         }
+        
+        function setupExamMultiSelect() {
+            document.querySelectorAll('.exam-multi-select[data-answer-id]').forEach(function (wrap) {
+                var id = wrap.getAttribute('data-answer-id');
+                if (!id) return;
+                var hidden = document.getElementById(id);
+                var sync = function () {
+                    var vals = [];
+                    wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(function (cb) {
+                        vals.push(cb.value || '');
+                    });
+                    vals = vals.filter(Boolean).sort();
+                    var joined = vals.join('|');
+                    if (hidden) hidden.value = joined;
+                    if (typeof updatePointsDisplay === 'function') updatePointsDisplay();
+                };
+                wrap.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+                    cb.addEventListener('change', sync);
+                });
+            });
+        }
+
         function collectExamAnswers() {
             flushExamNumberLineDrafts();
             const answers = {};
@@ -1931,9 +1967,32 @@
             document.querySelectorAll('input[type="radio"]').forEach(function (radio) {
                 if (radio.name) radioNames.add(radio.name);
             });
+                        document.querySelectorAll('.exam-multi-select[data-answer-id]').forEach(function (wrap) {
+                var id = wrap.getAttribute('data-answer-id');
+                if (!id) return;
+                var vals = [];
+                wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(function (cb) {
+                    vals.push(cb.value || '');
+                });
+                vals = vals.filter(Boolean).sort();
+                var joined = vals.join('|');
+                var hidden = document.getElementById(id);
+                if (hidden) hidden.value = joined;
+            });
             radioNames.forEach(function (name) {
                 const selected = document.querySelector('input[name="' + name + '"]:checked');
                 if (selected) answers[name] = selected.value || '';
+            });
+            document.querySelectorAll('.exam-multi-select[data-answer-id]').forEach(function (wrap) {
+                var id = wrap.getAttribute('data-answer-id');
+                if (!id) return;
+                var vals = [];
+                wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(function (cb) {
+                    vals.push(cb.value || '');
+                });
+                vals = vals.filter(Boolean).sort();
+                var joined = vals.join('|');
+                answers[id] = joined;
             });
             return answers;
         }
@@ -2096,7 +2155,15 @@
         }
 
         const correctAnswers = {
-            a1a: ['14']
+            a1a: ["B"],
+            a1b: ["B"],
+            a1c: ["5"],
+            a1d: ["3"],
+            a1e: ["2"],
+            a1f: ["1"],
+            a1g: ["4"],
+            a1h: ["A|B"],
+            a1i: ["B"]
         };
 
         function getAnswerValue(id) {
@@ -2156,7 +2223,7 @@
                     achievedPoints += 1;
                 }
             });
-            return { achieved: achievedPoints, total: 5 };
+            return { achieved: achievedPoints, total: 9 };
         }
 
         // Funktion zur Aktualisierung der Anzeige

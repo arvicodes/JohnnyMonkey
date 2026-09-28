@@ -511,6 +511,8 @@ export function demoNatuerlicheZahlenTask1(): ExamGridTaskSpec {
   return druckmaterialKlassenarbeit1();
 }
 
+export { ki1QuizTask1 } from './ki1ExamTask1';
+
 type BuiltField = { id: string; answers: string[]; solutionHtml: string };
 
 function allocId(taskNumber: number, index: number): string {
