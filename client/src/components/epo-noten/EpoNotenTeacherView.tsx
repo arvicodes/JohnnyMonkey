@@ -289,12 +289,11 @@ export function EpoNotenTeacherView() {
     setStudentListGroupFilter(gid);
   };
 
-  const addCourseFromDropdown = async () => {
-    if (!round || !courseToAdd || round.groupIds.includes(courseToAdd)) return;
-    const gid = courseToAdd;
-    setCourseToAdd('');
+  const addCourseById = async (gid: string) => {
+    if (!round || !gid || round.groupIds.includes(gid)) return;
     await updateRoundGroups([...round.groupIds, gid]);
     selectStudentListGroup(gid);
+    setCourseToAdd('');
   };
 
   useEffect(() => {
@@ -943,8 +942,8 @@ export function EpoNotenTeacherView() {
                         borderLeft: `3px solid ${epoNotenPalette.primary}`,
                       }}
                     >
-                      <Stack direction="row" alignItems="center" gap={0.35} flexWrap="wrap" sx={{ mb: 0.5 }}>
-                        <FormControl size="small" sx={{ minWidth: 0, flex: 1 }}>
+                      <Stack direction="row" alignItems="center" gap={0.35} sx={{ mb: 0.5, width: '100%' }}>
+                        <FormControl size="small" fullWidth sx={{ minWidth: 0 }}>
                           <InputLabel id="epo-round-variant-label" sx={{ fontSize: '0.7rem' }}>
                             Variante
                           </InputLabel>
@@ -953,7 +952,7 @@ export function EpoNotenTeacherView() {
                             label="Variante"
                             value={roundForCourses.variantId || 'default'}
                             onChange={(e) => void updateRoundVariant(String(e.target.value))}
-                            sx={{ fontSize: '0.72rem', height: 32 }}
+                            sx={{ fontSize: '0.72rem', height: 32, width: '100%' }}
                           >
                             {(variants.length > 0 ? variants : [{ id: 'default', name: 'Standard' }]).map((v) => (
                               <MenuItem key={v.id} value={v.id} sx={{ fontSize: '0.78rem' }}>
@@ -963,7 +962,7 @@ export function EpoNotenTeacherView() {
                           </Select>
                         </FormControl>
                         <Tooltip title="Variantenzettel">
-                          <IconButton size="small" onClick={() => setVariantsOpen(true)} sx={epoNotenCompactIconBtnSx}>
+                          <IconButton size="small" onClick={() => setVariantsOpen(true)} sx={{ ...epoNotenCompactIconBtnSx, flexShrink: 0 }}>
                             <TuneIcon sx={epoNotenCompactIconSx} />
                           </IconButton>
                         </Tooltip>
@@ -1072,40 +1071,34 @@ export function EpoNotenTeacherView() {
                       </List>
 
                       {groups.some((g) => !roundForCourses.groupIds.includes(g.id)) && (
-                        <Stack direction="row" spacing={0.5} alignItems="flex-end" sx={{ mt: 0.5, pl: 0.5 }}>
-                          <FormControl size="small" fullWidth>
-                            <InputLabel id="epo-add-course-label" sx={{ fontSize: '0.72rem' }}>
-                              Kurs hinzufügen
-                            </InputLabel>
-                            <Select
-                              labelId="epo-add-course-label"
-                              label="Kurs hinzufügen"
-                              value={courseToAdd}
-                              onChange={(e) => setCourseToAdd(String(e.target.value))}
-                              sx={{ fontSize: '0.78rem' }}
-                            >
-                              <MenuItem value="">
-                                <em>— wählen —</em>
-                              </MenuItem>
-                              {groups
-                                .filter((g) => !roundForCourses.groupIds.includes(g.id))
-                                .map((g) => (
-                                  <MenuItem key={g.id} value={g.id} sx={{ fontSize: '0.8rem' }}>
-                                    {g.name}
-                                  </MenuItem>
-                                ))}
-                            </Select>
-                          </FormControl>
-                          <Button
-                            size="small"
-                            variant="contained"
-                            disabled={!courseToAdd || saving}
-                            onClick={() => void addCourseFromDropdown()}
-                            sx={{ ...epoNotenCompactBtnSx, flexShrink: 0, mb: 0.15 }}
+                        <FormControl size="small" fullWidth sx={{ mt: 0.5, pl: 0.5, width: 'calc(100% - 4px)' }}>
+                          <InputLabel id="epo-add-course-label" sx={{ fontSize: '0.72rem' }}>
+                            Kurs hinzufügen
+                          </InputLabel>
+                          <Select
+                            labelId="epo-add-course-label"
+                            label="Kurs hinzufügen"
+                            value={courseToAdd}
+                            displayEmpty
+                            disabled={saving}
+                            onChange={(e) => {
+                              const v = String(e.target.value);
+                              if (v) void addCourseById(v);
+                            }}
+                            sx={{ fontSize: '0.78rem', width: '100%' }}
                           >
-                            +
-                          </Button>
-                        </Stack>
+                            <MenuItem value="">
+                              <em>— Kurs wählen —</em>
+                            </MenuItem>
+                            {groups
+                              .filter((g) => !roundForCourses.groupIds.includes(g.id))
+                              .map((g) => (
+                                <MenuItem key={g.id} value={g.id} sx={{ fontSize: '0.8rem' }}>
+                                  {g.name}
+                                </MenuItem>
+                              ))}
+                          </Select>
+                        </FormControl>
                       )}
                     </Box>
                   )}
@@ -1157,16 +1150,24 @@ export function EpoNotenTeacherView() {
               <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: epoNotenPalette.heading, flex: 1, minWidth: 0 }} noWrap>
                 {activeCourseName}
               </Typography>
-              <Button
-                size="small"
-                color="warning"
-                startIcon={<RestartAltIcon />}
-                disabled={saving}
-                onClick={() => requestReset(activeCourseGroupId)}
-                sx={epoNotenCompactBtnSx}
-              >
-                Zurücksetzen
-              </Button>
+              <Tooltip title="Kurs zurücksetzen">
+                <span>
+                  <IconButton
+                    size="small"
+                    aria-label="Kurs zurücksetzen"
+                    disabled={saving}
+                    onClick={() => requestReset(activeCourseGroupId)}
+                    sx={{
+                      ...epoNotenCompactIconBtnSx,
+                      color: '#e65100',
+                      borderColor: 'rgba(230, 81, 0, 0.4)',
+                      '&:hover': { bgcolor: 'rgba(245, 124, 0, 0.1)' },
+                    }}
+                  >
+                    <RestartAltIcon sx={{ fontSize: '1rem' }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
               {epoGroupUsesMssPoints(activeCourseName) ? (
                 <Chip size="small" label="MSS-Punkte (0–15)" color="primary" variant="outlined" />
               ) : (
