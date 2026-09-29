@@ -12,14 +12,17 @@ const TIMER_COLOR = '#00695c';
 const FULL_RESET_COLOR = '#c62828';
 
 const groupedBtn = {
-  minWidth: 0,
   height: 28,
-  px: 0.6,
+  px: 1.1,
+  py: 0.25,
   fontSize: 'calc(0.56rem + 3px)',
   fontWeight: 700,
   textTransform: 'none' as const,
   lineHeight: 1.15,
   whiteSpace: 'nowrap' as const,
+  minWidth: 'max-content',
+  flex: '0 0 auto',
+  overflow: 'visible',
 };
 
 export default function ExamSessionResetTrio({
@@ -28,18 +31,19 @@ export default function ExamSessionResetTrio({
   onFullReset,
 }: Props) {
   return (
-    <Box role="group" aria-label="Prüfung zurücksetzen" sx={{ flexShrink: 0 }}>
+    <Box
+      role="group"
+      aria-label="Prüfung zurücksetzen"
+      sx={{ flexShrink: 0, width: '100%', display: 'flex', justifyContent: 'flex-end' }}
+    >
       <ButtonGroup
         disabled={disabled}
         size="small"
         variant="outlined"
         sx={{
-          width: 'max-content',
+          width: 'auto',
+          flexShrink: 0,
           '& .MuiButtonGroup-grouped': groupedBtn,
-          '& .MuiButtonGroup-grouped:first-of-type': {
-            flex: '1.1 1 0',
-            px: 0.66,
-          },
           '& .MuiButtonGroup-grouped:not(:last-of-type)': {
             borderRightColor: 'rgba(0,0,0,0.12)',
           },

@@ -876,6 +876,18 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     lengthConvertInputRefs.current = [];
   }, [qi, currentQ?.id]);
 
+  useEffect(() => {
+    if (phase !== 'play' || !interactive || locked || !currentQ) return;
+    const mode = currentQ.mode || 'choice';
+    const t = window.setTimeout(() => {
+      if (mode === 'write') scheduleInputFocus(writeInputRef.current);
+      else if (mode === 'equation') scheduleInputFocus(fillInputRefs.current[0]);
+      else if (mode === 'compare') scheduleInputFocus(convertInputRefs.current[0]);
+      else if (mode === 'lengthConvert') scheduleInputFocus(lengthConvertInputRefs.current[0]);
+    }, 50);
+    return () => window.clearTimeout(t);
+  }, [phase, qi, interactive, locked, currentQ?.id, currentQ?.mode, lengthConvertItems.length]);
+
   const advanceAfterAnswer = (
     nextAnswers: Array<InteractiveExerciseAnswerCell | 'correct' | 'wrong' | null>,
     opts?: { topic?: InteractiveExerciseTopic; qi?: number },
@@ -1215,6 +1227,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setCompareValues(Array.from({ length: compareItems.length }, () => ''));
     setCompareStatuses(Array.from({ length: compareItems.length }, () => 'idle'));
     setActiveCompareIdx(0);
+    scheduleInputFocus(convertInputRefs.current[0]);
   };
 
   const solveCompare = () => {
