@@ -1071,13 +1071,24 @@ export function EpoNotenTeacherView() {
                       </List>
 
                       {groups.some((g) => !roundForCourses.groupIds.includes(g.id)) && (
-                        <FormControl size="small" fullWidth sx={{ mt: 0.5, pl: 0.5, width: 'calc(100% - 4px)' }}>
-                          <InputLabel id="epo-add-course-label" sx={{ fontSize: '0.72rem' }}>
+                        <Box sx={{ mt: 0.5, pl: 0.5, width: 'calc(100% - 4px)' }}>
+                          <Typography
+                            component="label"
+                            htmlFor="epo-add-course-select"
+                            sx={{
+                              display: 'block',
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              color: 'text.secondary',
+                              mb: 0.35,
+                            }}
+                          >
                             Kurs hinzufügen
-                          </InputLabel>
+                          </Typography>
                           <Select
-                            labelId="epo-add-course-label"
-                            label="Kurs hinzufügen"
+                            id="epo-add-course-select"
+                            size="small"
+                            fullWidth
                             value={courseToAdd}
                             displayEmpty
                             disabled={saving}
@@ -1085,11 +1096,22 @@ export function EpoNotenTeacherView() {
                               const v = String(e.target.value);
                               if (v) void addCourseById(v);
                             }}
-                            sx={{ fontSize: '0.78rem', width: '100%' }}
+                            renderValue={(v) => {
+                              if (!v) {
+                                return (
+                                  <Typography component="span" sx={{ fontSize: '0.78rem', color: 'text.secondary' }}>
+                                    Kurs wählen…
+                                  </Typography>
+                                );
+                              }
+                              return groups.find((g) => g.id === v)?.name ?? v;
+                            }}
+                            sx={{
+                              fontSize: '0.78rem',
+                              width: '100%',
+                              '& .MuiSelect-select': { py: 0.65 },
+                            }}
                           >
-                            <MenuItem value="">
-                              <em>— Kurs wählen —</em>
-                            </MenuItem>
                             {groups
                               .filter((g) => !roundForCourses.groupIds.includes(g.id))
                               .map((g) => (
@@ -1098,7 +1120,7 @@ export function EpoNotenTeacherView() {
                                 </MenuItem>
                               ))}
                           </Select>
-                        </FormControl>
+                        </Box>
                       )}
                     </Box>
                   )}
@@ -1168,34 +1190,44 @@ export function EpoNotenTeacherView() {
                   </IconButton>
                 </span>
               </Tooltip>
-              {epoGroupUsesMssPoints(activeCourseName) ? (
-                <Chip size="small" label="MSS-Punkte (0–15)" color="primary" variant="outlined" />
-              ) : (
-                <ToggleButtonGroup
-                  exclusive
-                  size="small"
-                  value={groupMode(activeCourseGroupId)}
-                  onChange={(_, v: EpoNotenAssessmentMode | null) => {
-                    if (!v) return;
-                    void updateGroupAssessmentMode(activeCourseGroupId, v);
-                  }}
-                  disabled={saving}
-                  aria-label="Punkte oder Note"
-                  sx={{
-                    bgcolor: '#fff',
-                    '& .MuiToggleButton-root': {
-                      px: 1.5,
-                      py: 0.35,
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
-                      textTransform: 'none',
-                    },
-                  }}
-                >
-                  <ToggleButton value="note">Note</ToggleButton>
-                  <ToggleButton value="mss">Punkte (MSS)</ToggleButton>
-                </ToggleButtonGroup>
-              )}
+              {(() => {
+                const mssLocked = epoGroupUsesMssPoints(activeCourseName);
+                const modeValue = groupMode(activeCourseGroupId);
+                return (
+                  <ToggleButtonGroup
+                    exclusive
+                    size="small"
+                    value={modeValue}
+                    onChange={(_, v: EpoNotenAssessmentMode | null) => {
+                      if (!v || mssLocked) return;
+                      void updateGroupAssessmentMode(activeCourseGroupId, v);
+                    }}
+                    disabled={saving}
+                    aria-label="Punkte oder Note"
+                    sx={{
+                      bgcolor: '#fff',
+                      flexShrink: 0,
+                      '& .MuiToggleButton-root': {
+                        px: 1.1,
+                        py: 0.25,
+                        minHeight: 28,
+                        lineHeight: 1.2,
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        textTransform: 'none',
+                        whiteSpace: 'nowrap',
+                      },
+                    }}
+                  >
+                    <ToggleButton value="note" disabled={mssLocked}>
+                      Note
+                    </ToggleButton>
+                    <ToggleButton value="mss" disabled={mssLocked}>
+                      Punkte (MSS)
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                );
+              })()}
             </Box>
 
             <Box
