@@ -1,0 +1,288 @@
+import type { ExamGridTaskSpec } from './examGridTaskBuilder';
+
+const RL_STEPS_ORDERED = [
+  '② Der Computer erkennt die aktuelle Spielsituation.',
+  '③ Ein möglicher Zug wird durch ein Token ausgewählt.',
+  '⑤ Der gewählte Zug wird ausgeführt.',
+  '① Das Ergebnis des Spiels steht fest.',
+  '④ Die Anzahl bestimmter Tokens wird verändert.',
+].join('|');
+
+const RL_STEPS_SCRAMBLED = [
+  '① Das Ergebnis des Spiels steht fest.',
+  '④ Die Anzahl bestimmter Tokens wird verändert.',
+  '③ Ein möglicher Zug wird durch ein Token ausgewählt.',
+  '⑤ Der gewählte Zug wird ausgeführt.',
+  '② Der Computer erkennt die aktuelle Spielsituation.',
+].join('|');
+
+const WAHR_FALSCH = [
+  { value: 'W', label: 'Wahr' },
+  { value: 'F', label: 'Falsch' },
+];
+
+/** Aufgabe 2 — Verstärkendes Lernen (QZ KI 1). */
+export function ki1QuizTask2(): ExamGridTaskSpec {
+  return {
+    taskNumber: 2,
+    points: 14,
+    afbLevel: 2,
+    layout: 'stack',
+    subsections: [
+      {
+        id: 'ki2-intro',
+        letter: '',
+        title: '',
+        quadrant: 'tl',
+        kind: 'paragraph',
+        variant: 'instruction',
+        text: 'Kreuze jeweils eine oder mehrere richtige Antworten an.',
+      },
+      {
+        id: 'ki2-a',
+        letter: 'A',
+        title: '',
+        quadrant: 'tl',
+        kind: 'choice',
+        prompt:
+          '<strong>Verstärkendes Lernen:</strong> Zu Beginn hat der Computer noch keine erfolgreiche Strategie gelernt. Wie entscheidet er, welchen Zug er macht?',
+        options: [
+          { value: 'A', label: 'Er berechnet sofort den besten Zug.' },
+          { value: 'B', label: 'Er wählt zufällig einen der möglichen Züge aus.' },
+          { value: 'C', label: 'Er kopiert den letzten Zug des Menschen.' },
+          { value: 'D', label: 'Er wählt immer den kürzesten Weg zum Ziel.' },
+        ],
+        solution: 'B',
+      },
+      {
+        id: 'ki2-b',
+        letter: 'B',
+        title: '',
+        quadrant: 'tl',
+        kind: 'choice',
+        prompt:
+          'Für eine Spielsituation liegen in der Box: 🔴 🔴 🔴 🔴 🔵. Der Computer zieht 🔴 und gewinnt anschließend das Spiel. Was passiert? (Danach: 🔴 🔴 🔴 🔴 🔴 🔵)',
+        options: [
+          { value: 'A', label: 'Ein rotes Token wird entfernt.' },
+          { value: 'B', label: 'Ein blaues Token wird hinzugefügt.' },
+          { value: 'C', label: 'Ein weiteres rotes Token wird hinzugefügt.' },
+          { value: 'D', label: 'Alle Tokens werden neu gemischt.' },
+        ],
+        solution: 'C',
+      },
+      {
+        id: 'ki2-c',
+        letter: 'C',
+        title: '',
+        quadrant: 'tl',
+        kind: 'choice',
+        prompt: 'Zusatzfrage: Was hat sich dadurch verändert?',
+        options: [
+          { value: 'A', label: 'Rot wird beim nächsten Mal sicher gewählt.' },
+          { value: 'B', label: 'Rot wird beim nächsten Mal wahrscheinlicher gewählt.' },
+          { value: 'C', label: 'Blau kann nicht mehr gewählt werden.' },
+          { value: 'D', label: 'Der Computer kennt jetzt die gesamte optimale Strategie.' },
+        ],
+        solution: 'B',
+      },
+      {
+        id: 'ki2-d',
+        letter: 'D',
+        title: 'Bringe die Schritte in die richtige Reihenfolge:',
+        quadrant: 'tl',
+        kind: 'sort',
+        interaction: 'drag',
+        sortJoin: 'pipe',
+        sortLayout: 'steps',
+        given: RL_STEPS_SCRAMBLED,
+        solution: RL_STEPS_ORDERED,
+      },
+      {
+        id: 'ki2-e',
+        letter: 'E',
+        title: '',
+        quadrant: 'tl',
+        kind: 'choice',
+        prompt:
+          'Was unterscheidet das Verfahren von klassischer KI? (AFB II) Welche Aussage beschreibt den wichtigsten Unterschied passend?',
+        options: [
+          { value: 'A', label: 'Bei klassischer KI muss der Computer nicht programmiert werden.' },
+          {
+            value: 'B',
+            label:
+              'Bei klassischer KI werden Wissen und Lösungsweg stärker vom Menschen vorgegeben, während das lernende System seine Strategie durch Erfahrungen verändert.',
+          },
+          { value: 'C', label: 'Maschinelles Lernen benötigt überhaupt keine Vorgaben vom Menschen.' },
+          { value: 'D', label: 'Nur klassische KI kann Entscheidungen treffen.' },
+        ],
+        solution: 'B',
+      },
+      {
+        id: 'ki2-f',
+        letter: 'F',
+        title: '',
+        quadrant: 'tl',
+        kind: 'choice',
+        prompt:
+          'Eine Schülerin schlägt vor: „Wenn ein Zug einmal zu einer Niederlage führt, sollte die KI diesen Zug einfach für immer löschen.“ Was spricht am stärksten dagegen?',
+        options: [
+          { value: 'A', label: 'Der Computer könnte dadurch langsamer rechnen.' },
+          {
+            value: 'B',
+            label:
+              'Ein Zug kann in einer Situation zu einer Niederlage geführt haben, obwohl er grundsätzlich trotzdem sinnvoll sein kann.',
+          },
+          { value: 'C', label: 'Eine KI darf keine Züge löschen.' },
+          { value: 'D', label: 'Dann würde der Mensch automatisch verlieren.' },
+        ],
+        solution: 'B',
+      },
+      {
+        id: 'ki2-g',
+        letter: 'G',
+        title: 'Bewerte jede Aussage einzeln für das Spiel Affenschach.',
+        quadrant: 'tl',
+        kind: 'choice',
+        prompt: 'Der Computer beginnt jede Partie mit einer bereits festgelegten optimalen Strategie.',
+        options: WAHR_FALSCH,
+        solution: 'F',
+      },
+      {
+        id: 'ki2-h',
+        letter: 'H',
+        title: '',
+        quadrant: 'tl',
+        kind: 'choice',
+        prompt: 'Die Farbe eines gezogenen Tokens bestimmt den Zug des Computers.',
+        options: WAHR_FALSCH,
+        solution: 'W',
+      },
+      {
+        id: 'ki2-i',
+        letter: 'I',
+        title: '',
+        quadrant: 'tl',
+        kind: 'choice',
+        prompt:
+          'Ein Zug, der zum Sieg führt, wird beim nächsten Auftreten der Situation wahrscheinlicher.',
+        options: WAHR_FALSCH,
+        solution: 'W',
+      },
+      {
+        id: 'ki2-j',
+        letter: 'J',
+        title: '',
+        quadrant: 'tl',
+        kind: 'choice',
+        prompt:
+          'Nach jeder Niederlage werden alle bisher gelernten Informationen gelöscht.',
+        options: WAHR_FALSCH,
+        solution: 'F',
+      },
+      {
+        id: 'ki2-k',
+        letter: 'K',
+        title: '',
+        quadrant: 'tl',
+        kind: 'multi-select',
+        prompt:
+          'Welche Situationen führen nach den Regeln von Minischach zu einem Sieg? (Mehrere Antworten sind richtig.)',
+        options: [
+          { value: 'A', label: 'Eine eigene Figur erreicht die gegenüberliegende Seite.' },
+          { value: 'B', label: 'Alle gegnerischen Figuren wurden geschlagen.' },
+          { value: 'C', label: 'Der Gegner kann keinen gültigen Zug mehr ausführen.' },
+          { value: 'D', label: 'Man besitzt nach fünf Zügen mehr Figuren als der Gegner.' },
+          { value: 'E', label: 'Man hat als Erste*r zwei gegnerische Figuren geschlagen.' },
+        ],
+        solution: 'A|B|C',
+      },
+      {
+        id: 'ki2-l',
+        letter: 'L',
+        title: '',
+        quadrant: 'tl',
+        kind: 'multi-select',
+        prompt:
+          'In einer Spielsituation liegen zunächst gleich viele rote und blaue Tokens vor. Rot führt mehrfach zum Sieg, Blau mehrfach zur Niederlage. Welche Aussagen können daraus folgen? (Mehrere Antworten sind richtig.)',
+        options: [
+          { value: 'A', label: 'Rot wird mit zunehmendem Training wahrscheinlich häufiger ausgewählt.' },
+          { value: 'B', label: 'Blau muss nach der ersten Niederlage vollständig ausgeschlossen werden.' },
+          {
+            value: 'C',
+            label: 'Die Wahrscheinlichkeit der verschiedenen Züge kann sich durch Erfahrungen verändern.',
+          },
+          { value: 'D', label: 'Rot wird irgendwann zwangsläufig bei jeder Partie zum Sieg führen.' },
+          {
+            value: 'E',
+            label: 'Das Verhalten des Computers kann sich verändern, obwohl die Spielregeln gleich bleiben.',
+          },
+        ],
+        solution: 'A|C|E',
+      },
+      {
+        id: 'ki2-m',
+        letter: 'M',
+        title: '',
+        quadrant: 'tl',
+        kind: 'multi-select',
+        prompt:
+          'Welche Rolle spielt der Mensch beim Lernverfahren „Verstärkendes Lernen“? (Mehrere Antworten sind richtig.)',
+        options: [
+          { value: 'A', label: 'Der Mensch legt die möglichen Spielregeln fest.' },
+          { value: 'B', label: 'Der Mensch muss dem Computer für jede Spielsituation den besten Zug nennen.' },
+          {
+            value: 'C',
+            label:
+              'Das Lernverfahren benötigt eine Form von Rückmeldung darüber, ob das Ergebnis günstig oder ungünstig war.',
+          },
+          {
+            value: 'D',
+            label: 'Der Mensch programmiert nicht für jede einzelne Spielsituation eine fertige Lösung.',
+          },
+          {
+            value: 'E',
+            label:
+              'Der Mensch spielt nach dem Start des Trainings überhaupt keine Rolle mehr, weil das System völlig unabhängig von menschlichen Vorgaben ist.',
+          },
+        ],
+        solution: 'A|C|D',
+      },
+      {
+        id: 'ki2-n',
+        letter: 'N',
+        title: '',
+        quadrant: 'tl',
+        kind: 'multi-select',
+        prompt:
+          'Ein anderes KI-System soll ebenfalls durch verstärkendes Lernen trainiert werden. Welche Szenarien passen grundsätzlich zu diesem Prinzip? (Mehrere Antworten sind richtig.)',
+        options: [
+          {
+            value: 'A',
+            label:
+              'Eine Spielfigur probiert verschiedene Wege durch ein Labyrinth und erhält eine Belohnung, wenn sie das Ziel erreicht.',
+          },
+          {
+            value: 'B',
+            label:
+              'Ein Roboter probiert unterschiedliche Bewegungen und erhält eine positive Rückmeldung, wenn er einen Gegenstand erfolgreich greift.',
+          },
+          {
+            value: 'C',
+            label:
+              'Ein Programm bekommt 5.000 Bilder, auf denen bereits „Hund“ oder „Katze“ steht, und lernt daraus die Unterscheidung.',
+          },
+          {
+            value: 'D',
+            label: 'Eine Spielfigur erhält Punkte dafür, möglichst weit durch ein Computerspiel zu kommen.',
+          },
+          {
+            value: 'E',
+            label:
+              'Ein Programm bekommt feste Regeln wie „Wenn Temperatur unter 18 Grad, dann Heizung einschalten“ und führt diese unverändert aus.',
+          },
+        ],
+        solution: 'A|B|D',
+      },
+    ],
+  };
+}

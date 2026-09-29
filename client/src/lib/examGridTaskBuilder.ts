@@ -578,6 +578,7 @@ export function demoNatuerlicheZahlenTask1(): ExamGridTaskSpec {
 }
 
 export { ki1QuizTask1 } from './ki1ExamTask1';
+export { ki1QuizTask2 } from './ki1ExamTask2';
 
 type BuiltField = { id: string; answers: string[]; solutionHtml: string };
 
