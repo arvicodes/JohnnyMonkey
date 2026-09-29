@@ -866,7 +866,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   const currentQ: InteractiveExerciseQuestion | null =
     topic && topic.questions[qi] ? topic.questions[qi] : null;
 
-  const writeInputRef = useRef<HTMLInputElement>(null);
+  const writeInputRef = useRef<HTMLInputElement | null>(null);
   const fillInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const convertInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
