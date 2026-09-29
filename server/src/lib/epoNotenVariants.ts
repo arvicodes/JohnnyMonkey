@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { EPO_VARIANT2_ID, EPO_VARIANT2_WEIGHTED_PRESET } from './epoNotenVariantPresets';
 
 export const EPO_VARIANTS_PATH = '__epo_noten_variants__';
 export const DEFAULT_EPO_VARIANT_ID = 'default';
@@ -35,18 +36,45 @@ export type EpoNotenVariantsStore = {
   variants: EpoNotenVariantSheet[];
 };
 
-export function defaultVariantsStore(): EpoNotenVariantsStore {
+const builtInVariant1 = (): EpoNotenVariantSheet =>
+  normalizeVariantSheet({
+    id: DEFAULT_EPO_VARIANT_ID,
+    name: 'Variante 1 (klassisch)',
+    studentCategories: DEFAULT_STUDENT,
+    teacherCategories: DEFAULT_TEACHER,
+  });
+
+const builtInVariant2 = (): EpoNotenVariantSheet =>
+  normalizeVariantSheet({
+    id: EPO_VARIANT2_ID,
+    name: EPO_VARIANT2_WEIGHTED_PRESET.name,
+    categoryTitles: EPO_VARIANT2_WEIGHTED_PRESET.categoryTitles,
+    categoryWeightsPercent: EPO_VARIANT2_WEIGHTED_PRESET.categoryWeightsPercent,
+    studentCategories: EPO_VARIANT2_WEIGHTED_PRESET.studentCategories,
+    teacherCategories: EPO_VARIANT2_WEIGHTED_PRESET.teacherCategories,
+  });
+
+export function builtInVariantsStore(): EpoNotenVariantsStore {
   return {
     version: 1,
-    variants: [
-      {
-        id: DEFAULT_EPO_VARIANT_ID,
-        name: 'Standard',
-        studentCategories: [...DEFAULT_STUDENT],
-        teacherCategories: [...DEFAULT_TEACHER],
-      },
-    ],
+    variants: [builtInVariant1(), builtInVariant2()],
   };
+}
+
+/** Feste Zettel — eingebaute Varianten immer mit aktuellem Text/Gewichtung. */
+export function ensureBuiltInVariants(store: EpoNotenVariantsStore): EpoNotenVariantsStore {
+  const builtIn = builtInVariantsStore();
+  const extra = store.variants.filter(
+    (v) => v.id !== DEFAULT_EPO_VARIANT_ID && v.id !== EPO_VARIANT2_ID,
+  );
+  return {
+    version: 1,
+    variants: [...builtIn.variants, ...extra],
+  };
+}
+
+export function defaultVariantsStore(): EpoNotenVariantsStore {
+  return builtInVariantsStore();
 }
 
 const normalizeLines = (raw: unknown, fallback: string[]): string[] => {
@@ -92,10 +120,7 @@ export function parseVariantsStore(raw: string | null | undefined): EpoNotenVari
         teacherCategories: normalizeLines(v.teacherCategories, DEFAULT_TEACHER),
       });
     }
-    if (!variants.some((v) => v.id === DEFAULT_EPO_VARIANT_ID)) {
-      variants.unshift(def.variants[0]);
-    }
-    return { version: 1, variants };
+    return ensureBuiltInVariants({ version: 1, variants });
   } catch {
     return def;
   }

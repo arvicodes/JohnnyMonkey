@@ -7,10 +7,11 @@ import {
   createVariantFromBase,
   normalizeVariantSheet,
   parseVariantsStore,
+  DEFAULT_EPO_VARIANT_ID,
   resolveVariant,
   type EpoNotenVariantsStore,
 } from '../lib/epoNotenVariants';
-import { EPO_VARIANT2_WEIGHTED_PRESET } from '../lib/epoNotenVariantPresets';
+import { EPO_VARIANT2_ID, EPO_VARIANT2_WEIGHTED_PRESET } from '../lib/epoNotenVariantPresets';
 import { epoRoundedPoints } from '../lib/epoNotenScoring';
 
 const prisma = new PrismaClient();
@@ -935,6 +936,9 @@ export class EpoNotenController {
 
       const variantId = String(req.params.variantId || '').trim();
       if (!variantId) return res.status(400).json({ error: 'variantId fehlt' });
+      if (variantId === DEFAULT_EPO_VARIANT_ID || variantId === EPO_VARIANT2_ID) {
+        return res.status(400).json({ error: 'Eingebaute Varianten sind fest vorgegeben' });
+      }
 
       const store = await loadVariantsStore(user.id);
       const idx = store.variants.findIndex((v) => v.id === variantId);
@@ -992,8 +996,8 @@ export class EpoNotenController {
       const variant =
         template === 'variant2'
           ? normalizeVariantSheet({
-              id: randomUUID(),
-              name,
+              id: EPO_VARIANT2_ID,
+              name: EPO_VARIANT2_WEIGHTED_PRESET.name,
               ...EPO_VARIANT2_WEIGHTED_PRESET,
             })
           : createVariantFromBase(store, name, copyFromId);
@@ -1013,8 +1017,8 @@ export class EpoNotenController {
       if (user.role !== 'TEACHER') return res.status(403).json({ error: 'Nur Lehrkräfte' });
 
       const variantId = String(req.params.variantId || '').trim();
-      if (!variantId || variantId === 'default') {
-        return res.status(400).json({ error: 'Standard-Variante kann nicht gelöscht werden' });
+      if (!variantId || variantId === DEFAULT_EPO_VARIANT_ID || variantId === EPO_VARIANT2_ID) {
+        return res.status(400).json({ error: 'Eingebaute Varianten können nicht gelöscht werden' });
       }
 
       const store = await loadVariantsStore(user.id);

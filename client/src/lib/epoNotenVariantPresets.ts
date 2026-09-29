@@ -1,6 +1,8 @@
+export const EPO_VARIANT2_ID = 'variant-2';
+
 /** Vorlage „Variante 2“ — gewichtete Bereiche (Summe 100 %). */
 export const EPO_VARIANT2_WEIGHTED_PRESET = {
-  name: 'Variante 2',
+  name: 'Variante 2 (gewichtet)',
   categoryTitles: [
     'Beiträge zum Unterricht',
     'Aufmerksamkeit und Zuhören',

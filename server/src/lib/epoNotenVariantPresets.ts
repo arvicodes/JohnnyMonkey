@@ -1,6 +1,8 @@
+export const EPO_VARIANT2_ID = 'variant-2';
+
 /** Gleiche Vorlage wie client/src/lib/epoNotenVariantPresets.ts */
 export const EPO_VARIANT2_WEIGHTED_PRESET = {
-  name: 'Variante 2',
+  name: 'Variante 2 (gewichtet)',
   categoryTitles: [
     'Beiträge zum Unterricht',
     'Aufmerksamkeit und Zuhören',

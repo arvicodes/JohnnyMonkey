@@ -25,7 +25,6 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PublishIcon from '@mui/icons-material/Publish';
-import TuneIcon from '@mui/icons-material/Tune';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import FormControl from '@mui/material/FormControl';
@@ -61,7 +60,7 @@ import {
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import DualStudentAvatars from '../DualStudentAvatars';
 import { EpoNotenCategoryGrid } from './EpoNotenCategoryGrid';
-import { EpoNotenVariantsDialog } from './EpoNotenVariantsDialog';
+import { EPO_VARIANT2_ID } from '../../lib/epoNotenVariantPresets';
 import {
   epoNotenCardSx,
   epoNotenCompactBtnSx,
@@ -126,8 +125,17 @@ export function EpoNotenTeacherView() {
   const [teacherCategories, setTeacherCategories] = useState<string[]>(EPO_NOTEN_TEACHER_CATEGORIES);
   const [categoryTitles, setCategoryTitles] = useState<string[]>([]);
   const [categoryWeightsPercent, setCategoryWeightsPercent] = useState<number[] | undefined>();
-  const [variantsOpen, setVariantsOpen] = useState(false);
   const [courseToAdd, setCourseToAdd] = useState('');
+
+  const variantOptions = useMemo(() => {
+    const builtIn = [
+      { id: 'default', name: 'Variante 1 (klassisch)' },
+      { id: EPO_VARIANT2_ID, name: 'Variante 2 (gewichtet)' },
+    ];
+    if (variants.length === 0) return builtIn;
+    const byId = new Map(variants.map((v) => [v.id, v]));
+    return builtIn.map((b) => ({ id: b.id, name: byId.get(b.id)?.name ?? b.name }));
+  }, [variants]);
 
   const loadVariants = useCallback(async () => {
     const res = await apiGetSafe('/api/epo-noten/variants');
@@ -942,30 +950,7 @@ export function EpoNotenTeacherView() {
                         borderLeft: `3px solid ${epoNotenPalette.primary}`,
                       }}
                     >
-                      <Stack direction="row" alignItems="center" gap={0.35} sx={{ mb: 0.5, width: '100%' }}>
-                        <FormControl size="small" fullWidth sx={{ minWidth: 0 }}>
-                          <InputLabel id="epo-round-variant-label" sx={{ fontSize: '0.7rem' }}>
-                            Variante
-                          </InputLabel>
-                          <Select
-                            labelId="epo-round-variant-label"
-                            label="Variante"
-                            value={roundForCourses.variantId || 'default'}
-                            onChange={(e) => void updateRoundVariant(String(e.target.value))}
-                            sx={{ fontSize: '0.72rem', height: 32, width: '100%' }}
-                          >
-                            {(variants.length > 0 ? variants : [{ id: 'default', name: 'Standard' }]).map((v) => (
-                              <MenuItem key={v.id} value={v.id} sx={{ fontSize: '0.78rem' }}>
-                                {v.name}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                        <Tooltip title="Variantenzettel">
-                          <IconButton size="small" onClick={() => setVariantsOpen(true)} sx={{ ...epoNotenCompactIconBtnSx, flexShrink: 0 }}>
-                            <TuneIcon sx={epoNotenCompactIconSx} />
-                          </IconButton>
-                        </Tooltip>
+                      <Stack direction="row" alignItems="center" justifyContent="flex-end" gap={0.35} sx={{ mb: 0.5, width: '100%' }}>
                         {!roundForCourses.publishedAt ? (
                           <Tooltip title="Runde freischalten">
                             <IconButton
@@ -1071,7 +1056,7 @@ export function EpoNotenTeacherView() {
                       </List>
 
                       {groups.some((g) => !roundForCourses.groupIds.includes(g.id)) && (
-                        <Box sx={{ mt: 0.5, pl: 0.5, width: 'calc(100% - 4px)' }}>
+                        <Box sx={{ mt: 1.35, pl: 0.5, width: 'calc(100% - 4px)' }}>
                           <Typography
                             component="label"
                             htmlFor="epo-add-course-select"
@@ -1157,6 +1142,40 @@ export function EpoNotenTeacherView() {
               </Box>
             ) : (
             <>
+            <Box
+              sx={{
+                px: 1.25,
+                pt: 1,
+                pb: 0.75,
+                bgcolor: '#fafbfc',
+                borderBottom: `1px solid ${epoNotenPalette.border}`,
+              }}
+            >
+              <Typography
+                component="label"
+                htmlFor="epo-round-variant-select"
+                sx={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, color: 'text.secondary', mb: 0.4 }}
+              >
+                EPO-Zettel (Variante)
+              </Typography>
+              <Select
+                id="epo-round-variant-select"
+                size="small"
+                fullWidth
+                value={round.variantId || 'default'}
+                onChange={(e) => void updateRoundVariant(String(e.target.value))}
+                sx={{ fontSize: '0.8rem', bgcolor: '#fff' }}
+              >
+                {variantOptions.map((v) => (
+                  <MenuItem key={v.id} value={v.id} sx={{ fontSize: '0.82rem' }}>
+                    {v.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', mt: 0.35, lineHeight: 1.25 }}>
+                Variante 2: gewichtete Bereiche (30 / 20 / 20 / 10 / 20 %), Du-Formulierung im Lehrerfeedback.
+              </Typography>
+            </Box>
             <Box
               sx={{
                 display: 'flex',
@@ -1847,14 +1866,6 @@ export function EpoNotenTeacherView() {
         </DialogActions>
       </Dialog>
 
-      <EpoNotenVariantsDialog
-        open={variantsOpen}
-        onClose={() => setVariantsOpen(false)}
-        onChanged={() => {
-          void loadVariants();
-          if (selectedId) void loadDetail(selectedId);
-        }}
-      />
     </Stack>
   );
 }
