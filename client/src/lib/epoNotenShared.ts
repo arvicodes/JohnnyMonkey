@@ -1,6 +1,13 @@
 /** Gemeinsame Texte & Notentabelle für EPO-Noten-Arbeitsblatt (digital). */
 
+import {
+  gradeTableForMaxPoints,
+  minPointsThresholdForTotalOnScale,
+  pointsOnScaleToGradeTendency,
+} from './gradeScale';
+
 export const EPO_NOTEN_CATEGORY_COUNT = 5;
+export const EPO_NOTEN_MAX_POINTS = 15;
 
 export const EPO_NOTEN_STUDENT_CATEGORIES: string[] = [
   'Ich trage häufig mit qualitativ passenden (nicht notwendigerweise richtigen!) Beiträgen zum Unterricht bei.',
@@ -18,22 +25,12 @@ export const EPO_NOTEN_TEACHER_CATEGORIES: string[] = [
   'Du verhältst dich im Unterricht angemessen ruhig, meldest dich, wenn du etwas sagen möchtest und sprichst nur, wenn du an der Reihe bist.',
 ];
 
-/** Punkte (0–15) → Schulnote (typische EPO-Tabelle, max. 15 Punkte). */
-export const EPO_NOTEN_POINTS_TO_GRADE: { minPoints: number; grade: string }[] = [
-  { minPoints: 14, grade: '1' },
-  { minPoints: 13, grade: '1−' },
-  { minPoints: 12, grade: '2+' },
-  { minPoints: 11, grade: '2' },
-  { minPoints: 10, grade: '2−' },
-  { minPoints: 9, grade: '3+' },
-  { minPoints: 8, grade: '3' },
-  { minPoints: 7, grade: '3−' },
-  { minPoints: 6, grade: '4+' },
-  { minPoints: 5, grade: '4' },
-  { minPoints: 4, grade: '4−' },
-  { minPoints: 3, grade: '5+' },
-  { minPoints: 0, grade: '5' },
-];
+/** Punkte (0–15) → Schulnote (Prozentregel auf 15-Punkte-Skala). */
+export const EPO_NOTEN_POINTS_TO_GRADE: { minPoints: number; grade: string }[] =
+  gradeTableForMaxPoints(EPO_NOTEN_MAX_POINTS).map((row) => ({
+    minPoints: row.minPoints,
+    grade: row.grade,
+  }));
 
 export function sumCategoryScores(scores: number[] | undefined | null): number {
   if (!Array.isArray(scores)) return 0;
@@ -94,23 +91,12 @@ export function emptyCategoryScores(): number[] {
   return Array.from({ length: EPO_NOTEN_CATEGORY_COUNT }, () => -1);
 }
 
-const pointsGradeRowsDesc = () =>
-  [...EPO_NOTEN_POINTS_TO_GRADE].sort((a, b) => b.minPoints - a.minPoints);
-
 export function gradeFromTotalPoints(total: number): string {
-  const t = Math.max(0, Math.min(15, Math.round(total)));
-  for (const row of pointsGradeRowsDesc()) {
-    if (t >= row.minPoints) return row.grade;
-  }
-  return '5';
+  return pointsOnScaleToGradeTendency(total, EPO_NOTEN_MAX_POINTS);
 }
 
 export function minPointsThresholdForTotal(total: number): number {
-  const t = Math.max(0, Math.min(15, Math.round(total)));
-  for (const row of pointsGradeRowsDesc()) {
-    if (t >= row.minPoints) return row.minPoints;
-  }
-  return 0;
+  return minPointsThresholdForTotalOnScale(total, EPO_NOTEN_MAX_POINTS);
 }
 
 export function normalizeCategoryScores(raw: unknown): number[] {

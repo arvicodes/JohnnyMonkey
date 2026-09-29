@@ -39,8 +39,7 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Tabl
 import { saveAs } from 'file-saver';
 import JSZip from 'jszip';
 import {
-  examGradeLabelForCorrection,
-  examGradeNumericForCorrection,
+  examGradeLabelFromPoints,
   formatExamClassAverageDecimal,
 } from '../lib/examGradeLabel';
 import { injectHandwritingFontsIntoDocument } from '../lib/handwritingFonts';
@@ -101,70 +100,9 @@ const getFirstName = (fullName: string): string => {
   return fullName.split(' ')[0];
 };
 
-// Notenberechnung (wie in gradeConverter.ts - korrekte Tendenzen)
 const calculateGrade = (achieved: number, total: number): { numeric: number; string: string } => {
-  if (total === 0) return { numeric: 0, string: '-' };
-
-  if (total === 14) {
-    return {
-      numeric: examGradeNumericForCorrection(achieved, 14),
-      string: examGradeLabelForCorrection(achieved, 14),
-    };
-  }
-  
-  const percentage = (achieved / total) * 100;
-  let grade: number;
-  let gradeString: string;
-  
-  // Verwende die gleiche Logik wie percentageToGrade in gradeConverter.ts
-  if (percentage >= 95.0) {
-    grade = 1.0;
-      gradeString = '1+';
-  } else if (percentage >= 90.0) {
-    grade = 1.3;
-      gradeString = '1-';
-  } else if (percentage >= 85.0) {
-    grade = 1.7;
-      gradeString = '2+';
-  } else if (percentage >= 80.0) {
-    grade = 2.0;
-      gradeString = '2';
-  } else if (percentage >= 75.0) {
-    grade = 2.3;
-    gradeString = '2-';
-  } else if (percentage >= 70.0) {
-    grade = 2.7;
-      gradeString = '3+';
-  } else if (percentage >= 65.0) {
-    grade = 3.0;
-      gradeString = '3';
-  } else if (percentage >= 60.0) {
-    grade = 3.3;
-    gradeString = '3-';
-  } else if (percentage >= 55.0) {
-    grade = 3.7;
-      gradeString = '4+';
-  } else if (percentage >= 50.0) {
-    grade = 4.0;
-      gradeString = '4';
-  } else if (percentage >= 45.0) {
-    grade = 4.3;
-    gradeString = '4-';
-  } else if (percentage >= 40.0) {
-    grade = 4.7;
-      gradeString = '5+';
-  } else if (percentage >= 35.0) {
-    grade = 5.0;
-    gradeString = '5';
-  } else if (percentage >= 20.0) {
-    grade = 5.3;
-      gradeString = '5-';
-  } else {
-    grade = 6.0;
-    gradeString = '6';
-  }
-  
-  return { numeric: grade, string: gradeString };
+  const { numeric, label } = examGradeLabelFromPoints(achieved, total);
+  return { numeric, string: label };
 };
 
 

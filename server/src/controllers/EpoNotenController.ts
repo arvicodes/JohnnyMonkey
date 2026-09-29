@@ -13,6 +13,7 @@ import {
 } from '../lib/epoNotenVariants';
 import { EPO_VARIANT2_ID, EPO_VARIANT2_WEIGHTED_PRESET } from '../lib/epoNotenVariantPresets';
 import { epoRoundedPoints } from '../lib/epoNotenScoring';
+import { pointsOnScaleToGradeTendency } from '../lib/gradeScale';
 
 const prisma = new PrismaClient();
 
@@ -22,30 +23,10 @@ const groupActivePath = (groupId: string) => `__epo_noten_g_${groupId}__`;
 
 const CATEGORY_COUNT = 5;
 
-const GRADE_TABLE: { minPoints: number; grade: string }[] = [
-  { minPoints: 14, grade: '1' },
-  { minPoints: 13, grade: '1−' },
-  { minPoints: 12, grade: '2+' },
-  { minPoints: 11, grade: '2' },
-  { minPoints: 10, grade: '2−' },
-  { minPoints: 9, grade: '3+' },
-  { minPoints: 8, grade: '3' },
-  { minPoints: 7, grade: '3−' },
-  { minPoints: 6, grade: '4+' },
-  { minPoints: 5, grade: '4' },
-  { minPoints: 4, grade: '4−' },
-  { minPoints: 3, grade: '5+' },
-  { minPoints: 0, grade: '5' },
-];
+const EPO_NOTEN_MAX_POINTS = 15;
 
-const gradeFromTotalPoints = (total: number): string => {
-  const t = Math.max(0, Math.min(15, Math.round(total)));
-  const table = [...GRADE_TABLE].sort((a, b) => b.minPoints - a.minPoints);
-  for (const row of table) {
-    if (t >= row.minPoints) return row.grade;
-  }
-  return '5';
-};
+const gradeFromTotalPoints = (total: number): string =>
+  pointsOnScaleToGradeTendency(total, EPO_NOTEN_MAX_POINTS);
 
 /** Wie Client: -1 = noch nicht gewählt, 0–3 = gewählt */
 const normalizeCategoryScores = (raw: unknown): number[] => {

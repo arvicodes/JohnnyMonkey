@@ -1,0 +1,24 @@
+# App-weite Notenskala (Prozent → Tendenz)
+
+**Immer** Punkte oder Prozent über `client/src/lib/gradeScale.ts` und `server/src/lib/gradeScale.ts` umrechnen (beide Dateien synchron halten). Keine lokalen `if (percentage >= …)`-Ketten für Schulnoten.
+
+| Prozent | Tendenz |
+| 95–100 % | 1 |
+| 90–&lt;95 % | 1− |
+| 85–&lt;90 % | 2+ |
+| 80–&lt;85 % | 2 |
+| 75–&lt;80 % | 2− |
+| 70–&lt;75 % | 3+ |
+| 65–&lt;70 % | 3 |
+| 60–&lt;65 % | 3− |
+| 55–&lt;60 % | 4+ |
+| 50–&lt;55 % | 4 |
+| 45–&lt;50 % | 4− |
+| 40–&lt;45 % | 5+ |
+| 30–&lt;40 % | 5 |
+| 20–&lt;30 % | 5− |
+| &lt;20 % | 6 |
+
+API: `percentageToGradeTendency`, `scoreToGradeTendency(achieved, maxPoints)`, `pointsOnScaleToGradeTendency` (EPO 0–15), `gradeTableForMaxPoints`, `percentageToMSSPoints`. Prüfungen: `examGradeLabel.ts` / `examGradeNumeric.ts`. Quiz: `gradeConverter.ts`.
+
+**Ausnahme:** Statische Prüfungs-HTML in `J-M-Reihen/**` nicht ohne ausdrücklichen Auftrag ändern (siehe Präsentations-Regel).

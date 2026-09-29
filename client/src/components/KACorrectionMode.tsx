@@ -68,6 +68,7 @@ import {
   examGradeNumericForCorrection,
   formatExamClassAverageDecimal,
 } from '../lib/examGradeLabel';
+import { gradePercentDisplayRanges, scoreToGradeTendency, tendencyToAsciiLabel } from '../lib/gradeScale';
 import { examBaseGitPath, normalizeVersionLetter, versionLetterFromKaPath } from '../lib/examVersionPaths';
 import { resetExamSession } from '../lib/examSessionReset';
 import ExamFullResetConfirmDialog from './exam/ExamFullResetConfirmDialog';
@@ -1468,57 +1469,17 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
 
   // Punkte-zu-Note-Zuordnung für Tooltip
   const getGradeScale = (total: number, currentPoints?: number): React.ReactNode => {
-    // Hilfsfunktion: Prüft ob ein Punktestand in einem Prozentbereich liegt
-    const isInRange = (points: number, minPercent: number, maxPercent: number): boolean => {
-      const percentage = (points / total) * 100;
-      return percentage >= minPercent && (maxPercent === 100 ? percentage <= maxPercent : percentage < maxPercent);
-    };
+    const currentGrade =
+      currentPoints !== undefined && total > 0
+        ? tendencyToAsciiLabel(scoreToGradeTendency(currentPoints, total))
+        : '';
 
-    // Bestimme welche Note der aktuelle Punktestand hat
-    let currentGrade = '';
-    if (currentPoints !== undefined) {
-      const percentage = (currentPoints / total) * 100;
-      if (percentage >= 97) currentGrade = '1+';
-      else if (percentage >= 95) currentGrade = '1';
-      else if (percentage >= 92) currentGrade = '1-';
-      else if (percentage >= 86) currentGrade = '2+';
-      else if (percentage >= 84) currentGrade = '2';
-      else if (percentage >= 81) currentGrade = '2-';
-      else if (percentage >= 72) currentGrade = '3+';
-      else if (percentage >= 70) currentGrade = '3';
-      else if (percentage >= 67) currentGrade = '3-';
-      else if (percentage >= 55) currentGrade = '4+';
-      else if (percentage >= 53) currentGrade = '4';
-      else if (percentage >= 50) currentGrade = '4-';
-      else if (percentage >= 35) currentGrade = '5+';
-      else if (percentage >= 33) currentGrade = '5';
-      else if (percentage >= 30) currentGrade = '5-';
-      else currentGrade = '6';
-    }
-
-    const ranges = [
-      { grade: '1+', minPercent: 97, maxPercent: 100 },
-      { grade: '1', minPercent: 95, maxPercent: 97 },
-      { grade: '1-', minPercent: 92, maxPercent: 95 },
-      { grade: '2+', minPercent: 86, maxPercent: 92 },
-      { grade: '2', minPercent: 84, maxPercent: 86 },
-      { grade: '2-', minPercent: 81, maxPercent: 84 },
-      { grade: '3+', minPercent: 72, maxPercent: 81 },
-      { grade: '3', minPercent: 70, maxPercent: 72 },
-      { grade: '3-', minPercent: 67, maxPercent: 70 },
-      { grade: '4+', minPercent: 55, maxPercent: 67 },
-      { grade: '4', minPercent: 53, maxPercent: 55 },
-      { grade: '4-', minPercent: 50, maxPercent: 53 },
-      { grade: '5+', minPercent: 35, maxPercent: 50 },
-      { grade: '5', minPercent: 33, maxPercent: 35 },
-      { grade: '5-', minPercent: 30, maxPercent: 33 },
-      { grade: '6', minPercent: 0, maxPercent: 30 }
-    ];
+    const ranges = gradePercentDisplayRanges();
 
     const scale = ranges.map((range) => {
       const minPoints = range.minPercent === 0 ? 0 : Math.ceil(total * (range.minPercent / 100));
       const maxPoints = range.maxPercent === 100 ? total : Math.floor(total * (range.maxPercent / 100));
-      const isCurrent = currentGrade === range.grade;
+      const isCurrent = currentGrade === range.label;
       return { range, minPoints, maxPoints, isCurrent };
     });
 
@@ -1526,11 +1487,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     const result: React.ReactNode[] = [];
     scale.forEach((item, index) => {
       const { range, minPoints, maxPoints, isCurrent } = item;
-      const lineContent = `${range.grade}: ${minPoints} - ${maxPoints} Punkte${isCurrent ? ' ← Aktuell' : ''}`;
+      const lineContent = `${range.label}: ${minPoints} - ${maxPoints} Punkte${isCurrent ? ' ← Aktuell' : ''}`;
       
       result.push(
         <Box
-          key={`grade-${range.grade}`}
+          key={`grade-${range.label}`}
           component="div"
           sx={{
             backgroundColor: isCurrent ? '#e3f2fd' : 'transparent',
@@ -1548,7 +1509,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       );
       
       // Leerzeile nach 1-, 2-, 3-, 4-, 5-
-      if (range.grade === '1-' || range.grade === '2-' || range.grade === '3-' || range.grade === '4-' || range.grade === '5-') {
+      if (range.label === '1-' || range.label === '2-' || range.label === '3-' || range.label === '4-' || range.label === '5-') {
         result.push(<Box key={`spacer-${index}`} component="div" sx={{ height: '4px', display: 'block', flexShrink: 0 }} />);
       }
     });
