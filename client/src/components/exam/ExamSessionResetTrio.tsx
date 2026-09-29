@@ -31,11 +31,7 @@ export default function ExamSessionResetTrio({
   onFullReset,
 }: Props) {
   return (
-    <Box
-      role="group"
-      aria-label="Prüfung zurücksetzen"
-      sx={{ flexShrink: 0, width: '100%', display: 'flex', justifyContent: 'flex-end' }}
-    >
+    <Box role="group" aria-label="Prüfung zurücksetzen" sx={{ flexShrink: 0 }}>
       <ButtonGroup
         disabled={disabled}
         size="small"

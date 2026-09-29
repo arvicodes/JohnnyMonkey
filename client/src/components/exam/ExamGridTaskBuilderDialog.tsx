@@ -417,18 +417,14 @@ export default function ExamGridTaskBuilderDialog({
               sx={{
                 mb: 1,
                 display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                gap: 0.75,
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 1,
                 width: '100%',
               }}
             >
-              <ExamSessionResetTrio
-                disabled={loading || saving || sessionResetBusy}
-                onRestartTimer={() => void handleRestartTimerForAll()}
-                onFullReset={() => setFullResetOpen(true)}
-              />
-              <Box sx={{ width: '100%', minWidth: 0 }}>
+              <Box sx={{ flex: '1 1 12rem', minWidth: 0 }}>
                 <ExamVersionTabsBar
                   compact
                   filePath={versionMetaPath}
@@ -437,6 +433,11 @@ export default function ExamGridTaskBuilderDialog({
                   onActiveFilePathChange={handleVersionPathChange}
                 />
               </Box>
+              <ExamSessionResetTrio
+                disabled={loading || saving || sessionResetBusy}
+                onRestartTimer={() => void handleRestartTimerForAll()}
+                onFullReset={() => setFullResetOpen(true)}
+              />
             </Box>
           ) : null}
 
