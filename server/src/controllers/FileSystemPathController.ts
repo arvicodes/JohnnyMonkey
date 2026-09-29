@@ -3364,7 +3364,7 @@ ${optionsHTML}
         .exam-mc-block .input-group.full-width label.exam-mc-option { display: flex; align-items: center; margin-bottom: 0; }
         .exam-mc-option { display: flex; align-items: center; gap: 0; line-height: 1.35; cursor: pointer; }
         .exam-mc-option input[type="checkbox"] {
-            width: 15px; height: 15px; min-width: 15px; margin: 0; margin-inline-end: 2%; padding: 0; flex-shrink: 0; vertical-align: middle;
+            width: 15px; height: 15px; min-width: 15px; margin: 0; margin-inline-start: 1%; margin-inline-end: 2%; padding: 0; flex-shrink: 0; vertical-align: middle;
             accent-color: #1565c0; cursor: pointer;
         }
         .exam-task-grid {

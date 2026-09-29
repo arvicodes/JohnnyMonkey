@@ -5,7 +5,6 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CloseIcon from '@mui/icons-material/Close';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
-import CheckIcon from '@mui/icons-material/Check';
 import {
   encouragementForStars,
   loadInteractiveExerciseProgress,
@@ -361,14 +360,6 @@ function blankCount(parts?: EquationPart[]): number {
 
 type FieldStatus = 'idle' | 'correct' | 'wrong' | 'revealed';
 
-const EVALUATION_MODES = new Set([
-  'write',
-  'equation',
-  'cloze',
-  'compare',
-  'lengthConvert',
-]);
-
 function scheduleInputFocus(el: HTMLInputElement | null) {
   if (!el || el.disabled) return;
   const run = () => {
@@ -388,47 +379,50 @@ function scheduleInputFocus(el: HTMLInputElement | null) {
   window.setTimeout(run, 320);
 }
 
-function EvaluateCornerButton({
+function WeiterButton({
   scale,
   disabled,
   onClick,
+  buttonRef,
 }: {
   scale: number;
   disabled?: boolean;
   onClick: () => void;
+  buttonRef?: React.Ref<HTMLButtonElement>;
 }) {
   return (
-    <Box
+    <Button
+      ref={buttonRef}
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (!disabled) onClick();
+        }
+      }}
       sx={{
-        position: 'sticky',
-        bottom: `${6 * scale}px`,
-        alignSelf: 'flex-end',
-        zIndex: 4,
-        mt: `${8 * scale}px`,
-        pointerEvents: 'none',
+        minHeight: `${28 * scale}px`,
+        py: `${2 * scale}px`,
+        px: `${10 * scale}px`,
+        fontSize: `${12 * scale}px`,
+        fontWeight: 700,
+        lineHeight: 1.2,
+        textTransform: 'none',
+        borderRadius: `${6 * scale}px`,
+        bgcolor: '#43A047',
+        color: '#fff',
+        boxShadow: 'none',
+        '&:hover': { bgcolor: '#388E3C' },
+        '&.Mui-disabled': {
+          bgcolor: 'rgba(0,0,0,0.12)',
+          color: 'rgba(0,0,0,0.38)',
+        },
       }}
     >
-      <Button
-        type="button"
-        disabled={disabled}
-        onClick={onClick}
-        aria-label="Auswertung"
-        sx={{
-          pointerEvents: 'auto',
-          minWidth: `${34 * scale}px`,
-          width: `${34 * scale}px`,
-          height: `${34 * scale}px`,
-          p: 0,
-          borderRadius: `${8 * scale}px`,
-          bgcolor: 'rgba(0,0,0,0.1)',
-          color: '#333',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-          '&:hover': { bgcolor: 'rgba(0,0,0,0.16)' },
-        }}
-      >
-        <CheckIcon sx={{ fontSize: `${20 * scale}px` }} />
-      </Button>
-    </Box>
+      Weiter
+    </Button>
   );
 }
 
@@ -699,6 +693,8 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   const solveRevealTimerRef = useRef<number | null>(null);
   const activeCompareIdxRef = useRef(0);
   const lengthConvertInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const weiterButtonRef = useRef<HTMLButtonElement | null>(null);
+  const initialFocusQuestionRef = useRef<string | null>(null);
 
   useEffect(() => {
     activeCompareIdxRef.current = activeCompareIdx;
@@ -878,6 +874,9 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
 
   useEffect(() => {
     if (phase !== 'play' || !interactive || locked || !currentQ) return;
+    const focusKey = `${currentQ.id}@${qi}`;
+    if (initialFocusQuestionRef.current === focusKey) return;
+    initialFocusQuestionRef.current = focusKey;
     const mode = currentQ.mode || 'choice';
     const t = window.setTimeout(() => {
       if (mode === 'write') scheduleInputFocus(writeInputRef.current);
@@ -886,7 +885,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
       else if (mode === 'lengthConvert') scheduleInputFocus(lengthConvertInputRefs.current[0]);
     }, 50);
     return () => window.clearTimeout(t);
-  }, [phase, qi, interactive, locked, currentQ?.id, currentQ?.mode, lengthConvertItems.length]);
+  }, [phase, qi, interactive, locked, currentQ?.id, currentQ?.mode]);
 
   const advanceAfterAnswer = (
     nextAnswers: Array<InteractiveExerciseAnswerCell | 'correct' | 'wrong' | null>,
@@ -984,6 +983,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     if (!currentQ) return;
     setLocked(false);
     setShowWrongBanner(false);
+    if (currentQ?.id) initialFocusQuestionRef.current = null;
     if (currentQ.mode === 'equation') {
       const n = blankCount(currentQ.equationParts);
       setFillValues(Array.from({ length: n }, () => ''));
@@ -1085,6 +1085,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setShowWrongBanner(false);
     setTypedAnswer('');
     setTypedStatus('idle');
+    if (currentQ?.id) initialFocusQuestionRef.current = null;
     scheduleInputFocus(writeInputRef.current);
   };
 
@@ -1227,6 +1228,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setCompareValues(Array.from({ length: compareItems.length }, () => ''));
     setCompareStatuses(Array.from({ length: compareItems.length }, () => 'idle'));
     setActiveCompareIdx(0);
+    if (currentQ.id) initialFocusQuestionRef.current = null;
     scheduleInputFocus(convertInputRefs.current[0]);
   };
 
@@ -1265,6 +1267,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setLocked(false);
     setShowWrongBanner(false);
     setLengthConvertStatuses(Array.from({ length: lengthConvertItems.length }, () => 'idle'));
+    if (currentQ.id) initialFocusQuestionRef.current = null;
     scheduleInputFocus(lengthConvertInputRefs.current[0]);
   };
 
@@ -1653,7 +1656,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                         component="input"
                         ref={(el: HTMLInputElement | null) => {
                           fillInputRefs.current[i] = el;
-                          if (i === 0) scheduleInputFocus(el);
                         }}
                         autoFocus={i === 0}
                         value={val}
@@ -1688,7 +1690,12 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                 })()}
               </Box>
               {interactive ? (
-                <ExerciseEvaluationScore scale={s} statuses={fillStatuses} />
+                <>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: `${12 * s}px` }}>
+                    <WeiterButton scale={s} disabled={locked} onClick={runEvaluation} />
+                  </Box>
+                  <ExerciseEvaluationScore scale={s} statuses={fillStatuses} />
+                </>
               ) : null}
             </Box>
           ) : null}
@@ -1782,7 +1789,12 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                 })}
               </Box>
               {interactive ? (
-                <ExerciseEvaluationScore scale={s} statuses={fillStatuses} />
+                <>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: `${16 * s}px` }}>
+                    <WeiterButton scale={s} disabled={locked} onClick={runEvaluation} />
+                  </Box>
+                  <ExerciseEvaluationScore scale={s} statuses={fillStatuses} />
+                </>
               ) : null}
             </Box>
           ) : null}
@@ -1889,7 +1901,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                                 component="input"
                                 ref={(el: HTMLInputElement | null) => {
                                   convertInputRefs.current[idx] = el;
-                                  if (idx === 0) scheduleInputFocus(el);
                                 }}
                                 autoFocus={idx === 0}
                                 value={convertValues[idx] || ''}
@@ -2035,6 +2046,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                       ))}
                     </Box>
                   ) : null}
+                  <WeiterButton scale={s} disabled={locked} onClick={runEvaluation} />
                   <ExerciseEvaluationScore
                     scale={s}
                     statuses={[...convertStatuses, ...compareStatuses]}
@@ -2079,7 +2091,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                         component="input"
                         ref={(el: HTMLInputElement | null) => {
                           lengthConvertInputRefs.current[idx] = el;
-                          if (idx === 0) scheduleInputFocus(el);
                         }}
                         autoFocus={idx === 0}
                         value={lengthConvertValues[idx] || ''}
@@ -2100,7 +2111,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                             nextInput.focus();
                             nextInput.select();
                           } else {
-                            submitLengthConvert();
+                            runEvaluation();
                           }
                         }}
                         sx={{
@@ -2128,23 +2139,41 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                 })}
               </Box>
               <Box
-                component="button"
-                type="button"
-                onClick={() => setLengthConvertHelpOpen((o) => !o)}
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: `${6 * s}px`,
-                  border: 'none',
-                  bgcolor: 'transparent',
-                  cursor: 'pointer',
-                  fontSize: `${14 * s}px`,
-                  fontWeight: 700,
+                  justifyContent: 'center',
+                  gap: `${10 * s}px`,
                   mb: `${6 * s}px`,
-                  color: '#333',
                 }}
               >
-                Hilfe {lengthConvertHelpOpen ? '▴' : '▾'}
+                <Box
+                  component="button"
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setLengthConvertHelpOpen((o) => !o)}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: `${6 * s}px`,
+                    border: 'none',
+                    bgcolor: 'transparent',
+                    cursor: 'pointer',
+                    fontSize: `${14 * s}px`,
+                    fontWeight: 700,
+                    color: '#333',
+                  }}
+                >
+                  Hilfe {lengthConvertHelpOpen ? '▴' : '▾'}
+                </Box>
+                {interactive ? (
+                  <WeiterButton
+                    scale={s}
+                    disabled={locked}
+                    onClick={runEvaluation}
+                    buttonRef={weiterButtonRef}
+                  />
+                ) : null}
               </Box>
               {lengthConvertHelpOpen ? (
                 <Box
@@ -2181,7 +2210,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                 component="input"
                 ref={(el: HTMLInputElement | null) => {
                   writeInputRef.current = el;
-                  scheduleInputFocus(el);
                 }}
                 autoFocus
                 value={typedAnswer}
@@ -2197,7 +2225,10 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                   setTypedStatus('idle');
                 }}
                 onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                  if (e.key === 'Enter') submitWrite();
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    runEvaluation();
+                  }
                 }}
                 placeholder="…"
                 sx={{
@@ -2232,16 +2263,21 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                 </Typography>
               ) : null}
               {interactive ? (
-                <ExerciseEvaluationScore
-                  scale={s}
-                  statuses={
-                    typedStatus === 'correct'
-                      ? ['correct']
-                      : typedStatus === 'wrong'
-                        ? ['wrong']
-                        : ['idle']
-                  }
-                />
+                <>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: `${12 * s}px` }}>
+                    <WeiterButton scale={s} disabled={locked} onClick={runEvaluation} />
+                  </Box>
+                  <ExerciseEvaluationScore
+                    scale={s}
+                    statuses={
+                      typedStatus === 'correct'
+                        ? ['correct']
+                        : typedStatus === 'wrong'
+                          ? ['wrong']
+                          : ['idle']
+                    }
+                  />
+                </>
               ) : null}
             </Box>
           ) : null}
@@ -2286,9 +2322,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
             </Box>
           ) : null}
 
-          {interactive && EVALUATION_MODES.has(mode) ? (
-            <EvaluateCornerButton scale={s} disabled={locked} onClick={runEvaluation} />
-          ) : null}
         </Box>
       </Box>
     );

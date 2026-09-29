@@ -39,6 +39,8 @@ export default function ExamSessionResetTrio({
         sx={{
           width: 'auto',
           flexShrink: 0,
+          transform: 'scale(0.95)',
+          transformOrigin: 'center center',
           '& .MuiButtonGroup-grouped': groupedBtn,
           '& .MuiButtonGroup-grouped:not(:last-of-type)': {
             borderRightColor: 'rgba(0,0,0,0.12)',
