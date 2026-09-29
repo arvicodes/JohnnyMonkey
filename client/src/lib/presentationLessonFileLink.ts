@@ -142,6 +142,69 @@ export async function fetchLessonFolderLinkableFiles(
   return files;
 }
 
+const JM_REIHEN_MARKER = '/J-M-Reihen/';
+
+/** Einheitlicher git-intern-Pfad für Material (Server + Folien). */
+export function toGitInternMaterialPath(filePath: string): string {
+  let p = normalizeFsPath(filePath);
+  if (!p) return p;
+  if (p.startsWith('git-intern//Users/')) {
+    p = p.replace(
+      'git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/',
+      'git-intern/',
+    );
+  }
+  if (p.startsWith('git-intern/')) return p;
+  if (p.startsWith('J-M-Reihen/')) return `git-intern/${p.slice('J-M-Reihen/'.length)}`;
+  const idx = p.indexOf(JM_REIHEN_MARKER);
+  if (idx >= 0) return `git-intern/${p.slice(idx + JM_REIHEN_MARKER.length)}`;
+  return p;
+}
+
+/**
+ * KA/KU/HU/QZ im Stundenordner (rekursiv) plus direkt in übergeordneten Ordnern
+ * (z. B. QZ im Themenordner „11-04 KI“, Stunde in „01 Basiswissen“).
+ */
+export async function fetchExamHtmlFilesForLesson(
+  lessonPath: string,
+  isExamName: (name: string) => boolean,
+): Promise<LessonFolderFsItem[]> {
+  const lesson = normalizeFsPath(lessonPath);
+  if (!lesson) return [];
+  const byPath = new Map<string, LessonFolderFsItem>();
+  const add = (items: LessonFolderFsItem[]) => {
+    for (const f of items) {
+      if (!/\.(html|htm)$/i.test(f.name) || !isExamName(f.name)) continue;
+      byPath.set(toGitInternMaterialPath(f.path), {
+        ...f,
+        path: toGitInternMaterialPath(f.path),
+      });
+    }
+  };
+
+  add(await fetchLessonFolderLinkableFiles(lesson));
+
+  let folder: string | null = parentFolderPath(lesson);
+  for (let depth = 0; depth < 4 && folder && folder !== PRESENTATION_FILE_BROWSER_ROOT; depth += 1) {
+    const listing = await fetchFolderBrowseListing(folder);
+    add(listing.files);
+    folder = parentFolderPath(folder);
+  }
+
+  return [...byPath.values()].sort((a, b) =>
+    a.name.localeCompare(b.name, 'de', { sensitivity: 'base', numeric: true }),
+  );
+}
+
+export function examFileMenuLabel(filePath: string, lessonPath: string, fileName: string): string {
+  const lesson = normalizeFsPath(lessonPath);
+  const file = normalizeFsPath(filePath);
+  const base = (fileName || '').replace(/\.(html|htm)$/i, '');
+  if (lesson && file.startsWith(`${lesson}/`)) return base;
+  const rel = lessonFileDisplayLabel(file, lesson || '');
+  return rel.includes('/') ? rel : `↗ ${rel}`;
+}
+
 export type FolderBrowseListing = {
   folders: LessonFolderFsItem[];
   files: LessonFolderFsItem[];

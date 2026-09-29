@@ -48,6 +48,7 @@ const mammoth_1 = __importDefault(require("mammoth"));
 const XLSX = __importStar(require("xlsx"));
 const libreoffice_convert_1 = require("libreoffice-convert");
 const examVersionPaths_1 = require("../lib/examVersionPaths");
+const examAutoPoints_1 = require("../utils/examAutoPoints");
 const prisma = new client_1.PrismaClient();
 const DEV_PROJECT_ROOT = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
 class FileSystemPathController {
@@ -2608,24 +2609,13 @@ KRITISCH WICHTIG:
             if (!filePath || typeof filePath !== 'string') {
                 return res.status(400).json({ error: 'filePath ist erforderlich' });
             }
-            // Lese die HTML-Datei
-            let fullFilePath;
-            if (filePath.startsWith('git-intern/')) {
-                const relativePath = filePath.replace('git-intern/', '');
-                if (process.env.NODE_ENV === 'production') {
-                    const jmReihenPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
-                    fullFilePath = path_1.default.join(jmReihenPath, relativePath);
-                }
-                else {
-                    const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
-                    fullFilePath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
-                }
+            let fp = String(filePath).replace(/\\/g, '/').trim();
+            if (fp.startsWith('git-intern//Users/')) {
+                fp = fp.replace('git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/', 'git-intern/');
             }
-            else {
-                fullFilePath = path_1.default.resolve(filePath);
-            }
+            const fullFilePath = (0, examAutoPoints_1.resolveExamHtmlPath)(fp);
             if (!fs_1.default.existsSync(fullFilePath)) {
-                return res.status(404).json({ error: 'Datei nicht gefunden' });
+                return res.status(404).json({ error: 'Datei nicht gefunden', requested: fp });
             }
             const htmlContent = fs_1.default.readFileSync(fullFilePath, 'utf-8');
             // Extrahiere den Titel
@@ -2762,24 +2752,13 @@ KRITISCH WICHTIG:
             if (!filePath || !taskNumber || !questionText) {
                 return res.status(400).json({ error: 'filePath, taskNumber und questionText sind erforderlich' });
             }
-            // Lese die HTML-Datei
-            let fullFilePath;
-            if (filePath.startsWith('git-intern/')) {
-                const relativePath = filePath.replace('git-intern/', '');
-                if (process.env.NODE_ENV === 'production') {
-                    const jmReihenPath = path_1.default.join(process.cwd(), 'J-M-Reihen');
-                    fullFilePath = path_1.default.join(jmReihenPath, relativePath);
-                }
-                else {
-                    const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
-                    fullFilePath = path_1.default.join(projectRoot, 'J-M-Reihen', relativePath);
-                }
+            let fp = String(filePath).replace(/\\/g, '/').trim();
+            if (fp.startsWith('git-intern//Users/')) {
+                fp = fp.replace('git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/', 'git-intern/');
             }
-            else {
-                fullFilePath = path_1.default.resolve(filePath);
-            }
+            const fullFilePath = (0, examAutoPoints_1.resolveExamHtmlPath)(fp);
             if (!fs_1.default.existsSync(fullFilePath)) {
-                return res.status(404).json({ error: 'Datei nicht gefunden' });
+                return res.status(404).json({ error: 'Datei nicht gefunden', requested: fp });
             }
             let htmlContent = fs_1.default.readFileSync(fullFilePath, 'utf-8');
             // Finde die Aufgabe mit der angegebenen Nummer

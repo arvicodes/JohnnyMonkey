@@ -30,6 +30,7 @@ import {
   writeExamHtmlFullPath,
   writeExamVersionsMeta,
 } from '../lib/examVersionPaths';
+import { resolveExamHtmlPath } from '../utils/examAutoPoints';
 
 const prisma = new PrismaClient();
 const DEV_PROJECT_ROOT = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
@@ -3019,23 +3020,17 @@ KRITISCH WICHTIG:
         return res.status(400).json({ error: 'filePath ist erforderlich' });
       }
 
-      // Lese die HTML-Datei
-      let fullFilePath: string;
-      if (filePath.startsWith('git-intern/')) {
-        const relativePath = filePath.replace('git-intern/', '');
-        if (process.env.NODE_ENV === 'production') {
-          const jmReihenPath = path.join(process.cwd(), 'J-M-Reihen');
-          fullFilePath = path.join(jmReihenPath, relativePath);
-        } else {
-          const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
-          fullFilePath = path.join(projectRoot, 'J-M-Reihen', relativePath);
-        }
-      } else {
-        fullFilePath = path.resolve(filePath);
+      let fp = String(filePath).replace(/\\/g, '/').trim();
+      if (fp.startsWith('git-intern//Users/')) {
+        fp = fp.replace(
+          'git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/',
+          'git-intern/',
+        );
       }
+      const fullFilePath = resolveExamHtmlPath(fp);
 
       if (!fs.existsSync(fullFilePath)) {
-        return res.status(404).json({ error: 'Datei nicht gefunden' });
+        return res.status(404).json({ error: 'Datei nicht gefunden', requested: fp });
       }
 
       const htmlContent = fs.readFileSync(fullFilePath, 'utf-8');
@@ -3193,23 +3188,17 @@ KRITISCH WICHTIG:
         return res.status(400).json({ error: 'filePath, taskNumber und questionText sind erforderlich' });
       }
 
-      // Lese die HTML-Datei
-      let fullFilePath: string;
-      if (filePath.startsWith('git-intern/')) {
-        const relativePath = filePath.replace('git-intern/', '');
-        if (process.env.NODE_ENV === 'production') {
-          const jmReihenPath = path.join(process.cwd(), 'J-M-Reihen');
-          fullFilePath = path.join(jmReihenPath, relativePath);
-        } else {
-          const projectRoot = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
-          fullFilePath = path.join(projectRoot, 'J-M-Reihen', relativePath);
-        }
-      } else {
-        fullFilePath = path.resolve(filePath);
+      let fp = String(filePath).replace(/\\/g, '/').trim();
+      if (fp.startsWith('git-intern//Users/')) {
+        fp = fp.replace(
+          'git-intern//Users/verachrist/Documents/MEINE_APP/JohnnyMonkey/J-M-Reihen/',
+          'git-intern/',
+        );
       }
+      const fullFilePath = resolveExamHtmlPath(fp);
 
       if (!fs.existsSync(fullFilePath)) {
-        return res.status(404).json({ error: 'Datei nicht gefunden' });
+        return res.status(404).json({ error: 'Datei nicht gefunden', requested: fp });
       }
 
       let htmlContent = fs.readFileSync(fullFilePath, 'utf-8');

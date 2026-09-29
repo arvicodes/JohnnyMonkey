@@ -24,7 +24,9 @@ import {
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import {
-  fetchLessonFolderLinkableFiles,
+  examFileMenuLabel,
+  fetchExamHtmlFilesForLesson,
+  toGitInternMaterialPath,
   type LessonFolderFsItem,
 } from '../../lib/presentationLessonFileLink';
 import { isLessonCorrectionFileName } from '../../lib/openLessonFolderFile';
@@ -135,7 +137,7 @@ const PresentationSlideExamBox: React.FC<Props> = ({
   const [examEditPath, setExamEditPath] = useState('');
 
   const canEdit = typeof onChange === 'function';
-  const examPath = (exam?.path || '').replace(/\\/g, '/');
+  const examPath = toGitInternMaterialPath((exam?.path || '').replace(/\\/g, '/'));
   const activeGroupIds =
     targetGroupIds.length > 0
       ? targetGroupIds
@@ -177,10 +179,8 @@ const PresentationSlideExamBox: React.FC<Props> = ({
     }
     setLoadingFiles(true);
     try {
-      const all = await fetchLessonFolderLinkableFiles(lessonPath);
-      setExamFiles(
-        all.filter((f) => /\.(html|htm)$/i.test(f.name) && isLessonCorrectionFileName(f.name)),
-      );
+      const files = await fetchExamHtmlFilesForLesson(lessonPath, isLessonCorrectionFileName);
+      setExamFiles(files);
     } catch {
       setExamFiles([]);
     } finally {
@@ -251,7 +251,10 @@ const PresentationSlideExamBox: React.FC<Props> = ({
   }, [activeGroupIds.join('|')]);
 
   const attach = (file: { path: string; name: string }) => {
-    onChange?.({ path: file.path.replace(/\\/g, '/'), name: file.name });
+    onChange?.({
+      path: toGitInternMaterialPath(file.path.replace(/\\/g, '/')),
+      name: file.name,
+    });
     setAddAnchor(null);
     onMessage?.(`Prüfung „${examLabel(file.name)}“ an diese Folie gehängt`);
   };
@@ -435,7 +438,7 @@ const PresentationSlideExamBox: React.FC<Props> = ({
       </MenuItem>
       <Divider />
       <MenuItem disabled sx={{ opacity: 1, fontSize: '0.72rem', whiteSpace: 'normal', maxWidth: 280 }}>
-        Vorhandene Dateien aus diesem Stundenordner (KA_/KU_/HU_/QZ_)
+        Vorhandene Prüfungs-HTML (Stundenordner und übergeordnete Ordner)
       </MenuItem>
       {loadingFiles ? (
         <MenuItem disabled>Lade Prüfungsdateien…</MenuItem>
@@ -444,7 +447,7 @@ const PresentationSlideExamBox: React.FC<Props> = ({
       ) : (
         examFiles.map((f) => (
           <MenuItem key={f.path} onClick={() => attach(f)}>
-            {examLabel(f.name)}
+            {examFileMenuLabel(f.path, lessonPath || '', f.name)}
           </MenuItem>
         ))
       )}
