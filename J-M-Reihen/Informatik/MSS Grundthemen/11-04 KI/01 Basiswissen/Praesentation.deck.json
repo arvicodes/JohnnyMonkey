@@ -2,7 +2,7 @@
   "version": 1,
   "title": "01 Basiswissen",
   "lessonPath": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen",
-  "updatedAt": "2026-09-14T09:23:11.384Z",
+  "updatedAt": "2026-09-29T20:12:30.584Z",
   "slides": [
     {
       "layout": "title-slide",
@@ -2433,6 +2433,45 @@
       "order": 33,
       "sourceLessonName": "01.06 DRAUßEN? Backup Idee",
       "sourceLessonPath": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen"
+    },
+    {
+      "id": "slide-1790712744350-q5r2v",
+      "order": 34,
+      "speakerNotes": "",
+      "layout": "blank",
+      "subtitle": "",
+      "bodyLeft": "",
+      "bodyRight": "",
+      "imagePath": "",
+      "imageCaption": "",
+      "bodyStyle": "plain",
+      "titleAlign": "left",
+      "accentColor": "#2E7D32",
+      "title": "",
+      "body": "",
+      "hiddenLayoutZones": [
+        "bodyHtml"
+      ],
+      "sourceLessonName": "01.06 DRAUßEN? Backup Idee",
+      "titleHtml": "",
+      "bodyHtml": "",
+      "subtitleHtml": "",
+      "bodyLeftHtml": "",
+      "bodyRightHtml": "",
+      "imageCaptionHtml": "",
+      "speakerNotesHtml": "<p><br></p>",
+      "preparationNotes": "",
+      "preparationHtml": "<p><br></p>",
+      "materialNotes": "",
+      "materialHtml": "<p><br></p>",
+      "elements": [],
+      "transition": "fade",
+      "revealEnabled": true,
+      "zoneRevealSteps": {},
+      "slideExam": {
+        "path": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/QZ_KI Basis.html",
+        "name": "QZ_KI Basis.html"
+      }
     }
   ],
   "defaultTransition": "fade",
