@@ -675,6 +675,27 @@ function examMcHeadingHtml(letter: string, prompt: string): string {
   return `<div class="exam-subsection-title">${label} ${allowBasicHtml(prompt)}</div>`;
 }
 
+const WF_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
+
+function wahrFalschRomanLabel(index: number): string {
+  const n = index + 1;
+  return n > 0 && n < WF_ROMAN.length ? WF_ROMAN[n] : String(n);
+}
+
+function isWahrFalschOptions(options: { value: string; label: string }[]): boolean {
+  if (options.length !== 2) return false;
+  const vals = options.map((o) => String(o.value).trim().toUpperCase()).sort();
+  return vals[0] === 'F' && vals[1] === 'W';
+}
+
+const WAHR_FALSCH_OPTS_HTML =
+  '<label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label>' +
+  '<label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label>';
+
+function renderWahrFalschInlineRow(labelHtml: string, textHtml: string, id: string): string {
+  return `<div class="exam-wf-item item input-group exam-wf-row"><span class="exam-wf-roman">${labelHtml}</span><span class="exam-wf-text">${textHtml}</span><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="${id}">${WAHR_FALSCH_OPTS_HTML}</div><input type="hidden" id="${id}" value=""></div>`;
+}
+
 function fieldId(sub: { answerId?: string }, taskNumber: number, fieldIndex: { n: number }): string {
   if (sub.answerId?.trim()) return sub.answerId.trim();
   return allocId(taskNumber, fieldIndex.n++);
@@ -782,19 +803,25 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
           `<label class="exam-mc-option"><input type="checkbox" value="${escapeHtml(o.value)}"> ${allowBasicHtml(o.label)}</label>`,
       )
       .join('');
-    body = `<div class="item input-group full-width exam-mc-block">${heading}<div class="exam-mc-options exam-mc-single-select" data-answer-id="${id}">${opts}</div><input type="hidden" id="${id}" value=""></div>`;
+    if (isWahrFalschOptions(sub.options)) {
+      const letterLabel = sub.letter
+        ? `<span class="item-label">${escapeHtml(sub.letter)})</span>`
+        : '';
+      body = `<div class="item input-group full-width exam-mc-block exam-wf-choice-wrap"><div class="exam-wf-group">${renderWahrFalschInlineRow(letterLabel, allowBasicHtml(sub.prompt), id)}</div></div>`;
+    } else {
+      body = `<div class="item input-group full-width exam-mc-block">${heading}<div class="exam-mc-options exam-mc-single-select" data-answer-id="${id}">${opts}</div><input type="hidden" id="${id}" value=""></div>`;
+    }
   } else if (sub.kind === 'wahr-falsch-group') {
-    const wfOpts =
-      '<label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label>' +
-      '<label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label>';
-    const rows = sub.items.map((item) => {
+    const rows = sub.items.map((item, i) => {
       const id = allocId(taskNumber, fieldIndex.n++);
       fields.push({
         id,
         answers: [item.solution],
         solutionHtml: `<strong>${item.solution === 'W' ? 'Wahr' : 'Falsch'}</strong>`,
       });
-      return `<div class="exam-wf-item item input-group full-width exam-mc-block"><p class="exam-wf-prompt" style="margin:0 0 6px;">${allowBasicHtml(item.text)}</p><div class="exam-mc-options exam-mc-single-select" data-answer-id="${id}">${wfOpts}</div><input type="hidden" id="${id}" value=""></div>`;
+      const roman = `<span class="item-label">${wahrFalschRomanLabel(i)}.</span>`;
+      const text = allowBasicHtml(String(item.text || '').replace(/^[a-d]\)\s*/i, ''));
+      return renderWahrFalschInlineRow(roman, text, id);
     });
     body = `<div class="exam-wf-group">${rows.join('')}</div>`;
   } else if (sub.kind === 'multi-select') {
@@ -1173,7 +1200,7 @@ export function buildExamGridTaskHtml(spec: ExamGridTaskSpec): {
     built.fields.forEach((f, i) => {
       const subLabel =
         sub.kind === 'round-lines' || sub.kind === 'bullet-blanks' || sub.kind === 'wahr-falsch-group'
-          ? `${sub.letter} ${String.fromCharCode(97 + i)})`
+          ? `${sub.letter} ${sub.kind === 'wahr-falsch-group' ? wahrFalschRomanLabel(i) : String.fromCharCode(97 + i)})`
           : sub.letter
             ? `${sub.letter})`
             : '—';
@@ -1328,9 +1355,9 @@ function parseSubsection(
   const wfGroup = subEl.querySelector('.exam-wf-group');
   if (wfGroup) {
     const items = Array.from(wfGroup.querySelectorAll('.exam-wf-item')).map((row) => {
-      const wrap = row.querySelector('.exam-mc-single-select[data-answer-id]');
+      const wrap = row.querySelector('.exam-mc-single-select[data-answer-id], .exam-mc-wf-inline[data-answer-id]');
       const answerId = wrap?.getAttribute('data-answer-id') || '';
-      const promptEl = row.querySelector('.exam-wf-prompt');
+      const promptEl = row.querySelector('.exam-wf-text');
       const text = (promptEl?.textContent || '').trim();
       const raw = answersToSolutionField(answers, answerId);
       const solution = raw === 'F' ? 'F' : 'W';

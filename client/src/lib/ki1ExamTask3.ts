@@ -120,19 +120,19 @@ export function ki1QuizTask3(): ExamGridTaskSpec {
         kind: 'wahr-falsch-group',
         items: [
           {
-            text: 'a) Bei einer Explorationsrate von 0 werden keine zufälligen Aktionen aufgrund der Exploration gewählt.',
+            text: 'Bei einer Explorationsrate von 0 werden keine zufälligen Aktionen aufgrund der Exploration gewählt.',
             solution: 'W',
           },
           {
-            text: 'b) Eine hohe Explorationsrate kann dazu führen, dass ein bereits recht guter Agent trotzdem ungewöhnliche Aktionen ausprobiert.',
+            text: 'Eine hohe Explorationsrate kann dazu führen, dass ein bereits recht guter Agent trotzdem ungewöhnliche Aktionen ausprobiert.',
             solution: 'W',
           },
           {
-            text: 'c) Je höher die Explorationsrate ist, desto häufiger wählt der Agent automatisch die momentan beste bekannte Aktion.',
+            text: 'Je höher die Explorationsrate ist, desto häufiger wählt der Agent automatisch die momentan beste bekannte Aktion.',
             solution: 'F',
           },
           {
-            text: 'd) Exploration kann sinnvoll sein, weil der Agent dadurch neue Handlungsalternativen entdeckt.',
+            text: 'Exploration kann sinnvoll sein, weil der Agent dadurch neue Handlungsalternativen entdeckt.',
             solution: 'W',
           },
         ],

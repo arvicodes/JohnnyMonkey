@@ -3367,6 +3367,33 @@ ${optionsHTML}
             width: 15px; height: 15px; min-width: 15px; margin: 0; margin-inline-start: 1%; margin-inline-end: 2%; padding: 0; flex-shrink: 0; vertical-align: middle;
             accent-color: #1565c0; cursor: pointer;
         }
+        .exam-wf-group { text-align: left; width: 100%; }
+        .exam-wf-row {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 8px 20px;
+            margin: 10px 0;
+            text-align: left;
+            width: 100%;
+        }
+        .exam-wf-roman { flex-shrink: 0; min-width: 2em; text-align: left; }
+        .exam-wf-text { flex: 1 1 14em; min-width: 0; font-weight: 600; line-height: 1.45; text-align: left; }
+        .exam-mc-wf-inline {
+            display: inline-flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: 28px;
+            width: auto;
+            flex-shrink: 0;
+            margin: 0;
+        }
+        .exam-wf-row .exam-mc-option { white-space: nowrap; }
+        .exam-task-stack .exam-wf-group,
+        .exam-task-stack .exam-wf-row { text-align: left; }
         .exam-task-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
