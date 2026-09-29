@@ -1276,19 +1276,19 @@ export function createLengthsClass5Exercise(): SlideInteractiveExercise {
         questions: [
           lengthConvertPage(
             'len-cv-1',
-            'Umrechnen (1/3) – leicht',
+            'Umrechnen (1/3)',
             LENGTH_CONVERT_EASY,
             'Zuerst in die kleinere Einheit umrechnen (× 10 oder × 1 000).',
           ),
           lengthConvertPage(
             'len-cv-2',
-            'Umrechnen (2/3) – mittel',
+            'Umrechnen (2/3)',
             LENGTH_CONVERT_MEDIUM,
             'Achte auf Kommastellen und mehrere Schritte.',
           ),
           lengthConvertPage(
             'len-cv-3',
-            'Umrechnen (3/3) – schwer',
+            'Umrechnen (3/3)',
             LENGTH_CONVERT_HARD,
             'Auch größere Sprünge (z. B. km und mm).',
           ),
@@ -1301,19 +1301,19 @@ export function createLengthsClass5Exercise(): SlideInteractiveExercise {
         questions: [
           lengthConvertPage(
             'len-add-1',
-            'Addition (1/3) – leicht',
+            'Addition (1/3)',
             LENGTH_ADD_EASY,
             'Beide Terme in dieselbe Einheit bringen, dann addieren.',
           ),
           lengthConvertPage(
             'len-add-2',
-            'Addition (2/3) – schwer',
+            'Addition (2/3)',
             LENGTH_ADD_HARD,
             'Ergebnis oft eine kleine Dezimalzahl – Komma beachten.',
           ),
           lengthConvertPage(
             'len-add-3',
-            'Addition (3/3) – gemischt',
+            'Addition (3/3)',
             LENGTH_ADD_EXTRA,
             'Kombiniere Umrechnen und Addieren.',
           ),

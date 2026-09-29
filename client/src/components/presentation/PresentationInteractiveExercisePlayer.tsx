@@ -694,7 +694,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   const activeCompareIdxRef = useRef(0);
   const lengthConvertInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const weiterButtonRef = useRef<HTMLButtonElement | null>(null);
-  const initialFocusQuestionRef = useRef<string | null>(null);
 
   useEffect(() => {
     activeCompareIdxRef.current = activeCompareIdx;
@@ -866,26 +865,38 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   const fillInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const convertInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  useEffect(() => {
-    fillInputRefs.current = [];
-    convertInputRefs.current = [];
-    lengthConvertInputRefs.current = [];
-  }, [qi, currentQ?.id]);
+  const focusPrimaryInput = useCallback((q: InteractiveExerciseQuestion | null) => {
+    if (!q) return;
+    const mode = q.mode || 'choice';
+    const target =
+      mode === 'write'
+        ? writeInputRef.current
+        : mode === 'equation'
+          ? fillInputRefs.current[0]
+          : mode === 'compare'
+            ? convertInputRefs.current[0]
+            : mode === 'lengthConvert'
+              ? lengthConvertInputRefs.current[0]
+              : null;
+    scheduleInputFocus(target);
+  }, []);
 
   useEffect(() => {
-    if (phase !== 'play' || !interactive || locked || !currentQ) return;
-    const focusKey = `${currentQ.id}@${qi}`;
-    if (initialFocusQuestionRef.current === focusKey) return;
-    initialFocusQuestionRef.current = focusKey;
+    if (phase !== 'play' || !currentQ || locked) return;
     const mode = currentQ.mode || 'choice';
-    const t = window.setTimeout(() => {
-      if (mode === 'write') scheduleInputFocus(writeInputRef.current);
-      else if (mode === 'equation') scheduleInputFocus(fillInputRefs.current[0]);
-      else if (mode === 'compare') scheduleInputFocus(convertInputRefs.current[0]);
-      else if (mode === 'lengthConvert') scheduleInputFocus(lengthConvertInputRefs.current[0]);
-    }, 50);
-    return () => window.clearTimeout(t);
-  }, [phase, qi, interactive, locked, currentQ?.id, currentQ?.mode]);
+    if (
+      mode !== 'write' &&
+      mode !== 'equation' &&
+      mode !== 'compare' &&
+      mode !== 'lengthConvert'
+    ) {
+      return;
+    }
+    const timers = [0, 60, 150, 320].map((ms) =>
+      window.setTimeout(() => focusPrimaryInput(currentQ), ms),
+    );
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, [phase, qi, locked, currentQ, currentQ?.id, currentQ?.mode, focusPrimaryInput, lengthConvertItems.length]);
 
   const advanceAfterAnswer = (
     nextAnswers: Array<InteractiveExerciseAnswerCell | 'correct' | 'wrong' | null>,
@@ -983,7 +994,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     if (!currentQ) return;
     setLocked(false);
     setShowWrongBanner(false);
-    if (currentQ?.id) initialFocusQuestionRef.current = null;
     if (currentQ.mode === 'equation') {
       const n = blankCount(currentQ.equationParts);
       setFillValues(Array.from({ length: n }, () => ''));
@@ -1085,7 +1095,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setShowWrongBanner(false);
     setTypedAnswer('');
     setTypedStatus('idle');
-    if (currentQ?.id) initialFocusQuestionRef.current = null;
     scheduleInputFocus(writeInputRef.current);
   };
 
@@ -1228,7 +1237,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setCompareValues(Array.from({ length: compareItems.length }, () => ''));
     setCompareStatuses(Array.from({ length: compareItems.length }, () => 'idle'));
     setActiveCompareIdx(0);
-    if (currentQ.id) initialFocusQuestionRef.current = null;
     scheduleInputFocus(convertInputRefs.current[0]);
   };
 
@@ -1267,7 +1275,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setLocked(false);
     setShowWrongBanner(false);
     setLengthConvertStatuses(Array.from({ length: lengthConvertItems.length }, () => 'idle'));
-    if (currentQ.id) initialFocusQuestionRef.current = null;
     scheduleInputFocus(lengthConvertInputRefs.current[0]);
   };
 

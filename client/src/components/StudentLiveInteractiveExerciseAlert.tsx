@@ -79,6 +79,8 @@ export default function StudentLiveInteractiveExerciseAlert({ userId }: { userId
     <Dialog
       open={open}
       fullScreen
+      disableAutoFocus
+      disableEnforceFocus
       disableEscapeKeyDown
       onClose={() => {
         /* vom Lehrer beenden — SuS können nicht schließen */

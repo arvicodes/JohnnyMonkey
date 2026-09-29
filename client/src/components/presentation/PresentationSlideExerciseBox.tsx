@@ -310,6 +310,8 @@ const PresentationSlideExerciseBox: React.FC<Props> = ({
       <Dialog
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
+        disableAutoFocus
+        disableEnforceFocus
         maxWidth="md"
         fullWidth
         PaperProps={{ sx: { height: '85vh' } }}

@@ -396,6 +396,7 @@ export default function ExamGridTaskBuilderDialog({
             flex: 1,
             minHeight: 0,
             overflowY: 'auto',
+            overflowX: 'hidden',
             WebkitOverflowScrolling: 'touch',
             px: 3,
             py: 2,
@@ -413,18 +414,8 @@ export default function ExamGridTaskBuilderDialog({
             </Alert>
           ) : null}
           {activeFilePath ? (
-            <Box
-              sx={{
-                mb: 1,
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 1,
-                width: '100%',
-              }}
-            >
-              <Box sx={{ flex: '1 1 12rem', minWidth: 0 }}>
+            <Box sx={{ mb: 1, width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+              <Box sx={{ minWidth: 0, width: '100%' }}>
                 <ExamVersionTabsBar
                   compact
                   filePath={versionMetaPath}
@@ -433,11 +424,22 @@ export default function ExamGridTaskBuilderDialog({
                   onActiveFilePathChange={handleVersionPathChange}
                 />
               </Box>
-              <ExamSessionResetTrio
-                disabled={loading || saving || sessionResetBusy}
-                onRestartTimer={() => void handleRestartTimerForAll()}
-                onFullReset={() => setFullResetOpen(true)}
-              />
+              <Box
+                sx={{
+                  mt: 0.75,
+                  width: '100%',
+                  maxWidth: '100%',
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <ExamSessionResetTrio
+                  disabled={loading || saving || sessionResetBusy}
+                  onRestartTimer={() => void handleRestartTimerForAll()}
+                  onFullReset={() => setFullResetOpen(true)}
+                />
+              </Box>
             </Box>
           ) : null}
 
