@@ -1032,11 +1032,7 @@ class EntryTicketController {
                     .filter((a) => a.materialLessonPath &&
                     sameLessonPath(a.materialLessonPath, lessonPath))
                     .at(-1) || null;
-            const customSets = await loadStoredCustomSets(group.teacherId);
-            const configuredTasks = lessonPath.trim().length > 0
-                ? countCustomSetTasksForLessonPath(customSets, lessonPath, hit ? archiveCustomSetId(hit) : null)
-                : 0;
-            if (!hit || !((_a = hit.tasks) === null || _a === void 0 ? void 0 : _a.length) || configuredTasks === 0) {
+            if (!hit || !((_a = hit.tasks) === null || _a === void 0 ? void 0 : _a.length)) {
                 return res.json({
                     completed: false,
                     index: archiveIndex,
@@ -1341,6 +1337,7 @@ class EntryTicketController {
                             tasks: null,
                             customSet: null,
                             isModerator: mod.isModerator,
+                            canParticipate: false,
                             learningGroupId: mod.learningGroupId,
                             groupName: mod.groupName,
                         });
@@ -1357,6 +1354,7 @@ class EntryTicketController {
                         tasks: null,
                         customSet: null,
                         isModerator: mod.isModerator,
+                        canParticipate: false,
                         learningGroupId: mod.learningGroupId,
                         groupName: mod.groupName,
                     });
@@ -1365,6 +1363,20 @@ class EntryTicketController {
                     lessonPath: resolved.lessonPath,
                     teacherId: resolved.teacherId,
                 });
+                const gid = mod.learningGroupId || resolved.learningGroupId || null;
+                let groupName = mod.groupName;
+                let canParticipate = mod.isModerator;
+                if (gid) {
+                    const membership = await prisma.learningGroup.findFirst({
+                        where: { id: gid, students: { some: { id: user.id } } },
+                        select: { name: true },
+                    });
+                    if (membership) {
+                        canParticipate = true;
+                        if (!groupName)
+                            groupName = membership.name;
+                    }
+                }
                 return res.json({
                     startedAt: resolved.payload.startedAt,
                     teacherId: resolved.teacherId,
@@ -1377,8 +1389,9 @@ class EntryTicketController {
                     tasks: (_e = resolved.payload.tasks) !== null && _e !== void 0 ? _e : null,
                     customSet: (_f = resolved.payload.customSet) !== null && _f !== void 0 ? _f : null,
                     isModerator: mod.isModerator,
-                    learningGroupId: mod.learningGroupId || resolved.learningGroupId || null,
-                    groupName: mod.groupName,
+                    canParticipate,
+                    learningGroupId: gid,
+                    groupName,
                 });
             }
             const teacherResolved = await resolveLatestEntryTicketForTeacher(user.id);

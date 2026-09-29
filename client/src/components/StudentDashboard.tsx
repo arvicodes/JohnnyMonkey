@@ -3066,10 +3066,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         // Noch nicht geladen → nur anzeigen, wenn bereits Material-Freigaben existieren (Altverhalten)
         return hasSharedMaterial;
       }
+      const pathReleased = info.lessonPaths.some((p) => p === want);
       if (info.useShareFallback) {
         return hasSharedMaterial;
       }
-      return info.lessonPaths.some((p) => p === want);
+      // Play-Freigabe oder explizit geteilte Dateien in dieser Stunde
+      return pathReleased || hasSharedMaterial;
     },
     [releasedLessonsByGroup],
   );

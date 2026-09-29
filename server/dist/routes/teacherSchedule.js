@@ -12,6 +12,7 @@ const periodTimes_1 = require("../lib/periodTimes");
 const autoLessonScheduler_1 = require("../services/autoLessonScheduler");
 const lessonFolderShareSync_1 = require("../services/lessonFolderShareSync");
 const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
+const lessonMaterialPath_1 = require("../lib/lessonMaterialPath");
 const router = (0, express_1.Router)();
 const prisma = new client_1.PrismaClient();
 /** periodNumber 0 = manuell gestartete Stunde (Play-Button im Dashboard) */
@@ -19,6 +20,9 @@ const MANUAL_PERIOD_NUMBER = 0;
 const MANUAL_SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 (0, autoLessonScheduler_1.ensureTimetableUploadDir)();
 function normalizeLessonPathKey(p) {
+    const canon = (0, lessonMaterialPath_1.normalizeLessonMaterialPath)(p);
+    if (canon)
+        return canon;
     return String(p !== null && p !== void 0 ? p : '')
         .normalize('NFC')
         .trim()

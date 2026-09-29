@@ -12,6 +12,7 @@ const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const folderPathMatch_1 = require("../utils/folderPathMatch");
 const examVersionPaths_1 = require("../lib/examVersionPaths");
 const storageManager_1 = require("../utils/storageManager");
+const learningGroupModerator_1 = require("../services/learningGroupModerator");
 const router = (0, express_1.Router)();
 const prisma = new client_1.PrismaClient();
 const webUntisUpload = (0, multer_1.default)({
@@ -76,6 +77,7 @@ router.get('/', async (req, res) => {
                 },
             },
         });
+        await (0, learningGroupModerator_1.ensureDefaultModeratorsForGroups)(groups.map((g) => g.id));
         res.json(groups.map(normalizeGroupStudents));
     }
     catch (error) {
@@ -285,7 +287,40 @@ router.get('/student/:id', async (req, res) => {
             }
         });
         console.log('✅ Found', groups.length, 'groups for student');
-        res.json(groups);
+        await (0, learningGroupModerator_1.ensureDefaultModeratorsForGroups)(groups.map((g) => g.id));
+        const refreshed = await prisma.learningGroup.findMany({
+            where: {
+                students: { some: { id: req.params.id } },
+                isArchived: false,
+            },
+            orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+            select: {
+                id: true,
+                name: true,
+                createdAt: true,
+                updatedAt: true,
+                teacherId: true,
+                period1Hours: true,
+                period2Hours: true,
+                iconEmoji: true,
+                color: true,
+                displayOrder: true,
+                isArchived: true,
+                moderatorStudentId: true,
+                teacher: { select: { id: true, name: true } },
+                students: {
+                    orderBy: { name: 'asc' },
+                    select: {
+                        id: true,
+                        name: true,
+                        loginCode: true,
+                        avatarEmoji: true,
+                        avatarUrl: true,
+                    },
+                },
+            },
+        });
+        res.json(refreshed.map(normalizeGroupStudents));
     }
     catch (error) {
         console.error('❌ Error fetching student groups:', error);

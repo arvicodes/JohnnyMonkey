@@ -66,6 +66,7 @@ export default function StudentLiveTicketAlerts({ userId }: { userId: string }) 
   const [entryTicketModalLessonPath, setEntryTicketModalLessonPath] = useState<string | null>(null);
   const [entryTicketHeroImageIndex, setEntryTicketHeroImageIndex] = useState(0);
   const [entryTicketIsModerator, setEntryTicketIsModerator] = useState(false);
+  const [entryTicketCanParticipate, setEntryTicketCanParticipate] = useState(false);
   const [entryTicketGroupId, setEntryTicketGroupId] = useState<string | null>(null);
   const [entryTicketGroupName, setEntryTicketGroupName] = useState<string | null>(null);
   const [entryTicketGrade, setEntryTicketGrade] = useState<string | null>(null);
@@ -157,6 +158,9 @@ export default function StudentLiveTicketAlerts({ userId }: { userId: string }) 
       setEntryTicketModalTeacherId(tid || null);
       setEntryTicketModalLessonPath(lp || null);
       setEntryTicketIsModerator(data.isModerator === true);
+      setEntryTicketCanParticipate(
+        data.canParticipate === true || data.isModerator === true,
+      );
       setEntryTicketGroupId(
         typeof data.learningGroupId === 'string' && data.learningGroupId ? data.learningGroupId : null,
       );
@@ -174,7 +178,7 @@ export default function StudentLiveTicketAlerts({ userId }: { userId: string }) 
     }
   }, [userId, location.pathname]);
 
-  const openFullEntryTicketAsModerator = () => {
+  const openFullEntryTicket = () => {
     const sig = entryTicketModalDismissSig(
       entryTicketModalStartedAt,
       entryTicketModalTeacherId,
@@ -446,48 +450,50 @@ export default function StudentLiveTicketAlerts({ userId }: { userId: string }) 
             }}
           />
           {entryTicketIsModerator && (
-            <>
-              <Box
-                component="img"
-                src={MODERATOR_ICON_SRC}
-                alt="Moderator"
-                sx={{
-                  position: 'absolute',
-                  top: 12,
-                  left: 12,
-                  zIndex: 2,
-                  width: { xs: 64, sm: 80 },
-                  height: { xs: 64, sm: 80 },
-                  objectFit: 'contain',
-                  filter: 'drop-shadow(0 3px 10px rgba(0,0,0,0.4))',
-                  pointerEvents: 'none',
-                }}
-              />
-              <IconButton
-                onClick={openFullEntryTicketAsModerator}
-                aria-label="Entry Ticket starten"
-                title="Entry Ticket starten"
-                sx={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  zIndex: 3,
-                  transform: 'translate(-50%, -50%)',
-                  width: { xs: 72, sm: 88 },
-                  height: { xs: 72, sm: 88 },
-                  bgcolor: 'rgba(198, 40, 40, 0.92)',
-                  color: '#fff',
-                  border: '3px solid rgba(255,255,255,0.9)',
-                  boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
-                  '&:hover': {
-                    bgcolor: '#b71c1c',
-                    transform: 'translate(-50%, -50%) scale(1.06)',
-                  },
-                }}
-              >
-                <PlayArrowIcon sx={{ fontSize: { xs: 42, sm: 52 } }} />
-              </IconButton>
-            </>
+            <Box
+              component="img"
+              src={MODERATOR_ICON_SRC}
+              alt="Moderator"
+              sx={{
+                position: 'absolute',
+                top: 12,
+                left: 12,
+                zIndex: 2,
+                width: { xs: 64, sm: 80 },
+                height: { xs: 64, sm: 80 },
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 3px 10px rgba(0,0,0,0.4))',
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+          {entryTicketCanParticipate && (
+            <IconButton
+              onClick={openFullEntryTicket}
+              aria-label="Entry Ticket öffnen"
+              title="Entry Ticket öffnen"
+              sx={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                zIndex: 3,
+                transform: 'translate(-50%, -50%)',
+                width: { xs: 72, sm: 88 },
+                height: { xs: 72, sm: 88 },
+                bgcolor: entryTicketIsModerator
+                  ? 'rgba(198, 40, 40, 0.92)'
+                  : 'rgba(30, 136, 229, 0.92)',
+                color: '#fff',
+                border: '3px solid rgba(255,255,255,0.9)',
+                boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
+                '&:hover': {
+                  bgcolor: entryTicketIsModerator ? '#b71c1c' : '#1565c0',
+                  transform: 'translate(-50%, -50%) scale(1.06)',
+                },
+              }}
+            >
+              <PlayArrowIcon sx={{ fontSize: { xs: 42, sm: 52 } }} />
+            </IconButton>
           )}
           <Box
             sx={{

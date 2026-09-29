@@ -3305,6 +3305,21 @@ ${aiContent.optionsHTML}
 }
 exports.FileSystemPathController = FileSystemPathController;
 FileSystemPathController.EXAM_TASK_GRID_STYLE_SNIPPET = `
+        .task-number .task-inline-instruction {
+            color: #1a1a1a;
+            font-size: 15px;
+            font-weight: 800;
+            margin-left: 0.35em;
+        }
+        .exam-mc-block { display: flex; flex-direction: column; margin: 8px 0 14px; }
+        .exam-mc-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.35em 0.5em; font-weight: 600; line-height: 1.45; margin-bottom: 8px; }
+        .exam-mc-options, .exam-multi-select { display: flex; flex-direction: column; gap: 4px; margin-top: 0; width: 100%; }
+        .exam-mc-block .input-group.full-width label.exam-mc-option { display: flex; align-items: center; margin-bottom: 0; }
+        .exam-mc-option { display: flex; align-items: center; gap: 6px; line-height: 1.35; cursor: pointer; }
+        .exam-mc-option input[type="checkbox"] {
+            width: 15px; height: 15px; min-width: 15px; margin: 0; padding: 0; flex-shrink: 0; vertical-align: middle;
+            accent-color: #1565c0; cursor: pointer;
+        }
         .exam-task-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -3335,11 +3350,18 @@ FileSystemPathController.EXAM_TASK_GRID_STYLE_SNIPPET = `
         .exam-subsection-media-right { flex-direction: row-reverse; }
         .exam-subsection-image { width: 88px; max-width: 32%; height: auto; object-fit: contain; border-radius: 4px; border: 1px solid #e0e0e0; flex-shrink: 0; }
         .exam-subsection-media-body { flex: 1; min-width: 0; }
-        .exam-sort-drag { margin-top: 6px; }
-        .exam-sort-pool { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; min-height: 36px; padding: 6px; border: 1px dashed #bdbdbd; border-radius: 6px; background: #fafafa; }
-        .exam-sort-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; padding: 6px 10px; border: 1px solid #90caf9; border-radius: 6px; background: #e3f2fd; font-weight: 700; font-size: 14px; cursor: grab; user-select: none; touch-action: none; }
-        .exam-sort-slot { min-width: 56px; min-height: 38px; padding: 4px; border: 2px dashed #9e9e9e; border-radius: 6px; background: #fff; display: flex; align-items: center; justify-content: center; }
-        .exam-sort-slots-row { display: flex; flex-wrap: wrap; gap: 8px; }
+        .exam-sort-drag { margin-top: 4px; width: 50%; max-width: 50%; }
+        .exam-sort-drag + .exam-sort-hint { max-width: 50%; }
+        .exam-sort-pool { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; min-height: 28px; padding: 4px 5px; border: 1px dashed #bdbdbd; border-radius: 5px; background: #fafafa; }
+        .exam-sort-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; padding: 4px 8px; border: 1px solid #90caf9; border-radius: 5px; background: #e3f2fd; font-weight: 700; font-size: 13px; cursor: grab; user-select: none; touch-action: none; }
+        .exam-sort-slot { min-width: 48px; min-height: 32px; padding: 3px; border: 2px dashed #9e9e9e; border-radius: 5px; background: #fff; display: flex; align-items: center; justify-content: center; }
+        .exam-sort-slots-row { display: flex; flex-wrap: wrap; gap: 5px; }
         .exam-sort-slot.exam-sort-slot-over { border-color: #1976d2; background: #e3f2fd; }
+        .exam-sort-drag--steps { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; }
+        .exam-sort-drag--steps .exam-sort-pool { flex: 1 1 48%; min-width: 0; margin-bottom: 0; flex-direction: column; align-items: stretch; }
+        .exam-sort-drag--steps .exam-sort-slots-row { flex: 1 1 48%; min-width: 0; flex-direction: column; width: auto; gap: 5px; }
+        .exam-sort-drag--steps .exam-sort-slot { width: 100%; min-height: 40px; justify-content: flex-start; align-items: center; gap: 6px; padding: 5px 8px; }
+        .exam-sort-drag--steps .exam-sort-slot-num { flex-shrink: 0; font-weight: 800; font-size: 13px; color: #555; min-width: 1.25em; }
+        .exam-sort-drag--steps .exam-sort-chip { white-space: normal; text-align: left; font-weight: 500; font-size: 13px; line-height: 1.35; max-width: 100%; justify-content: flex-start; }
 `;
 //# sourceMappingURL=FileSystemPathController.js.map

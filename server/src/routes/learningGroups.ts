@@ -24,6 +24,7 @@ import {
 } from '../utils/folderPathMatch';
 import { buildExamVersionInfo } from '../lib/examVersionPaths';
 import { StorageManager } from '../utils/storageManager';
+import { ensureDefaultModeratorsForGroups } from '../services/learningGroupModerator';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -91,6 +92,7 @@ router.get('/', async (req: Request, res: Response) => {
         },
       },
     });
+    await ensureDefaultModeratorsForGroups(groups.map((g) => g.id));
     res.json(groups.map(normalizeGroupStudents));
   } catch (error) {
     console.error('GET /learning-groups failed:', error);
@@ -301,7 +303,40 @@ router.get('/student/:id', async (req: Request, res: Response) => {
       }
     });
     console.log('✅ Found', groups.length, 'groups for student');
-    res.json(groups);
+    await ensureDefaultModeratorsForGroups(groups.map((g) => g.id));
+    const refreshed = await prisma.learningGroup.findMany({
+      where: {
+        students: { some: { id: req.params.id } },
+        isArchived: false,
+      },
+      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        updatedAt: true,
+        teacherId: true,
+        period1Hours: true,
+        period2Hours: true,
+        iconEmoji: true,
+        color: true,
+        displayOrder: true,
+        isArchived: true,
+        moderatorStudentId: true,
+        teacher: { select: { id: true, name: true } },
+        students: {
+          orderBy: { name: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            loginCode: true,
+            avatarEmoji: true,
+            avatarUrl: true,
+          },
+        },
+      },
+    });
+    res.json(refreshed.map(normalizeGroupStudents));
   } catch (error: any) {
     console.error('❌ Error fetching student groups:', error);
     console.error('❌ Error details:', {

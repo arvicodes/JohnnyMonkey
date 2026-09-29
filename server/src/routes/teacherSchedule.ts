@@ -15,6 +15,7 @@ import {
 } from '../services/autoLessonScheduler';
 import { syncLessonFolderShares } from '../services/lessonFolderShareSync';
 import { findUserByLoginCode } from '../utils/loginCodeCrypto';
+import { normalizeLessonMaterialPath } from '../lib/lessonMaterialPath';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -26,6 +27,8 @@ const MANUAL_SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 ensureTimetableUploadDir();
 
 function normalizeLessonPathKey(p: string): string {
+  const canon = normalizeLessonMaterialPath(p);
+  if (canon) return canon;
   return String(p ?? '')
     .normalize('NFC')
     .trim()

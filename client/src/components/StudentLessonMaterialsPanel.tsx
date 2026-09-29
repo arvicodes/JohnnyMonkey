@@ -150,6 +150,7 @@ export default function StudentLessonMaterialsPanel({
   const [blockedMaterialPaths, setBlockedMaterialPaths] = useState<Set<string>>(
     () => new Set(),
   );
+  const [deckHasSlides, setDeckHasSlides] = useState(false);
   const [releasedExams, setReleasedExams] = useState<ReleasedExamResult[]>([]);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [reviewHtml, setReviewHtml] = useState<string | null>(null);
@@ -158,6 +159,7 @@ export default function StudentLessonMaterialsPanel({
   useEffect(() => {
     if (!lessonPath) {
       setBlockedMaterialPaths(new Set());
+      setDeckHasSlides(false);
       return;
     }
     let cancelled = false;
@@ -167,11 +169,16 @@ export default function StudentLessonMaterialsPanel({
         if (cancelled) return;
         if (!loaded?.slides?.length) {
           setBlockedMaterialPaths(new Set());
+          setDeckHasSlides(false);
           return;
         }
+        setDeckHasSlides(true);
         setBlockedMaterialPaths(printMaterialPathsAfterNow(loaded));
       } catch {
-        if (!cancelled) setBlockedMaterialPaths(new Set());
+        if (!cancelled) {
+          setBlockedMaterialPaths(new Set());
+          setDeckHasSlides(false);
+        }
       }
     })();
     return () => {
@@ -351,7 +358,8 @@ export default function StudentLessonMaterialsPanel({
   // Johnny-Folien-PDFs (Original/bearbeitet/Versionen/Stand) nie als Extra-Zeilen —
   // SuS sehen nur die Folien-Zeile mit einem Download bis NOW.
   const otherMaterials = materials.filter((f) => !isJohnnyPresentationExportPdf(f.name));
-  const hasPresentation = presentationShared || !!(presentationOriginal || presentationEdited);
+  const hasPresentation =
+    presentationShared || !!(presentationOriginal || presentationEdited) || deckHasSlides;
   const canOpenFolien = hasPresentation;
   const [standDownloadBusy, setStandDownloadBusy] = useState(false);
 

@@ -2043,6 +2043,7 @@ export default function EntryTicketPage({
   const skipDuplicateEntrySignalRef = useRef(false);
   /** Schüler-Moderator darf die volle Ticket-Session sehen */
   const [isClassModerator, setIsClassModerator] = useState(false);
+  const [canParticipateLive, setCanParticipateLive] = useState(false);
   const [moderatorGateChecked, setModeratorGateChecked] = useState(
     () =>
       Boolean(
@@ -2440,6 +2441,7 @@ export default function EntryTicketPage({
         }
         const data = (await res.json()) as {
           isModerator?: boolean;
+          canParticipate?: boolean;
           startedAt?: string | null;
           heroImageIndex?: number | null;
           grade?: string | null;
@@ -2452,6 +2454,7 @@ export default function EntryTicketPage({
         if (cancelled) return;
         const mod = data.isModerator === true;
         setIsClassModerator(mod);
+        setCanParticipateLive(data.canParticipate === true || mod);
         if (typeof data.heroImageIndex === 'number' && data.startedAt) {
           setEntryHeroImageIndex(data.heroImageIndex);
         }
@@ -2489,12 +2492,13 @@ export default function EntryTicketPage({
           // KI-/Reihen-Set vom Server → lokale Auswahl mit gleichem Seed
           setSharedTasksLocked(false);
         }
-        if (!mod) {
+        if (!mod && data.canParticipate !== true) {
           navigate('/dashboard', { replace: true });
         }
       } catch {
         if (!cancelled) {
           setIsClassModerator(false);
+          setCanParticipateLive(false);
           navigate('/dashboard', { replace: true });
         }
       } finally {
@@ -2508,7 +2512,7 @@ export default function EntryTicketPage({
 
   /** Moderator: ggf. nachziehen, falls die Lehrer-Karten erst kurz nach dem Öffnen synchronisiert werden */
   useEffect(() => {
-    if (isTeacher || !isClassModerator || sharedTasksLocked) return;
+    if (isTeacher || (!isClassModerator && !canParticipateLive) || sharedTasksLocked) return;
     let cancelled = false;
     let attempts = 0;
     const tick = async () => {
@@ -2570,7 +2574,7 @@ export default function EntryTicketPage({
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [isTeacher, isClassModerator, sharedTasksLocked, applyGradeParam]);
+  }, [isTeacher, isClassModerator, canParticipateLive, sharedTasksLocked, applyGradeParam]);
 
   useEffect(() => {
     if (embeddedPlay) return;
@@ -3331,6 +3335,7 @@ export default function EntryTicketPage({
   useEffect(() => {
     if (!autoStartPending || sessionStarted) return;
     if (!isTeacher && (!moderatorGateChecked || !isClassModerator)) return;
+    // Autostart nur für Klassen-Moderator (ein Gerät steuert die Runde)
     if (isTeacher && !customSetsReady) {
       if (!embeddedPlay || poolForBand.length === 0) return;
     }
@@ -4247,7 +4252,7 @@ export default function EntryTicketPage({
         if (!sessionStarted) return;
         e.preventDefault();
         // Abschlussfolie: Enter = Erledigt (wie der Button)
-        if (sessionDone && (isTeacher || isClassModerator) && !studentReviewMode) {
+        if (sessionDone && (isTeacher || isClassModerator || canParticipateLive) && !studentReviewMode) {
           void markEntryTicketDone();
           return;
         }
@@ -4268,6 +4273,7 @@ export default function EntryTicketPage({
     goPrevious,
     handleBack,
     isClassModerator,
+    canParticipateLive,
     isRunning,
     isTeacher,
     markEntryTicketDone,
@@ -4759,7 +4765,7 @@ export default function EntryTicketPage({
     );
   }
 
-  if (!isTeacher && !studentReviewMode && !isClassModerator) {
+  if (!isTeacher && !studentReviewMode && !isClassModerator && !canParticipateLive) {
     return null;
   }
 
@@ -5178,7 +5184,9 @@ export default function EntryTicketPage({
                     </IconButton>
                   </span>
                 </Tooltip>
-                {(isTeacher || isClassModerator) && !studentReviewMode && !laptopCompanion ? (
+                {(isTeacher || isClassModerator || canParticipateLive) &&
+                !studentReviewMode &&
+                !laptopCompanion ? (
                   <Tooltip title="Erledigt (Enter)">
                     <span>
                       <Button

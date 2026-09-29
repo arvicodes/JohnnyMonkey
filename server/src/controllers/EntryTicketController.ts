@@ -1151,17 +1151,7 @@ export class EntryTicketController {
             )
             .at(-1) || null;
 
-      const customSets = await loadStoredCustomSets(group.teacherId);
-      const configuredTasks =
-        lessonPath.trim().length > 0
-          ? countCustomSetTasksForLessonPath(
-              customSets,
-              lessonPath,
-              hit ? archiveCustomSetId(hit) : null,
-            )
-          : 0;
-
-      if (!hit || !hit.tasks?.length || configuredTasks === 0) {
+      if (!hit || !hit.tasks?.length) {
         return res.json({
           completed: false,
           index: archiveIndex,
@@ -1483,6 +1473,7 @@ export class EntryTicketController {
               tasks: null,
               customSet: null,
               isModerator: mod.isModerator,
+              canParticipate: false,
               learningGroupId: mod.learningGroupId,
               groupName: mod.groupName,
             });
@@ -1499,6 +1490,7 @@ export class EntryTicketController {
             tasks: null,
             customSet: null,
             isModerator: mod.isModerator,
+            canParticipate: false,
             learningGroupId: mod.learningGroupId,
             groupName: mod.groupName,
           });
@@ -1507,6 +1499,19 @@ export class EntryTicketController {
           lessonPath: resolved.lessonPath,
           teacherId: resolved.teacherId,
         });
+        const gid = mod.learningGroupId || resolved.learningGroupId || null;
+        let groupName = mod.groupName;
+        let canParticipate = mod.isModerator;
+        if (gid) {
+          const membership = await prisma.learningGroup.findFirst({
+            where: { id: gid, students: { some: { id: user.id } } },
+            select: { name: true },
+          });
+          if (membership) {
+            canParticipate = true;
+            if (!groupName) groupName = membership.name;
+          }
+        }
         return res.json({
           startedAt: resolved.payload.startedAt,
           teacherId: resolved.teacherId,
@@ -1519,8 +1524,9 @@ export class EntryTicketController {
           tasks: resolved.payload.tasks ?? null,
           customSet: resolved.payload.customSet ?? null,
           isModerator: mod.isModerator,
-          learningGroupId: mod.learningGroupId || resolved.learningGroupId || null,
-          groupName: mod.groupName,
+          canParticipate,
+          learningGroupId: gid,
+          groupName,
         });
       }
 
