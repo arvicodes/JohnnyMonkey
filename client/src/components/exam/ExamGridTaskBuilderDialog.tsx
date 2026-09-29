@@ -104,26 +104,6 @@ export default function ExamGridTaskBuilderDialog({
 
   const versionMetaPath = React.useMemo(() => examBaseGitPath(filePath), [filePath]);
 
-  const handleResetSubmissions = React.useCallback(async () => {
-    const pathForReset = examBaseGitPath(activeFilePath || filePath);
-    if (
-      !window.confirm(
-        'Alle Abgaben und Korrekturen für diese Prüfung (A/B …) löschen?\n\nSchüler können die Arbeit danach neu bearbeiten.',
-      )
-    ) {
-      return;
-    }
-    setSessionResetBusy(true);
-    try {
-      const result = await resetExamSession(pathForReset, { restartTimer: false });
-      onNotify?.(result.message, 'success');
-    } catch (e) {
-      onNotify?.(e instanceof Error ? e.message : 'Zurücksetzen fehlgeschlagen', 'error');
-    } finally {
-      setSessionResetBusy(false);
-    }
-  }, [activeFilePath, filePath, onNotify]);
-
   const handleRestartTimerForAll = React.useCallback(async () => {
     const pathForReset = examBaseGitPath(activeFilePath || filePath);
     if (
@@ -445,7 +425,6 @@ export default function ExamGridTaskBuilderDialog({
             >
               <ExamSessionResetTrio
                 disabled={loading || saving || sessionResetBusy}
-                onResetSubmissions={() => void handleResetSubmissions()}
                 onRestartTimer={() => void handleRestartTimerForAll()}
                 onFullReset={() => setFullResetOpen(true)}
               />

@@ -4,12 +4,10 @@ import { alpha } from '@mui/material/styles';
 
 type Props = {
   disabled?: boolean;
-  onResetSubmissions: () => void;
   onRestartTimer: () => void;
   onFullReset: () => void;
 };
 
-const SIDE_COLOR = '#3949ab';
 const TIMER_COLOR = '#00695c';
 const FULL_RESET_COLOR = '#c62828';
 
@@ -24,10 +22,8 @@ const groupedBtn = {
   whiteSpace: 'nowrap' as const,
 };
 
-/** Wie „Prüfung / Interaktive Übung an diese Folie“ in der Folienleiste. */
 export default function ExamSessionResetTrio({
   disabled,
-  onResetSubmissions,
   onRestartTimer,
   onFullReset,
 }: Props) {
@@ -40,10 +36,7 @@ export default function ExamSessionResetTrio({
         sx={{
           width: 'max-content',
           '& .MuiButtonGroup-grouped': groupedBtn,
-          '& .MuiButtonGroup-grouped:first-of-type, & .MuiButtonGroup-grouped:last-of-type': {
-            flex: '1 1 0',
-          },
-          '& .MuiButtonGroup-grouped:last-of-type': {
+          '& .MuiButtonGroup-grouped:first-of-type': {
             flex: '1.1 1 0',
             px: 0.66,
           },
@@ -52,34 +45,6 @@ export default function ExamSessionResetTrio({
           },
         }}
       >
-        <Button
-          onClick={onResetSubmissions}
-          sx={{
-            color: SIDE_COLOR,
-            borderColor: `${SIDE_COLOR} !important`,
-            bgcolor: alpha(SIDE_COLOR, 0.08),
-            '&:hover': {
-              bgcolor: alpha(SIDE_COLOR, 0.16),
-              borderColor: `${SIDE_COLOR} !important`,
-            },
-          }}
-        >
-          Abgaben zurücksetzen
-        </Button>
-        <Button
-          onClick={onRestartTimer}
-          sx={{
-            color: TIMER_COLOR,
-            borderColor: `${TIMER_COLOR} !important`,
-            bgcolor: alpha(TIMER_COLOR, 0.08),
-            '&:hover': {
-              bgcolor: alpha(TIMER_COLOR, 0.16),
-              borderColor: `${TIMER_COLOR} !important`,
-            },
-          }}
-        >
-          Zeit für alle neu starten
-        </Button>
         <Button
           onClick={onFullReset}
           sx={{
@@ -93,6 +58,20 @@ export default function ExamSessionResetTrio({
           }}
         >
           Alles zurücksetzen
+        </Button>
+        <Button
+          onClick={onRestartTimer}
+          sx={{
+            color: TIMER_COLOR,
+            borderColor: `${TIMER_COLOR} !important`,
+            bgcolor: alpha(TIMER_COLOR, 0.08),
+            '&:hover': {
+              bgcolor: alpha(TIMER_COLOR, 0.16),
+              borderColor: `${TIMER_COLOR} !important`,
+            },
+          }}
+        >
+          Zeit neu starten
         </Button>
       </ButtonGroup>
     </Box>
