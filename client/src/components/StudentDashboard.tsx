@@ -154,6 +154,15 @@ function isTopicSectionFolderNameStudent(name: string): boolean {
   return /^\d+\s+/.test(t);
 }
 
+/** Alte KI-Struktur (Themenblock + 01.01 …), nicht z. B. „2.01 Gatter“. */
+function isStudentHiddenLegacyCategoryFolder(name: string): boolean {
+  const t = (name || '').trim();
+  if (!t) return false;
+  if (isTopicSectionFolderNameStudent(t) || isChapterHeadingFolderNameStudent(t)) return true;
+  if (/^\d{2}\.\d{2}(\s|$)/.test(t)) return true;
+  return false;
+}
+
 /** Reihen-Überschrift wie „12-01 Matrizen“ / „11-04 KI“ — Container, keine Stunde. */
 function isSeriesHeadingFolderNameStudent(name: string): boolean {
   return /^\d{1,2}[-–\s]\d{2}(\b|\s|$)/.test((name || '').trim());
@@ -3437,6 +3446,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
 
     const hasReleasedLessonDescendant = (dir: any, lvl: number): boolean => {
       if (dir?.type !== 'directory') return false;
+      if (isStudentHiddenLegacyCategoryFolder(dir.name || '')) {
+        if (!Array.isArray(dir.children)) return false;
+        return dir.children.some((child: any) => hasReleasedLessonDescendant(child, lvl + 1));
+      }
       if (directoryIsStundeFolderForStudentTree(dir.name, lvl)) {
         const hasShared =
           hasSharedFiles(dir) || isLessonSharedInputShared(groupId, dir.path || '');
@@ -3468,6 +3481,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           (inWochenaufgaben && isNumberedWochenaufgabeName(item.name || '')));
       const inWochenaufgabenBranch =
         inWochenaufgaben || isWochenaufgabenDir || isWochenaufgabenFolderPath(item.path || '');
+
+      if (item.type === 'directory' && isStudentHiddenLegacyCategoryFolder(item.name || '')) {
+        return null;
+      }
       
       // Wenn es eine Datei ist und NICHT freigegeben oder kein Unterrichtsmaterial, verberge sie
       if (item.type === 'file' && (!isFileShared || !isStudentVisibleLessonMaterialFile(item.name || ''))) {
@@ -3919,6 +3936,16 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       true
     );
 
+    const folderNorm = normalizeLessonMaterialPath(folderPath).replace(/\/+$/, '');
+    const activePlayLessonPath =
+      activeRunningLesson?.groupId === groupId && activeRunningLesson.lessonPath
+        ? activeRunningLesson.lessonPath
+        : null;
+    const activePlayUnderThisFolder =
+      activePlayLessonPath &&
+      (entryTicketLessonPathsMatch(folderPath, activePlayLessonPath) ||
+        normalizeLessonMaterialPath(activePlayLessonPath).startsWith(`${folderNorm}/`));
+
     return (
       <React.Fragment key={folderPath}>
         <Box sx={{ mb: 1.4 }}>
@@ -3988,13 +4015,28 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   onOpenPdf={(lessonPath) => void openWaPdf(lessonPath)}
                 />
               ) : null}
+              {activePlayUnderThisFolder && activePlayLessonPath ? (
+                <Box sx={{ mb: 1, ml: 0.5 }}>
+                  <StudentLessonMaterialsPanel
+                    lessonName="Folien"
+                    lessonPath={activePlayLessonPath}
+                    files={[]}
+                    sharedPaths={sharedFiles[groupId] || []}
+                    groupId={groupId}
+                    folienPreviewOnly
+                  />
+                </Box>
+              ) : null}
             </Box>
             {isLoading ? (
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
                 Lade Inhalt...
               </Typography>
             ) : !rootIsWochenaufgaben && treeItems.length > 0 ? (
-              treeItems.map((item) => renderItemRecursively(item, 0, 'dashboard', false)).filter((el) => el !== null)
+              treeItems
+                .filter((item) => !isStudentHiddenLegacyCategoryFolder(item?.name || ''))
+                .map((item) => renderItemRecursively(item, 0, 'dashboard', false))
+                .filter((el) => el !== null)
             ) : null}
           </Box>
           )}
