@@ -3353,6 +3353,13 @@ ${optionsHTML}
             font-weight: 800;
             margin-left: 0.35em;
         }
+        .task-inline-instruction .exam-instruction-emphasis {
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            font-size: 16px;
+            font-weight: 900;
+            color: #c62828;
+        }
         .exam-mc-block { display: flex; flex-direction: column; margin: 8px 0 14px; }
         .exam-mc-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.35em 0.5em; font-weight: 600; line-height: 1.45; margin-bottom: 8px; }
         .exam-mc-options, .exam-multi-select { display: flex; flex-direction: column; gap: 4px; margin-top: 0; width: 100%; }

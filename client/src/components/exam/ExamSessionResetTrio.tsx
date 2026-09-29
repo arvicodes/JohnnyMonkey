@@ -9,7 +9,7 @@ type Props = {
   onFullReset: () => void;
 };
 
-const SUBMISSIONS_COLOR = '#3949ab';
+const SIDE_COLOR = '#3949ab';
 const TIMER_COLOR = '#00695c';
 const FULL_RESET_COLOR = '#c62828';
 
@@ -22,7 +22,6 @@ const groupedBtn = {
   textTransform: 'none' as const,
   lineHeight: 1.15,
   whiteSpace: 'nowrap' as const,
-  flex: '0 1 auto',
 };
 
 /** Wie „Prüfung / Interaktive Übung an diese Folie“ in der Folienleiste. */
@@ -41,6 +40,13 @@ export default function ExamSessionResetTrio({
         sx={{
           width: 'max-content',
           '& .MuiButtonGroup-grouped': groupedBtn,
+          '& .MuiButtonGroup-grouped:first-of-type, & .MuiButtonGroup-grouped:last-of-type': {
+            flex: '1 1 0',
+          },
+          '& .MuiButtonGroup-grouped:last-of-type': {
+            flex: '1.1 1 0',
+            px: 0.66,
+          },
           '& .MuiButtonGroup-grouped:not(:last-of-type)': {
             borderRightColor: 'rgba(0,0,0,0.12)',
           },
@@ -49,12 +55,12 @@ export default function ExamSessionResetTrio({
         <Button
           onClick={onResetSubmissions}
           sx={{
-            color: SUBMISSIONS_COLOR,
-            borderColor: `${SUBMISSIONS_COLOR} !important`,
-            bgcolor: alpha(SUBMISSIONS_COLOR, 0.08),
+            color: SIDE_COLOR,
+            borderColor: `${SIDE_COLOR} !important`,
+            bgcolor: alpha(SIDE_COLOR, 0.08),
             '&:hover': {
-              bgcolor: alpha(SUBMISSIONS_COLOR, 0.16),
-              borderColor: `${SUBMISSIONS_COLOR} !important`,
+              bgcolor: alpha(SIDE_COLOR, 0.16),
+              borderColor: `${SIDE_COLOR} !important`,
             },
           }}
         >

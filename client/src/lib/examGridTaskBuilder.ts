@@ -358,10 +358,19 @@ function splitLeadingInstructionSubsections(subsections: GridSubsection[]): {
   return { introSubs, contentSubs: subsections.slice(i) };
 }
 
+/** „eine oder mehrere“ in Kreuze-Hinweisen hervorheben. */
+function formatInlineInstructionHtml(text: string): string {
+  const base = allowBasicHtml(text);
+  return base.replace(
+    /eine oder mehrere/gi,
+    '<span class="exam-instruction-emphasis">eine oder mehrere</span>',
+  );
+}
+
 /** Hinweis direkt hinter „Aufgabe N“ (schwarz, etwas kleiner). */
 function buildInlineTaskInstructionSpan(sub: Extract<GridSubsection, { kind: 'paragraph' }>): string {
   const payload = encodeURIComponent(JSON.stringify(sub));
-  return `<span class="task-inline-instruction" data-exam-spec="${payload}">${allowBasicHtml(sub.text)}</span>`;
+  return `<span class="task-inline-instruction" data-exam-spec="${payload}">${formatInlineInstructionHtml(sub.text)}</span>`;
 }
 
 function multiSelectSolutionLabel(sub: Extract<GridSubsection, { kind: 'multi-select' }>): string {
