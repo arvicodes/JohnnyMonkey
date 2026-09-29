@@ -50,6 +50,7 @@ model User {
   wochenaufgabePeerReviews  WochenaufgabePeerPair[]  @relation("WaPeerReviewer")
   wochenaufgabePeerSolutions WochenaufgabePeerPair[] @relation("WaPeerSolution")
   moderatedGroups           LearningGroup[]             @relation("GroupModerator")
+  interactiveExerciseProgress LessonInteractiveExerciseProgress[]
 }
 
 // Gamification: „Reisebegleiter“ – Reisekräfte sammeln, Ei finden, ausbrüten, Begleiter wachsen lassen
@@ -154,6 +155,7 @@ model LearningGroup {
   lessonCollabFlashcardBeacons LessonCollabFlashcardBeacon[]
   lessonExamBeacons            LessonExamBeacon[]
   lessonInteractiveExerciseBeacons LessonInteractiveExerciseBeacon[]
+  interactiveExerciseProgress    LessonInteractiveExerciseProgress[]
   scheduleSlots                ScheduleSlot[]
   autoLessonSessions           AutoLessonSession[]
   wochenaufgabeTasks           WochenaufgabeTask[]
@@ -190,6 +192,22 @@ model LessonInteractiveExerciseBeacon {
   active       Boolean       @default(true)
   updatedAt    DateTime      @updatedAt
   group        LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+/// Fortschritt SuS bei interaktiven Übungen (für Lehrer-Auswertung).
+model LessonInteractiveExerciseProgress {
+  id           String        @id @default(uuid())
+  groupId      String
+  studentId    String
+  lessonPath   String        @default("")
+  exerciseId   String
+  progressJson String        @default("{}")
+  updatedAt    DateTime      @updatedAt
+  group        LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  student      User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, studentId, lessonPath, exerciseId])
+  @@index([groupId, exerciseId])
 }
 
 /// Lehrer-Klick „Karteikarten gemeinsam“ (Tablet): neues beaconId → SuS öffnen das Modal per Poll.
