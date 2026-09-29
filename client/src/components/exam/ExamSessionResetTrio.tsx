@@ -9,20 +9,20 @@ type Props = {
   onFullReset: () => void;
 };
 
-const EXAM_RED = '#9c403d';
-const EXERCISE_ACCENT = '#e6a78d';
-const FULL_RESET_RED = '#c62828';
+const SUBMISSIONS_COLOR = '#3949ab';
+const TIMER_COLOR = '#00695c';
+const FULL_RESET_COLOR = '#c62828';
 
 const groupedBtn = {
-  minWidth: 'max-content',
-  height: 25,
-  px: 0.75,
-  fontSize: '0.56rem',
-  fontWeight: 800,
+  minWidth: 0,
+  height: 28,
+  px: 0.6,
+  fontSize: 'calc(0.56rem + 3px)',
+  fontWeight: 700,
   textTransform: 'none' as const,
-  lineHeight: 1.1,
+  lineHeight: 1.15,
   whiteSpace: 'nowrap' as const,
-  flex: '1 0 auto',
+  flex: '0 1 auto',
 };
 
 /** Wie „Prüfung / Interaktive Übung an diese Folie“ in der Folienleiste. */
@@ -40,22 +40,21 @@ export default function ExamSessionResetTrio({
         variant="outlined"
         sx={{
           width: 'max-content',
-          maxWidth: 'none',
           '& .MuiButtonGroup-grouped': groupedBtn,
           '& .MuiButtonGroup-grouped:not(:last-of-type)': {
-            borderRightColor: 'rgba(0,0,0,0.08)',
+            borderRightColor: 'rgba(0,0,0,0.12)',
           },
         }}
       >
         <Button
           onClick={onResetSubmissions}
           sx={{
-            color: EXAM_RED,
-            borderColor: `${EXAM_RED} !important`,
-            bgcolor: '#fdf2f2',
+            color: SUBMISSIONS_COLOR,
+            borderColor: `${SUBMISSIONS_COLOR} !important`,
+            bgcolor: alpha(SUBMISSIONS_COLOR, 0.08),
             '&:hover': {
-              bgcolor: alpha(EXAM_RED, 0.12),
-              borderColor: `${EXAM_RED} !important`,
+              bgcolor: alpha(SUBMISSIONS_COLOR, 0.16),
+              borderColor: `${SUBMISSIONS_COLOR} !important`,
             },
           }}
         >
@@ -64,12 +63,12 @@ export default function ExamSessionResetTrio({
         <Button
           onClick={onRestartTimer}
           sx={{
-            color: '#c76b4a',
-            borderColor: `${EXERCISE_ACCENT} !important`,
-            bgcolor: '#fff9f0',
+            color: TIMER_COLOR,
+            borderColor: `${TIMER_COLOR} !important`,
+            bgcolor: alpha(TIMER_COLOR, 0.08),
             '&:hover': {
-              bgcolor: alpha(EXERCISE_ACCENT, 0.35),
-              borderColor: `${EXERCISE_ACCENT} !important`,
+              bgcolor: alpha(TIMER_COLOR, 0.16),
+              borderColor: `${TIMER_COLOR} !important`,
             },
           }}
         >
@@ -78,12 +77,12 @@ export default function ExamSessionResetTrio({
         <Button
           onClick={onFullReset}
           sx={{
-            color: FULL_RESET_RED,
-            borderColor: `${FULL_RESET_RED} !important`,
-            bgcolor: alpha(FULL_RESET_RED, 0.08),
+            color: FULL_RESET_COLOR,
+            borderColor: `${FULL_RESET_COLOR} !important`,
+            bgcolor: alpha(FULL_RESET_COLOR, 0.08),
             '&:hover': {
-              bgcolor: alpha(FULL_RESET_RED, 0.16),
-              borderColor: `${FULL_RESET_RED} !important`,
+              bgcolor: alpha(FULL_RESET_COLOR, 0.16),
+              borderColor: `${FULL_RESET_COLOR} !important`,
             },
           }}
         >

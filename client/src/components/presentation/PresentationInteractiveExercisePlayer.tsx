@@ -21,13 +21,9 @@ import {
   type InteractiveExerciseQuestion,
   type InteractiveExerciseTopic,
   type LengthConvertExerciseItem,
-  type LengthUnit,
   type MatchPair,
   type SlideInteractiveExercise,
-  LENGTH_UNIT_ORDER,
-  generateLengthConvertItems,
   lengthAnswersEqual,
-  sortLengthUnits,
 } from '../../lib/presentationInteractiveExercise';
 import {
   ExerciseDiagram,
@@ -362,6 +358,80 @@ function blankCount(parts?: EquationPart[]): number {
   return (parts || []).filter((p) => p.type === 'blank').length;
 }
 
+type FieldStatus = 'idle' | 'correct' | 'wrong' | 'revealed';
+
+function auswertungButtonSx(scale: number) {
+  return {
+    bgcolor: 'rgba(0,0,0,0.08)',
+    color: '#333',
+    fontWeight: 700,
+    textTransform: 'none' as const,
+    px: `${16 * scale}px`,
+    borderRadius: `${6 * scale}px`,
+    '&:hover': { bgcolor: 'rgba(0,0,0,0.12)' },
+  };
+}
+
+function ExerciseEvaluationScore({
+  scale,
+  statuses,
+}: {
+  scale: number;
+  statuses: FieldStatus[];
+}) {
+  const correct = statuses.filter((st) => st === 'correct').length;
+  const wrong = statuses.filter((st) => st === 'wrong').length;
+  return (
+    <Typography
+      sx={{
+        mt: `${16 * scale}px`,
+        textAlign: 'center',
+        fontSize: `${14 * scale}px`,
+        fontWeight: 700,
+        color: '#444',
+      }}
+    >
+      richtig: {correct}
+      <Box component="span" sx={{ letterSpacing: `${3 * scale}px`, mx: `${6 * scale}px` }}>
+        •••••
+      </Box>
+      falsch: {wrong}
+    </Typography>
+  );
+}
+
+function LengthSheetLeft({
+  item,
+  scale,
+}: {
+  item: LengthConvertExerciseItem;
+  scale: number;
+}) {
+  if (item.terms?.length) {
+    return (
+      <Box
+        component="span"
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: `${4 * scale}px`,
+        }}
+      >
+        {item.terms.map((t, i) => (
+          <React.Fragment key={`${t.unit}-${i}`}>
+            {i > 0 ? (
+              <Box component="span" sx={{ mx: `${2 * scale}px` }}>+</Box>
+            ) : null}
+            <MeasureText value={`${t.value} ${t.unit}`} scale={scale} />
+          </React.Fragment>
+        ))}
+      </Box>
+    );
+  }
+  return <MeasureText value={`${item.value} ${item.fromUnit}`} scale={scale} />;
+}
+
 function cloneQuestionForRepeat(
   q: InteractiveExerciseQuestion,
   repeatIndex: number,
@@ -562,14 +632,10 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     Array<'idle' | 'correct' | 'wrong' | 'revealed'>
   >([]);
   const [activeCompareIdx, setActiveCompareIdx] = useState(0);
-  const [lengthConvertUnits, setLengthConvertUnits] = useState<LengthUnit[]>([]);
   const [lengthConvertItems, setLengthConvertItems] = useState<LengthConvertExerciseItem[]>([]);
   const [lengthConvertValues, setLengthConvertValues] = useState<string[]>([]);
-  const [lengthConvertStatuses, setLengthConvertStatuses] = useState<
-    Array<'idle' | 'correct' | 'wrong' | 'revealed'>
-  >([]);
+  const [lengthConvertStatuses, setLengthConvertStatuses] = useState<FieldStatus[]>([]);
   const [lengthConvertHelpOpen, setLengthConvertHelpOpen] = useState(false);
-  const [lengthConvertSeed, setLengthConvertSeed] = useState(1);
   const solveRevealTimerRef = useRef<number | null>(null);
   const activeCompareIdxRef = useRef(0);
   const lengthConvertInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -693,15 +759,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
       setMatchTiles([]);
       setMatchedPairIds([]);
     } else if (q.mode === 'lengthConvert') {
-      const units = sortLengthUnits(
-        q.lengthConvertUnits?.length ? q.lengthConvertUnits : ['cm', 'dm', 'm'],
-      );
-      const items =
-        q.lengthConvertItems?.length
-          ? q.lengthConvertItems
-          : generateLengthConvertItems(units, 10, 1);
-      setLengthConvertUnits(units);
-      setLengthConvertSeed(1);
+      const items = q.lengthConvertItems?.length ? q.lengthConvertItems : [];
       setLengthConvertHelpOpen(false);
       setLengthConvertItems(items);
       setLengthConvertValues(Array.from({ length: items.length }, () => ''));
@@ -759,9 +817,16 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   }, [qi, currentQ?.id]);
 
   useEffect(() => {
-    if (phase !== 'play' || !interactive || locked || !currentQ) return;
+    if (phase !== 'play' || !interactive || !currentQ) return;
     const mode = currentQ.mode || 'choice';
-    if (mode !== 'write' && mode !== 'equation' && mode !== 'compare') return;
+    if (
+      mode !== 'write' &&
+      mode !== 'equation' &&
+      mode !== 'compare' &&
+      mode !== 'lengthConvert'
+    ) {
+      return;
+    }
     const t = window.setTimeout(() => {
       if (mode === 'write') {
         writeInputRef.current?.focus();
@@ -772,6 +837,10 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
         first?.select();
       } else if (mode === 'compare') {
         const first = convertInputRefs.current.find((el) => el);
+        first?.focus();
+        first?.select();
+      } else if (mode === 'lengthConvert') {
+        const first = lengthConvertInputRefs.current[0];
         first?.focus();
         first?.select();
       }
@@ -940,12 +1009,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     const next = [...fillValues];
     next[idx] = option;
     setFillValues(next);
-    if (next.every((v) => v)) {
-      window.setTimeout(
-        () => submitFills(parts, next, { ignoreLocked: true }),
-        180,
-      );
-    }
   };
 
   const submitWrite = () => {
@@ -1126,36 +1189,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     setCompareValues(compareItems.map((it) => it.sign));
     setCompareStatuses(compareItems.map(() => 'revealed'));
     appendRepeatAndAdvanceAfterReveal();
-  };
-
-  const regenLengthConvert = () => {
-    if (!currentQ || currentQ.mode !== 'lengthConvert') return;
-    const seed = lengthConvertSeed + 1;
-    const items = generateLengthConvertItems(lengthConvertUnits, 10, seed);
-    setLengthConvertSeed(seed);
-    setLengthConvertItems(items);
-    setLengthConvertValues(Array.from({ length: items.length }, () => ''));
-    setLengthConvertStatuses(Array.from({ length: items.length }, () => 'idle'));
-    setShowWrongBanner(false);
-    setLocked(false);
-  };
-
-  const toggleLengthConvertUnit = (unit: LengthUnit) => {
-    if (!interactive || locked || !currentQ || currentQ.mode !== 'lengthConvert') return;
-    setLengthConvertUnits((prev) => {
-      const has = prev.includes(unit);
-      const next = sortLengthUnits(has ? prev.filter((u) => u !== unit) : [...prev, unit]);
-      if (next.length < 2) return prev;
-      const seed = lengthConvertSeed + 1;
-      const items = generateLengthConvertItems(next, 10, seed);
-      setLengthConvertSeed(seed);
-      setLengthConvertItems(items);
-      setLengthConvertValues(Array.from({ length: items.length }, () => ''));
-      setLengthConvertStatuses(Array.from({ length: items.length }, () => 'idle'));
-      setShowWrongBanner(false);
-      setLocked(false);
-      return next;
-    });
   };
 
   const submitLengthConvert = () => {
@@ -1588,22 +1621,16 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                   });
                 })()}
               </Box>
-              {interactive && !locked ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: `${14 * s}px` }}>
+              {interactive ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <Button
+                    disabled={locked}
                     onClick={() => submitFills(currentQ.equationParts, fillValues)}
-                    sx={{
-                      bgcolor: '#FF8F00',
-                      color: '#fff',
-                      fontWeight: 800,
-                      textTransform: 'none',
-                      px: `${18 * s}px`,
-                      borderRadius: `${8 * s}px`,
-                      '&:hover': { bgcolor: '#F57C00' },
-                    }}
+                    sx={{ ...auswertungButtonSx(s), mt: `${14 * s}px` }}
                   >
-                    Prüfen
+                    Auswertung
                   </Button>
+                  <ExerciseEvaluationScore scale={s} statuses={fillStatuses} />
                 </Box>
               ) : null}
             </Box>
@@ -1697,6 +1724,18 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                   );
                 })}
               </Box>
+              {interactive ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Button
+                    disabled={locked}
+                    onClick={() => submitFills(currentQ.clozeParts, fillValues)}
+                    sx={{ ...auswertungButtonSx(s), mt: `${20 * s}px` }}
+                  >
+                    Auswertung
+                  </Button>
+                  <ExerciseEvaluationScore scale={s} statuses={fillStatuses} />
+                </Box>
+              ) : null}
             </Box>
           ) : null}
 
@@ -1944,20 +1983,13 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                       </Button>
                     ))}
                   </Box>
-                  <Button
-                    onClick={submitCompare}
-                    sx={{
-                      bgcolor: '#FF8F00',
-                      color: '#fff',
-                      fontWeight: 800,
-                      textTransform: 'none',
-                      px: `${18 * s}px`,
-                      borderRadius: `${8 * s}px`,
-                      '&:hover': { bgcolor: '#F57C00' },
-                    }}
-                  >
-                    Prüfen
+                  <Button onClick={submitCompare} sx={auswertungButtonSx(s)}>
+                    Auswertung
                   </Button>
+                  <ExerciseEvaluationScore
+                    scale={s}
+                    statuses={[...convertStatuses, ...compareStatuses]}
+                  />
                 </Box>
               ) : null}
             </Box>
@@ -1969,57 +2001,6 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
               <Typography sx={{ fontSize: `${18 * s}px`, fontWeight: 800, mb: `${10 * s}px` }}>
                 {currentQ.prompt}
               </Typography>
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: `${8 * s}px`,
-                  mb: `${10 * s}px`,
-                  justifyContent: 'center',
-                }}
-              >
-                {LENGTH_UNIT_ORDER.map((unit) => {
-                  const checked = lengthConvertUnits.includes(unit);
-                  return (
-                    <Box
-                      key={unit}
-                      component="button"
-                      type="button"
-                      disabled={!interactive || locked}
-                      onClick={() => toggleLengthConvertUnit(unit)}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: `${6 * s}px`,
-                        border: 'none',
-                        bgcolor: 'transparent',
-                        cursor: interactive && !locked ? 'pointer' : 'default',
-                        fontSize: `${14 * s}px`,
-                        fontWeight: 700,
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: `${18 * s}px`,
-                          height: `${18 * s}px`,
-                          border: `2px solid ${checked ? '#43A047' : '#bbb'}`,
-                          borderRadius: `${3 * s}px`,
-                          bgcolor: checked ? '#43A047' : '#fff',
-                          color: '#fff',
-                          fontSize: `${12 * s}px`,
-                          lineHeight: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        {checked ? '✓' : ''}
-                      </Box>
-                      <Box component="span" sx={{ fontStyle: 'italic' }}>{unit}</Box>
-                    </Box>
-                  );
-                })}
-              </Box>
               <Box
                 component="button"
                 type="button"
@@ -2051,36 +2032,17 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                   <LengthConvertLadderDiagram scale={s} />
                 </Box>
               ) : null}
-              <Box sx={{ display: 'flex', gap: `${8 * s}px`, mb: `${14 * s}px`, justifyContent: 'center' }}>
-                <Button
-                  disabled={!interactive || locked}
-                  onClick={regenLengthConvert}
-                  sx={{
-                    bgcolor: 'rgba(0,0,0,0.08)',
-                    color: '#333',
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    px: `${16 * s}px`,
-                    borderRadius: `${6 * s}px`,
-                  }}
-                >
-                  Neu
-                </Button>
-                <Button
-                  disabled={!interactive || locked}
-                  onClick={submitLengthConvert}
-                  sx={{
-                    bgcolor: 'rgba(0,0,0,0.08)',
-                    color: '#333',
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    px: `${16 * s}px`,
-                    borderRadius: `${6 * s}px`,
-                  }}
-                >
-                  Auswertung
-                </Button>
-              </Box>
+              {interactive ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mb: `${14 * s}px` }}>
+                  <Button
+                    disabled={locked}
+                    onClick={submitLengthConvert}
+                    sx={auswertungButtonSx(s)}
+                  >
+                    Auswertung
+                  </Button>
+                </Box>
+              ) : null}
               <Box
                 sx={{
                   display: 'grid',
@@ -2103,7 +2065,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                       }}
                     >
                       <Box component="span" sx={{ minWidth: `${22 * s}px` }}>{it.label})</Box>
-                      <MeasureText value={`${it.value} ${it.fromUnit}`} scale={s * 0.85} />
+                      <LengthSheetLeft item={it} scale={s * 0.85} />
                       <Box component="span">=</Box>
                       <Box
                         component="input"
