@@ -1073,7 +1073,7 @@ export function EpoNotenTeacherView() {
                                 <Stack direction="row" alignItems="center" spacing={0.1} justifyContent="flex-end">
                                   <Checkbox
                                     size="small"
-                                    checked={published}
+                                    checked={published && !completed}
                                     disabled={saving || completed}
                                     onChange={(_, checked) => void setGroupActive(gid, checked)}
                                     sx={{

@@ -898,9 +898,11 @@ export class EpoNotenController {
       const meta = ensureGroupMeta(existing);
       const prev = meta[groupId] ?? {};
       if (typeof req.body?.completed === 'boolean') {
+        const completedAt = req.body.completed ? new Date().toISOString() : null;
         meta[groupId] = {
           ...prev,
-          completedAt: req.body.completed ? new Date().toISOString() : null,
+          completedAt,
+          ...(req.body.completed ? { publishedAt: null } : {}),
         };
       }
       if (typeof req.body?.variantId === 'string') {
@@ -912,8 +914,11 @@ export class EpoNotenController {
       }
       if (typeof req.body?.active === 'boolean') {
         if (req.body.active) {
+          if (meta[groupId]?.completedAt || prev.completedAt) {
+            return res.status(400).json({ error: 'Kurs ist fertig — „aktiv“ ist deaktiviert.' });
+          }
           const publishedAt = new Date().toISOString();
-          meta[groupId] = { ...prev, publishedAt };
+          meta[groupId] = { ...meta[groupId] ?? prev, publishedAt };
           markGroupsPublished(existing, [groupId], publishedAt);
           const owned = await loadTeacherGroupsWithStudents(user.id);
           const index = await loadTeacherIndex(user.id);
