@@ -144,14 +144,14 @@ export function ki1QuizTask3(): ExamGridTaskSpec {
         quadrant: 'tl',
         kind: 'choice',
         prompt:
-          'Für einen Zustand enthält eine vereinfachte Q-Tabelle folgende Werte: <em>Fass 20 Pixel entfernt</em> — links: 2, rechts: 1, springen: 8. Der Agent nutzt gerade keine zufällige Exploration. Welche Aktion sollte er auswählen?',
+          'Gegeben sei der Zustand „Fass 20 Pixel entfernt“. In der vereinfachten Q-Tabelle stehen dafür die Q-Werte: links = 2, rechts = 1, springen = 8. Der Agent nutzt gerade nur Exploitation (keine zufällige Exploration). Welche Aktion wählt er?',
         options: [
-          { value: 'A', label: 'links' },
-          { value: 'B', label: 'rechts' },
-          { value: 'C', label: 'springen' },
+          { value: 'A', label: 'links (Q = 2)' },
+          { value: 'B', label: 'rechts (Q = 1)' },
+          { value: 'C', label: 'springen (Q = 8)' },
           {
             value: 'D',
-            label: 'Eine zufällige Aktion, weil alle drei Aktionen möglich sind',
+            label: 'eine zufällige der drei Aktionen',
           },
         ],
         solution: 'C',

@@ -258,12 +258,13 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-/** Erlaubt einfaches HTML in Prompts (sub, strong). */
+/** Erlaubt einfaches HTML in Prompts (sub, strong, em, sup). */
 function allowBasicHtml(s: string): string {
   return escapeHtml(s)
-    .replace(/&lt;(\/?)(sub|strong|sup)&gt;/gi, '<$1$2>')
+    .replace(/&lt;(\/?)(sub|strong|em|sup)&gt;/gi, '<$1$2>')
     .replace(/&lt;sub&gt;([\s\S]*?)&lt;\/sub&gt;/gi, '<sub>$1</sub>')
-    .replace(/&lt;strong&gt;([\s\S]*?)&lt;\/strong&gt;/gi, "<strong>$1</strong>");
+    .replace(/&lt;strong&gt;([\s\S]*?)&lt;\/strong&gt;/gi, '<strong>$1</strong>')
+    .replace(/&lt;em&gt;([\s\S]*?)&lt;\/em&gt;/gi, '<em>$1</em>');
 }
 
 export type SolutionExpandKind = 'text' | 'sort' | 'number';
