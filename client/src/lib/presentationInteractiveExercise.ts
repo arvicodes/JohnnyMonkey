@@ -1784,3 +1784,65 @@ export function topicStars(
   const t = progress?.topics?.find((x) => x.topicId === topicId);
   return Math.max(0, Math.min(3, Number(t?.stars) || 0));
 }
+
+export function questionTaskKey(topicId: string, questionId: string): string {
+  return `${topicId}::${questionId}`;
+}
+
+export type ExerciseTaskColumn = {
+  key: string;
+  topicId: string;
+  questionId: string;
+  topicTitle: string;
+  label: string;
+};
+
+export function flattenExerciseTasks(exercise: SlideInteractiveExercise): ExerciseTaskColumn[] {
+  const cols: ExerciseTaskColumn[] = [];
+  for (const topic of exercise.topics) {
+    for (const q of topic.questions) {
+      const label = (q.prompt || q.challenge || topic.title || q.id).trim();
+      cols.push({
+        key: questionTaskKey(topic.id, q.id),
+        topicId: topic.id,
+        questionId: q.id,
+        topicTitle: topic.title,
+        label,
+      });
+    }
+  }
+  return cols;
+}
+
+export function answerCellToPercent(
+  cell: InteractiveExerciseAnswerCell | 'correct' | 'wrong' | null | undefined,
+): number | null {
+  const mark = normalizeAnswerCell(cell);
+  if (!mark || mark.outcome == null) return null;
+  return mark.outcome === 'correct' ? 100 : 0;
+}
+
+export function buildQuestionPercents(
+  exercise: SlideInteractiveExercise,
+  progress: InteractiveExerciseProgress | null,
+  overrides?: Record<string, number>,
+): Record<string, number | null> {
+  const out: Record<string, number | null> = {};
+  for (const col of flattenExerciseTasks(exercise)) {
+    if (overrides && overrides[col.key] != null && Number.isFinite(overrides[col.key])) {
+      out[col.key] = Math.max(0, Math.min(100, Math.round(overrides[col.key])));
+      continue;
+    }
+    const topic = exercise.topics.find((t) => t.id === col.topicId);
+    const qi = topic?.questions.findIndex((q) => q.id === col.questionId) ?? -1;
+    const tp = progress?.topics?.find((t) => t.topicId === col.topicId);
+    const cell = qi >= 0 ? tp?.answers?.[qi] : null;
+    out[col.key] = answerCellToPercent(cell);
+  }
+  return out;
+}
+
+export type InteractiveExerciseProgressSnapshot = {
+  progress: InteractiveExerciseProgress;
+  questionPercents: Record<string, number | null>;
+};
