@@ -417,3 +417,44 @@ export function ExerciseDiagram({
   if (kind === 'length-comma-shift') return <LengthCommaShiftDiagram scale={scale} />;
   return null;
 }
+
+/** Umrechnungsskala km … mm (Hilfe im Längen-Umrechnungsbogen). */
+export function LengthConvertLadderDiagram({ scale }: { scale: number }) {
+  const units = ['km', 'm', 'dm', 'cm', 'mm'];
+  const factors = ['1000', '10', '10', '10'];
+  const unitSx = {
+    fontSize: `${15 * scale}px`,
+    fontWeight: 800,
+    fontStyle: 'italic' as const,
+    px: `${4 * scale}px`,
+    textAlign: 'center' as const,
+  };
+  const bridgeSx = {
+    minWidth: `${40 * scale}px`,
+    textAlign: 'center' as const,
+    fontSize: `${10 * scale}px`,
+    fontWeight: 700,
+    color: '#666',
+    lineHeight: 1.2,
+  };
+  return (
+    <Box sx={{ py: `${8 * scale}px`, px: `${4 * scale}px`, overflowX: 'auto' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'nowrap' }}>
+        {units.map((u, i) => (
+          <Box key={u} sx={{ display: 'flex', alignItems: 'center' }}>
+            {i > 0 ? (
+              <Box sx={bridgeSx}>
+                <Box>× {factors[i - 1]}</Box>
+                <Box sx={{ fontSize: `${12 * scale}px`, color: '#333', my: `${2 * scale}px` }}>
+                  {factors[i - 1]}
+                </Box>
+                <Box>÷ {factors[i - 1]}</Box>
+              </Box>
+            ) : null}
+            <Typography component="span" sx={unitSx}>{u}</Typography>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}

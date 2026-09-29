@@ -20,8 +20,14 @@ import {
   type InteractiveExerciseProgress,
   type InteractiveExerciseQuestion,
   type InteractiveExerciseTopic,
+  type LengthConvertExerciseItem,
+  type LengthUnit,
   type MatchPair,
   type SlideInteractiveExercise,
+  LENGTH_UNIT_ORDER,
+  generateLengthConvertItems,
+  lengthAnswersEqual,
+  sortLengthUnits,
 } from '../../lib/presentationInteractiveExercise';
 import {
   ExerciseDiagram,
@@ -42,6 +48,7 @@ import {
   sortRowCardSx,
   wordBankChipSx,
   wordBankRowSx,
+  LengthConvertLadderDiagram,
 } from './presentationInteractiveExerciseVisuals';
 
 type Phase = 'hub' | 'play' | 'result';
@@ -555,8 +562,17 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     Array<'idle' | 'correct' | 'wrong' | 'revealed'>
   >([]);
   const [activeCompareIdx, setActiveCompareIdx] = useState(0);
+  const [lengthConvertUnits, setLengthConvertUnits] = useState<LengthUnit[]>([]);
+  const [lengthConvertItems, setLengthConvertItems] = useState<LengthConvertExerciseItem[]>([]);
+  const [lengthConvertValues, setLengthConvertValues] = useState<string[]>([]);
+  const [lengthConvertStatuses, setLengthConvertStatuses] = useState<
+    Array<'idle' | 'correct' | 'wrong' | 'revealed'>
+  >([]);
+  const [lengthConvertHelpOpen, setLengthConvertHelpOpen] = useState(false);
+  const [lengthConvertSeed, setLengthConvertSeed] = useState(1);
   const solveRevealTimerRef = useRef<number | null>(null);
   const activeCompareIdxRef = useRef(0);
+  const lengthConvertInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     activeCompareIdxRef.current = activeCompareIdx;
@@ -676,6 +692,32 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
       setTypedStatus('idle');
       setMatchTiles([]);
       setMatchedPairIds([]);
+    } else if (q.mode === 'lengthConvert') {
+      const units = sortLengthUnits(
+        q.lengthConvertUnits?.length ? q.lengthConvertUnits : ['cm', 'dm', 'm'],
+      );
+      const items =
+        q.lengthConvertItems?.length
+          ? q.lengthConvertItems
+          : generateLengthConvertItems(units, 10, 1);
+      setLengthConvertUnits(units);
+      setLengthConvertSeed(1);
+      setLengthConvertHelpOpen(false);
+      setLengthConvertItems(items);
+      setLengthConvertValues(Array.from({ length: items.length }, () => ''));
+      setLengthConvertStatuses(Array.from({ length: items.length }, () => 'idle'));
+      setFillValues([]);
+      setFillStatuses([]);
+      setSortPlaced([]);
+      setSortPool([]);
+      setTypedAnswer('');
+      setTypedStatus('idle');
+      setMatchTiles([]);
+      setMatchedPairIds([]);
+      setConvertValues([]);
+      setConvertStatuses([]);
+      setCompareValues([]);
+      setCompareStatuses([]);
     } else {
       setFillValues([]);
       setFillStatuses([]);
@@ -713,6 +755,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   useEffect(() => {
     fillInputRefs.current = [];
     convertInputRefs.current = [];
+    lengthConvertInputRefs.current = [];
   }, [qi, currentQ?.id]);
 
   useEffect(() => {
@@ -1085,6 +1128,70 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     appendRepeatAndAdvanceAfterReveal();
   };
 
+  const regenLengthConvert = () => {
+    if (!currentQ || currentQ.mode !== 'lengthConvert') return;
+    const seed = lengthConvertSeed + 1;
+    const items = generateLengthConvertItems(lengthConvertUnits, 10, seed);
+    setLengthConvertSeed(seed);
+    setLengthConvertItems(items);
+    setLengthConvertValues(Array.from({ length: items.length }, () => ''));
+    setLengthConvertStatuses(Array.from({ length: items.length }, () => 'idle'));
+    setShowWrongBanner(false);
+    setLocked(false);
+  };
+
+  const toggleLengthConvertUnit = (unit: LengthUnit) => {
+    if (!interactive || locked || !currentQ || currentQ.mode !== 'lengthConvert') return;
+    setLengthConvertUnits((prev) => {
+      const has = prev.includes(unit);
+      const next = sortLengthUnits(has ? prev.filter((u) => u !== unit) : [...prev, unit]);
+      if (next.length < 2) return prev;
+      const seed = lengthConvertSeed + 1;
+      const items = generateLengthConvertItems(next, 10, seed);
+      setLengthConvertSeed(seed);
+      setLengthConvertItems(items);
+      setLengthConvertValues(Array.from({ length: items.length }, () => ''));
+      setLengthConvertStatuses(Array.from({ length: items.length }, () => 'idle'));
+      setShowWrongBanner(false);
+      setLocked(false);
+      return next;
+    });
+  };
+
+  const submitLengthConvert = () => {
+    if (!interactive || !currentQ || currentQ.mode !== 'lengthConvert') return;
+    if (locked) return;
+    const statuses = lengthConvertItems.map((it, i) =>
+      lengthAnswersEqual(lengthConvertValues[i] || '', it.answer)
+        ? ('correct' as const)
+        : ('wrong' as const),
+    );
+    setLengthConvertStatuses(statuses);
+    const allOk = statuses.every((st) => st === 'correct');
+    if (allOk) {
+      setShowWrongBanner(false);
+      markAndAdvance(true, 650);
+    } else {
+      registerWrongTry();
+      setShowWrongBanner(true);
+      setLocked(true);
+    }
+  };
+
+  const retryLengthConvert = () => {
+    if (!currentQ || currentQ.mode !== 'lengthConvert') return;
+    setLocked(false);
+    setShowWrongBanner(false);
+    setLengthConvertStatuses(Array.from({ length: lengthConvertItems.length }, () => 'idle'));
+  };
+
+  const solveLengthConvert = () => {
+    if (!currentQ || currentQ.mode !== 'lengthConvert') return;
+    setLengthConvertValues(lengthConvertItems.map((it) => it.answer));
+    setLengthConvertStatuses(lengthConvertItems.map(() => 'revealed'));
+    appendRepeatAndAdvanceAfterReveal();
+  };
+
   const pickCompareSign = (sign: CompareSign) => {
     if (!interactive || locked || !currentQ || currentQ.mode !== 'compare') return;
     setCompareValues((prev) => {
@@ -1283,6 +1390,8 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                     ? retryMatch
                     : mode === 'compare'
                       ? retryCompare
+                      : mode === 'lengthConvert'
+                        ? retryLengthConvert
                       : mode === 'write'
                         ? retryWrite
                         : mode === 'equation'
@@ -1298,6 +1407,8 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                     ? solveMatch
                     : mode === 'compare'
                       ? solveCompare
+                      : mode === 'lengthConvert'
+                        ? solveLengthConvert
                       : mode === 'write'
                         ? solveWrite
                         : mode === 'equation'
@@ -1327,7 +1438,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
             </Box>
           ) : null}
 
-          {promptBlock}
+          {mode !== 'lengthConvert' ? promptBlock : null}
           {currentQ.showRomanTable ? <RomanTable scale={s} /> : null}
 
           {/* Choice */}
@@ -1849,6 +1960,217 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                   </Button>
                 </Box>
               ) : null}
+            </Box>
+          ) : null}
+
+          {/* Längen-Umrechnungsbogen */}
+          {mode === 'lengthConvert' ? (
+            <Box sx={{ width: '100%', maxWidth: `${620 * s}px` }}>
+              <Typography sx={{ fontSize: `${18 * s}px`, fontWeight: 800, mb: `${10 * s}px` }}>
+                {currentQ.prompt}
+              </Typography>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: `${8 * s}px`,
+                  mb: `${10 * s}px`,
+                  justifyContent: 'center',
+                }}
+              >
+                {LENGTH_UNIT_ORDER.map((unit) => {
+                  const checked = lengthConvertUnits.includes(unit);
+                  return (
+                    <Box
+                      key={unit}
+                      component="button"
+                      type="button"
+                      disabled={!interactive || locked}
+                      onClick={() => toggleLengthConvertUnit(unit)}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: `${6 * s}px`,
+                        border: 'none',
+                        bgcolor: 'transparent',
+                        cursor: interactive && !locked ? 'pointer' : 'default',
+                        fontSize: `${14 * s}px`,
+                        fontWeight: 700,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: `${18 * s}px`,
+                          height: `${18 * s}px`,
+                          border: `2px solid ${checked ? '#43A047' : '#bbb'}`,
+                          borderRadius: `${3 * s}px`,
+                          bgcolor: checked ? '#43A047' : '#fff',
+                          color: '#fff',
+                          fontSize: `${12 * s}px`,
+                          lineHeight: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {checked ? '✓' : ''}
+                      </Box>
+                      <Box component="span" sx={{ fontStyle: 'italic' }}>{unit}</Box>
+                    </Box>
+                  );
+                })}
+              </Box>
+              <Box
+                component="button"
+                type="button"
+                onClick={() => setLengthConvertHelpOpen((o) => !o)}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: `${6 * s}px`,
+                  border: 'none',
+                  bgcolor: 'transparent',
+                  cursor: 'pointer',
+                  fontSize: `${14 * s}px`,
+                  fontWeight: 700,
+                  mb: `${6 * s}px`,
+                  color: '#333',
+                }}
+              >
+                Hilfe {lengthConvertHelpOpen ? '▴' : '▾'}
+              </Box>
+              {lengthConvertHelpOpen ? (
+                <Box
+                  sx={{
+                    bgcolor: '#fafafa',
+                    border: '1px solid rgba(0,0,0,0.08)',
+                    borderRadius: `${8 * s}px`,
+                    mb: `${10 * s}px`,
+                  }}
+                >
+                  <LengthConvertLadderDiagram scale={s} />
+                </Box>
+              ) : null}
+              <Box sx={{ display: 'flex', gap: `${8 * s}px`, mb: `${14 * s}px`, justifyContent: 'center' }}>
+                <Button
+                  disabled={!interactive || locked}
+                  onClick={regenLengthConvert}
+                  sx={{
+                    bgcolor: 'rgba(0,0,0,0.08)',
+                    color: '#333',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    px: `${16 * s}px`,
+                    borderRadius: `${6 * s}px`,
+                  }}
+                >
+                  Neu
+                </Button>
+                <Button
+                  disabled={!interactive || locked}
+                  onClick={submitLengthConvert}
+                  sx={{
+                    bgcolor: 'rgba(0,0,0,0.08)',
+                    color: '#333',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    px: `${16 * s}px`,
+                    borderRadius: `${6 * s}px`,
+                  }}
+                >
+                  Auswertung
+                </Button>
+              </Box>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                  gap: `${6 * s}px ${20 * s}px`,
+                }}
+              >
+                {lengthConvertItems.map((it, idx) => {
+                  const st = lengthConvertStatuses[idx] || 'idle';
+                  return (
+                    <Box
+                      key={`${it.label}-${idx}`}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: `${6 * s}px`,
+                        fontSize: `${15 * s}px`,
+                        fontWeight: 700,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <Box component="span" sx={{ minWidth: `${22 * s}px` }}>{it.label})</Box>
+                      <MeasureText value={`${it.value} ${it.fromUnit}`} scale={s * 0.85} />
+                      <Box component="span">=</Box>
+                      <Box
+                        component="input"
+                        ref={(el: HTMLInputElement | null) => {
+                          lengthConvertInputRefs.current[idx] = el;
+                        }}
+                        value={lengthConvertValues[idx] || ''}
+                        disabled={!interactive || locked}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          const next = [...lengthConvertValues];
+                          next[idx] = e.target.value.replace(/[^\d\s,.]/g, '');
+                          setLengthConvertValues(next);
+                          setLengthConvertStatuses((ss) =>
+                            ss.map((s0, i) => (i === idx ? 'idle' : s0)),
+                          );
+                        }}
+                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                          if (e.key !== 'Enter') return;
+                          e.preventDefault();
+                          const nextInput = lengthConvertInputRefs.current[idx + 1];
+                          if (nextInput) {
+                            nextInput.focus();
+                            nextInput.select();
+                          } else {
+                            submitLengthConvert();
+                          }
+                        }}
+                        sx={{
+                          ...exerciseInputFieldSx(s, lengthConvertValues[idx] || it.answer, {
+                            width: `${72 * s}px`,
+                            fontSize: `${14 * s}px`,
+                            color:
+                              st === 'correct' || st === 'revealed'
+                                ? '#2E7D32'
+                                : st === 'wrong'
+                                  ? '#C62828'
+                                  : '#111',
+                            textDecoration: st === 'wrong' ? 'line-through' : 'none',
+                          }),
+                        }}
+                      />
+                      <Box component="span" sx={{ fontStyle: 'italic' }}>{it.toUnit}</Box>
+                      {st === 'wrong' ? (
+                        <Typography sx={{ color: '#666', fontWeight: 700, fontSize: `${13 * s}px` }}>
+                          {it.answer}
+                        </Typography>
+                      ) : null}
+                    </Box>
+                  );
+                })}
+              </Box>
+              <Typography
+                sx={{
+                  mt: `${16 * s}px`,
+                  textAlign: 'center',
+                  fontSize: `${14 * s}px`,
+                  fontWeight: 700,
+                  color: '#444',
+                }}
+              >
+                richtig: {lengthConvertStatuses.filter((st) => st === 'correct').length}
+                {' '}
+                <Box component="span" sx={{ letterSpacing: `${3 * s}px`, mx: `${6 * s}px` }}>
+                  •••••
+                </Box>
+                falsch: {lengthConvertStatuses.filter((st) => st === 'wrong').length}
+              </Typography>
             </Box>
           ) : null}
 

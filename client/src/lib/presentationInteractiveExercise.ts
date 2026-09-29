@@ -74,8 +74,17 @@ export type InteractiveExerciseQuestion = {
    * `write` = Arabische Zahl → römisch tippen (Schreiben).
    * `match` = Kacheln zuordnen (Zuordnen).
    * `compare` = Umrechnen + Vergleichszeichen (Vergleichen).
+   * `lengthConvert` = Längen-Umrechnungsbogen (Anton-Stil, mehrere Aufgaben).
    */
-  mode?: 'choice' | 'equation' | 'cloze' | 'sort' | 'write' | 'match' | 'compare';
+  mode?:
+    | 'choice'
+    | 'equation'
+    | 'cloze'
+    | 'sort'
+    | 'write'
+    | 'match'
+    | 'compare'
+    | 'lengthConvert';
   /** Für mode=equation: römische Zahl links, dann Parts. */
   roman?: string;
   equationParts?: EquationPart[];
@@ -95,8 +104,24 @@ export type InteractiveExerciseQuestion = {
   matchPairs?: MatchPair[];
   /** Für mode=compare: Abschnitte (Umrechnen / Vergleichszeichen). */
   compareBlocks?: CompareBlock[];
+  /** Für mode=lengthConvert: vorausgewählte Einheiten (Checkboxen). */
+  lengthConvertUnits?: LengthUnit[];
+  /** Für mode=lengthConvert: Startaufgaben (Neu → Zufallsaufgaben). */
+  lengthConvertItems?: LengthConvertExerciseItem[];
   choices?: InteractiveExerciseChoice[];
   correctChoiceId?: string;
+};
+
+export type LengthUnit = 'mm' | 'cm' | 'dm' | 'm' | 'km';
+
+export const LENGTH_UNIT_ORDER: LengthUnit[] = ['mm', 'cm', 'dm', 'm', 'km'];
+
+export type LengthConvertExerciseItem = {
+  label: string;
+  value: string;
+  fromUnit: LengthUnit;
+  toUnit: LengthUnit;
+  answer: string;
 };
 
 export type InteractiveExerciseTopic = {
@@ -748,6 +773,147 @@ export const INTERACTIVE_EXERCISE_PACKS: Array<{ packId: string; title: string; 
 const LENGTH_RULE_TEXT =
   '1 km = 1 000 m · 1 m = 10 dm = 100 cm = 1 000 mm · 1 dm = 10 cm · 1 cm = 10 mm';
 
+const LENGTH_UNIT_TO_MM: Record<LengthUnit, number> = {
+  mm: 1,
+  cm: 10,
+  dm: 100,
+  m: 1000,
+  km: 1_000_000,
+};
+
+const LENGTH_CONVERT_LABELS = 'abcdefghij';
+
+function mulberry32(seed: number): () => number {
+  let t = seed >>> 0;
+  return () => {
+    t += 0x6d2b79f5;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export function formatLengthNumber(n: number): string {
+  if (!Number.isFinite(n)) return '';
+  const abs = Math.abs(n);
+  let decimals = 0;
+  if (abs < 1 && abs > 0) decimals = 4;
+  else if (!Number.isInteger(n)) decimals = 3;
+  let raw = decimals > 0 ? n.toFixed(decimals) : String(Math.round(n));
+  raw = raw.replace(/\.?0+$/, '');
+  const parts = raw.split('.');
+  const intPart = parts[0] ?? '0';
+  const frac = parts[1];
+  return frac ? `${intPart},${frac}` : intPart;
+}
+
+export function normalizeLengthAnswer(v: string): string {
+  return v
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/\./g, ',')
+    .replace(/[^\d,]/g, '');
+}
+
+function parseLengthNumber(v: string): number | null {
+  const n = normalizeLengthAnswer(v).replace(',', '.');
+  if (!n || n === ',') return null;
+  const x = Number(n);
+  return Number.isFinite(x) ? x : null;
+}
+
+export function lengthAnswersEqual(got: string, want: string): boolean {
+  const ng = normalizeLengthAnswer(got);
+  const nw = normalizeLengthAnswer(want);
+  if (ng === nw) return true;
+  const pg = parseLengthNumber(ng);
+  const pw = parseLengthNumber(nw);
+  if (pg == null || pw == null) return false;
+  return Math.abs(pg - pw) < 1e-9;
+}
+
+export function sortLengthUnits(units: LengthUnit[]): LengthUnit[] {
+  const set = new Set(units);
+  return LENGTH_UNIT_ORDER.filter((u) => set.has(u));
+}
+
+export function generateLengthConvertItems(
+  units: LengthUnit[],
+  count: number,
+  seed: number,
+): LengthConvertExerciseItem[] {
+  const enabled = sortLengthUnits(units);
+  if (enabled.length < 2) {
+    return generateLengthConvertItems(['cm', 'dm', 'm'], count, seed);
+  }
+  const rng = mulberry32(seed);
+  const valuePool = [
+    2, 3, 4, 5, 6, 9, 12, 20, 25, 51, 54, 68, 85, 200, 323, 511, 680, 930, 9300,
+    0.2, 0.05, 1.2, 3.23, 5.2, 6.8, 51.1,
+  ];
+  const items: LengthConvertExerciseItem[] = [];
+  const used = new Set<string>();
+  let guard = 0;
+  while (items.length < count && guard++ < 400) {
+    const from = enabled[Math.floor(rng() * enabled.length)];
+    let to = enabled[Math.floor(rng() * enabled.length)];
+    if (to === from) {
+      to = enabled[(enabled.indexOf(from) + 1) % enabled.length];
+    }
+    const value = valuePool[Math.floor(rng() * valuePool.length)];
+    const mm = value * LENGTH_UNIT_TO_MM[from];
+    const answerNum = mm / LENGTH_UNIT_TO_MM[to];
+    if (!Number.isFinite(answerNum)) continue;
+    const rounded = Math.round(answerNum * 10000) / 10000;
+    if (Math.abs(answerNum - rounded) > 1e-6) continue;
+    const key = `${value}|${from}|${to}`;
+    if (used.has(key)) continue;
+    used.add(key);
+    items.push({
+      label: LENGTH_CONVERT_LABELS[items.length] ?? String(items.length + 1),
+      value: formatLengthNumber(value),
+      fromUnit: from,
+      toUnit: to,
+      answer: formatLengthNumber(rounded),
+    });
+  }
+  while (items.length < count) {
+    items.push({
+      label: LENGTH_CONVERT_LABELS[items.length] ?? String(items.length + 1),
+      value: '9',
+      fromUnit: 'm',
+      toUnit: 'cm',
+      answer: '900',
+    });
+  }
+  return items;
+}
+
+const LENGTH_CONVERT_START_SET: LengthConvertExerciseItem[] = [
+  { label: 'a', value: '9', fromUnit: 'm', toUnit: 'cm', answer: '900' },
+  { label: 'b', value: '54', fromUnit: 'dm', toUnit: 'cm', answer: '540' },
+  { label: 'c', value: '511', fromUnit: 'm', toUnit: 'cm', answer: '51100' },
+  { label: 'd', value: '51,1', fromUnit: 'm', toUnit: 'cm', answer: '5110' },
+  { label: 'e', value: '0,2', fromUnit: 'm', toUnit: 'cm', answer: '20' },
+  { label: 'f', value: '9300', fromUnit: 'dm', toUnit: 'm', answer: '930' },
+  { label: 'g', value: '680', fromUnit: 'cm', toUnit: 'm', answer: '6,8' },
+  { label: 'h', value: '323', fromUnit: 'cm', toUnit: 'm', answer: '3,23' },
+  { label: 'i', value: '52', fromUnit: 'cm', toUnit: 'dm', answer: '5,2' },
+  { label: 'j', value: '5', fromUnit: 'cm', toUnit: 'm', answer: '0,05' },
+];
+
+function lengthConvertSheet(): InteractiveExerciseQuestion {
+  return {
+    id: 'len-convert-sheet',
+    mode: 'lengthConvert',
+    prompt: '1) Länge',
+    tip: 'In die kleinere Einheit: mit 10 oder 1 000 multiplizieren. In die größere: teilen.',
+    lengthConvertUnits: ['cm', 'dm', 'm'],
+    lengthConvertItems: LENGTH_CONVERT_START_SET,
+    choices: [],
+  };
+}
+
 function lengthWrite(
   id: string,
   challenge: string,
@@ -1035,6 +1201,12 @@ export function createLengthsClass5Exercise(): SlideInteractiveExercise {
     packId: 'lengths-class-5',
     topics: [
       { id: 'len-cloze', title: 'Lückentext & Merke', kind: 'practice', questions: clozeQuestions },
+      {
+        id: 'len-convert',
+        title: 'Länge umrechnen',
+        kind: 'practice',
+        questions: [lengthConvertSheet()],
+      },
       { id: 'len-sort-small', title: 'Ordnen (klein → groß)', kind: 'practice', questions: sortSmallQuestions },
       { id: 'len-sort-large', title: 'Ordnen (groß → klein)', kind: 'practice', questions: sortLargeQuestions },
       { id: 'len-smaller', title: 'In kleinere Einheiten', kind: 'practice', questions: toSmallerQuestions },
@@ -1092,7 +1264,8 @@ export function sanitizeSlideInteractiveExercise(
         qq.mode === 'sort' ||
         qq.mode === 'write' ||
         qq.mode === 'match' ||
-        qq.mode === 'compare'
+        qq.mode === 'compare' ||
+        qq.mode === 'lengthConvert'
           ? qq.mode
           : 'choice';
 
@@ -1296,6 +1469,66 @@ export function sanitizeSlideInteractiveExercise(
           mode: 'compare',
           ...(typeof qq.tip === 'string' && qq.tip.trim() ? { tip: qq.tip.trim() } : {}),
           compareBlocks,
+          choices: [],
+        });
+        continue;
+      }
+
+      if (mode === 'lengthConvert') {
+        const unitsRaw = Array.isArray(qq.lengthConvertUnits) ? qq.lengthConvertUnits : [];
+        const lengthConvertUnits = sortLengthUnits(
+          unitsRaw.filter(
+            (u): u is LengthUnit =>
+              u === 'mm' || u === 'cm' || u === 'dm' || u === 'm' || u === 'km',
+          ),
+        );
+        const itemsRaw = Array.isArray(qq.lengthConvertItems) ? qq.lengthConvertItems : [];
+        const lengthConvertItems: LengthConvertExerciseItem[] = [];
+        for (const it of itemsRaw) {
+          if (!it || typeof it !== 'object') continue;
+          const label = typeof (it as { label?: string }).label === 'string'
+            ? String((it as { label: string }).label).trim()
+            : '';
+          const value = typeof (it as { value?: string }).value === 'string'
+            ? String((it as { value: string }).value).trim()
+            : '';
+          const fromUnit = (it as { fromUnit?: string }).fromUnit;
+          const toUnit = (it as { toUnit?: string }).toUnit;
+          const answer = typeof (it as { answer?: string }).answer === 'string'
+            ? String((it as { answer: string }).answer).trim()
+            : '';
+          if (
+            !label ||
+            !value ||
+            !answer ||
+            (fromUnit !== 'mm' &&
+              fromUnit !== 'cm' &&
+              fromUnit !== 'dm' &&
+              fromUnit !== 'm' &&
+              fromUnit !== 'km') ||
+            (toUnit !== 'mm' &&
+              toUnit !== 'cm' &&
+              toUnit !== 'dm' &&
+              toUnit !== 'm' &&
+              toUnit !== 'km')
+          ) {
+            continue;
+          }
+          lengthConvertItems.push({
+            label,
+            value,
+            fromUnit,
+            toUnit,
+            answer,
+          });
+        }
+        questions.push({
+          id: qid,
+          prompt,
+          mode: 'lengthConvert',
+          ...(typeof qq.tip === 'string' && qq.tip.trim() ? { tip: qq.tip.trim() } : {}),
+          ...(lengthConvertUnits.length >= 2 ? { lengthConvertUnits } : {}),
+          ...(lengthConvertItems.length >= 1 ? { lengthConvertItems } : {}),
           choices: [],
         });
         continue;

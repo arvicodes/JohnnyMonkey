@@ -1,6 +1,43 @@
+/** Checkbox-Auswahl (eine oder mehrere Antworten) in Prüfungs-HTML. */
+export function examMcSelectSetupJsSource(): string {
+  return `
+        function setupExamMcSelects() {
+            document.querySelectorAll('.exam-multi-select[data-answer-id], .exam-mc-single-select[data-answer-id]').forEach(function (wrap) {
+                var id = wrap.getAttribute('data-answer-id');
+                if (!id) return;
+                var hidden = document.getElementById(id);
+                var maxOne = wrap.classList.contains('exam-mc-single-select');
+                var sync = function () {
+                    var vals = [];
+                    wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(function (cb) {
+                        vals.push(cb.value || '');
+                    });
+                    vals = vals.filter(Boolean);
+                    if (maxOne) {
+                        if (hidden) hidden.value = vals[0] || '';
+                    } else {
+                        vals.sort();
+                        if (hidden) hidden.value = vals.join('|');
+                    }
+                    if (typeof updatePointsDisplay === 'function') updatePointsDisplay();
+                };
+                wrap.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+                    cb.addEventListener('change', function () {
+                        if (maxOne && cb.checked) {
+                            wrap.querySelectorAll('input[type="checkbox"]').forEach(function (other) {
+                                if (other !== cb) other.checked = false;
+                            });
+                        }
+                        sync();
+                    });
+                });
+            });
+        }`;
+}
+
 /** Inline JS for KA/QZ HTML: collect all student answers including Zahlenstrahl hidden fields. */
 export function examCollectAnswersJsSource(): string {
-  return `
+  return `${examMcSelectSetupJsSource()}
         function examEditableInputs() {
             return Array.from(document.querySelectorAll(
                 'input[type="text"]:not([disabled]):not([readonly]), input[type="number"]:not([disabled]):not([readonly]), textarea:not([disabled]):not([readonly]), .exam-nl-fixed-input:not([disabled]):not([readonly])'
@@ -64,15 +101,16 @@ export function examCollectAnswersJsSource(): string {
                 const selected = document.querySelector('input[name="' + name + '"]:checked');
                 if (selected) answers[name] = selected.value || '';
             });
-            document.querySelectorAll('.exam-multi-select[data-answer-id]').forEach(function (wrap) {
+            document.querySelectorAll('.exam-multi-select[data-answer-id], .exam-mc-single-select[data-answer-id]').forEach(function (wrap) {
                 var id = wrap.getAttribute('data-answer-id');
                 if (!id) return;
+                var maxOne = wrap.classList.contains('exam-mc-single-select');
                 var vals = [];
                 wrap.querySelectorAll('input[type="checkbox"]:checked').forEach(function (cb) {
                     vals.push(cb.value || '');
                 });
-                vals = vals.filter(Boolean).sort();
-                var joined = vals.join('|');
+                vals = vals.filter(Boolean);
+                var joined = maxOne ? (vals[0] || '') : vals.sort().join('|');
                 var hidden = document.getElementById(id);
                 if (hidden) hidden.value = joined;
                 answers[id] = joined;

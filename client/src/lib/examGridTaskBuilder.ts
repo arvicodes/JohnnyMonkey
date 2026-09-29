@@ -739,10 +739,10 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
     const opts = sub.options
       .map(
         (o) =>
-          `<label class="exam-mc-option"><input type="radio" name="${id}" value="${escapeHtml(o.value)}"> ${allowBasicHtml(o.label)}</label>`,
+          `<label class="exam-mc-option"><input type="checkbox" value="${escapeHtml(o.value)}"> ${allowBasicHtml(o.label)}</label>`,
       )
       .join('');
-    body = `<div class="item input-group full-width exam-mc-block">${heading}<div class="exam-mc-options">${opts}</div></div>`;
+    body = `<div class="item input-group full-width exam-mc-block">${heading}<div class="exam-mc-options exam-mc-single-select" data-answer-id="${id}">${opts}</div><input type="hidden" id="${id}" value=""></div>`;
   } else if (sub.kind === 'multi-select') {
     const id = allocId(taskNumber, fieldIndex.n++);
     const canonical = sub.solution
@@ -1299,6 +1299,34 @@ function parseSubsection(
         return { left, right, solution };
       });
     return attachImage(subEl, { id, letter, title, quadrant, kind: 'compare', rows });
+  }
+
+  const singleWrap = subEl.querySelector('.exam-mc-single-select[data-answer-id]');
+  if (singleWrap) {
+    const answerId = singleWrap.getAttribute('data-answer-id') || '';
+    const options = Array.from(singleWrap.querySelectorAll('label.exam-mc-option, .exam-mc-option')).map(
+      (lab) => {
+        const input = lab.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+        const clone = lab.cloneNode(true) as Element;
+        clone.querySelectorAll('input').forEach((inp) => inp.remove());
+        return {
+          label: (clone.textContent || '').trim(),
+          value: input?.value || '',
+        };
+      },
+    );
+    const prompt = (title || subEl.querySelector('.exam-subsection-title')?.textContent || '').trim();
+    const solution = answersToSolutionField(answers, answerId);
+    return attachImage(subEl, {
+      id,
+      letter,
+      title,
+      quadrant,
+      kind: 'choice',
+      prompt,
+      options: options.length ? options : [{ label: '', value: 'A' }],
+      solution,
+    });
   }
 
   const multiWrap = subEl.querySelector('.exam-multi-select[data-answer-id]');
