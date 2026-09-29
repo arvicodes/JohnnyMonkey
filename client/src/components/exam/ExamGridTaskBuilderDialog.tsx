@@ -432,6 +432,7 @@ export default function ExamGridTaskBuilderDialog({
                   display: 'flex',
                   justifyContent: 'flex-end',
                   boxSizing: 'border-box',
+                  pr: '20%',
                 }}
               >
                 <ExamSessionResetTrio
