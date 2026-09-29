@@ -402,8 +402,9 @@ router.get('/active-lessons/teacher', async (req: Request, res: Response) => {
 });
 
 /**
- * Für Schüler: welche Stundenordner bereits gestartet wurden (Play / Scheduler).
- * ACTIVE + CLOSED → sichtbar; OPEN noch nicht. Ohne Sessions → Fallback auf FileShares.
+ * Für Schüler: nur die **gerade laufende** Play-Stunde (ACTIVE, noch nicht abgelaufen).
+ * Keine Historie aus CLOSED — sonst häufen sich alte Folien-Leisten (01.01, 01.02, …).
+ * Ohne aktive Session → Fallback auf FileShares.
  */
 router.get('/released-lessons/student', async (req: Request, res: Response) => {
   try {
@@ -424,42 +425,36 @@ router.get('/released-lessons/student', async (req: Request, res: Response) => {
       return res.json({ byGroup: {} });
     }
 
+    const now = new Date();
     const sessions = await prisma.autoLessonSession.findMany({
       where: {
         groupId: { in: groupIds },
-        status: { in: ['ACTIVE', 'CLOSED'] },
+        status: 'ACTIVE',
         lessonPath: { not: null },
+        endsAt: { gt: now },
       },
-      select: { groupId: true, lessonPath: true, status: true },
+      select: { groupId: true, lessonPath: true, startsAt: true },
+      orderBy: { startsAt: 'desc' },
     });
 
     const byGroup: Record<
       string,
-      { lessonPaths: string[]; useShareFallback: boolean }
+      { lessonPaths: string[]; currentLessonPath: string | null; useShareFallback: boolean }
     > = {};
 
     for (const gid of groupIds) {
-      byGroup[gid] = { lessonPaths: [], useShareFallback: true };
+      byGroup[gid] = { lessonPaths: [], currentLessonPath: null, useShareFallback: true };
     }
 
-    const pathSets: Record<string, Set<string>> = {};
+    const seenGroup = new Set<string>();
     for (const s of sessions) {
-      if (!s.lessonPath) continue;
-      const expanded = expandWithPreviousLessonFolders(s.lessonPath);
-      if (!pathSets[s.groupId]) pathSets[s.groupId] = new Set();
-      for (const lessonFolder of expanded) {
-        const norm = normalizeLessonPathKey(lessonFolder);
-        if (norm) pathSets[s.groupId].add(norm);
-      }
-      // Sobald eine Gruppe mindestens eine gestartete Stunde hat → kein Share-Fallback mehr
-      if (byGroup[s.groupId] && expanded.length > 0) {
-        byGroup[s.groupId].useShareFallback = false;
-      }
-    }
-
-    for (const gid of Object.keys(pathSets)) {
-      byGroup[gid] = {
-        lessonPaths: Array.from(pathSets[gid]),
+      if (!s.lessonPath || seenGroup.has(s.groupId)) continue;
+      seenGroup.add(s.groupId);
+      const norm = normalizeLessonPathKey(s.lessonPath);
+      if (!norm) continue;
+      byGroup[s.groupId] = {
+        lessonPaths: [norm],
+        currentLessonPath: norm,
         useShareFallback: false,
       };
     }

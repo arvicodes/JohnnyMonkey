@@ -2281,7 +2281,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   const [sharedInputSharePaths, setSharedInputSharePaths] = useState<{[groupId: string]: string[]}>({});
   /** Stundenordner, die per Play (oder Scheduler) freigeschaltet wurden */
   const [releasedLessonsByGroup, setReleasedLessonsByGroup] = useState<{
-    [groupId: string]: { lessonPaths: string[]; useShareFallback: boolean };
+    [groupId: string]: {
+      lessonPaths: string[];
+      currentLessonPath: string | null;
+      useShareFallback: boolean;
+    };
   }>({});
   /** Basenames freigegebener HU/KA (SuS sollen Stunde sehen, auch ohne Material-Freigabe) */
   const [releasedExamFileNames, setReleasedExamFileNames] = useState<string[]>([]);
@@ -3040,15 +3044,27 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       if (!res.ok) return;
       const data = await res.json();
       const byGroup = data?.byGroup && typeof data.byGroup === 'object' ? data.byGroup : {};
-      const next: { [groupId: string]: { lessonPaths: string[]; useShareFallback: boolean } } = {};
+      const next: {
+        [groupId: string]: {
+          lessonPaths: string[];
+          currentLessonPath: string | null;
+          useShareFallback: boolean;
+        };
+      } = {};
       for (const [gid, raw] of Object.entries(byGroup as Record<string, any>)) {
         const paths = Array.isArray(raw?.lessonPaths)
           ? raw.lessonPaths.map((p: string) =>
               normalizeLessonMaterialPath(String(p)).replace(/\/+$/, ''),
             )
           : [];
+        const currentRaw =
+          typeof raw?.currentLessonPath === 'string' ? raw.currentLessonPath.trim() : '';
+        const currentLessonPath = currentRaw
+          ? normalizeLessonMaterialPath(currentRaw).replace(/\/+$/, '')
+          : paths[0] || null;
         next[gid] = {
           lessonPaths: paths,
+          currentLessonPath,
           useShareFallback: Boolean(raw?.useShareFallback),
         };
       }
@@ -3134,6 +3150,25 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   }, []);
 
   /** E nur an der vom Lehrer gerade laufend gesetzten Stunde */
+  const lessonMatchesCurrentReleasedLesson = useCallback(
+    (groupId: string, lessonPath: string, lessonName: string) => {
+      const current = releasedLessonsByGroup[groupId]?.currentLessonPath;
+      if (current && entryTicketLessonPathsMatch(current, lessonPath)) return true;
+      if (activeRunningLesson?.groupId === groupId) {
+        if (entryTicketLessonPathsMatch(activeRunningLesson.lessonPath, lessonPath)) return true;
+      }
+      const lessonFolder =
+        normalizeLessonMaterialPath(lessonPath).replace(/\/+$/, '').split('/').pop() || '';
+      if (current) {
+        const curFolder = current.split('/').pop() || '';
+        if (curFolder && curFolder === lessonFolder) return true;
+        if (curFolder && curFolder === (lessonName || '').trim()) return true;
+      }
+      return false;
+    },
+    [releasedLessonsByGroup, activeRunningLesson, entryTicketLessonPathsMatch],
+  );
+
   const lessonMatchesActiveRunningLesson = useCallback(
     (groupId: string, lessonPath: string, lessonName: string) => {
       if (!activeRunningLesson) return false;
@@ -3400,6 +3435,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       return dir.children.some((child: any) => hasActiveRunningLessonDescendant(child, lvl + 1));
     };
 
+    const hasReleasedLessonDescendant = (dir: any, lvl: number): boolean => {
+      if (dir?.type !== 'directory') return false;
+      if (directoryIsStundeFolderForStudentTree(dir.name, lvl)) {
+        const hasShared =
+          hasSharedFiles(dir) || isLessonSharedInputShared(groupId, dir.path || '');
+        if (isStudentLessonReleased(groupId, dir.path || '', hasShared)) return true;
+      }
+      if (!Array.isArray(dir.children)) return false;
+      return dir.children.some((child: any) => hasReleasedLessonDescendant(child, lvl + 1));
+    };
+
     // Rekursive Funktion zum Rendern aller Ebenen (dashboard: Stunden als Karte → Modal; modalMaterials: Inhalt im Modal)
     const renderItemRecursively = (
       item: any,
@@ -3442,11 +3488,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           lessonMatchesActiveRunningLesson(groupId, item.path || '', item.name || '');
         const ancestorOfRunningLesson =
           view === 'dashboard' && hasActiveRunningLessonDescendant(item, level);
+        const ancestorOfReleasedLesson =
+          view === 'dashboard' && hasReleasedLessonDescendant(item, level);
         const releasedExamInBranch = view === 'dashboard' && treeNodeHasReleasedExam(item);
         if (
           !stundeWithLeinwand &&
           !stundeWithRunningLesson &&
           !ancestorOfRunningLesson &&
+          !ancestorOfReleasedLesson &&
           !releasedExamInBranch
         ) {
           return null;
@@ -3597,6 +3646,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           const next = !lessonExpanded;
           setExpandedStudentLessons((prev) => ({ ...prev, [lessonKey]: next }));
         };
+        const isCurrentReleasedLesson = lessonMatchesCurrentReleasedLesson(
+          groupId,
+          item.path || '',
+          item.name || '',
+        );
         const materialsBlock = (
           <StudentLessonMaterialsPanel
             lessonName={item.name}
@@ -3606,6 +3660,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
             sharedPaths={groupShared}
             groupId={groupId}
             showLeinwand={isLessonSharedInputShared(groupId, item.path)}
+            folienPreviewOnly={isCurrentReleasedLesson}
             onOpenHomeworkTodo={(path, contextLabel) =>
               setHomeworkTodoModal({ lessonPath: path, contextLabel })
             }

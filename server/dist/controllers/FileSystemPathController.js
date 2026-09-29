@@ -3311,13 +3311,18 @@ FileSystemPathController.EXAM_TASK_GRID_STYLE_SNIPPET = `
             font-weight: 800;
             margin-left: 0.35em;
         }
+        .task-inline-instruction .exam-instruction-emphasis {
+            font-size: 16px;
+            font-weight: 900;
+            color: #7b1fa2;
+        }
         .exam-mc-block { display: flex; flex-direction: column; margin: 8px 0 14px; }
         .exam-mc-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.35em 0.5em; font-weight: 600; line-height: 1.45; margin-bottom: 8px; }
         .exam-mc-options, .exam-multi-select { display: flex; flex-direction: column; gap: 4px; margin-top: 0; width: 100%; }
         .exam-mc-block .input-group.full-width label.exam-mc-option { display: flex; align-items: center; margin-bottom: 0; }
-        .exam-mc-option { display: flex; align-items: center; gap: 6px; line-height: 1.35; cursor: pointer; }
+        .exam-mc-option { display: flex; align-items: center; gap: 0; line-height: 1.35; cursor: pointer; }
         .exam-mc-option input[type="checkbox"] {
-            width: 15px; height: 15px; min-width: 15px; margin: 0; padding: 0; flex-shrink: 0; vertical-align: middle;
+            width: 15px; height: 15px; min-width: 15px; margin: 0; margin-inline-start: 1%; margin-inline-end: 2%; padding: 0; flex-shrink: 0; vertical-align: middle;
             accent-color: #1565c0; cursor: pointer;
         }
         .exam-task-grid {

@@ -113,6 +113,8 @@ export default function StudentLessonMaterialsPanel({
   sharedPaths,
   groupId,
   showLeinwand,
+  /** Gerade per Play freigeschaltete Stunde: Folien nur anzeigen, nicht öffnen. */
+  folienPreviewOnly = false,
   onOpenHomeworkTodo,
 }: {
   lessonName: string;
@@ -126,6 +128,7 @@ export default function StudentLessonMaterialsPanel({
   groupId?: string;
   /** Leinwand freigegeben → grüner Button unter der Folien-Leiste */
   showLeinwand?: boolean;
+  folienPreviewOnly?: boolean;
   /** Öffnet das ToDo-Modal auf Dashboard-Ebene (überlebt Panel-Remounts).
    *  lessonPath = Stunde der HA-Folie (aktuelle Stunde); contextLabel optional. */
   onOpenHomeworkTodo?: (lessonPath: string, contextLabel?: string | null) => void;
@@ -358,12 +361,11 @@ export default function StudentLessonMaterialsPanel({
   // Johnny-Folien-PDFs (Original/bearbeitet/Versionen/Stand) nie als Extra-Zeilen —
   // SuS sehen nur die Folien-Zeile mit einem Download bis NOW.
   const otherMaterials = materials.filter((f) => !isJohnnyPresentationExportPdf(f.name));
-  /** Folien erst öffnen/downloaden, wenn Präsentations-PDF für SuS freigegeben ist. */
   const presentationUnlocked =
     presentationShared || !!(presentationOriginal || presentationEdited);
-  /** Ohne Freigabe keine Folien-Leiste (auch nicht ausgegraut). */
-  const showFolienRow = presentationUnlocked;
-  const canOpenFolien = presentationUnlocked;
+  const showFolienRow =
+    folienPreviewOnly && (deckHasSlides || presentationUnlocked);
+  const canOpenFolien = presentationUnlocked && !folienPreviewOnly;
   const hasPresentation = showFolienRow;
   const [standDownloadBusy, setStandDownloadBusy] = useState(false);
 
@@ -566,13 +568,26 @@ export default function StudentLessonMaterialsPanel({
               py: 0,
               px: 1,
               borderRadius: 1.5,
-              bgcolor: 'rgba(243, 229, 245, 0.95)',
-              border: '1px solid rgba(156, 39, 176, 0.22)',
+              bgcolor: folienPreviewOnly
+                ? 'rgba(0, 0, 0, 0.05)'
+                : 'rgba(243, 229, 245, 0.95)',
+              border: folienPreviewOnly
+                ? '1px solid rgba(0, 0, 0, 0.12)'
+                : '1px solid rgba(156, 39, 176, 0.22)',
+              opacity: folienPreviewOnly ? 0.85 : 1,
               boxShadow: '0 1px 2px rgba(123, 31, 162, 0.06)',
               gap: 0.45,
             }}
           >
-            <Tooltip title={canOpenFolien ? 'Folien bis NOW öffnen' : 'Folien'}>
+            <Tooltip
+              title={
+                folienPreviewOnly
+                  ? 'Folien sind freigeschaltet — öffnen folgt in der Stunde'
+                  : canOpenFolien
+                    ? 'Folien bis NOW öffnen'
+                    : 'Folien'
+              }
+            >
               <Box component="span" sx={{ display: 'inline-flex', flexShrink: 0 }}>
                 <Box
                   component="button"
@@ -592,7 +607,7 @@ export default function StudentLessonMaterialsPanel({
                     p: 0,
                     m: 0,
                     cursor: canOpenFolien ? 'pointer' : 'default',
-                    opacity: canOpenFolien ? 1 : 0.5,
+                    opacity: canOpenFolien ? 1 : 0.55,
                     font: 'inherit',
                     textAlign: 'left',
                     color: 'text.primary',
@@ -623,11 +638,19 @@ export default function StudentLessonMaterialsPanel({
                 </Box>
               </Box>
             </Tooltip>
-            <Tooltip title="PDF bis NOW herunterladen">
+            <Tooltip
+              title={
+                folienPreviewOnly
+                  ? 'Download noch nicht freigegeben'
+                  : 'PDF bis NOW herunterladen'
+              }
+            >
               <span style={{ display: 'inline-flex', marginLeft: 'auto', flexShrink: 0 }}>
                 <IconButton
                   size="small"
-                  disabled={!canOpenFolien || standDownloadBusy || !lessonPath}
+                  disabled={
+                    folienPreviewOnly || !canOpenFolien || standDownloadBusy || !lessonPath
+                  }
                   aria-label="Folienstand PDF herunterladen"
                   onClick={() => {
                     if (!lessonPath || standDownloadBusy) return;
