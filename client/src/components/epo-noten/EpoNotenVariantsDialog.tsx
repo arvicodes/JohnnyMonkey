@@ -20,6 +20,7 @@ import {
   EPO_NOTEN_CATEGORY_COUNT,
   type EpoNotenVariantSheet,
 } from '../../lib/epoNotenShared';
+import { EPO_VARIANT2_WEIGHTED_PRESET } from '../../lib/epoNotenVariantPresets';
 import { epoNotenCompactBtnSx, epoNotenPalette } from './epoNotenUi';
 
 type Props = {
@@ -32,6 +33,8 @@ export function EpoNotenVariantsDialog({ open, onClose, onChanged }: Props) {
   const [variants, setVariants] = useState<EpoNotenVariantSheet[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [name, setName] = useState('');
+  const [titleLines, setTitleLines] = useState<string[]>([]);
+  const [weightLines, setWeightLines] = useState<string[]>([]);
   const [studentLines, setStudentLines] = useState<string[]>([]);
   const [teacherLines, setTeacherLines] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -63,6 +66,12 @@ export function EpoNotenVariantsDialog({ open, onClose, onChanged }: Props) {
     const v = variants.find((x) => x.id === selectedId);
     if (!v) return;
     setName(v.name);
+    setTitleLines([...(v.categoryTitles ?? [])]);
+    setWeightLines(
+      v.categoryWeightsPercent
+        ? v.categoryWeightsPercent.map((w) => String(w))
+        : Array.from({ length: EPO_NOTEN_CATEGORY_COUNT }, () => ''),
+    );
     setStudentLines([...v.studentCategories]);
     setTeacherLines([...v.teacherCategories]);
   }, [selectedId, variants]);
@@ -72,13 +81,47 @@ export function EpoNotenVariantsDialog({ open, onClose, onChanged }: Props) {
     setSaving(true);
     setError(null);
     try {
+      const weights = weightLines.map((w) => Math.round(Number(w)));
+      const weightsPayload =
+        weights.length === EPO_NOTEN_CATEGORY_COUNT && weights.every((n) => Number.isFinite(n) && n > 0)
+          ? weights
+          : undefined;
+
       const res = await apiPut(`/api/epo-noten/variants/${selectedId}`, {
         name,
+        categoryTitles: titleLines,
+        categoryWeightsPercent: weightsPayload,
         studentCategories: studentLines,
         teacherCategories: teacherLines,
       });
       if (!res?.ok) throw new Error('Speichern fehlgeschlagen');
       await load();
+      onChanged?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Fehler');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const applyVariant2Preset = () => {
+    setName(EPO_VARIANT2_WEIGHTED_PRESET.name);
+    setTitleLines([...EPO_VARIANT2_WEIGHTED_PRESET.categoryTitles]);
+    setWeightLines(EPO_VARIANT2_WEIGHTED_PRESET.categoryWeightsPercent.map(String));
+    setStudentLines([...EPO_VARIANT2_WEIGHTED_PRESET.studentCategories]);
+    setTeacherLines([...EPO_VARIANT2_WEIGHTED_PRESET.teacherCategories]);
+  };
+
+  const createVariant2 = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await apiPost('/api/epo-noten/variants', { template: 'variant2' });
+      if (!res?.ok) throw new Error('Erstellen fehlgeschlagen');
+      const data = await res.json();
+      const id = data.variant?.id as string;
+      await load();
+      if (id) setSelectedId(id);
       onChanged?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
@@ -163,6 +206,15 @@ export function EpoNotenVariantsDialog({ open, onClose, onChanged }: Props) {
             >
               Neue Variante
             </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => void createVariant2()}
+              disabled={saving || loading}
+              sx={epoNotenCompactBtnSx}
+            >
+              Variante 2 anlegen
+            </Button>
           </Stack>
           <Stack spacing={1} sx={{ flex: 1, minWidth: 0 }}>
             <TextField
@@ -172,6 +224,41 @@ export function EpoNotenVariantsDialog({ open, onClose, onChanged }: Props) {
               onChange={(e) => setName(e.target.value)}
               disabled={loading}
             />
+            <Button size="small" onClick={applyVariant2Preset} disabled={loading} sx={{ alignSelf: 'flex-start' }}>
+              Vorlage „Variante 2“ in Formular laden
+            </Button>
+            <Typography sx={{ fontSize: '0.72rem', fontWeight: 700 }}>Bereiche (Titel &amp; Gewichtung %)</Typography>
+            {Array.from({ length: EPO_NOTEN_CATEGORY_COUNT }, (_, i) => (
+              <Stack key={`row-${i}`} direction="row" spacing={0.75} alignItems="flex-start">
+                <TextField
+                  size="small"
+                  label={`Bereich ${i + 1}`}
+                  value={titleLines[i] ?? ''}
+                  onChange={(e) => {
+                    const next = [...titleLines];
+                    next[i] = e.target.value;
+                    setTitleLines(next);
+                  }}
+                  sx={{ flex: 1 }}
+                />
+                <TextField
+                  size="small"
+                  label="%"
+                  type="number"
+                  inputProps={{ min: 1, max: 100, step: 1 }}
+                  value={weightLines[i] ?? ''}
+                  onChange={(e) => {
+                    const next = [...weightLines];
+                    next[i] = e.target.value;
+                    setWeightLines(next);
+                  }}
+                  sx={{ width: 72 }}
+                />
+              </Stack>
+            ))}
+            <Typography variant="caption" color="text.secondary">
+              Gewichtungen müssen zusammen 100 % ergeben (sonst zählt die einfache Summe 0–15).
+            </Typography>
             <Typography sx={{ fontSize: '0.72rem', fontWeight: 700 }}>SuS-Formulierung (Ich …)</Typography>
             {Array.from({ length: EPO_NOTEN_CATEGORY_COUNT }, (_, i) => (
               <TextField
@@ -179,7 +266,7 @@ export function EpoNotenVariantsDialog({ open, onClose, onChanged }: Props) {
                 size="small"
                 multiline
                 minRows={2}
-                label={`Kategorie ${i + 1}`}
+                label={titleLines[i] ? titleLines[i] : `Kategorie ${i + 1}`}
                 value={studentLines[i] ?? ''}
                 onChange={(e) => {
                   const next = [...studentLines];
@@ -195,7 +282,7 @@ export function EpoNotenVariantsDialog({ open, onClose, onChanged }: Props) {
                 size="small"
                 multiline
                 minRows={2}
-                label={`Kategorie ${i + 1}`}
+                label={titleLines[i] ? titleLines[i] : `Kategorie ${i + 1}`}
                 value={teacherLines[i] ?? ''}
                 onChange={(e) => {
                   const next = [...teacherLines];

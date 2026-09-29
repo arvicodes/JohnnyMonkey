@@ -15,6 +15,10 @@ const studentGhostPurple = '#9c27b0';
 
 type Props = {
   categories: string[];
+  /** Kurztitel (z. B. „Beiträge zum Unterricht“) — optional pro Zeile */
+  categoryTitles?: string[];
+  /** Gewichtung in % — wird in der ersten Spalte angezeigt */
+  categoryWeightsPercent?: number[];
   scores: number[];
   onChange?: (scores: number[]) => void;
   readOnly?: boolean;
@@ -32,6 +36,8 @@ type Props = {
 
 export function EpoNotenCategoryGrid({
   categories,
+  categoryTitles,
+  categoryWeightsPercent,
   scores,
   onChange,
   readOnly,
@@ -117,6 +123,28 @@ export function EpoNotenCategoryGrid({
               }}
             >
               <TableCell sx={{ py: compact ? 0.35 : 1.25, pr: 0.5 }}>
+                {categoryTitles?.[i] || categoryWeightsPercent?.[i] != null ? (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontSize: compact ? '0.72rem' : '0.8rem',
+                      fontWeight: 800,
+                      lineHeight: 1.25,
+                      color: epoNotenPalette.heading,
+                      mb: 0.25,
+                    }}
+                  >
+                    {i + 1}. {categoryTitles?.[i] || `Bereich ${i + 1}`}
+                    {categoryWeightsPercent?.[i] != null ? (
+                      <Typography
+                        component="span"
+                        sx={{ fontWeight: 700, color: 'text.secondary', ml: 0.5, fontSize: '0.68rem' }}
+                      >
+                        ({categoryWeightsPercent[i]} %)
+                      </Typography>
+                    ) : null}
+                  </Typography>
+                ) : null}
                 <Typography
                   variant="body1"
                   sx={{
@@ -125,7 +153,8 @@ export function EpoNotenCategoryGrid({
                     color: epoNotenPalette.textPrimary,
                   }}
                 >
-                  {i + 1}) {text}
+                  {!categoryTitles?.[i] && categoryWeightsPercent?.[i] == null ? `${i + 1}) ` : ''}
+                  {text}
                 </Typography>
               </TableCell>
               {[0, 1, 2, 3].map((p) => {

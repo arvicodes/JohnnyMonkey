@@ -28,7 +28,9 @@ import {
   epoSummaryHeadline,
   allCategoriesSelected,
   isValidSuggestedGrade,
-  sumCategoryScores,
+  epoPointsFromScores,
+  epoRoundedPoints,
+  formatEpoPointsDisplay,
   type EpoNotenAssessmentMode,
 } from '../../lib/epoNotenShared';
 
@@ -39,6 +41,8 @@ type Props = {
   submitting: boolean;
   assessmentMode: EpoNotenAssessmentMode;
   studentCategories?: string[];
+  categoryTitles?: string[];
+  categoryWeightsPercent?: number[];
   suggestedGrade: string;
   justification: string;
   selfScores: number[];
@@ -56,6 +60,8 @@ export function EpoNotenStudentSelfWizard({
   submitting,
   assessmentMode,
   studentCategories = EPO_NOTEN_STUDENT_CATEGORIES,
+  categoryTitles,
+  categoryWeightsPercent,
   suggestedGrade,
   justification,
   selfScores,
@@ -71,7 +77,7 @@ export function EpoNotenStudentSelfWizard({
   const [evaluationReady, setEvaluationReady] = useState(false);
   const submitStarted = useRef(false);
   const tableAnchorRef = useRef<HTMLDivElement | null>(null);
-  const totalTarget = sumCategoryScores(selfScores);
+  const totalTarget = epoPointsFromScores(selfScores, categoryWeightsPercent);
   const readOnly = locked || step === 'done';
 
   const pointsShown =
@@ -81,7 +87,8 @@ export function EpoNotenStudentSelfWizard({
         ? totalTarget
         : null;
 
-  const gradeForPoints = (pts: number) => rasterResultFromTotal(assessmentMode, pts);
+  const gradeForPoints = (pts: number) =>
+    rasterResultFromTotal(assessmentMode, Math.round(pts));
 
   const applyDoneEvaluation = useCallback(
     (pts: number) => {
@@ -115,7 +122,7 @@ export function EpoNotenStudentSelfWizard({
 
   const finishEvaluation = useCallback(async () => {
     if (locked) return;
-    const pts = sumCategoryScores(selfScores);
+    const pts = epoRoundedPoints(selfScores, categoryWeightsPercent);
     applyDoneEvaluation(pts);
     setStep(3);
     if (!submitStarted.current) {
@@ -123,7 +130,7 @@ export function EpoNotenStudentSelfWizard({
       await onSubmit();
     }
     setStep('done');
-  }, [applyDoneEvaluation, locked, onSubmit, selfScores]);
+  }, [applyDoneEvaluation, categoryWeightsPercent, locked, onSubmit, selfScores]);
 
   const goNext = async () => {
     if (step === 1) {
@@ -221,6 +228,8 @@ export function EpoNotenStudentSelfWizard({
                   <EpoNotenCategoryGrid
                     radioGroupId="self-wizard"
                     categories={studentCategories}
+                    categoryTitles={categoryTitles}
+                    categoryWeightsPercent={categoryWeightsPercent}
                     scores={selfScores}
                     onChange={onSelfScoresChange}
                     readOnly={readOnly || step !== 2}
@@ -240,7 +249,9 @@ export function EpoNotenStudentSelfWizard({
                           transform: 'scale(1)',
                         }}
                       >
-                        {pointsShown === null ? '—' : pointsShown}
+                        {pointsShown === null
+                          ? '—'
+                          : formatEpoPointsDisplay(selfScores, categoryWeightsPercent)}
                       </Typography>
                       {step === 2 && !allCategoriesSelected(selfScores) && (
                         <Typography variant="body2" color="text.secondary">

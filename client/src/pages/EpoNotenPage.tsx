@@ -45,8 +45,9 @@ import {
   epoSummarySubline,
   minPointsThresholdForTotal,
   normalizeCategoryScores,
+  epoRoundedPoints,
+  formatEpoPointsDisplay,
   rasterResultFromTotal,
-  sumCategoryScores,
   type EpoNotenAssessmentMode,
 } from '../lib/epoNotenShared';
 
@@ -84,6 +85,8 @@ export default function EpoNotenPage() {
   const [teacherId, setTeacherId] = useState('');
   const [studentCategories, setStudentCategories] = useState<string[]>(EPO_NOTEN_STUDENT_CATEGORIES);
   const [teacherCategoriesView, setTeacherCategoriesView] = useState<string[]>(EPO_NOTEN_TEACHER_CATEGORIES);
+  const [categoryTitles, setCategoryTitles] = useState<string[]>([]);
+  const [categoryWeightsPercent, setCategoryWeightsPercent] = useState<number[] | undefined>();
 
   const [suggestedGrade, setSuggestedGrade] = useState('');
   const [assessmentMode, setAssessmentMode] = useState<EpoNotenAssessmentMode>('note');
@@ -99,14 +102,18 @@ export default function EpoNotenPage() {
   const showStudentList = !isTeacher && !selectedRoundId;
 
   const populateFromEntry = useCallback(
-    (entry: EpoNotenEntry | null, mode: EpoNotenAssessmentMode) => {
+    (
+      entry: EpoNotenEntry | null,
+      mode: EpoNotenAssessmentMode,
+      weights?: number[] | null,
+    ) => {
       if (!selfFormDirtyRef.current) {
         setSuggestedGrade(entry?.suggestedGrade || '');
         setJustification(entry?.justification || '');
         setSelfScores(
           entry?.selfScores?.length ? normalizeCategoryScores(entry.selfScores) : emptyCategoryScores(),
         );
-        const pts = sumCategoryScores(entry?.selfScores);
+        const pts = epoRoundedPoints(entry?.selfScores, weights);
         if (entry?.selfScores?.length) {
           const fromEntry = entry.selfGradeFromTable?.trim();
           setSelfGradeFromTable(fromEntry || rasterResultFromTotal(mode, pts));
@@ -140,6 +147,7 @@ export default function EpoNotenPage() {
 
         const fromList = list.find((s) => s.id === selectedRoundId);
         let mode: EpoNotenAssessmentMode = 'note';
+        let weightsForRound: number[] | undefined;
 
         if (data.round && typeof data.round === 'object') {
           const r = data.round as {
@@ -150,6 +158,8 @@ export default function EpoNotenPage() {
             assessmentMode?: EpoNotenAssessmentMode;
             studentCategories?: string[];
             teacherCategories?: string[];
+            categoryTitles?: string[];
+            categoryWeightsPercent?: number[];
           };
           setRoundMeta({ id: r.id, title: r.title, date: r.date, groupName: r.groupName });
           if (Array.isArray(r.studentCategories) && r.studentCategories.length > 0) {
@@ -162,6 +172,9 @@ export default function EpoNotenPage() {
           } else {
             setTeacherCategoriesView(EPO_NOTEN_TEACHER_CATEGORIES);
           }
+          setCategoryTitles(Array.isArray(r.categoryTitles) ? r.categoryTitles : []);
+          weightsForRound = Array.isArray(r.categoryWeightsPercent) ? r.categoryWeightsPercent : undefined;
+          setCategoryWeightsPercent(weightsForRound);
           mode =
             epoGroupUsesMssPoints(r.groupName) || r.assessmentMode === 'mss' ? 'mss' : 'note';
         } else if (fromList) {
@@ -182,7 +195,7 @@ export default function EpoNotenPage() {
         }
 
         setAssessmentMode(mode);
-        populateFromEntry(myEntryLoaded, mode);
+        populateFromEntry(myEntryLoaded, mode, weightsForRound);
       } else {
         setMyEntry(null);
         setRoundMeta(null);
@@ -213,7 +226,7 @@ export default function EpoNotenPage() {
   };
 
   const submitSelf = useCallback(async () => {
-    const total = sumCategoryScores(selfScores);
+    const total = epoRoundedPoints(selfScores, categoryWeightsPercent);
     const gradeTable = rasterResultFromTotal(assessmentMode, total);
     setSubmitting(true);
     setError(null);
@@ -248,6 +261,7 @@ export default function EpoNotenPage() {
     assessmentMode,
     suggestedGrade,
     teacherId,
+    categoryWeightsPercent,
   ]);
 
   const submitGoals = async () => {
@@ -384,6 +398,8 @@ export default function EpoNotenPage() {
                     submitting={submitting}
                     assessmentMode={assessmentMode}
                     studentCategories={studentCategories}
+                    categoryTitles={categoryTitles}
+                    categoryWeightsPercent={categoryWeightsPercent}
                     suggestedGrade={suggestedGrade}
                     justification={justification}
                     selfScores={selfScores}
@@ -409,8 +425,8 @@ export default function EpoNotenPage() {
                 {(phase === 'goals' || phase === 'done') && myEntry && (
                   <Stack spacing={1.5} sx={{ width: '100%' }}>
                     {(() => {
-                      const selfPts = sumCategoryScores(myEntry.selfScores);
-                      const teacherPts = sumCategoryScores(myEntry.teacherScores);
+                      const selfPts = epoRoundedPoints(myEntry.selfScores, categoryWeightsPercent);
+                      const teacherPts = epoRoundedPoints(myEntry.teacherScores, categoryWeightsPercent);
                       const selfHeadline = studentSelfSummaryHeadline(myEntry, assessmentMode);
                       const teacherHeadline = epoSummaryHeadline(
                         assessmentMode,
@@ -506,6 +522,8 @@ export default function EpoNotenPage() {
                                     label="Deine Selbsteinschätzung"
                                     radioGroupId={`sus-self-${selectedRoundId}`}
                                     categories={studentCategories}
+                                    categoryTitles={categoryTitles}
+                                    categoryWeightsPercent={categoryWeightsPercent}
                                     scores={normalizeCategoryScores(myEntry.selfScores)}
                                     readOnly
                                   />
@@ -517,6 +535,8 @@ export default function EpoNotenPage() {
                                     label="Lehrkraft"
                                     radioGroupId={`sus-teacher-${selectedRoundId}`}
                                     categories={teacherCategoriesView}
+                                    categoryTitles={categoryTitles}
+                                    categoryWeightsPercent={categoryWeightsPercent}
                                     scores={normalizeCategoryScores(myEntry.teacherScores)}
                                     readOnly
                                   />

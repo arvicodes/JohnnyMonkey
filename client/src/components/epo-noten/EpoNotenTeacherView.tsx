@@ -50,7 +50,8 @@ import {
   type EpoNotenAssessmentMode,
   normalizeCategoryScores,
   shouldPrefillTeacherFromSelf,
-  sumCategoryScores,
+  epoRoundedPoints,
+  formatEpoPointsDisplay,
   teacherFormGradeFromEntry,
   teacherFormScoresFromEntry,
   studentEpoPendingKind,
@@ -122,6 +123,8 @@ export function EpoNotenTeacherView() {
   const [passiveSaving, setPassiveSaving] = useState(false);
   const [variants, setVariants] = useState<EpoNotenVariantSheet[]>([]);
   const [teacherCategories, setTeacherCategories] = useState<string[]>(EPO_NOTEN_TEACHER_CATEGORIES);
+  const [categoryTitles, setCategoryTitles] = useState<string[]>([]);
+  const [categoryWeightsPercent, setCategoryWeightsPercent] = useState<number[] | undefined>();
   const [variantsOpen, setVariantsOpen] = useState(false);
 
   const loadVariants = useCallback(async () => {
@@ -155,6 +158,10 @@ export function EpoNotenTeacherView() {
     } else {
       setTeacherCategories(EPO_NOTEN_TEACHER_CATEGORIES);
     }
+    setCategoryTitles(Array.isArray(data.categoryTitles) ? (data.categoryTitles as string[]) : []);
+    setCategoryWeightsPercent(
+      Array.isArray(data.categoryWeightsPercent) ? (data.categoryWeightsPercent as number[]) : undefined,
+    );
   }, []);
 
   const refresh = useCallback(async () => {
@@ -320,7 +327,7 @@ export function EpoNotenTeacherView() {
       const scores = teacherFormScoresFromEntry(entry);
       teacherScoresRef.current = scores;
       setTeacherScores(scores);
-      const grade = teacherFormGradeFromEntry(entry, mode);
+      const grade = teacherFormGradeFromEntry(entry, mode, categoryWeightsPercent);
       teacherGradeRef.current = grade;
       setTeacherGrade(grade);
       skipRasterGradeSyncRef.current = true;
@@ -334,14 +341,14 @@ export function EpoNotenTeacherView() {
     if (local.every((s) => s < 0) && server.some((s) => s >= 0)) {
       teacherScoresRef.current = server;
       setTeacherScores(server);
-      const grade = teacherFormGradeFromEntry(entry, mode);
+      const grade = teacherFormGradeFromEntry(entry, mode, categoryWeightsPercent);
       teacherGradeRef.current = grade;
       setTeacherGrade(grade);
       skipRasterGradeSyncRef.current = true;
     }
-  }, [selectedStudentId, students, round]);
+  }, [categoryWeightsPercent, selectedStudentId, students, round]);
 
-  const totalTeacher = sumCategoryScores(teacherScores);
+  const totalTeacher = epoRoundedPoints(teacherScores, categoryWeightsPercent);
   const selectedAssessmentMode: EpoNotenAssessmentMode =
     selectedStudent?.groupId ? groupMode(selectedStudent.groupId) : 'note';
   const computedRasterResult = rasterResultFromTotal(selectedAssessmentMode, totalTeacher);
@@ -356,7 +363,9 @@ export function EpoNotenTeacherView() {
       const mode = row?.groupId ? groupMode(row.groupId) : selectedAssessmentMode;
       const resolvedGrade =
         grade.trim() ||
-        (allCategoriesSelected(scores) ? rasterResultFromTotal(mode, sumCategoryScores(scores)) : '');
+        (allCategoriesSelected(scores)
+          ? rasterResultFromTotal(mode, epoRoundedPoints(scores, categoryWeightsPercent))
+          : '');
       const res = await apiPut(`/api/epo-noten/${round.id}/teacher/${selectedStudentId}`, {
         teacherScores: scores,
         teacherGrade: resolvedGrade,
@@ -744,10 +753,10 @@ export function EpoNotenTeacherView() {
       return students.filter((s) => {
         if (s.groupId !== groupId || s.teacherReleasedAt) return false;
         if (isPassiveStudentId(s.studentId, passive)) return false;
-        return Boolean(teacherFormGradeFromEntry(s, mode).trim());
+        return Boolean(teacherFormGradeFromEntry(s, mode, categoryWeightsPercent).trim());
       }).length;
     },
-    [groupMode, passiveIdsForGroup, round, students],
+    [categoryWeightsPercent, groupMode, passiveIdsForGroup, round, students],
   );
 
   const releaseAllInGroup = async (groupId: string) => {
@@ -1605,8 +1614,8 @@ export function EpoNotenTeacherView() {
                             )}
                             {selectedStudent.groupId &&
                             groupMode(selectedStudent.groupId) === 'mss'
-                              ? ` · Raster ${sumCategoryScores(selectedStudent.selfScores)} P.`
-                              : ` · Raster ${sumCategoryScores(selectedStudent.selfScores)} → ${selectedStudent.selfGradeFromTable || '—'}`}
+                              ? ` · Raster ${formatEpoPointsDisplay(selectedStudent.selfScores, categoryWeightsPercent)} P.`
+                              : ` · Raster ${formatEpoPointsDisplay(selectedStudent.selfScores, categoryWeightsPercent)} → ${selectedStudent.selfGradeFromTable || '—'}`}
                             {selectedStudent.justification ? (
                               <>
                                 <br />
@@ -1630,6 +1639,8 @@ export function EpoNotenTeacherView() {
                               teacherEmphasis
                               label={selectedStudent.studentSubmittedAt ? 'Deine Bewertung (lila = SuS)' : 'Deine Bewertung'}
                               categories={teacherCategories}
+                              categoryTitles={categoryTitles}
+                              categoryWeightsPercent={categoryWeightsPercent}
                               scores={teacherScores}
                               onChange={handleTeacherScoresChange}
                               radioGroupId={selectedStudentId}

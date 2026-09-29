@@ -10,6 +10,8 @@ import {
   resolveVariant,
   type EpoNotenVariantsStore,
 } from '../lib/epoNotenVariants';
+import { EPO_VARIANT2_WEIGHTED_PRESET } from '../lib/epoNotenVariantPresets';
+import { epoRoundedPoints } from '../lib/epoNotenScoring';
 
 const prisma = new PrismaClient();
 
@@ -66,12 +68,16 @@ const rasterResultFromTotal = (mode: AssessmentMode, total: number): string => {
   return gradeFromTotalPoints(t);
 };
 
-const effectiveTeacherGrade = (entry: EpoNotenEntry, mode: AssessmentMode): string => {
+const effectiveTeacherGrade = (
+  entry: EpoNotenEntry,
+  mode: AssessmentMode,
+  weightsPercent?: number[] | null,
+): string => {
   const trimmed = entry.teacherGrade?.trim();
   if (trimmed) return trimmed;
   const scores = normalizeCategoryScores(entry.teacherScores);
   if (!allCategoriesSelected(scores)) return '';
-  return rasterResultFromTotal(mode, sumCategoryScores(scores));
+  return rasterResultFromTotal(mode, epoRoundedPoints(scores, weightsPercent));
 };
 
 type EpoNotenEntry = {
@@ -302,6 +308,8 @@ const roundCategoryTexts = async (teacherId: string, payload: EpoNotenRoundPaylo
   return {
     variantId: variant.id,
     variantName: variant.name,
+    categoryTitles: variant.categoryTitles,
+    categoryWeightsPercent: variant.categoryWeightsPercent,
     studentCategories: variant.studentCategories,
     teacherCategories: variant.teacherCategories,
   };
@@ -651,6 +659,8 @@ export class EpoNotenController {
         stats: roundStats(round),
         variantId: categories.variantId,
         variantName: categories.variantName,
+        categoryTitles: categories.categoryTitles,
+        categoryWeightsPercent: categories.categoryWeightsPercent,
         studentCategories: categories.studentCategories,
         teacherCategories: categories.teacherCategories,
       });
@@ -938,10 +948,18 @@ export class EpoNotenController {
       const teacherCategories = Array.isArray(req.body?.teacherCategories)
         ? req.body.teacherCategories
         : cur.teacherCategories;
+      const categoryTitles = Array.isArray(req.body?.categoryTitles)
+        ? req.body.categoryTitles
+        : cur.categoryTitles;
+      const categoryWeightsPercent = Array.isArray(req.body?.categoryWeightsPercent)
+        ? req.body.categoryWeightsPercent
+        : cur.categoryWeightsPercent;
 
       store.variants[idx] = normalizeVariantSheet({
         id: cur.id,
         name: name || cur.name,
+        categoryTitles,
+        categoryWeightsPercent,
         studentCategories,
         teacherCategories,
       });
@@ -960,11 +978,25 @@ export class EpoNotenController {
       if (!user) return res.status(401).json({ error: 'Nicht angemeldet' });
       if (user.role !== 'TEACHER') return res.status(403).json({ error: 'Nur Lehrkräfte' });
 
-      const name = typeof req.body?.name === 'string' ? req.body.name.trim() : 'Neue Variante';
+      const template =
+        typeof req.body?.template === 'string' ? req.body.template.trim() : '';
+      const name =
+        typeof req.body?.name === 'string'
+          ? req.body.name.trim()
+          : template === 'variant2'
+            ? EPO_VARIANT2_WEIGHTED_PRESET.name
+            : 'Neue Variante';
       const copyFromId =
         typeof req.body?.copyFromId === 'string' ? req.body.copyFromId.trim() : undefined;
       const store = await loadVariantsStore(user.id);
-      const variant = createVariantFromBase(store, name, copyFromId);
+      const variant =
+        template === 'variant2'
+          ? normalizeVariantSheet({
+              id: randomUUID(),
+              name,
+              ...EPO_VARIANT2_WEIGHTED_PRESET,
+            })
+          : createVariantFromBase(store, name, copyFromId);
       store.variants.push(variant);
       await saveVariantsStore(user.id, store);
       return res.json({ success: true, variant });
@@ -1104,6 +1136,8 @@ export class EpoNotenController {
             assessmentMode: assessmentModeForGroup(resolved.payload, resolved.groupId, resolved.groupName),
             studentCategories: categories.studentCategories,
             teacherCategories: categories.teacherCategories,
+            categoryTitles: categories.categoryTitles,
+            categoryWeightsPercent: categories.categoryWeightsPercent,
             variantId: categories.variantId,
           },
           myEntry,
@@ -1168,7 +1202,8 @@ export class EpoNotenController {
       }
 
       const selfScores = normalizeCategoryScores(req.body?.selfScores);
-      const total = sumCategoryScores(selfScores);
+      const variantCats = await roundCategoryTexts(teacherId, payload);
+      const total = epoRoundedPoints(selfScores, variantCats.categoryWeightsPercent);
 
       const mode = assessmentModeForGroup(
         payload,
@@ -1273,7 +1308,8 @@ export class EpoNotenController {
 
       const existing = findEntry(payload, studentId);
       const teacherScores = normalizeCategoryScores(req.body?.teacherScores);
-      const total = sumCategoryScores(teacherScores);
+      const variantCats = await roundCategoryTexts(user.id, payload);
+      const total = epoRoundedPoints(teacherScores, variantCats.categoryWeightsPercent);
       const computed = gradeFromTotalPoints(total);
       const teacherGrade =
         typeof req.body?.teacherGrade === 'string' ? req.body.teacherGrade.trim() : existing?.teacherGrade ?? '';
@@ -1339,6 +1375,7 @@ export class EpoNotenController {
         }
       }
 
+      const variantCats = await roundCategoryTexts(user.id, payload);
       const now = new Date().toISOString();
       let count = 0;
 
@@ -1351,7 +1388,7 @@ export class EpoNotenController {
         const mode = entryGroupId
           ? assessmentModeForGroup(payload, entryGroupId, groupNameById.get(entryGroupId))
           : 'note';
-        const grade = effectiveTeacherGrade(entry, mode);
+        const grade = effectiveTeacherGrade(entry, mode, variantCats.categoryWeightsPercent);
         if (!grade) continue;
         entry.teacherGrade = grade;
         entry.teacherReleasedAt = now;

@@ -22,6 +22,10 @@ const DEFAULT_TEACHER: string[] = [
 export type EpoNotenVariantSheet = {
   id: string;
   name: string;
+  /** Kurztitel pro Bereich (Tabellenzeile „Bereich“) */
+  categoryTitles?: string[];
+  /** Gewichtung in % — muss 100 ergeben, sonst wird gleich gewichtet */
+  categoryWeightsPercent?: number[];
   studentCategories: string[];
   teacherCategories: string[];
 };
@@ -53,6 +57,22 @@ const normalizeLines = (raw: unknown, fallback: string[]): string[] => {
   });
 };
 
+const normalizeWeights = (raw: unknown): number[] | undefined => {
+  if (!Array.isArray(raw) || raw.length !== 5) return undefined;
+  const w = raw.map((x) => Math.round(Number(x)));
+  if (!w.every((n) => Number.isFinite(n) && n > 0)) return undefined;
+  if (w.reduce((a, b) => a + b, 0) !== 100) return undefined;
+  return w;
+};
+
+const normalizeTitles = (raw: unknown, fallback: string[]): string[] => {
+  const base = Array.isArray(raw) ? raw : [];
+  return Array.from({ length: 5 }, (_, i) => {
+    const t = typeof base[i] === 'string' ? String(base[i]).trim() : '';
+    return t || fallback[i] || `Bereich ${i + 1}`;
+  });
+};
+
 export function parseVariantsStore(raw: string | null | undefined): EpoNotenVariantsStore {
   const def = defaultVariantsStore();
   if (!raw) return def;
@@ -62,10 +82,13 @@ export function parseVariantsStore(raw: string | null | undefined): EpoNotenVari
     const variants: EpoNotenVariantSheet[] = [];
     for (const v of parsed.variants) {
       if (!v || typeof v.id !== 'string' || typeof v.name !== 'string') continue;
+      const studentCategories = normalizeLines(v.studentCategories, DEFAULT_STUDENT);
       variants.push({
         id: v.id,
         name: v.name.trim() || 'Variante',
-        studentCategories: normalizeLines(v.studentCategories, DEFAULT_STUDENT),
+        categoryTitles: normalizeTitles(v.categoryTitles, studentCategories.map((_, i) => `Bereich ${i + 1}`)),
+        categoryWeightsPercent: normalizeWeights(v.categoryWeightsPercent),
+        studentCategories,
         teacherCategories: normalizeLines(v.teacherCategories, DEFAULT_TEACHER),
       });
     }
@@ -89,13 +112,21 @@ export function resolveVariant(
 export function normalizeVariantSheet(v: {
   id: string;
   name: string;
+  categoryTitles?: unknown;
+  categoryWeightsPercent?: unknown;
   studentCategories?: unknown;
   teacherCategories?: unknown;
 }): EpoNotenVariantSheet {
+  const studentCategories = normalizeLines(v.studentCategories, DEFAULT_STUDENT);
   return {
     id: v.id,
     name: v.name.trim() || 'Variante',
-    studentCategories: normalizeLines(v.studentCategories, DEFAULT_STUDENT),
+    categoryTitles: normalizeTitles(
+      v.categoryTitles,
+      studentCategories.map((_, i) => `Bereich ${i + 1}`),
+    ),
+    categoryWeightsPercent: normalizeWeights(v.categoryWeightsPercent),
+    studentCategories,
     teacherCategories: normalizeLines(v.teacherCategories, DEFAULT_TEACHER),
   };
 }

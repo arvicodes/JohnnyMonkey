@@ -40,6 +40,51 @@ export function sumCategoryScores(scores: number[] | undefined | null): number {
   return scores.reduce((a, b) => a + (Number.isFinite(b) && b >= 0 ? b : 0), 0);
 }
 
+export function epoWeightsAreValid(weights: number[] | null | undefined): boolean {
+  return (
+    Array.isArray(weights) &&
+    weights.length === EPO_NOTEN_CATEGORY_COUNT &&
+    weights.every((w) => Number.isFinite(w) && w > 0) &&
+    Math.round(weights.reduce((a, b) => a + b, 0)) === 100
+  );
+}
+
+/** Gesamtpunkte 0–15; mit Gewichtung aus der Variante, sonst Summe der Raster (0–3 je Zeile). */
+export function epoPointsFromScores(
+  scores: number[] | undefined | null,
+  weightsPercent?: number[] | null,
+): number {
+  const s = normalizeCategoryScores(scores);
+  if (!epoWeightsAreValid(weightsPercent)) {
+    return sumCategoryScores(s);
+  }
+  let total = 0;
+  for (let i = 0; i < EPO_NOTEN_CATEGORY_COUNT; i++) {
+    const sc = s[i] >= 0 ? s[i] : 0;
+    total += (sc / 3) * (weightsPercent![i] / 100) * 15;
+  }
+  return total;
+}
+
+export function epoRoundedPoints(
+  scores: number[] | undefined | null,
+  weightsPercent?: number[] | null,
+): number {
+  return Math.max(0, Math.min(15, Math.round(epoPointsFromScores(scores, weightsPercent))));
+}
+
+export function formatEpoPointsDisplay(
+  scores: number[] | undefined | null,
+  weightsPercent?: number[] | null,
+): string {
+  const raw = epoPointsFromScores(scores, weightsPercent);
+  if (epoWeightsAreValid(weightsPercent)) {
+    const rounded = Math.round(raw * 10) / 10;
+    return rounded % 1 === 0 ? String(rounded) : rounded.toFixed(1);
+  }
+  return String(Math.round(raw));
+}
+
 export function allCategoriesSelected(scores: number[] | undefined | null): boolean {
   if (!Array.isArray(scores) || scores.length < EPO_NOTEN_CATEGORY_COUNT) return false;
   return scores.every((s) => Number.isFinite(s) && s >= 0 && s <= 3);
@@ -164,7 +209,7 @@ export function studentSelfMssPoints(
   }
   const scores = normalizeCategoryScores(entry.selfScores);
   if (allCategoriesSelected(scores)) {
-    return Math.max(0, Math.min(15, Math.round(sumCategoryScores(scores))));
+    return epoRoundedPoints(scores);
   }
   return null;
 }
@@ -303,13 +348,14 @@ export function shouldPrefillTeacherFromSelf(entry: EpoNotenEntry): boolean {
 export function teacherFormGradeFromEntry(
   entry: EpoNotenEntry | undefined,
   mode: EpoNotenAssessmentMode,
+  weightsPercent?: number[] | null,
 ): string {
   if (!entry) return '';
   if (entry.teacherGrade?.trim()) return entry.teacherGrade.trim();
   if (!entry.studentSubmittedAt) return '';
   const scores = teacherFormScoresFromEntry(entry);
   if (allCategoriesSelected(scores)) {
-    return rasterResultFromTotal(mode, sumCategoryScores(scores));
+    return rasterResultFromTotal(mode, epoRoundedPoints(scores, weightsPercent));
   }
   if (entry.suggestedGrade?.trim()) return entry.suggestedGrade.trim();
   if (entry.selfGradeFromTable?.trim()) return entry.selfGradeFromTable.trim();
@@ -324,6 +370,8 @@ export type EpoNotenGroupMeta = {
 export type EpoNotenVariantSheet = {
   id: string;
   name: string;
+  categoryTitles?: string[];
+  categoryWeightsPercent?: number[];
   studentCategories: string[];
   teacherCategories: string[];
 };
