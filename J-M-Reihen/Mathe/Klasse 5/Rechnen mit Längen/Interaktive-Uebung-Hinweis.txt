@@ -14,6 +14,7 @@ Paket im Editor: „Rechnen mit Längen (Klasse 5)“ (packId lengths-class-5).
 START für die Lerngruppe — SuS sehen die Übung im Vollbild.
 
 Themen im Paket (angelehnt an die Word-Sammlung):
-  Lückentext, Ordnen, umrechnen, Vergleichen, Mischaufgaben, Runden, Test.
+  Lückentext, Länge umrechnen (3 Seiten leicht→schwer), Längen addieren
+  (3 Seiten; Subtraktion später), Ordnen, Einzelaufgaben, Vergleichen, Test.
 
 Quelle (Arbeitsblatt): Rechnen_mit_Laengen_Klasse_5.docx (liegt in diesem Ordner).

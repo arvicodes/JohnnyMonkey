@@ -1014,14 +1014,14 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   const submitWrite = () => {
     if (!interactive || locked || !currentQ || currentQ.mode !== 'write') return;
     const arabic = currentQ.answerKind === 'arabic';
-    const got = arabic
-      ? normalizeArabicInput(typedAnswer)
-      : typedAnswer.replace(/\s+/g, '').toUpperCase();
-    const want = arabic
-      ? normalizeArabicInput(currentQ.correctAnswer || '')
-      : (currentQ.correctAnswer || '').replace(/\s+/g, '').toUpperCase();
-    if (!got) return;
-    if (got === want) {
+    const rawGot = typedAnswer.trim();
+    if (!rawGot) return;
+    const ok = arabic
+      ? lengthAnswersEqual(rawGot, currentQ.correctAnswer || '') ||
+        normalizeArabicInput(rawGot) === normalizeArabicInput(currentQ.correctAnswer || '')
+      : rawGot.replace(/\s+/g, '').toUpperCase() ===
+        (currentQ.correctAnswer || '').replace(/\s+/g, '').toUpperCase();
+    if (ok) {
       setTypedStatus('correct');
       setShowWrongBanner(false);
       markAndAdvance(true, 600);
@@ -1954,7 +1954,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                   );
                 });
               })()}
-              {interactive && !locked ? (
+              {interactive ? (
                 <Box
                   sx={{
                     mt: `${18 * s}px`,
@@ -1964,26 +1964,28 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                     gap: `${12 * s}px`,
                   }}
                 >
-                  <Box sx={{ display: 'flex', gap: `${10 * s}px` }}>
-                    {(['>', '=', '<'] as CompareSign[]).map((sign) => (
-                      <Button
-                        key={sign}
-                        onClick={() => pickCompareSign(sign)}
-                        sx={{
-                          minWidth: `${48 * s}px`,
-                          height: `${44 * s}px`,
-                          bgcolor: 'rgba(0,0,0,0.08)',
-                          color: '#111',
-                          fontWeight: 900,
-                          fontSize: `${22 * s}px`,
-                          borderRadius: `${8 * s}px`,
-                        }}
-                      >
-                        {sign}
-                      </Button>
-                    ))}
-                  </Box>
-                  <Button onClick={submitCompare} sx={auswertungButtonSx(s)}>
+                  {!locked ? (
+                    <Box sx={{ display: 'flex', gap: `${10 * s}px` }}>
+                      {(['>', '=', '<'] as CompareSign[]).map((sign) => (
+                        <Button
+                          key={sign}
+                          onClick={() => pickCompareSign(sign)}
+                          sx={{
+                            minWidth: `${48 * s}px`,
+                            height: `${44 * s}px`,
+                            bgcolor: 'rgba(0,0,0,0.08)',
+                            color: '#111',
+                            fontWeight: 900,
+                            fontSize: `${22 * s}px`,
+                            borderRadius: `${8 * s}px`,
+                          }}
+                        >
+                          {sign}
+                        </Button>
+                      ))}
+                    </Box>
+                  ) : null}
+                  <Button disabled={locked} onClick={submitCompare} sx={auswertungButtonSx(s)}>
                     Auswertung
                   </Button>
                   <ExerciseEvaluationScore
@@ -2117,22 +2119,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                   );
                 })}
               </Box>
-              <Typography
-                sx={{
-                  mt: `${16 * s}px`,
-                  textAlign: 'center',
-                  fontSize: `${14 * s}px`,
-                  fontWeight: 700,
-                  color: '#444',
-                }}
-              >
-                richtig: {lengthConvertStatuses.filter((st) => st === 'correct').length}
-                {' '}
-                <Box component="span" sx={{ letterSpacing: `${3 * s}px`, mx: `${6 * s}px` }}>
-                  •••••
-                </Box>
-                falsch: {lengthConvertStatuses.filter((st) => st === 'wrong').length}
-              </Typography>
+              <ExerciseEvaluationScore scale={s} statuses={lengthConvertStatuses} />
             </Box>
           ) : null}
 
@@ -2161,7 +2148,7 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                   const raw = e.target.value;
                   setTypedAnswer(
                     arabic
-                      ? raw.replace(/[^\d\s]/g, '')
+                      ? raw.replace(/[^\d\s,.]/g, '')
                       : raw.toUpperCase().replace(/[^IVXLCDM]/gi, ''),
                   );
                   setTypedStatus('idle');
@@ -2201,22 +2188,25 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
                   {currentQ.correctAnswer}
                 </Typography>
               ) : null}
-              {interactive && !locked ? (
-                <Box sx={{ mt: `${14 * s}px` }}>
+              {interactive ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <Button
+                    disabled={locked}
                     onClick={submitWrite}
-                    sx={{
-                      bgcolor: '#FF8F00',
-                      color: '#fff',
-                      fontWeight: 800,
-                      textTransform: 'none',
-                      px: `${18 * s}px`,
-                      borderRadius: `${8 * s}px`,
-                      '&:hover': { bgcolor: '#F57C00' },
-                    }}
+                    sx={{ ...auswertungButtonSx(s), mt: `${14 * s}px` }}
                   >
-                    Prüfen
+                    Auswertung
                   </Button>
+                  <ExerciseEvaluationScore
+                    scale={s}
+                    statuses={
+                      typedStatus === 'correct'
+                        ? ['correct']
+                        : typedStatus === 'wrong'
+                          ? ['wrong']
+                          : ['idle']
+                    }
+                  />
                 </Box>
               ) : null}
             </Box>
