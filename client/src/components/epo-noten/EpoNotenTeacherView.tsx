@@ -1013,6 +1013,7 @@ export function EpoNotenTeacherView() {
                                 py: 0.45,
                                 px: 0.5,
                                 mb: 0.35,
+                                alignItems: 'center',
                                 borderRadius: 1,
                                 border: '1px solid',
                                 borderColor: completed ? 'success.main' : courseSelected ? 'primary.light' : 'divider',
@@ -1028,51 +1029,66 @@ export function EpoNotenTeacherView() {
                                 },
                               }}
                             >
-                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Box sx={{ flex: 1, minWidth: 0, pr: 0.5 }}>
                                 <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, lineHeight: 1.25 }} noWrap>
                                   {g?.name || gid}
                                 </Typography>
-                                <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.25, flexWrap: 'wrap' }}>
-                                  <Typography
-                                    sx={{
-                                      fontSize: '0.58rem',
-                                      fontWeight: starting ? 800 : 500,
-                                      color: starting ? 'text.secondary' : 'transparent',
-                                      width: starting ? 'auto' : 0,
-                                      overflow: 'hidden',
-                                    }}
-                                  >
-                                    startet noch
-                                  </Typography>
-                                  <Stack direction="row" alignItems="center" spacing={0.15} onClick={(e) => e.stopPropagation()}>
-                                    <Checkbox
-                                      size="small"
-                                      checked={published}
-                                      disabled={saving || completed}
-                                      onChange={(_, checked) => void setGroupActive(gid, checked)}
-                                      sx={{ p: 0 }}
-                                      inputProps={{ 'aria-label': `${g?.name || gid} aktiv` }}
-                                    />
-                                    <Typography sx={{ fontSize: '0.58rem', fontWeight: 700 }}>aktiv</Typography>
-                                  </Stack>
-                                  <Stack direction="row" alignItems="center" spacing={0.15} onClick={(e) => e.stopPropagation()}>
-                                    <Checkbox
-                                      size="small"
-                                      checked={completed}
-                                      disabled={saving}
-                                      onChange={(_, checked) => void setGroupCompleted(gid, checked)}
-                                      sx={{ p: 0, color: completed ? 'success.main' : undefined }}
-                                      inputProps={{ 'aria-label': `${g?.name || gid} fertig` }}
-                                    />
-                                    <Typography sx={{ fontSize: '0.58rem', fontWeight: 700, color: completed ? 'success.dark' : 'text.primary' }}>
-                                      fertig
-                                    </Typography>
-                                  </Stack>
-                                </Stack>
                                 <Typography sx={{ fontSize: '0.58rem', color: 'text.secondary', mt: 0.15 }}>
                                   {st.submitted}/{st.total} abgegeben
                                 </Typography>
                               </Box>
+                              <Stack
+                                alignItems="flex-end"
+                                spacing={0}
+                                sx={{ flexShrink: 0, ml: 0.25 }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {starting && (
+                                  <Typography
+                                    sx={{
+                                      fontSize: '0.55rem',
+                                      fontWeight: 800,
+                                      color: 'text.secondary',
+                                      lineHeight: 1.2,
+                                      mb: 0.15,
+                                      textAlign: 'right',
+                                    }}
+                                  >
+                                    startet noch
+                                  </Typography>
+                                )}
+                                <Stack direction="row" alignItems="center" spacing={0.1} justifyContent="flex-end">
+                                  <Checkbox
+                                    size="small"
+                                    checked={published}
+                                    disabled={saving || completed}
+                                    onChange={(_, checked) => void setGroupActive(gid, checked)}
+                                    sx={{ p: 0 }}
+                                    inputProps={{ 'aria-label': `${g?.name || gid} aktiv` }}
+                                  />
+                                  <Typography sx={{ fontSize: '0.58rem', fontWeight: 700, minWidth: 28 }}>aktiv</Typography>
+                                </Stack>
+                                <Stack direction="row" alignItems="center" spacing={0.1} justifyContent="flex-end">
+                                  <Checkbox
+                                    size="small"
+                                    checked={completed}
+                                    disabled={saving}
+                                    onChange={(_, checked) => void setGroupCompleted(gid, checked)}
+                                    sx={{ p: 0, color: completed ? 'success.main' : undefined }}
+                                    inputProps={{ 'aria-label': `${g?.name || gid} fertig` }}
+                                  />
+                                  <Typography
+                                    sx={{
+                                      fontSize: '0.58rem',
+                                      fontWeight: 700,
+                                      minWidth: 28,
+                                      color: completed ? 'success.dark' : 'text.primary',
+                                    }}
+                                  >
+                                    fertig
+                                  </Typography>
+                                </Stack>
+                              </Stack>
                             </ListItemButton>
                           );
                         })}
