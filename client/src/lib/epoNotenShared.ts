@@ -353,6 +353,17 @@ export type EpoNotenGroupMeta = {
   completedAt?: string | null;
 };
 
+/** Pro Lerngruppe eigener EPO-Zettel (sonst round.variantId). */
+export function epoVariantIdForGroup(
+  round: { variantId?: string | null; variantIdByGroup?: Record<string, string> },
+  groupId: string,
+): string {
+  const per = round.variantIdByGroup?.[groupId];
+  if (per && String(per).trim()) return String(per).trim();
+  if (round.variantId && String(round.variantId).trim()) return String(round.variantId).trim();
+  return 'default';
+}
+
 export type EpoNotenVariantSheet = {
   id: string;
   name: string;
@@ -405,6 +416,7 @@ export type EpoNotenRound = {
   assessmentModeByGroup?: Record<string, EpoNotenAssessmentMode>;
   groupMeta?: Record<string, EpoNotenGroupMeta>;
   variantId?: string | null;
+  variantIdByGroup?: Record<string, string>;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;

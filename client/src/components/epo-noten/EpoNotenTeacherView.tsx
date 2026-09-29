@@ -51,6 +51,7 @@ import {
   normalizeCategoryScores,
   shouldPrefillTeacherFromSelf,
   epoRoundedPoints,
+  epoVariantIdForGroup,
   formatEpoPointsDisplay,
   teacherFormGradeFromEntry,
   teacherFormScoresFromEntry,
@@ -152,13 +153,14 @@ export function EpoNotenTeacherView() {
     setGroups(Array.isArray(data.groups) ? data.groups : []);
   }, []);
 
-  const loadDetail = useCallback(async (id: string) => {
+  const loadDetail = useCallback(async (id: string, groupId?: string | null) => {
     if (!id) {
       setRound(null);
       setStudents([]);
       return;
     }
-    const res = await apiGetSafe(`/api/epo-noten/${id}`);
+    const q = groupId ? `?groupId=${encodeURIComponent(groupId)}` : '';
+    const res = await apiGetSafe(`/api/epo-noten/${id}${q}`);
     if (!res?.ok) throw new Error('Runde konnte nicht geladen werden');
     const data = await res.json();
     setRound(data.round as EpoNotenRound);
@@ -198,9 +200,9 @@ export function EpoNotenTeacherView() {
 
   useEffect(() => {
     if (selectedId) {
-      loadDetail(selectedId).catch(() => setError('Detail konnte nicht geladen werden'));
+      loadDetail(selectedId, studentListGroupFilter).catch(() => setError('Detail konnte nicht geladen werden'));
     }
-  }, [selectedId, loadDetail]);
+  }, [selectedId, studentListGroupFilter, loadDetail]);
 
   useEffect(() => {
     if (!round) {
@@ -585,23 +587,6 @@ export function EpoNotenTeacherView() {
     }
   };
 
-  const publishGroup = async (groupId: string) => {
-    if (!round) return;
-    setSaving(true);
-    try {
-      const res = await apiPost(`/api/epo-noten/${round.id}/publish-group`, { groupId });
-      if (!res?.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(typeof err.error === 'string' ? err.error : 'Freigabe fehlgeschlagen');
-      }
-      await refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const setGroupCompleted = async (groupId: string, completed: boolean) => {
     if (!round) return;
     setSaving(true);
@@ -618,14 +603,45 @@ export function EpoNotenTeacherView() {
     }
   };
 
-  const updateRoundVariant = async (variantId: string) => {
-    if (!round) return;
-    const res = await apiPut(`/api/epo-noten/${round.id}`, { variantId });
-    if (!res?.ok) {
-      setError('Variante konnte nicht gespeichert werden');
-      return;
+  const updateGroupVariant = async (groupId: string, variantId: string) => {
+    if (!round || !groupId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await apiPut(`/api/epo-noten/${round.id}/group-meta`, { groupId, variantId });
+      if (!res?.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(typeof err.error === 'string' ? err.error : 'Variante konnte nicht gespeichert werden');
+      }
+      const data = await res.json();
+      if (data.round) setRound(data.round as EpoNotenRound);
+      await loadDetail(round.id, groupId);
+      await loadList();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Variante konnte nicht gespeichert werden');
+    } finally {
+      setSaving(false);
     }
-    await loadDetail(round.id);
+  };
+
+  const setGroupActive = async (groupId: string, active: boolean) => {
+    if (!round) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await apiPut(`/api/epo-noten/${round.id}/group-meta`, { groupId, active });
+      if (!res?.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(typeof err.error === 'string' ? err.error : 'Status konnte nicht gespeichert werden');
+      }
+      const data = await res.json();
+      if (data.round) setRound(data.round as EpoNotenRound);
+      await loadList();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Fehler');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const updateRoundGroups = async (groupIds: string[]) => {
@@ -896,10 +912,6 @@ export function EpoNotenTeacherView() {
             {rounds.map((r) => {
               const active = r.id === selectedId;
               const roundForCourses = active && round ? round : null;
-              const publishedCount =
-                roundForCourses?.groupIds.filter((gid) => isEpoGroupPublished(roundForCourses, gid)).length ?? 0;
-              const completedCount =
-                roundForCourses?.groupIds.filter((gid) => isEpoGroupCompleted(roundForCourses, gid)).length ?? 0;
               return (
                 <React.Fragment key={r.id}>
                   <ListItemButton
@@ -981,7 +993,7 @@ export function EpoNotenTeacherView() {
                       </Stack>
 
                       <Typography sx={{ fontSize: '0.62rem', fontWeight: 800, color: epoNotenPalette.textSecondary, mb: 0.35, pl: 0.5 }}>
-                        Kurse · {publishedCount} live · {completedCount} fertig
+                        Kurse · aktiv / fertig / startet noch
                       </Typography>
 
                       <List dense disablePadding sx={{ pl: 0.5 }}>
@@ -989,6 +1001,7 @@ export function EpoNotenTeacherView() {
                           const g = groups.find((x) => x.id === gid);
                           const published = isEpoGroupPublished(roundForCourses, gid);
                           const completed = isEpoGroupCompleted(roundForCourses, gid);
+                          const starting = !published && !completed;
                           const st = groupCourseStats(gid);
                           const courseSelected = studentListGroupFilter === gid;
                           return (
@@ -1002,54 +1015,64 @@ export function EpoNotenTeacherView() {
                                 mb: 0.35,
                                 borderRadius: 1,
                                 border: '1px solid',
-                                borderColor: completed ? 'success.light' : courseSelected ? 'primary.light' : 'divider',
+                                borderColor: completed ? 'success.main' : courseSelected ? 'primary.light' : 'divider',
                                 bgcolor: completed
-                                  ? 'rgba(46, 125, 50, 0.12)'
+                                  ? 'rgba(46, 125, 50, 0.18)'
                                   : courseSelected
                                     ? 'rgba(25, 118, 210, 0.1)'
                                     : '#fff',
                                 '&.Mui-selected': {
-                                  bgcolor: 'rgba(25, 118, 210, 0.14)',
+                                  bgcolor: completed
+                                    ? 'rgba(46, 125, 50, 0.22)'
+                                    : 'rgba(25, 118, 210, 0.14)',
                                 },
                               }}
                             >
-                              <Checkbox
-                                size="small"
-                                checked={completed}
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={(_, checked) => void setGroupCompleted(gid, checked)}
-                                disabled={saving}
-                                sx={{ p: 0, mr: 0.35 }}
-                                inputProps={{ 'aria-label': `${g?.name || gid} fertig` }}
-                              />
                               <Box sx={{ flex: 1, minWidth: 0 }}>
                                 <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, lineHeight: 1.25 }} noWrap>
                                   {g?.name || gid}
                                 </Typography>
-                                <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary' }}>
-                                  {published ? 'live' : 'nicht frei'} · {st.submitted}/{st.total} abgegeben
-                                </Typography>
-                              </Box>
-                              {!published && (
-                                <Tooltip title="Kurs freischalten">
-                                  <IconButton
-                                    size="small"
-                                    aria-label="Freischalten"
-                                    disabled={saving}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      void publishGroup(gid);
-                                    }}
+                                <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.25, flexWrap: 'wrap' }}>
+                                  <Typography
                                     sx={{
-                                      ...epoNotenCompactIconBtnSx,
-                                      bgcolor: epoNotenPalette.accent,
-                                      color: '#fff',
+                                      fontSize: '0.58rem',
+                                      fontWeight: starting ? 800 : 500,
+                                      color: starting ? 'text.secondary' : 'transparent',
+                                      width: starting ? 'auto' : 0,
+                                      overflow: 'hidden',
                                     }}
                                   >
-                                    <PublishIcon sx={{ fontSize: '0.85rem' }} />
-                                  </IconButton>
-                                </Tooltip>
-                              )}
+                                    startet noch
+                                  </Typography>
+                                  <Stack direction="row" alignItems="center" spacing={0.15} onClick={(e) => e.stopPropagation()}>
+                                    <Checkbox
+                                      size="small"
+                                      checked={published}
+                                      disabled={saving || completed}
+                                      onChange={(_, checked) => void setGroupActive(gid, checked)}
+                                      sx={{ p: 0 }}
+                                      inputProps={{ 'aria-label': `${g?.name || gid} aktiv` }}
+                                    />
+                                    <Typography sx={{ fontSize: '0.58rem', fontWeight: 700 }}>aktiv</Typography>
+                                  </Stack>
+                                  <Stack direction="row" alignItems="center" spacing={0.15} onClick={(e) => e.stopPropagation()}>
+                                    <Checkbox
+                                      size="small"
+                                      checked={completed}
+                                      disabled={saving}
+                                      onChange={(_, checked) => void setGroupCompleted(gid, checked)}
+                                      sx={{ p: 0, color: completed ? 'success.main' : undefined }}
+                                      inputProps={{ 'aria-label': `${g?.name || gid} fertig` }}
+                                    />
+                                    <Typography sx={{ fontSize: '0.58rem', fontWeight: 700, color: completed ? 'success.dark' : 'text.primary' }}>
+                                      fertig
+                                    </Typography>
+                                  </Stack>
+                                </Stack>
+                                <Typography sx={{ fontSize: '0.58rem', color: 'text.secondary', mt: 0.15 }}>
+                                  {st.submitted}/{st.total} abgegeben
+                                </Typography>
+                              </Box>
                             </ListItemButton>
                           );
                         })}
@@ -1162,8 +1185,9 @@ export function EpoNotenTeacherView() {
                 id="epo-round-variant-select"
                 size="small"
                 fullWidth
-                value={round.variantId || 'default'}
-                onChange={(e) => void updateRoundVariant(String(e.target.value))}
+                value={epoVariantIdForGroup(round, activeCourseGroupId)}
+                onChange={(e) => void updateGroupVariant(activeCourseGroupId, String(e.target.value))}
+                disabled={saving || !activeCourseGroupId}
                 sx={{ fontSize: '0.8rem', bgcolor: '#fff' }}
               >
                 {variantOptions.map((v) => (
@@ -1173,7 +1197,7 @@ export function EpoNotenTeacherView() {
                 ))}
               </Select>
               <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', mt: 0.35, lineHeight: 1.25 }}>
-                Variante 2: gewichtete Bereiche (30 / 20 / 20 / 10 / 20 %), Du-Formulierung im Lehrerfeedback.
+                Gilt nur für den gewählten Kurs links. Variante 2: 30 / 20 / 20 / 10 / 20 %, Du-Form im Feedback.
               </Typography>
             </Box>
             <Box
