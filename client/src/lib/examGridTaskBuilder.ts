@@ -694,7 +694,7 @@ const WAHR_FALSCH_OPTS_HTML =
   '<label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label>';
 
 function renderWahrFalschInlineRow(labelHtml: string, textHtml: string, id: string): string {
-  return `<div class="exam-wf-item item input-group exam-wf-row"><span class="exam-wf-roman">${labelHtml}</span><span class="exam-wf-text">${textHtml}</span><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="${id}">${WAHR_FALSCH_OPTS_HTML}</div><input type="hidden" id="${id}" value=""></div>`;
+  return `<div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman">${labelHtml}</span><span class="exam-wf-text">${textHtml}</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="${id}">${WAHR_FALSCH_OPTS_HTML}</div><input type="hidden" id="${id}" value=""></div>`;
 }
 
 function fieldId(sub: { answerId?: string }, taskNumber: number, fieldIndex: { n: number }): string {

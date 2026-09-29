@@ -3370,17 +3370,24 @@ ${optionsHTML}
         .exam-wf-group { text-align: left; width: 100%; }
         .exam-wf-row {
             display: flex;
-            flex-direction: row;
-            flex-wrap: wrap;
-            align-items: center;
+            flex-direction: column;
+            align-items: flex-start;
             justify-content: flex-start;
-            gap: 8px 20px;
+            gap: 6px;
             margin: 10px 0;
             text-align: left;
             width: 100%;
         }
+        .exam-wf-prompt-line {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 0 8px;
+            width: 100%;
+        }
         .exam-wf-roman { flex-shrink: 0; min-width: 2em; text-align: left; }
-        .exam-wf-text { flex: 1 1 14em; min-width: 0; font-weight: 600; line-height: 1.45; text-align: left; }
+        .exam-wf-text { flex: 1 1 14em; min-width: 0; font-weight: 400; line-height: 1.45; text-align: left; }
         .exam-mc-wf-inline {
             display: inline-flex;
             flex-direction: row;
@@ -3389,7 +3396,7 @@ ${optionsHTML}
             gap: 28px;
             width: auto;
             flex-shrink: 0;
-            margin: 0;
+            margin: 0 0 0 2.5em;
         }
         .exam-wf-row .exam-mc-option { white-space: nowrap; }
         .exam-task-stack .exam-wf-group,
