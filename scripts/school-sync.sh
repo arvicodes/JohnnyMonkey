@@ -439,6 +439,23 @@ else:
   print(f"DB pick: {'school' if from_school else 'local'} (local_mt={local_mt}, school_mt={school_mt})")
   shutil.copy2(chosen, merged_db)
 
+  # EPO: Schul-SuS-Daten nie durch „nur neueres mtime“ verlieren
+  merge_epo = root / "scripts/merge-epo-school-into-local.py"
+  if merge_epo.is_file() and school_db.is_file() and merged_db.is_file():
+    print("==> EPO-Daten Schul + Laptop mergen")
+    subprocess.check_call(
+      [
+        sys.executable,
+        str(merge_epo),
+        "--school-db",
+        str(school_db),
+        "--local-db",
+        str(merged_db),
+      ]
+    )
+    if chosen.resolve() == local_db.resolve():
+      shutil.copy2(merged_db, local_db)
+
   local_pepper = read_local_pepper()
   print("Pepper Laptop:", "vorhanden" if local_pepper else "fehlt")
   hashed = db_is_hashed(chosen)
