@@ -121,6 +121,14 @@ export type GridSubsection =
       letter: string;
       title: string;
       quadrant: GridQuadrant;
+      kind: 'wahr-falsch-group';
+      items: { text: string; solution: 'W' | 'F' }[];
+    } & SubImage
+  | {
+      id: string;
+      letter: string;
+      title: string;
+      quadrant: GridQuadrant;
       kind: 'paragraph';
       text: string;
       /** instruction = größerer Hinweis über den Teilaufgaben */
@@ -775,6 +783,20 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       )
       .join('');
     body = `<div class="item input-group full-width exam-mc-block">${heading}<div class="exam-mc-options exam-mc-single-select" data-answer-id="${id}">${opts}</div><input type="hidden" id="${id}" value=""></div>`;
+  } else if (sub.kind === 'wahr-falsch-group') {
+    const wfOpts =
+      '<label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label>' +
+      '<label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label>';
+    const rows = sub.items.map((item) => {
+      const id = allocId(taskNumber, fieldIndex.n++);
+      fields.push({
+        id,
+        answers: [item.solution],
+        solutionHtml: `<strong>${item.solution === 'W' ? 'Wahr' : 'Falsch'}</strong>`,
+      });
+      return `<div class="exam-wf-item item input-group full-width exam-mc-block"><p class="exam-wf-prompt" style="margin:0 0 6px;">${allowBasicHtml(item.text)}</p><div class="exam-mc-options exam-mc-single-select" data-answer-id="${id}">${wfOpts}</div><input type="hidden" id="${id}" value=""></div>`;
+    });
+    body = `<div class="exam-wf-group">${rows.join('')}</div>`;
   } else if (sub.kind === 'multi-select') {
     const id = allocId(taskNumber, fieldIndex.n++);
     const canonical = sub.solution
@@ -1150,7 +1172,7 @@ export function buildExamGridTaskHtml(spec: ExamGridTaskSpec): {
     allFields.push(...built.fields);
     built.fields.forEach((f, i) => {
       const subLabel =
-        sub.kind === 'round-lines' || sub.kind === 'bullet-blanks'
+        sub.kind === 'round-lines' || sub.kind === 'bullet-blanks' || sub.kind === 'wahr-falsch-group'
           ? `${sub.letter} ${String.fromCharCode(97 + i)})`
           : sub.letter
             ? `${sub.letter})`
@@ -1300,6 +1322,27 @@ function parseSubsection(
       given,
       solution,
       interaction: 'drag',
+    });
+  }
+
+  const wfGroup = subEl.querySelector('.exam-wf-group');
+  if (wfGroup) {
+    const items = Array.from(wfGroup.querySelectorAll('.exam-wf-item')).map((row) => {
+      const wrap = row.querySelector('.exam-mc-single-select[data-answer-id]');
+      const answerId = wrap?.getAttribute('data-answer-id') || '';
+      const promptEl = row.querySelector('.exam-wf-prompt');
+      const text = (promptEl?.textContent || '').trim();
+      const raw = answersToSolutionField(answers, answerId);
+      const solution = raw === 'F' ? 'F' : 'W';
+      return { text, solution: solution as 'W' | 'F' };
+    });
+    return attachImage(subEl, {
+      id,
+      letter,
+      title,
+      quadrant,
+      kind: 'wahr-falsch-group',
+      items,
     });
   }
 

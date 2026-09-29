@@ -1,10 +1,5 @@
 import type { ExamGridTaskSpec } from './examGridTaskBuilder';
 
-const WAHR_FALSCH = [
-  { value: 'W', label: 'Wahr' },
-  { value: 'F', label: 'Falsch' },
-];
-
 const BEGRIFF_OPTS = [
   { value: 'A', label: 'Aktion' },
   { value: 'B', label: 'Belohnung' },
@@ -122,48 +117,29 @@ export function ki1QuizTask3(): ExamGridTaskSpec {
         title:
           'Ein Agent spielt ein einfaches Spiel. Nun wird seine Explorationsrate verändert. Beurteile die Aussagen:',
         quadrant: 'tl',
-        kind: 'choice',
-        prompt:
-          'a) Bei einer Explorationsrate von 0 werden keine zufälligen Aktionen aufgrund der Exploration gewählt.',
-        options: WAHR_FALSCH,
-        solution: 'W',
+        kind: 'wahr-falsch-group',
+        items: [
+          {
+            text: 'a) Bei einer Explorationsrate von 0 werden keine zufälligen Aktionen aufgrund der Exploration gewählt.',
+            solution: 'W',
+          },
+          {
+            text: 'b) Eine hohe Explorationsrate kann dazu führen, dass ein bereits recht guter Agent trotzdem ungewöhnliche Aktionen ausprobiert.',
+            solution: 'W',
+          },
+          {
+            text: 'c) Je höher die Explorationsrate ist, desto häufiger wählt der Agent automatisch die momentan beste bekannte Aktion.',
+            solution: 'F',
+          },
+          {
+            text: 'd) Exploration kann sinnvoll sein, weil der Agent dadurch neue Handlungsalternativen entdeckt.',
+            solution: 'W',
+          },
+        ],
       },
       {
         id: 'ki3-h',
         letter: 'H',
-        title: '',
-        quadrant: 'tl',
-        kind: 'choice',
-        prompt:
-          'b) Eine hohe Explorationsrate kann dazu führen, dass ein bereits recht guter Agent trotzdem ungewöhnliche Aktionen ausprobiert.',
-        options: WAHR_FALSCH,
-        solution: 'W',
-      },
-      {
-        id: 'ki3-i',
-        letter: 'I',
-        title: '',
-        quadrant: 'tl',
-        kind: 'choice',
-        prompt:
-          'c) Je höher die Explorationsrate ist, desto häufiger wählt der Agent automatisch die momentan beste bekannte Aktion.',
-        options: WAHR_FALSCH,
-        solution: 'F',
-      },
-      {
-        id: 'ki3-j',
-        letter: 'J',
-        title: '',
-        quadrant: 'tl',
-        kind: 'choice',
-        prompt:
-          'd) Exploration kann sinnvoll sein, weil der Agent dadurch neue Handlungsalternativen entdeckt.',
-        options: WAHR_FALSCH,
-        solution: 'W',
-      },
-      {
-        id: 'ki3-k',
-        letter: 'K',
         title: '',
         quadrant: 'tl',
         kind: 'choice',
@@ -181,8 +157,8 @@ export function ki1QuizTask3(): ExamGridTaskSpec {
         solution: 'C',
       },
       {
-        id: 'ki3-l',
-        letter: 'L',
+        id: 'ki3-i',
+        letter: 'I',
         title: '',
         quadrant: 'tl',
         kind: 'multi-select',
@@ -200,8 +176,8 @@ export function ki1QuizTask3(): ExamGridTaskSpec {
         solution: 'A|B',
       },
       {
-        id: 'ki3-m',
-        letter: 'M',
+        id: 'ki3-j',
+        letter: 'J',
         title: '',
         quadrant: 'tl',
         kind: 'choice',
@@ -223,8 +199,8 @@ export function ki1QuizTask3(): ExamGridTaskSpec {
         solution: 'B',
       },
       {
-        id: 'ki3-n',
-        letter: 'N',
+        id: 'ki3-k',
+        letter: 'K',
         title: '',
         quadrant: 'tl',
         kind: 'choice',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Button, TextField } from '@mui/material';
+import { Box, Button, FormControl, InputLabel, MenuItem, Select, TextField } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import type { GridSubsection, RichPartBlock } from '../../lib/examGridTaskBuilder';
 
@@ -136,6 +136,66 @@ export function StackSubsectionFields({ sub, subIndex, updateSub, editorRowFill 
             />
           </Box>
         ))}
+      </Box>
+    );
+  }
+
+  if (sub.kind === 'wahr-falsch-group') {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <TextField
+          fullWidth
+          size="small"
+          label="Einleitung (Titel)"
+          value={sub.title}
+          onChange={(e) => updateSub(sub.id, { title: e.target.value })}
+          sx={{ ...editorRowFill(subIndex, -1) }}
+        />
+        {sub.items.map((item, i) => (
+          <Box
+            key={i}
+            sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', ...editorRowFill(subIndex, i) }}
+          >
+            <TextField
+              fullWidth
+              size="small"
+              label={`Aussage ${String.fromCharCode(97 + i)})`}
+              value={item.text}
+              onChange={(e) => {
+                const items = [...sub.items];
+                items[i] = { ...item, text: e.target.value };
+                updateSub(sub.id, { items });
+              }}
+              sx={{ flex: '1 1 220px' }}
+            />
+            <FormControl size="small" sx={{ minWidth: 100 }}>
+              <InputLabel>Lösung</InputLabel>
+              <Select
+                label="Lösung"
+                value={item.solution}
+                onChange={(e) => {
+                  const items = [...sub.items];
+                  items[i] = { ...item, solution: e.target.value as 'W' | 'F' };
+                  updateSub(sub.id, { items });
+                }}
+              >
+                <MenuItem value="W">Wahr</MenuItem>
+                <MenuItem value="F">Falsch</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        ))}
+        <Button
+          size="small"
+          startIcon={<AddIcon />}
+          onClick={() =>
+            updateSub(sub.id, {
+              items: [...sub.items, { text: '', solution: 'W' as const }],
+            })
+          }
+        >
+          Aussage
+        </Button>
       </Box>
     );
   }

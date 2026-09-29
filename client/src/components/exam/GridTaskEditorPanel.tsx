@@ -219,6 +219,7 @@ function SubsectionVariantControls({
 const KIND_LABEL: Record<GridSubsection['kind'], string> = {
   choice: 'Multiple Choice (eine Antwort)',
   'multi-select': 'Multi-Select (mehrere Antworten)',
+  'wahr-falsch-group': 'Wahr/Falsch (mehrere Aussagen)',
   'one-line': 'Antwort eingeben (kurz)',
   cloze: 'Lückentext (___)',
   sort: 'Sortieren',
@@ -240,6 +241,7 @@ const TASK_TYPE_GROUPS: { label: string; kinds: GridSubsection['kind'][] }[] = [
     kinds: [
       'choice',
       'multi-select',
+      'wahr-falsch-group',
       'one-line',
       'cloze',
       'sort',
@@ -257,6 +259,7 @@ const TASK_TYPE_GROUPS: { label: string; kinds: GridSubsection['kind'][] }[] = [
 const STACK_KINDS: GridSubsection['kind'][] = [
   'paragraph',
   'standalone-image',
+  'wahr-falsch-group',
   'life-dates',
   'roman-table',
   'rich-part',
@@ -297,6 +300,13 @@ function newSubsection(kind: GridSubsection['kind']): GridSubsection {
           { label: '…', value: '2' },
         ],
         solution: '1|2',
+      };
+    case 'wahr-falsch-group':
+      return {
+        ...base,
+        kind,
+        title: 'Beurteile die Aussagen:',
+        items: [{ text: 'a) …', solution: 'W' as const }],
       };
     case 'bullet-blanks':
       return { ...base, kind, items: [{ text: '…:', solution: '' }] };
