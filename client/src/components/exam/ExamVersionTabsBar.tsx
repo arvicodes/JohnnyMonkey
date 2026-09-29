@@ -17,12 +17,20 @@ const compactIconBtn = {
   height: 28,
 };
 
+export type ExamVersionMeta = {
+  letters: string[];
+  paths: Record<string, string>;
+  baseFilePath: string;
+};
+
 type Props = {
   /** Beliebiger Pfad der Prüfungsfamilie (A oder Variante). */
   filePath: string;
   /** Aktuell bearbeitete Datei (steuert Tab-Hervorhebung). */
   activeVariantPath?: string;
   onActiveFilePathChange: (path: string, letter: string) => void;
+  /** Wird bei jedem Laden/Anlegen/Löschen von Versionen aufgerufen. */
+  onVersionMetaChange?: (meta: ExamVersionMeta) => void;
   disabled?: boolean;
   compact?: boolean;
 };
@@ -39,6 +47,7 @@ export default function ExamVersionTabsBar({
   filePath,
   activeVariantPath,
   onActiveFilePathChange,
+  onVersionMetaChange,
   disabled,
   compact,
 }: Props) {
@@ -49,6 +58,8 @@ export default function ExamVersionTabsBar({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const familyKeyRef = useRef('');
+  const onVersionMetaChangeRef = useRef(onVersionMetaChange);
+  onVersionMetaChangeRef.current = onVersionMetaChange;
 
   const refreshMeta = useCallback(async (anyPathInFamily: string) => {
     const base = examBaseGitPath(anyPathInFamily);
@@ -57,6 +68,11 @@ export default function ExamVersionTabsBar({
     setLetters(meta.letters);
     setPaths(meta.paths);
     setBasePath(meta.baseFilePath);
+    onVersionMetaChangeRef.current?.({
+      letters: meta.letters,
+      paths: meta.paths,
+      baseFilePath: meta.baseFilePath,
+    });
     return meta;
   }, []);
 

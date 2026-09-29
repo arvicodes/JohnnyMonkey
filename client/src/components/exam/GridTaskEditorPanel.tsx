@@ -110,6 +110,112 @@ function RowDeleteButton({
   );
 }
 
+function SubsectionVariantControls({
+  sub,
+  examVersionLetters,
+  activeVersionLetter,
+  updateSub,
+  onDuplicateSubToVariant,
+  onMoveSubToVariant,
+}: {
+  sub: GridSubsection;
+  examVersionLetters: string[];
+  activeVersionLetter: string;
+  updateSub: (id: string, patch: Partial<GridSubsection>) => void;
+  onDuplicateSubToVariant?: (subId: string, letter: string) => void;
+  onMoveSubToVariant?: (subId: string, letter: string) => void;
+}) {
+  if (!subsectionGetsLetter(sub)) return null;
+
+  const letters = examVersionLetters.length ? examVersionLetters : ['A'];
+  const otherLetters = letters.filter((L) => L !== activeVersionLetter);
+  const scopeValue = sub.variantLetters?.length ? sub.variantLetters : letters;
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 1,
+        alignItems: 'flex-start',
+        mb: 1.5,
+        p: 1,
+        borderRadius: 1,
+        border: '1px dashed',
+        borderColor: 'secondary.main',
+        bgcolor: 'rgba(123, 31, 162, 0.06)',
+      }}
+    >
+      <FormControl size="small" sx={{ minWidth: 150, flex: '1 1 150px' }}>
+        <InputLabel id={`variant-scope-${sub.id}`}>Für Variante</InputLabel>
+        <Select
+          labelId={`variant-scope-${sub.id}`}
+          multiple
+          label="Für Variante"
+          value={scopeValue}
+          onChange={(e) => {
+            const picked = e.target.value as string[];
+            const allSelected = letters.every((L) => picked.includes(L));
+            updateSub(sub.id, {
+              variantLetters:
+                allSelected && picked.length === letters.length ? undefined : [...picked].sort(),
+            });
+          }}
+          renderValue={(sel) => (sel as string[]).join(', ')}
+        >
+          {letters.map((L) => (
+            <MenuItem key={L} value={L}>
+              {L}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      {otherLetters.length > 0 ? (
+        <FormControl size="small" sx={{ minWidth: 180, flex: '1 1 180px' }}>
+          <InputLabel id={`variant-action-${sub.id}`}>Variante B/C …</InputLabel>
+          <Select
+            labelId={`variant-action-${sub.id}`}
+            label="Variante B/C …"
+            value=""
+            displayEmpty
+            onChange={(e) => {
+              const raw = String(e.target.value);
+              const m = raw.match(/^(dup|mov)-([A-Z])$/);
+              if (!m) return;
+              const [, mode, letter] = m;
+              if (mode === 'dup') onDuplicateSubToVariant?.(sub.id, letter);
+              else onMoveSubToVariant?.(sub.id, letter);
+            }}
+          >
+            <MenuItem value="" disabled>
+              Aktion wählen…
+            </MenuItem>
+            {otherLetters.flatMap((L) => [
+              <MenuItem key={`dup-${sub.id}-${L}`} value={`dup-${L}`}>
+                Duplizieren nach {L}
+              </MenuItem>,
+              <MenuItem key={`mov-${sub.id}-${L}`} value={`mov-${L}`}>
+                Verschieben nach {L}
+              </MenuItem>,
+            ])}
+          </Select>
+        </FormControl>
+      ) : (
+        <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center', maxWidth: 220 }}>
+          Weitere Version: oben bei A auf „+“ klicken, dann Duplizieren/Verschieben.
+        </Typography>
+      )}
+
+      {sub.variantLetters?.length && !sub.variantLetters.includes(activeVersionLetter) ? (
+        <Typography variant="caption" color="warning.main" sx={{ width: '100%' }}>
+          In Variante {activeVersionLetter} ausgeblendet (beim Speichern dieser Datei).
+        </Typography>
+      ) : null}
+    </Box>
+  );
+}
+
 const KIND_LABEL: Record<GridSubsection['kind'], string> = {
   choice: 'Multiple Choice (eine Antwort)',
   'multi-select': 'Multi-Select (mehrere Antworten)',
@@ -267,9 +373,9 @@ export default function GridTaskEditorPanel({
   onMoveSubToVariant,
 }: Props) {
   const previewSpec = useMemo(() => {
-    if (!activeVersionLetter || examVersionLetters.length <= 1) return spec;
+    if (!activeVersionLetter) return spec;
     return filterExamGridTaskForVersion(spec, activeVersionLetter);
-  }, [spec, activeVersionLetter, examVersionLetters.length]);
+  }, [spec, activeVersionLetter]);
 
   const built = useMemo(() => buildExamGridTaskHtml(previewSpec), [previewSpec]);
 
@@ -359,10 +465,19 @@ export default function GridTaskEditorPanel({
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
             <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
               {subsectionGetsLetter(sub) ? (
-                <Typography component="div" sx={{ fontWeight: 800, fontSize: 15, mb: 1 }}>
+                <Typography component="div" sx={{ fontWeight: 800, fontSize: 15, mb: 0.5 }}>
                   {sub.letter})
                 </Typography>
               ) : null}
+
+              <SubsectionVariantControls
+                sub={sub}
+                examVersionLetters={examVersionLetters}
+                activeVersionLetter={activeVersionLetter}
+                updateSub={updateSub}
+                onDuplicateSubToVariant={onDuplicateSubToVariant}
+                onMoveSubToVariant={onMoveSubToVariant}
+              />
 
           {sub.kind === 'round-lines' && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -842,82 +957,6 @@ export default function GridTaskEditorPanel({
                     <MenuItem value="drag">Ziehen &amp; Slots</MenuItem>
                   </Select>
                 </FormControl>
-              ) : null}
-              {examVersionLetters.length > 1 && subsectionGetsLetter(sub) ? (
-                <>
-                  <FormControl size="small" fullWidth>
-                    <InputLabel id={`variant-scope-${sub.id}`}>Für Variante</InputLabel>
-                    <Select
-                      labelId={`variant-scope-${sub.id}`}
-                      multiple
-                      label="Für Variante"
-                      value={
-                        sub.variantLetters?.length
-                          ? sub.variantLetters
-                          : examVersionLetters
-                      }
-                      onChange={(e) => {
-                        const picked = e.target.value as string[];
-                        const allSelected = examVersionLetters.every((L) => picked.includes(L));
-                        updateSub(sub.id, {
-                          variantLetters:
-                            allSelected && picked.length === examVersionLetters.length
-                              ? undefined
-                              : [...picked].sort(),
-                        });
-                      }}
-                      renderValue={(sel) => (sel as string[]).join(', ')}
-                    >
-                      {examVersionLetters.map((L) => (
-                        <MenuItem key={L} value={L}>
-                          Variante {L}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                  {sub.variantLetters?.length &&
-                  !sub.variantLetters.includes(activeVersionLetter) ? (
-                    <Typography variant="caption" color="warning.main" sx={{ lineHeight: 1.3 }}>
-                      In Variante {activeVersionLetter} ausgeblendet (beim Speichern)
-                    </Typography>
-                  ) : null}
-                  {examVersionLetters.filter((L) => L !== activeVersionLetter).length > 0 ? (
-                    <FormControl size="small" fullWidth>
-                      <InputLabel id={`variant-action-${sub.id}`}>Variante B/C …</InputLabel>
-                      <Select
-                        labelId={`variant-action-${sub.id}`}
-                        label="Variante B/C …"
-                        value=""
-                        displayEmpty
-                        onChange={(e) => {
-                          const raw = String(e.target.value);
-                          const m = raw.match(/^(dup|mov)-([A-Z])$/);
-                          if (!m) return;
-                          const [, mode, letter] = m;
-                          if (mode === 'dup') onDuplicateSubToVariant?.(sub.id, letter);
-                          else onMoveSubToVariant?.(sub.id, letter);
-                        }}
-                      >
-                        <MenuItem value="" disabled>
-                          Aktion wählen…
-                        </MenuItem>
-                        <ListSubheader sx={{ lineHeight: 2, fontWeight: 800 }}>
-                          Duplizieren / verschieben
-                        </ListSubheader>
-                        {examVersionLetters
-                          .filter((L) => L !== activeVersionLetter)
-                          .flatMap((L) => [
-                            <MenuItem key={`dup-${sub.id}-${L}`} value={`dup-${L}`}>
-                              Duplizieren nach {L}
-                            </MenuItem>,
-                            <MenuItem key={`mov-${sub.id}-${L}`} value={`mov-${L}`}>
-                              Verschieben nach {L}
-                            </MenuItem>,
-                          ])}
-                      </Select>
-                    </FormControl>
-                  ) : null}
-                </>
               ) : null}
             </Box>
           </Box>

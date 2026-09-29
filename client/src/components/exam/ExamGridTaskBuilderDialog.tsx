@@ -163,6 +163,15 @@ export default function ExamGridTaskBuilderDialog({
     void refreshExamVersionMeta();
   }, [open, versionMetaPath, refreshExamVersionMeta]);
 
+  const handleVersionMetaChange = React.useCallback(
+    (meta: { letters: string[]; paths: Record<string, string>; baseFilePath: string }) => {
+      setExamVersionLetters(meta.letters.length ? meta.letters : ['A']);
+      setExamVersionPaths(meta.paths);
+      setExamVersionBasePath(meta.baseFilePath);
+    },
+    [],
+  );
+
   const handleRestartTimerForAll = React.useCallback(async () => {
     const pathForReset = examBaseGitPath(activeFilePath || filePath);
     if (
@@ -596,6 +605,7 @@ export default function ExamGridTaskBuilderDialog({
                   activeVariantPath={activeFilePath}
                   disabled={loading || saving || sessionResetBusy}
                   onActiveFilePathChange={handleVersionPathChange}
+                  onVersionMetaChange={handleVersionMetaChange}
                 />
               </Box>
               <Box
