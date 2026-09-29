@@ -1002,8 +1002,23 @@ export function EpoNotenTeacherView() {
                           const published = isEpoGroupPublished(roundForCourses, gid);
                           const completed = isEpoGroupCompleted(roundForCourses, gid);
                           const starting = !published && !completed;
+                          const activeLive = published && !completed;
                           const st = groupCourseStats(gid);
                           const courseSelected = studentListGroupFilter === gid;
+                          const rowBorder = completed
+                            ? 'success.main'
+                            : activeLive
+                              ? '#f9a825'
+                              : courseSelected
+                                ? 'primary.light'
+                                : 'divider';
+                          const rowBg = completed
+                            ? 'rgba(46, 125, 50, 0.18)'
+                            : activeLive
+                              ? 'rgba(255, 193, 7, 0.22)'
+                              : courseSelected
+                                ? 'rgba(25, 118, 210, 0.1)'
+                                : '#fff';
                           return (
                             <ListItemButton
                               key={gid}
@@ -1016,16 +1031,14 @@ export function EpoNotenTeacherView() {
                                 alignItems: 'center',
                                 borderRadius: 1,
                                 border: '1px solid',
-                                borderColor: completed ? 'success.main' : courseSelected ? 'primary.light' : 'divider',
-                                bgcolor: completed
-                                  ? 'rgba(46, 125, 50, 0.18)'
-                                  : courseSelected
-                                    ? 'rgba(25, 118, 210, 0.1)'
-                                    : '#fff',
+                                borderColor: rowBorder,
+                                bgcolor: rowBg,
                                 '&.Mui-selected': {
                                   bgcolor: completed
                                     ? 'rgba(46, 125, 50, 0.22)'
-                                    : 'rgba(25, 118, 210, 0.14)',
+                                    : activeLive
+                                      ? 'rgba(255, 193, 7, 0.28)'
+                                      : 'rgba(25, 118, 210, 0.14)',
                                 },
                               }}
                             >
@@ -1063,10 +1076,23 @@ export function EpoNotenTeacherView() {
                                     checked={published}
                                     disabled={saving || completed}
                                     onChange={(_, checked) => void setGroupActive(gid, checked)}
-                                    sx={{ p: 0 }}
+                                    sx={{
+                                      p: 0,
+                                      color: published ? '#f9a825' : 'action.disabled',
+                                      '&.Mui-checked': { color: '#f57f17' },
+                                    }}
                                     inputProps={{ 'aria-label': `${g?.name || gid} aktiv` }}
                                   />
-                                  <Typography sx={{ fontSize: '0.58rem', fontWeight: 700, minWidth: 28 }}>aktiv</Typography>
+                                  <Typography
+                                    sx={{
+                                      fontSize: '0.58rem',
+                                      fontWeight: 700,
+                                      minWidth: 28,
+                                      color: published ? '#e65100' : 'text.primary',
+                                    }}
+                                  >
+                                    aktiv
+                                  </Typography>
                                 </Stack>
                                 <Stack direction="row" alignItems="center" spacing={0.1} justifyContent="flex-end">
                                   <Checkbox
