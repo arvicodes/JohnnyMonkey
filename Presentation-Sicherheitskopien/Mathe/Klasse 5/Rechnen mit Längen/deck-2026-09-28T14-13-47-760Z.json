@@ -35,7 +35,10 @@
       "transition": "fade",
       "revealEnabled": false,
       "zoneRevealSteps": {},
-      "hiddenLayoutZones": ["bodyHtml", "titleHtml"],
+      "hiddenLayoutZones": [
+        "bodyHtml",
+        "titleHtml"
+      ],
       "id": "slide-lengths-class5-interactive",
       "order": 0,
       "sourceLessonName": "Interaktive Übung",

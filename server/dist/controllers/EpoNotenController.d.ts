@@ -5,6 +5,14 @@ export declare class EpoNotenController {
     static create(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static update(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static publishById(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /** Einzelnen Kurs freischalten (und ggf. zur Runde hinzufügen) */
+    static publishGroupById(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /** Kurs als „fertig“ markieren (Lehrkraft) */
+    static patchGroupMeta(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    static listVariants(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    static saveVariant(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    static createVariant(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    static deleteVariant(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static unpublishById(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static remove(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static getCurrent(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
