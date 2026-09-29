@@ -2,7 +2,7 @@
   "version": 1,
   "title": "01 Basiswissen",
   "lessonPath": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen",
-  "updatedAt": "2026-09-29T20:12:30.584Z",
+  "updatedAt": "2026-09-29T20:34:24.556Z",
   "slides": [
     {
       "layout": "title-slide",
@@ -2467,11 +2467,7 @@
       "elements": [],
       "transition": "fade",
       "revealEnabled": true,
-      "zoneRevealSteps": {},
-      "slideExam": {
-        "path": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/QZ_KI Basis.html",
-        "name": "QZ_KI Basis.html"
-      }
+      "zoneRevealSteps": {}
     }
   ],
   "defaultTransition": "fade",

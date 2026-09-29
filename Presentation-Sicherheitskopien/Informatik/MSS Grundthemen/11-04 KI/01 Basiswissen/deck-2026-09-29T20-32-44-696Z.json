@@ -2,7 +2,7 @@
   "version": 1,
   "title": "01 Basiswissen",
   "lessonPath": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen",
-  "updatedAt": "2026-09-29T20:34:12.768Z",
+  "updatedAt": "2026-09-29T20:12:30.584Z",
   "slides": [
     {
       "layout": "title-slide",
@@ -2459,7 +2459,7 @@
       "bodyLeftHtml": "",
       "bodyRightHtml": "",
       "imageCaptionHtml": "",
-      "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><br></p>",
+      "speakerNotesHtml": "<p><br></p>",
       "preparationNotes": "",
       "preparationHtml": "<p><br></p>",
       "materialNotes": "",
