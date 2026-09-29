@@ -6,6 +6,7 @@ import {
   type SlideInteractiveExercise,
 } from '../lib/presentationInteractiveExercise';
 import { INTERACTIVE_EXERCISE_ACCENT } from '../lib/presentationInteractiveExercise';
+import { apiGetSafe } from '../lib/api';
 
 type ExerciseBeacon = {
   groupId: string;
@@ -30,12 +31,8 @@ export default function StudentLiveInteractiveExerciseAlert({ userId }: { userId
   const poll = useCallback(async () => {
     if (!userId) return;
     try {
-      const loginCode = localStorage.getItem('loginCode')?.trim();
-      if (!loginCode) return;
-      const res = await fetch('/api/learning-groups/interactive-exercise-beacon/student-poll', {
-        headers: { 'x-login-code': loginCode },
-      });
-      if (!res.ok) return;
+      const res = await apiGetSafe('/api/learning-groups/interactive-exercise-beacon/student-poll');
+      if (!res?.ok) return;
       const data = (await res.json()) as { beacons?: ExerciseBeacon[] };
       const next = data.beacons?.[0] || null;
       setBeacon((prev) => {
