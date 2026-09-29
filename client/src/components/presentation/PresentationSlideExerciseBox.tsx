@@ -29,6 +29,7 @@ import {
 } from '../../lib/lessonInteractiveExerciseBeacon';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import PresentationInteractiveExercisePlayer from './PresentationInteractiveExercisePlayer';
+import InteractiveExerciseTeacherEvaluationDialog from './InteractiveExerciseTeacherEvaluationDialog';
 
 const ACCENT = INTERACTIVE_EXERCISE_ACCENT;
 
@@ -75,6 +76,7 @@ const PresentationSlideExerciseBox: React.FC<Props> = ({
   const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [evalOpen, setEvalOpen] = useState(false);
 
   const gid = (pickedGroupId || groupId || '').trim();
   const exerciseKey = `${slideId || ''}|${exercise?.id || ''}`;
@@ -248,6 +250,14 @@ const PresentationSlideExerciseBox: React.FC<Props> = ({
             <Button onClick={() => setPreviewOpen(true)} sx={headerBtnSx}>
               Öffnen
             </Button>
+            <Button
+              disabled={!gid}
+              onClick={() => setEvalOpen(true)}
+              title={gid ? 'Erfolg der Lerngruppe in Prozent' : 'Lerngruppe wählen'}
+              sx={headerBtnSx}
+            >
+              Auswertung
+            </Button>
             {canEdit ? (
               <Button
                 onClick={() => {
@@ -306,6 +316,14 @@ const PresentationSlideExerciseBox: React.FC<Props> = ({
           Interaktive Übung · {exercise.topics.length} Themen
         </Typography>
       </Box>
+
+      <InteractiveExerciseTeacherEvaluationDialog
+        open={evalOpen}
+        onClose={() => setEvalOpen(false)}
+        exercise={exercise}
+        groupId={gid}
+        lessonPath={lessonPath}
+      />
 
       <Dialog
         open={previewOpen}

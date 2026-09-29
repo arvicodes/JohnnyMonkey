@@ -11,6 +11,8 @@ import {
   romanNumeralTable,
   resolveInteractiveExercise,
   saveInteractiveExerciseProgress,
+  buildQuestionPercents,
+  questionTaskKey,
   starsFromAnswers,
   topicStars,
   normalizeAnswerCell,
@@ -25,6 +27,7 @@ import {
   type SlideInteractiveExercise,
   lengthAnswersEqual,
 } from '../../lib/presentationInteractiveExercise';
+import { queuePushInteractiveExerciseProgress } from '../../lib/lessonInteractiveExerciseProgress';
 import {
   ExerciseDiagram,
   MeasureText,
@@ -694,6 +697,9 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   const activeCompareIdxRef = useRef(0);
   const lengthConvertInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const weiterButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [questionPercentOverrides, setQuestionPercentOverrides] = useState<Record<string, number>>(
+    {},
+  );
 
   useEffect(() => {
     activeCompareIdxRef.current = activeCompareIdx;
@@ -713,6 +719,24 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
       loadInteractiveExerciseProgress(exercise.id, lessonPath, groupId, studentId),
     );
   }, [exercise?.id, lessonPath, groupId, studentId]);
+
+  const syncProgressToServer = useCallback(
+    (
+      progressState: InteractiveExerciseProgress,
+      overrides?: Record<string, number>,
+    ) => {
+      if (!exercise?.id || !groupId?.trim() || !studentId?.trim()) return;
+      const mergedOverrides = { ...questionPercentOverrides, ...overrides };
+      const questionPercents = buildQuestionPercents(exercise, progressState, mergedOverrides);
+      queuePushInteractiveExerciseProgress({
+        groupId,
+        lessonPath,
+        exerciseId: exercise.id,
+        snapshot: { progress: progressState, questionPercents },
+      });
+    },
+    [exercise, groupId, lessonPath, studentId, questionPercentOverrides],
+  );
 
   const persistTopic = useCallback(
     (topicId: string, stars: number, ans: Array<InteractiveExerciseAnswerCell | 'correct' | 'wrong' | null>) => {
@@ -739,8 +763,9 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
       };
       saveInteractiveExerciseProgress(next, lessonPath, groupId, studentId);
       setProgress(next);
+      syncProgressToServer(next);
     },
-    [exercise?.id, lessonPath, groupId, studentId],
+    [exercise?.id, lessonPath, groupId, studentId, syncProgressToServer],
   );
 
   const resetQuestionLocal = (q: InteractiveExerciseQuestion) => {
@@ -861,6 +886,24 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
   const currentQ: InteractiveExerciseQuestion | null =
     topic && topic.questions[qi] ? topic.questions[qi] : null;
 
+  const recordQuestionPercent = useCallback(
+    (q: InteractiveExerciseQuestion, percent: number) => {
+      if (!topic || !exercise?.id) return;
+      const key = questionTaskKey(topic.id, q.id);
+      const clamped = Math.max(0, Math.min(100, Math.round(percent)));
+      setQuestionPercentOverrides((prev) => ({ ...prev, [key]: clamped }));
+      const base =
+        progress ||
+        loadInteractiveExerciseProgress(exercise.id, lessonPath, groupId, studentId) || {
+          exerciseId: exercise.id,
+          topics: [],
+          updatedAt: new Date().toISOString(),
+        };
+      syncProgressToServer(base, { [key]: clamped });
+    },
+    [topic, exercise?.id, progress, lessonPath, groupId, studentId, syncProgressToServer],
+  );
+
   const writeInputRef = useRef<HTMLInputElement | null>(null);
   const fillInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const convertInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -949,6 +992,9 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
       };
     }
     setAnswers(nextAnswers);
+    if (currentQ) {
+      recordQuestionPercent(currentQ, ok ? 100 : 0);
+    }
     setLocked(true);
     window.setTimeout(() => {
       advanceAfterAnswer(nextAnswers);
@@ -979,6 +1025,12 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
       return got === b.correct ? ('correct' as const) : ('wrong' as const);
     });
     setFillStatuses(statuses);
+    if (currentQ && statuses.length > 0) {
+      const pct = Math.round(
+        (statuses.filter((s) => s === 'correct').length / statuses.length) * 100,
+      );
+      recordQuestionPercent(currentQ, pct);
+    }
     const allOk = statuses.every((s) => s === 'correct');
     if (allOk) {
       setShowWrongBanner(false);
@@ -1215,6 +1267,11 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
     );
     setConvertStatuses(cStatuses);
     setCompareStatuses(sStatuses);
+    const merged = [...cStatuses, ...sStatuses];
+    if (merged.length > 0) {
+      const pct = Math.round((merged.filter((s) => s === 'correct').length / merged.length) * 100);
+      recordQuestionPercent(currentQ, pct);
+    }
     const allOk =
       cStatuses.every((s) => s === 'correct') && sStatuses.every((s) => s === 'correct');
     if (allOk) {
@@ -1259,6 +1316,12 @@ const PresentationInteractiveExercisePlayer: React.FC<Props> = ({
         : ('wrong' as const),
     );
     setLengthConvertStatuses(statuses);
+    if (statuses.length > 0) {
+      const pct = Math.round(
+        (statuses.filter((st) => st === 'correct').length / statuses.length) * 100,
+      );
+      recordQuestionPercent(currentQ, pct);
+    }
     const allOk = statuses.every((st) => st === 'correct');
     if (allOk) {
       setShowWrongBanner(false);

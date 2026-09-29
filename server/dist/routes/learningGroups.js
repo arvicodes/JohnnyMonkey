@@ -788,6 +788,122 @@ router.get('/interactive-exercise-beacon/status/:groupId', async (req, res) => {
         return res.status(500).json({ error: (e === null || e === void 0 ? void 0 : e.message) || 'Serverfehler' });
     }
 });
+/** SuS: Fortschritt zur interaktiven Übung speichern (Lehrer-Auswertung). */
+router.post('/interactive-exercise-progress', async (req, res) => {
+    try {
+        const raw = req.headers['x-login-code'];
+        const loginCode = typeof raw === 'string' ? raw.trim() : '';
+        if (!loginCode) {
+            return res.status(401).json({ error: 'Anmeldung erforderlich' });
+        }
+        const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, raw);
+        if (!user || user.role !== 'STUDENT') {
+            return res.status(403).json({ error: 'Nur für Schülerkonten' });
+        }
+        const { groupId, lessonPath, exerciseId, progressJson } = req.body;
+        const gid = String(groupId || '').trim();
+        const eid = String(exerciseId || '').trim();
+        const lesson = String(lessonPath || '').trim();
+        if (!gid || !eid || !(progressJson === null || progressJson === void 0 ? void 0 : progressJson.trim())) {
+            return res.status(400).json({ error: 'groupId, exerciseId und progressJson sind erforderlich' });
+        }
+        const member = await prisma.learningGroup.findFirst({
+            where: { id: gid, students: { some: { id: user.id } } },
+            select: { id: true },
+        });
+        if (!member) {
+            return res.status(403).json({ error: 'Keine Berechtigung für diese Lerngruppe' });
+        }
+        await prisma.lessonInteractiveExerciseProgress.upsert({
+            where: {
+                groupId_studentId_lessonPath_exerciseId: {
+                    groupId: gid,
+                    studentId: user.id,
+                    lessonPath: lesson,
+                    exerciseId: eid,
+                },
+            },
+            create: {
+                groupId: gid,
+                studentId: user.id,
+                lessonPath: lesson,
+                exerciseId: eid,
+                progressJson: String(progressJson),
+            },
+            update: {
+                progressJson: String(progressJson),
+            },
+        });
+        return res.json({ ok: true });
+    }
+    catch (e) {
+        console.error('interactive-exercise-progress POST:', e);
+        return res.status(500).json({ error: (e === null || e === void 0 ? void 0 : e.message) || 'Serverfehler' });
+    }
+});
+/** Lehrer: Auswertungstabelle (Erfolg % pro Schüler und Aufgabe). */
+router.get('/interactive-exercise-progress/:groupId', async (req, res) => {
+    try {
+        const groupId = String(req.params.groupId || '').trim();
+        const teacherId = String(req.query.teacherId || '').trim();
+        const exerciseId = String(req.query.exerciseId || '').trim();
+        const lessonPath = String(req.query.lessonPath || '').trim();
+        if (!groupId || !teacherId || !exerciseId) {
+            return res.status(400).json({ error: 'groupId, teacherId und exerciseId sind erforderlich' });
+        }
+        const group = await prisma.learningGroup.findUnique({
+            where: { id: groupId },
+            select: {
+                teacherId: true,
+                students: { select: { id: true, name: true }, orderBy: { name: 'asc' } },
+            },
+        });
+        if (!group || group.teacherId !== teacherId) {
+            return res.status(403).json({ error: 'Keine Berechtigung' });
+        }
+        const rows = await prisma.lessonInteractiveExerciseProgress.findMany({
+            where: {
+                groupId,
+                exerciseId,
+                lessonPath,
+            },
+            select: {
+                studentId: true,
+                progressJson: true,
+                updatedAt: true,
+            },
+        });
+        const byStudent = new Map(rows.map((r) => [r.studentId, r]));
+        return res.json({
+            students: group.students.map((s) => {
+                var _a;
+                const row = byStudent.get(s.id);
+                let questionPercents = {};
+                if (row === null || row === void 0 ? void 0 : row.progressJson) {
+                    try {
+                        const parsed = JSON.parse(row.progressJson);
+                        if ((parsed === null || parsed === void 0 ? void 0 : parsed.questionPercents) && typeof parsed.questionPercents === 'object') {
+                            questionPercents = parsed.questionPercents;
+                        }
+                    }
+                    catch {
+                        questionPercents = {};
+                    }
+                }
+                return {
+                    studentId: s.id,
+                    studentName: s.name,
+                    questionPercents,
+                    updatedAt: ((_a = row === null || row === void 0 ? void 0 : row.updatedAt) === null || _a === void 0 ? void 0 : _a.toISOString()) || null,
+                };
+            }),
+        });
+    }
+    catch (e) {
+        console.error('interactive-exercise-progress GET:', e);
+        return res.status(500).json({ error: (e === null || e === void 0 ? void 0 : e.message) || 'Serverfehler' });
+    }
+});
 /** SuS: Polling — aktive interaktive Übung → Vollbild-Overlay */
 router.get('/interactive-exercise-beacon/student-poll', async (req, res) => {
     try {
