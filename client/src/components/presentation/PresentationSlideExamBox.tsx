@@ -38,6 +38,7 @@ import {
 } from '../../lib/lessonExamBeacon';
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import KACorrectionMode from '../KACorrectionMode';
+import ExamGridTaskBuilderDialog from '../exam/ExamGridTaskBuilderDialog';
 
 const EXAM_RED = '#c62828';
 const EXAM_TYPES = [
@@ -128,6 +129,10 @@ const PresentationSlideExamBox: React.FC<Props> = ({
   const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [targetGroupIds, setTargetGroupIds] = useState<string[]>([]);
+  const [gridBuilderOpen, setGridBuilderOpen] = useState(false);
+  const [gridTaskNumbers, setGridTaskNumbers] = useState<number[]>([]);
+  const [gridEditTaskNumber, setGridEditTaskNumber] = useState(1);
+  const [examEditPath, setExamEditPath] = useState('');
 
   const canEdit = typeof onChange === 'function';
   const examPath = (exam?.path || '').replace(/\\/g, '/');
@@ -347,9 +352,26 @@ const PresentationSlideExamBox: React.FC<Props> = ({
         `/api/file-system-paths/get-examination-questions?filePath=${encodeURIComponent(examPath)}`,
       );
       if (!res.ok) throw new Error('Fragen konnten nicht geladen werden');
-      const data = (await res.json()) as { questions?: ExamQuestion[]; title?: string };
+      const data = (await res.json()) as {
+        questions?: ExamQuestion[];
+        title?: string;
+        gridTaskNumbers?: unknown[];
+      };
       setQuestions(data.questions || []);
       setExamTitle(data.title || examLabel(exam?.name || ''));
+      const gridNums: number[] = Array.isArray(data.gridTaskNumbers)
+        ? data.gridTaskNumbers.map((n) => Number(n)).filter((n) => n > 0)
+        : [];
+      setGridTaskNumbers(gridNums);
+      setExamEditPath(examPath);
+      const qs = data.questions || [];
+      const textMax =
+        qs.length > 0 ? Math.max(...qs.map((q) => Number(q.taskNumber) || 0)) : 0;
+      const defaultTask = gridNums.length > 0 ? gridNums[0] : Math.max(textMax, 1);
+      setGridEditTaskNumber(defaultTask);
+      if (gridNums.length > 0) {
+        setGridBuilderOpen(true);
+      }
     } catch (e) {
       setQuestions([]);
       onMessage?.(e instanceof Error ? e.message : 'Fragen laden fehlgeschlagen');
@@ -527,7 +549,22 @@ const PresentationSlideExamBox: React.FC<Props> = ({
   const editDialog = (
     <Dialog open={editOpen} onClose={() => !savingQuestion && setEditOpen(false)} maxWidth="sm" fullWidth>
       <DialogTitle sx={dialogCloseTitleSx}>
-        Fragen bearbeiten
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, pr: 4 }}>
+          <span>Fragen bearbeiten</span>
+          {examPath ? (
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                setExamEditPath(examPath);
+                setGridBuilderOpen(true);
+              }}
+              sx={{ textTransform: 'none', fontWeight: 700, flexShrink: 0 }}
+            >
+              Raster (2×2)
+            </Button>
+          ) : null}
+        </Box>
         <DialogCloseIconButton onClose={() => setEditOpen(false)} disabled={savingQuestion} />
       </DialogTitle>
       <DialogContent sx={{ pt: 1 }}>
@@ -535,6 +572,17 @@ const PresentationSlideExamBox: React.FC<Props> = ({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 3 }}>
             <CircularProgress size={22} />
             <Typography variant="body2">Lade Fragen…</Typography>
+          </Box>
+        ) : questions.length === 0 && gridTaskNumbers.length > 0 ? (
+          <Box sx={{ py: 1 }}>
+            <Typography variant="body2" sx={{ mb: 1.5 }}>
+              Diese Prüfung nutzt Raster-Aufgaben (Aufgabe{' '}
+              {gridTaskNumbers.join(', ')}). Der Raster-Editor ist geöffnet — pro Teilfrage
+              Varianten A/B/C und Duplizieren/Verschieben.
+            </Typography>
+            <Button variant="contained" size="small" onClick={() => setGridBuilderOpen(true)}>
+              Raster-Editor anzeigen
+            </Button>
           </Box>
         ) : questions.length === 0 ? null : editingQuestion ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 0.5 }}>
@@ -611,6 +659,40 @@ const PresentationSlideExamBox: React.FC<Props> = ({
       </DialogActions>
     </Dialog>
   );
+
+  const gridBuilderDialog =
+    examPath && (examEditPath || examPath) ? (
+      <ExamGridTaskBuilderDialog
+        open={gridBuilderOpen}
+        filePath={examEditPath || examPath}
+        initialTaskNumber={gridEditTaskNumber}
+        existingTaskNumbers={[
+          ...questions.map((q) => q.taskNumber),
+          ...gridTaskNumbers,
+        ]}
+        onClose={() => setGridBuilderOpen(false)}
+        onSaved={() => {
+          void (async () => {
+            if (!examPath) return;
+            try {
+              const res = await fetch(
+                `/api/file-system-paths/get-examination-questions?filePath=${encodeURIComponent(examPath)}`,
+              );
+              if (!res.ok) return;
+              const data = (await res.json()) as { gridTaskNumbers?: unknown[] };
+              const gridNums = Array.isArray(data.gridTaskNumbers)
+                ? data.gridTaskNumbers.map((n) => Number(n)).filter((n) => n > 0)
+                : [];
+              setGridTaskNumbers(gridNums);
+            } catch {
+              /* ignore */
+            }
+          })();
+        }}
+        onNotify={(message) => onMessage?.(message)}
+        onActiveFilePathChange={(path) => setExamEditPath(path)}
+      />
+    ) : null;
 
   if (!exam) {
     const exerciseAccent = '#F9A825';
@@ -790,6 +872,7 @@ const PresentationSlideExamBox: React.FC<Props> = ({
       {createDialog}
       {correctionDialog}
       {editDialog}
+      {gridBuilderDialog}
       <Dialog
         open={groupPickOpen}
         onClose={() => setGroupPickOpen(false)}
