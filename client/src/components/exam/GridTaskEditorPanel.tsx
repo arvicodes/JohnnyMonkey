@@ -18,6 +18,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
   buildExamGridTaskHtml,
+  filterExamGridTaskForVersion,
   type ExamGridTaskSpec,
   type GridQuadrant,
   type GridSubsection,
@@ -33,6 +34,12 @@ export type Props = {
   onChange: (next: ExamGridTaskSpec) => void;
   previewExpanded: boolean;
   onTogglePreview: () => void;
+  /** Prüfungsversionen A/B/C … (leer = keine Varianten-UI). */
+  examVersionLetters?: string[];
+  /** Aktuell bearbeitete Variante (Tab oben). */
+  activeVersionLetter?: string;
+  onDuplicateSubToVariant?: (subId: string, letter: string) => void;
+  onMoveSubToVariant?: (subId: string, letter: string) => void;
 };
 
 const QUADRANT_LABEL: Record<GridQuadrant, string> = {
@@ -254,8 +261,17 @@ export default function GridTaskEditorPanel({
   onChange,
   previewExpanded,
   onTogglePreview,
+  examVersionLetters = [],
+  activeVersionLetter = 'A',
+  onDuplicateSubToVariant,
+  onMoveSubToVariant,
 }: Props) {
-  const built = useMemo(() => buildExamGridTaskHtml(spec), [spec]);
+  const previewSpec = useMemo(() => {
+    if (!activeVersionLetter || examVersionLetters.length <= 1) return spec;
+    return filterExamGridTaskForVersion(spec, activeVersionLetter);
+  }, [spec, activeVersionLetter, examVersionLetters.length]);
+
+  const built = useMemo(() => buildExamGridTaskHtml(previewSpec), [previewSpec]);
 
   const commitSpec = (next: ExamGridTaskSpec) => {
     onChange(applyAutoSubsectionLetters(next));
@@ -826,6 +842,82 @@ export default function GridTaskEditorPanel({
                     <MenuItem value="drag">Ziehen &amp; Slots</MenuItem>
                   </Select>
                 </FormControl>
+              ) : null}
+              {examVersionLetters.length > 1 && subsectionGetsLetter(sub) ? (
+                <>
+                  <FormControl size="small" fullWidth>
+                    <InputLabel id={`variant-scope-${sub.id}`}>Für Variante</InputLabel>
+                    <Select
+                      labelId={`variant-scope-${sub.id}`}
+                      multiple
+                      label="Für Variante"
+                      value={
+                        sub.variantLetters?.length
+                          ? sub.variantLetters
+                          : examVersionLetters
+                      }
+                      onChange={(e) => {
+                        const picked = e.target.value as string[];
+                        const allSelected = examVersionLetters.every((L) => picked.includes(L));
+                        updateSub(sub.id, {
+                          variantLetters:
+                            allSelected && picked.length === examVersionLetters.length
+                              ? undefined
+                              : [...picked].sort(),
+                        });
+                      }}
+                      renderValue={(sel) => (sel as string[]).join(', ')}
+                    >
+                      {examVersionLetters.map((L) => (
+                        <MenuItem key={L} value={L}>
+                          Variante {L}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  {sub.variantLetters?.length &&
+                  !sub.variantLetters.includes(activeVersionLetter) ? (
+                    <Typography variant="caption" color="warning.main" sx={{ lineHeight: 1.3 }}>
+                      In Variante {activeVersionLetter} ausgeblendet (beim Speichern)
+                    </Typography>
+                  ) : null}
+                  {examVersionLetters.filter((L) => L !== activeVersionLetter).length > 0 ? (
+                    <FormControl size="small" fullWidth>
+                      <InputLabel id={`variant-action-${sub.id}`}>Variante B/C …</InputLabel>
+                      <Select
+                        labelId={`variant-action-${sub.id}`}
+                        label="Variante B/C …"
+                        value=""
+                        displayEmpty
+                        onChange={(e) => {
+                          const raw = String(e.target.value);
+                          const m = raw.match(/^(dup|mov)-([A-Z])$/);
+                          if (!m) return;
+                          const [, mode, letter] = m;
+                          if (mode === 'dup') onDuplicateSubToVariant?.(sub.id, letter);
+                          else onMoveSubToVariant?.(sub.id, letter);
+                        }}
+                      >
+                        <MenuItem value="" disabled>
+                          Aktion wählen…
+                        </MenuItem>
+                        <ListSubheader sx={{ lineHeight: 2, fontWeight: 800 }}>
+                          Duplizieren / verschieben
+                        </ListSubheader>
+                        {examVersionLetters
+                          .filter((L) => L !== activeVersionLetter)
+                          .flatMap((L) => [
+                            <MenuItem key={`dup-${sub.id}-${L}`} value={`dup-${L}`}>
+                              Duplizieren nach {L}
+                            </MenuItem>,
+                            <MenuItem key={`mov-${sub.id}-${L}`} value={`mov-${L}`}>
+                              Verschieben nach {L}
+                            </MenuItem>,
+                          ])}
+                      </Select>
+                    </FormControl>
+                  ) : null}
+                </>
               ) : null}
             </Box>
           </Box>

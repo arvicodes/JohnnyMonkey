@@ -46,7 +46,10 @@ export type GridSubsectionImage = {
   align: 'left' | 'right';
 };
 
-type SubImage = { image?: GridSubsectionImage };
+/** Leer/undefiniert = Teil erscheint in allen Prüfungsversionen (A/B/C …). */
+export type SubVariantScope = { variantLetters?: string[] };
+
+type SubImage = { image?: GridSubsectionImage } & SubVariantScope;
 
 export type GridSubsection =
   | {
@@ -335,6 +338,24 @@ export function parseSolutionAlternatives(raw: string, expand: SolutionExpandKin
 
 function solutionDisplayHtml(answers: string[]): string {
   return answers.map((a) => escapeHtml(a)).join(' / ');
+}
+
+export function subsectionAppliesToVersion(sub: GridSubsection, versionLetter: string): boolean {
+  if (sub.kind === 'paragraph' && sub.variant === 'instruction') return true;
+  const letters = sub.variantLetters;
+  if (!letters?.length) return true;
+  const L = versionLetter.trim().toUpperCase();
+  return letters.some((x) => String(x).trim().toUpperCase() === L);
+}
+
+export function filterExamGridTaskForVersion(
+  spec: ExamGridTaskSpec,
+  versionLetter: string,
+): ExamGridTaskSpec {
+  return {
+    ...spec,
+    subsections: spec.subsections.filter((sub) => subsectionAppliesToVersion(sub, versionLetter)),
+  };
 }
 
 function splitLeadingInstructionSubsections(subsections: GridSubsection[]): {

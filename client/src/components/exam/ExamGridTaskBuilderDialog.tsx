@@ -21,10 +21,19 @@ import {
   createBlankExamGridTask,
   demoNatuerlicheZahlenTask1,
   buildExamGridTaskHtml,
+  filterExamGridTaskForVersion,
   type ExamGridTaskSpec,
+  type GridSubsection,
 } from '../../lib/examGridTaskBuilder';
+import { applyAutoSubsectionLetters } from '../../lib/examGridEditorLabels';
 import { loadGridTaskSpecsFromExamHtml } from '../../lib/loadGridTaskSpecsFromExamHtml';
-import { examBaseGitPath, examFamilyKey } from '../../lib/examVersionPaths';
+import {
+  examBaseGitPath,
+  examFamilyKey,
+  fetchExamVersionLetters,
+  resolveVersionFilePath,
+  versionLetterFromKaPath,
+} from '../../lib/examVersionPaths';
 import { resetExamSession } from '../../lib/examSessionReset';
 import ExamSessionResetTrio from './ExamSessionResetTrio';
 import ExamFullResetConfirmDialog from './ExamFullResetConfirmDialog';
@@ -47,6 +56,30 @@ function nextTaskNumberFromSpecs(specs: ExamGridTaskSpec[], extra: number[] | un
     ...(extra || []).map((n) => Number(n) || 0),
   ]);
   return Math.max(0, ...nums) + 1;
+}
+
+function cloneSubsectionForTargetVariant(sub: GridSubsection, letter: string): GridSubsection {
+  const clone = JSON.parse(JSON.stringify(sub)) as GridSubsection;
+  clone.id = `sub-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  clone.variantLetters = [letter];
+  return clone;
+}
+
+function appendSubToTaskSpecs(
+  specs: ExamGridTaskSpec[],
+  taskNumber: number,
+  sub: GridSubsection,
+): ExamGridTaskSpec[] {
+  const idx = specs.findIndex((s) => s.taskNumber === taskNumber);
+  if (idx >= 0) {
+    const next = [...specs];
+    next[idx] = {
+      ...next[idx],
+      subsections: [...next[idx].subsections, sub],
+    };
+    return next;
+  }
+  return [...specs, { ...createBlankExamGridTask(taskNumber), subsections: [sub] }];
 }
 
 const TASK_OUTER_SX = {
@@ -96,6 +129,9 @@ export default function ExamGridTaskBuilderDialog({
   const [sessionResetBusy, setSessionResetBusy] = useState(false);
   const [fullResetOpen, setFullResetOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [examVersionLetters, setExamVersionLetters] = useState<string[]>(['A']);
+  const [examVersionPaths, setExamVersionPaths] = useState<Record<string, string>>({});
+  const [examVersionBasePath, setExamVersionBasePath] = useState('');
   const loadedKeyRef = React.useRef('');
   const loadGenerationRef = React.useRef(0);
   const specsDraftByPathRef = React.useRef<Record<string, ExamGridTaskSpec[]>>({});
@@ -103,6 +139,29 @@ export default function ExamGridTaskBuilderDialog({
   specsRef.current = specs;
 
   const versionMetaPath = React.useMemo(() => examBaseGitPath(filePath), [filePath]);
+  const activeVersionLetter = React.useMemo(
+    () => versionLetterFromKaPath(activeFilePath || filePath),
+    [activeFilePath, filePath],
+  );
+
+  const refreshExamVersionMeta = React.useCallback(async () => {
+    if (!versionMetaPath) return;
+    try {
+      const meta = await fetchExamVersionLetters(versionMetaPath);
+      setExamVersionLetters(meta.letters);
+      setExamVersionPaths(meta.paths);
+      setExamVersionBasePath(meta.baseFilePath);
+    } catch {
+      setExamVersionLetters(['A']);
+      setExamVersionPaths({});
+      setExamVersionBasePath(versionMetaPath);
+    }
+  }, [versionMetaPath]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    void refreshExamVersionMeta();
+  }, [open, versionMetaPath, refreshExamVersionMeta]);
 
   const handleRestartTimerForAll = React.useCallback(async () => {
     const pathForReset = examBaseGitPath(activeFilePath || filePath);
@@ -169,8 +228,122 @@ export default function ExamGridTaskBuilderDialog({
         return path;
       });
       onActiveFilePathChange?.(path, letter);
+      void refreshExamVersionMeta();
     },
-    [onActiveFilePathChange],
+    [onActiveFilePathChange, refreshExamVersionMeta],
+  );
+
+  const loadSpecsForVariantPath = React.useCallback(
+    async (targetPath: string): Promise<ExamGridTaskSpec[]> => {
+      const cached = specsDraftByPathRef.current[targetPath];
+      if (cached?.length) {
+        return JSON.parse(JSON.stringify(cached)) as ExamGridTaskSpec[];
+      }
+      const res = await fetch(
+        `/api/file-system-paths/read-html?filePath=${encodeURIComponent(targetPath)}`,
+      );
+      if (!res.ok) {
+        return [createBlankExamGridTask(initialTaskNumber)];
+      }
+      const html = await res.text();
+      return loadGridTaskSpecsFromExamHtml(html, initialTaskNumber);
+    },
+    [initialTaskNumber],
+  );
+
+  const handleDuplicateSubToVariant = React.useCallback(
+    (subId: string, letter: string) => {
+      void (async () => {
+        const task = specsRef.current[activeTaskTab];
+        const sub = task?.subsections.find((s) => s.id === subId);
+        if (!task || !sub) return;
+
+        const targetPath = resolveVersionFilePath(
+          examVersionPaths,
+          examVersionBasePath || versionMetaPath,
+          letter,
+        );
+        try {
+          let targetSpecs = await loadSpecsForVariantPath(targetPath);
+          const clone = cloneSubsectionForTargetVariant(sub, letter);
+          targetSpecs = appendSubToTaskSpecs(targetSpecs, task.taskNumber, clone).map((s) =>
+            s.taskNumber === task.taskNumber ? applyAutoSubsectionLetters(s) : s,
+          );
+          specsDraftByPathRef.current[targetPath] = targetSpecs;
+          onNotify?.(
+            `Teil dupliziert nach Variante ${letter}. Tab ${letter} öffnen und speichern.`,
+            'success',
+          );
+        } catch (e) {
+          onNotify?.(
+            e instanceof Error ? e.message : 'Duplizieren fehlgeschlagen',
+            'error',
+          );
+        }
+      })();
+    },
+    [
+      activeTaskTab,
+      examVersionBasePath,
+      examVersionPaths,
+      loadSpecsForVariantPath,
+      onNotify,
+      versionMetaPath,
+    ],
+  );
+
+  const handleMoveSubToVariant = React.useCallback(
+    (subId: string, letter: string) => {
+      void (async () => {
+        const task = specsRef.current[activeTaskTab];
+        const sub = task?.subsections.find((s) => s.id === subId);
+        if (!task || !sub) return;
+
+        const targetPath = resolveVersionFilePath(
+          examVersionPaths,
+          examVersionBasePath || versionMetaPath,
+          letter,
+        );
+        try {
+          let targetSpecs = await loadSpecsForVariantPath(targetPath);
+          const clone = cloneSubsectionForTargetVariant(sub, letter);
+          targetSpecs = appendSubToTaskSpecs(targetSpecs, task.taskNumber, clone).map((s) =>
+            s.taskNumber === task.taskNumber ? applyAutoSubsectionLetters(s) : s,
+          );
+          specsDraftByPathRef.current[targetPath] = targetSpecs;
+
+          setSpecs((prev) => {
+            const next = prev.map((s, i) =>
+              i === activeTaskTab
+                ? applyAutoSubsectionLetters({
+                    ...s,
+                    subsections: s.subsections.filter((x) => x.id !== subId),
+                  })
+                : s,
+            );
+            return next;
+          });
+
+          onNotify?.(
+            `Teil nach Variante ${letter} verschoben. Tab ${letter} öffnen und speichern.`,
+            'success',
+          );
+        } catch (e) {
+          onNotify?.(
+            e instanceof Error ? e.message : 'Verschieben fehlgeschlagen',
+            'error',
+          );
+        }
+      })();
+    },
+    [
+      activeTaskTab,
+      examVersionBasePath,
+      examVersionPaths,
+      loadSpecsForVariantPath,
+      onNotify,
+      versionMetaPath,
+    ],
   );
 
   React.useEffect(() => {
@@ -267,7 +440,8 @@ export default function ExamGridTaskBuilderDialog({
     setError(null);
     try {
       for (const s of specs) {
-        await persistSpec(s, buildExamGridTaskHtml(s));
+        const forVersion = filterExamGridTaskForVersion(s, activeVersionLetter);
+        await persistSpec(forVersion, buildExamGridTaskHtml(forVersion));
       }
       onNotify?.(
         specs.length === 1
@@ -526,6 +700,10 @@ export default function ExamGridTaskBuilderDialog({
                     [activeTaskTab]: !prev[activeTaskTab],
                   }))
                 }
+                examVersionLetters={examVersionLetters}
+                activeVersionLetter={activeVersionLetter}
+                onDuplicateSubToVariant={handleDuplicateSubToVariant}
+                onMoveSubToVariant={handleMoveSubToVariant}
               />
             </Box>
           ) : null}
