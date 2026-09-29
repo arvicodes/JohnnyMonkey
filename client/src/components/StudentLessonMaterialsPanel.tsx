@@ -358,9 +358,13 @@ export default function StudentLessonMaterialsPanel({
   // Johnny-Folien-PDFs (Original/bearbeitet/Versionen/Stand) nie als Extra-Zeilen —
   // SuS sehen nur die Folien-Zeile mit einem Download bis NOW.
   const otherMaterials = materials.filter((f) => !isJohnnyPresentationExportPdf(f.name));
-  const hasPresentation =
-    presentationShared || !!(presentationOriginal || presentationEdited) || deckHasSlides;
-  const canOpenFolien = hasPresentation;
+  /** Folien erst öffnen/downloaden, wenn Präsentations-PDF für SuS freigegeben ist. */
+  const presentationUnlocked =
+    presentationShared || !!(presentationOriginal || presentationEdited);
+  /** Ohne Freigabe keine Folien-Leiste (auch nicht ausgegraut). */
+  const showFolienRow = presentationUnlocked;
+  const canOpenFolien = presentationUnlocked;
+  const hasPresentation = showFolienRow;
   const [standDownloadBusy, setStandDownloadBusy] = useState(false);
 
   useEffect(() => {
@@ -473,7 +477,7 @@ export default function StudentLessonMaterialsPanel({
     !canOpenLeinwand &&
     !completedEntryTicket &&
     releasedExams.length === 0 &&
-    !(hasPresentation && homeworkTodoPath && onOpenHomeworkTodo)
+    !(presentationUnlocked && homeworkTodoPath && onOpenHomeworkTodo)
   ) {
     return (
       <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', py: 0.5 }}>
@@ -482,7 +486,7 @@ export default function StudentLessonMaterialsPanel({
     );
   }
 
-  const showTodoHa = Boolean(hasPresentation && homeworkTodoPath && onOpenHomeworkTodo);
+  const showTodoHa = Boolean(presentationUnlocked && homeworkTodoPath && onOpenHomeworkTodo);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
@@ -550,7 +554,7 @@ export default function StudentLessonMaterialsPanel({
               </IconButton>
             </Tooltip>
           )}
-          {hasPresentation && (
+          {showFolienRow && (
           <Box
             sx={{
               display: 'flex',

@@ -116,7 +116,6 @@ import {
 } from '../lib/wochenaufgabenFolder';
 import { hydrateWochenaufgabenFolderContents, mergeWochenaufgabenContentsPatch } from '../lib/wochenaufgabenHydrate';
 import WochenaufgabenFolderRow from './wochenaufgaben/WochenaufgabenFolderRow';
-import EntryTicketCompletedRow from './entry-ticket/EntryTicketCompletedRow';
 const COLLAB_BEACON_LS_KEY = 'jm_collab_fc_beacon_seen_v1';
 function loadCollabBeaconSeen(): Record<string, string> {
   try {
@@ -164,7 +163,8 @@ function directoryIsStundeFolderForStudentTree(name: string, _level: number): bo
   if (isWochenaufgabenFolderName(name)) return false;
   if (isSeriesHeadingFolderNameStudent(name)) return false;
   if (isLessonRohdatArchiveFolderNameStudent(name)) return false;
-  if (isChapterHeadingFolderNameStudent(name) || isTopicSectionFolderNameStudent(name)) return true;
+  // Themenblock „01 Basiswissen“ = Ordner mit Unterstunden — keine eigene Folien-Leiste für SuS
+  if (isChapterHeadingFolderNameStudent(name) || isTopicSectionFolderNameStudent(name)) return false;
   return true;
 }
 
@@ -3066,12 +3066,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         // Noch nicht geladen → nur anzeigen, wenn bereits Material-Freigaben existieren (Altverhalten)
         return hasSharedMaterial;
       }
-      const pathReleased = info.lessonPaths.some((p) => p === want);
       if (info.useShareFallback) {
         return hasSharedMaterial;
       }
-      // Play-Freigabe oder explizit geteilte Dateien in dieser Stunde
-      return pathReleased || hasSharedMaterial;
+      return info.lessonPaths.some((p) => p === want);
     },
     [releasedLessonsByGroup],
   );
@@ -3935,7 +3933,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   onOpenPdf={(lessonPath) => void openWaPdf(lessonPath)}
                 />
               ) : null}
-              <EntryTicketCompletedRow groupId={groupId} />
             </Box>
             {isLoading ? (
               <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
