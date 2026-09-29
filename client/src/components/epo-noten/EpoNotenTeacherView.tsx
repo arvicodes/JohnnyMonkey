@@ -29,6 +29,7 @@ import TuneIcon from '@mui/icons-material/Tune';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
 import UnpublishedIcon from '@mui/icons-material/Unpublished';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
@@ -126,6 +127,7 @@ export function EpoNotenTeacherView() {
   const [categoryTitles, setCategoryTitles] = useState<string[]>([]);
   const [categoryWeightsPercent, setCategoryWeightsPercent] = useState<number[] | undefined>();
   const [variantsOpen, setVariantsOpen] = useState(false);
+  const [courseToAdd, setCourseToAdd] = useState('');
 
   const loadVariants = useCallback(async () => {
     const res = await apiGetSafe('/api/epo-noten/variants');
@@ -203,8 +205,9 @@ export function EpoNotenTeacherView() {
     }
     setStudentListGroupFilter((prev) => {
       if (prev && round.groupIds.includes(prev)) return prev;
-      return null;
+      return round.groupIds[0] ?? null;
     });
+    setCourseToAdd('');
   }, [round?.id, round?.groupIds.join('|')]);
 
   const selectedStudent = students.find((s) => s.studentId === selectedStudentId) ?? null;
@@ -283,7 +286,15 @@ export function EpoNotenTeacherView() {
   };
 
   const selectStudentListGroup = (gid: string) => {
-    setStudentListGroupFilter((prev) => (prev === gid ? null : gid));
+    setStudentListGroupFilter(gid);
+  };
+
+  const addCourseFromDropdown = async () => {
+    if (!round || !courseToAdd || round.groupIds.includes(courseToAdd)) return;
+    const gid = courseToAdd;
+    setCourseToAdd('');
+    await updateRoundGroups([...round.groupIds, gid]);
+    selectStudentListGroup(gid);
   };
 
   useEffect(() => {
@@ -813,12 +824,6 @@ export function EpoNotenTeacherView() {
     );
   }
 
-  const selectedRoundMeta = rounds.find((r) => r.id === selectedId);
-
-  const selectedStudentGroupId = selectedStudent?.groupId;
-  const canReleaseGroup =
-    selectedStudentGroupId != null && releasableCountInGroup(selectedStudentGroupId) > 0;
-
   return (
     <Stack
       spacing={0.4}
@@ -838,7 +843,7 @@ export function EpoNotenTeacherView() {
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: 'minmax(112px, 132px) minmax(0, 1fr)' },
+          gridTemplateColumns: { xs: '1fr', md: 'minmax(300px, 380px) minmax(0, 1fr)' },
           gap: 0.5,
           alignItems: 'stretch',
           width: '100%',
@@ -928,50 +933,116 @@ export function EpoNotenTeacherView() {
                   {active && roundForCourses && (
                     <Box
                       sx={{
-                        px: 0.65,
-                        pb: 0.5,
+                        pl: 2.25,
+                        pr: 0.75,
+                        pb: 0.75,
+                        pt: 0.25,
                         borderBottom: '1px solid',
                         borderColor: 'divider',
                         bgcolor: 'rgba(25, 118, 210, 0.04)',
+                        borderLeft: `3px solid ${epoNotenPalette.primary}`,
                       }}
                     >
-                      <Typography sx={{ fontSize: '0.58rem', fontWeight: 800, color: epoNotenPalette.textSecondary, mb: 0.35 }}>
+                      <Stack direction="row" alignItems="center" gap={0.35} flexWrap="wrap" sx={{ mb: 0.5 }}>
+                        <FormControl size="small" sx={{ minWidth: 0, flex: 1 }}>
+                          <InputLabel id="epo-round-variant-label" sx={{ fontSize: '0.7rem' }}>
+                            Variante
+                          </InputLabel>
+                          <Select
+                            labelId="epo-round-variant-label"
+                            label="Variante"
+                            value={roundForCourses.variantId || 'default'}
+                            onChange={(e) => void updateRoundVariant(String(e.target.value))}
+                            sx={{ fontSize: '0.72rem', height: 32 }}
+                          >
+                            {(variants.length > 0 ? variants : [{ id: 'default', name: 'Standard' }]).map((v) => (
+                              <MenuItem key={v.id} value={v.id} sx={{ fontSize: '0.78rem' }}>
+                                {v.name}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <Tooltip title="Variantenzettel">
+                          <IconButton size="small" onClick={() => setVariantsOpen(true)} sx={epoNotenCompactIconBtnSx}>
+                            <TuneIcon sx={epoNotenCompactIconSx} />
+                          </IconButton>
+                        </Tooltip>
+                        {!roundForCourses.publishedAt ? (
+                          <Tooltip title="Runde freischalten">
+                            <IconButton
+                              size="small"
+                              onClick={() => void publish()}
+                              disabled={saving}
+                              sx={{
+                                ...epoNotenCompactIconBtnSx,
+                                bgcolor: epoNotenPalette.accent,
+                                color: '#fff',
+                              }}
+                            >
+                              <PublishIcon sx={epoNotenCompactIconSx} />
+                            </IconButton>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip title="Freischaltung beenden">
+                            <IconButton size="small" onClick={() => void unpublish()} disabled={saving} sx={epoNotenCompactIconBtnSx}>
+                              <UnpublishedIcon sx={epoNotenCompactIconSx} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        <Tooltip title="Runde löschen">
+                          <IconButton size="small" onClick={() => void removeRound()} sx={{ ...epoNotenCompactIconBtnSx, color: '#c62828' }}>
+                            <DeleteOutlineIcon sx={epoNotenCompactIconSx} />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+
+                      <Typography sx={{ fontSize: '0.62rem', fontWeight: 800, color: epoNotenPalette.textSecondary, mb: 0.35, pl: 0.5 }}>
                         Kurse · {publishedCount} live · {completedCount} fertig
                       </Typography>
-                      <Stack spacing={0.25}>
+
+                      <List dense disablePadding sx={{ pl: 0.5 }}>
                         {roundForCourses.groupIds.map((gid) => {
                           const g = groups.find((x) => x.id === gid);
                           const published = isEpoGroupPublished(roundForCourses, gid);
                           const completed = isEpoGroupCompleted(roundForCourses, gid);
                           const st = groupCourseStats(gid);
+                          const courseSelected = studentListGroupFilter === gid;
                           return (
-                            <Box
+                            <ListItemButton
                               key={gid}
+                              selected={courseSelected}
+                              onClick={() => selectStudentListGroup(gid)}
                               sx={{
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: 0.25,
-                                py: 0.2,
-                                px: 0.35,
-                                borderRadius: 0.75,
-                                bgcolor: completed ? 'rgba(46, 125, 50, 0.14)' : 'rgba(255,255,255, 0.85)',
+                                py: 0.45,
+                                px: 0.5,
+                                mb: 0.35,
+                                borderRadius: 1,
                                 border: '1px solid',
-                                borderColor: completed ? 'success.light' : 'divider',
+                                borderColor: completed ? 'success.light' : courseSelected ? 'primary.light' : 'divider',
+                                bgcolor: completed
+                                  ? 'rgba(46, 125, 50, 0.12)'
+                                  : courseSelected
+                                    ? 'rgba(25, 118, 210, 0.1)'
+                                    : '#fff',
+                                '&.Mui-selected': {
+                                  bgcolor: 'rgba(25, 118, 210, 0.14)',
+                                },
                               }}
                             >
                               <Checkbox
                                 size="small"
                                 checked={completed}
+                                onClick={(e) => e.stopPropagation()}
                                 onChange={(_, checked) => void setGroupCompleted(gid, checked)}
                                 disabled={saving}
-                                sx={{ p: 0, mt: 0.1 }}
+                                sx={{ p: 0, mr: 0.35 }}
                                 inputProps={{ 'aria-label': `${g?.name || gid} fertig` }}
                               />
                               <Box sx={{ flex: 1, minWidth: 0 }}>
-                                <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, lineHeight: 1.2 }} noWrap>
+                                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, lineHeight: 1.25 }} noWrap>
                                   {g?.name || gid}
                                 </Typography>
-                                <Typography sx={{ fontSize: '0.58rem', color: 'text.secondary', lineHeight: 1.15 }}>
+                                <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary' }}>
                                   {published ? 'live' : 'nicht frei'} · {st.submitted}/{st.total} abgegeben
                                 </Typography>
                               </Box>
@@ -981,39 +1052,59 @@ export function EpoNotenTeacherView() {
                                     size="small"
                                     aria-label="Freischalten"
                                     disabled={saving}
-                                    onClick={() => void publishGroup(gid)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void publishGroup(gid);
+                                    }}
                                     sx={{
                                       ...epoNotenCompactIconBtnSx,
                                       bgcolor: epoNotenPalette.accent,
                                       color: '#fff',
-                                      borderColor: epoNotenPalette.accent,
-                                      '&:hover': { bgcolor: '#1b5e20' },
                                     }}
                                   >
                                     <PublishIcon sx={{ fontSize: '0.85rem' }} />
                                   </IconButton>
                                 </Tooltip>
                               )}
-                            </Box>
+                            </ListItemButton>
                           );
                         })}
-                      </Stack>
+                      </List>
+
                       {groups.some((g) => !roundForCourses.groupIds.includes(g.id)) && (
-                        <Stack direction="row" flexWrap="wrap" gap={0.25} sx={{ mt: 0.45 }}>
-                          {groups
-                            .filter((g) => !roundForCourses.groupIds.includes(g.id))
-                            .map((g) => (
-                              <Chip
-                                key={g.id}
-                                size="small"
-                                icon={<AddIcon sx={{ fontSize: '0.8rem !important' }} />}
-                                label={g.name}
-                                clickable
-                                onClick={() => updateRoundGroups([...roundForCourses.groupIds, g.id])}
-                                variant="outlined"
-                                sx={{ height: 20, fontSize: '0.62rem', fontWeight: 700 }}
-                              />
-                            ))}
+                        <Stack direction="row" spacing={0.5} alignItems="flex-end" sx={{ mt: 0.5, pl: 0.5 }}>
+                          <FormControl size="small" fullWidth>
+                            <InputLabel id="epo-add-course-label" sx={{ fontSize: '0.72rem' }}>
+                              Kurs hinzufügen
+                            </InputLabel>
+                            <Select
+                              labelId="epo-add-course-label"
+                              label="Kurs hinzufügen"
+                              value={courseToAdd}
+                              onChange={(e) => setCourseToAdd(String(e.target.value))}
+                              sx={{ fontSize: '0.78rem' }}
+                            >
+                              <MenuItem value="">
+                                <em>— wählen —</em>
+                              </MenuItem>
+                              {groups
+                                .filter((g) => !roundForCourses.groupIds.includes(g.id))
+                                .map((g) => (
+                                  <MenuItem key={g.id} value={g.id} sx={{ fontSize: '0.8rem' }}>
+                                    {g.name}
+                                  </MenuItem>
+                                ))}
+                            </Select>
+                          </FormControl>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            disabled={!courseToAdd || saving}
+                            onClick={() => void addCourseFromDropdown()}
+                            sx={{ ...epoNotenCompactBtnSx, flexShrink: 0, mb: 0.15 }}
+                          >
+                            +
+                          </Button>
                         </Stack>
                       )}
                     </Box>
@@ -1041,269 +1132,68 @@ export function EpoNotenTeacherView() {
               overflow: 'hidden',
             }}
           >
+            {!studentListGroupFilter || !activeCourseGroupId ? (
+              <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', maxWidth: 280 }}>
+                  {round.groupIds.length === 0
+                    ? 'Links einen Kurs zur Runde hinzufügen.'
+                    : 'Links einen Kurs anklicken — hier erscheinen nur die SuS dieses Kurses.'}
+                </Typography>
+              </Box>
+            ) : (
+            <>
             <Box
               sx={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 0.5,
+                gap: 1,
                 flexWrap: 'wrap',
-                px: 1,
-                py: 0.5,
+                px: 1.25,
+                py: 0.65,
                 bgcolor: '#fff',
                 borderBottom: `1px solid ${epoNotenPalette.border}`,
               }}
             >
-              <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Typography sx={{ fontWeight: 800, fontSize: '0.8rem', color: epoNotenPalette.heading, lineHeight: 1.2 }} noWrap>
-                  {round.title}
-                  {selectedRoundMeta ? (
-                    <Typography
-                      component="span"
-                      sx={{ fontWeight: 600, fontSize: '0.65rem', color: epoNotenPalette.textSecondary, ml: 0.5 }}
-                    >
-                      · {selectedRoundMeta.date} · {selectedRoundMeta.stats.submitted}/{selectedRoundMeta.stats.graded}
-                    </Typography>
-                  ) : null}
-                </Typography>
-              </Box>
-              <Stack direction="row" spacing={0.35} alignItems="center" flexShrink={0}>
-                <FormControl size="small" sx={{ minWidth: 100, maxWidth: 140 }}>
-                  <Select
-                    value={round.variantId || 'default'}
-                    onChange={(e) => void updateRoundVariant(String(e.target.value))}
-                    displayEmpty
-                    sx={{ fontSize: '0.65rem', height: 28 }}
-                  >
-                    {(variants.length > 0 ? variants : [{ id: 'default', name: 'Standard' }]).map((v) => (
-                      <MenuItem key={v.id} value={v.id} sx={{ fontSize: '0.72rem' }}>
-                        {v.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <Tooltip title="Variantenzettel bearbeiten">
-                  <IconButton size="small" onClick={() => setVariantsOpen(true)} aria-label="Varianten" sx={epoNotenCompactIconBtnSx}>
-                    <TuneIcon sx={epoNotenCompactIconSx} />
-                  </IconButton>
-                </Tooltip>
-                {!round.publishedAt ? (
-                  <Tooltip title="Für Lerngruppe freischalten">
-                    <span>
-                      <IconButton
-                        size="small"
-                        onClick={publish}
-                        disabled={saving}
-                        aria-label="Freischalten"
-                        sx={{
-                          ...epoNotenCompactIconBtnSx,
-                          bgcolor: epoNotenPalette.accent,
-                          color: '#fff',
-                          borderColor: epoNotenPalette.accent,
-                          '&:hover': { bgcolor: '#1b5e20', borderColor: '#1b5e20' },
-                        }}
-                      >
-                        <PublishIcon sx={epoNotenCompactIconSx} />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                ) : (
-                  <Tooltip title="Freischaltung beenden">
-                    <span>
-                      <IconButton
-                        size="small"
-                        onClick={unpublish}
-                        disabled={saving}
-                        aria-label="Freischaltung beenden"
-                        sx={epoNotenCompactIconBtnSx}
-                      >
-                        <UnpublishedIcon sx={epoNotenCompactIconSx} />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                )}
-                <Tooltip title="Alle Bewertungen der Lerngruppe des gewählten SuS freigeben">
-                  <span>
-                    <IconButton
-                      size="small"
-                      onClick={() => selectedStudent?.groupId && void releaseAllInGroup(selectedStudent.groupId)}
-                      disabled={saving || !canReleaseGroup}
-                      aria-label="Lerngruppe freigeben"
-                      sx={{
-                        ...epoNotenCompactIconBtnSx,
-                        bgcolor: canReleaseGroup ? epoNotenPalette.primary : undefined,
-                        color: canReleaseGroup ? '#fff' : undefined,
-                        borderColor: canReleaseGroup ? epoNotenPalette.primary : undefined,
-                        '&:hover': canReleaseGroup
-                          ? { bgcolor: '#1565c0', borderColor: '#1565c0' }
-                          : undefined,
-                      }}
-                    >
-                      <LockOpenIcon sx={epoNotenCompactIconSx} />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-                <Tooltip title="Alle SuS zurücksetzen (Selbsteinschätzung erneut möglich)">
-                  <span>
-                    <IconButton
-                      size="small"
-                      onClick={() => requestReset(null)}
-                      disabled={saving}
-                      aria-label="Alle zurücksetzen"
-                      sx={{
-                        ...epoNotenCompactIconBtnSx,
-                        color: '#e65100',
-                        borderColor: 'rgba(230, 81, 0, 0.45)',
-                        '&:hover': { bgcolor: 'rgba(245, 124, 0, 0.1)' },
-                      }}
-                    >
-                      <RestartAltIcon sx={epoNotenCompactIconSx} />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-                <Tooltip title="Runde löschen">
-                  <IconButton
-                    size="small"
-                    onClick={removeRound}
-                    aria-label="Löschen"
-                    sx={{
-                      ...epoNotenCompactIconBtnSx,
-                      color: '#c62828',
-                      borderColor: 'rgba(198, 40, 40, 0.35)',
-                      '&:hover': { bgcolor: 'rgba(198, 40, 40, 0.08)' },
-                    }}
-                  >
-                    <DeleteOutlineIcon sx={epoNotenCompactIconSx} />
-                  </IconButton>
-                </Tooltip>
-              </Stack>
-            </Box>
-
-            <Box sx={{ px: 1, py: 0.75, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider', bgcolor: '#fafbfc' }}>
-              {!round.publishedAt && (
-                <Typography
-                  variant="caption"
+              <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: epoNotenPalette.heading, flex: 1, minWidth: 0 }} noWrap>
+                {activeCourseName}
+              </Typography>
+              <Button
+                size="small"
+                color="warning"
+                startIcon={<RestartAltIcon />}
+                disabled={saving}
+                onClick={() => requestReset(activeCourseGroupId)}
+                sx={epoNotenCompactBtnSx}
+              >
+                Zurücksetzen
+              </Button>
+              {epoGroupUsesMssPoints(activeCourseName) ? (
+                <Chip size="small" label="MSS-Punkte (0–15)" color="primary" variant="outlined" />
+              ) : (
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  value={groupMode(activeCourseGroupId)}
+                  onChange={(_, v: EpoNotenAssessmentMode | null) => {
+                    if (!v) return;
+                    void updateGroupAssessmentMode(activeCourseGroupId, v);
+                  }}
+                  disabled={saving}
+                  aria-label="Punkte oder Note"
                   sx={{
-                    display: 'block',
-                    fontSize: '0.62rem',
-                    fontWeight: 600,
-                    color: round.groupIds.length === 0 ? 'info.main' : 'warning.main',
-                    lineHeight: 1.2,
-                    mb: 0.35,
+                    bgcolor: '#fff',
+                    '& .MuiToggleButton-root': {
+                      px: 1.5,
+                      py: 0.35,
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      textTransform: 'none',
+                    },
                   }}
                 >
-                  {round.groupIds.length === 0
-                    ? 'Mindestens einen Kurs hinzufügen, dann freischalten (↗).'
-                    : 'Noch nicht live — Freischalten (↗).'}
-                </Typography>
-              )}
-
-              {groups.some((g) => !round.groupIds.includes(g.id)) && (
-                <Stack direction="row" flexWrap="wrap" gap={0.35} alignItems="center" sx={{ mb: round.groupIds.length > 0 ? 0.45 : 0 }}>
-                  <Typography variant="caption" sx={{ fontSize: '0.62rem', fontWeight: 700, color: 'text.secondary', mr: 0.25 }}>
-                    Kurs hinzufügen:
-                  </Typography>
-                  {groups
-                    .filter((g) => !round.groupIds.includes(g.id))
-                    .map((g) => (
-                      <Chip
-                        key={g.id}
-                        size="small"
-                        icon={<AddIcon sx={{ fontSize: '0.85rem !important' }} />}
-                        label={g.name}
-                        clickable
-                        onClick={() => updateRoundGroups([...round.groupIds, g.id])}
-                        variant="outlined"
-                        sx={{ height: 22, fontSize: '0.68rem', fontWeight: 700 }}
-                      />
-                    ))}
-                </Stack>
-              )}
-
-              {round.groupIds.length > 0 && (
-                <Stack spacing={0.75}>
-                  <Stack direction="row" flexWrap="wrap" gap={0.5} alignItems="center">
-                    {round.groupIds.map((gid) => {
-                      const g = groups.find((x) => x.id === gid);
-                      const isActive = studentListGroupFilter === gid;
-                      return (
-                        <Stack key={gid} direction="row" alignItems="center" gap={0.15}>
-                          <Chip
-                            label={g?.name || gid}
-                            clickable
-                            onClick={() => selectStudentListGroup(gid)}
-                            onDelete={() => updateRoundGroups(round.groupIds.filter((id) => id !== gid))}
-                            variant={isActive ? 'filled' : 'outlined'}
-                            color={isActive ? 'primary' : 'default'}
-                            sx={{
-                              height: 28,
-                              fontWeight: 700,
-                              fontSize: '0.78rem',
-                              '& .MuiChip-deleteIcon': { fontSize: 16 },
-                            }}
-                          />
-                          <Tooltip title="SuS dieses Kurses zurücksetzen">
-                            <IconButton
-                              size="small"
-                              aria-label={`${g?.name || gid} zurücksetzen`}
-                              onClick={() => requestReset(gid)}
-                              disabled={saving}
-                              sx={{
-                                ...epoNotenCompactIconBtnSx,
-                                minWidth: 18,
-                                width: 18,
-                                height: 18,
-                                color: '#e65100',
-                                borderColor: 'transparent',
-                                bgcolor: 'transparent',
-                                '&:hover': {
-                                  bgcolor: 'rgba(245, 124, 0, 0.1)',
-                                  borderColor: 'rgba(230, 81, 0, 0.35)',
-                                },
-                              }}
-                            >
-                              <RestartAltIcon sx={{ fontSize: 11 }} />
-                            </IconButton>
-                          </Tooltip>
-                        </Stack>
-                      );
-                    })}
-                  </Stack>
-                  {activeCourseGroupId && (
-                    <Stack direction="row" alignItems="center" gap={0.75} flexWrap="wrap">
-                      <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                        Bewertung für diesen Kurs
-                      </Typography>
-                      {epoGroupUsesMssPoints(activeCourseName) ? (
-                        <Chip size="small" label="MSS-Punkte (0–15)" color="primary" variant="outlined" />
-                      ) : (
-                        <ToggleButtonGroup
-                          exclusive
-                          size="small"
-                          value={groupMode(activeCourseGroupId)}
-                          onChange={(_, v: EpoNotenAssessmentMode | null) => {
-                            if (!v) return;
-                            void updateGroupAssessmentMode(activeCourseGroupId, v);
-                          }}
-                          disabled={saving}
-                          sx={{
-                            bgcolor: '#fff',
-                            '& .MuiToggleButton-root': {
-                              px: 1.25,
-                              py: 0.25,
-                              fontSize: '0.75rem',
-                              fontWeight: 700,
-                              textTransform: 'none',
-                              borderColor: epoNotenPalette.border,
-                            },
-                          }}
-                        >
-                          <ToggleButton value="note">Note</ToggleButton>
-                          <ToggleButton value="mss">MSS</ToggleButton>
-                        </ToggleButtonGroup>
-                      )}
-                    </Stack>
-                  )}
-                </Stack>
+                  <ToggleButton value="note">Note</ToggleButton>
+                  <ToggleButton value="mss">Punkte (MSS)</ToggleButton>
+                </ToggleButtonGroup>
               )}
             </Box>
 
@@ -1342,43 +1232,25 @@ export function EpoNotenTeacherView() {
                     >
                       {visibleStudentSections.map((section, sectionIndex) => (
                         <React.Fragment key={section.groupId}>
-                          <ListSubheader
-                            disableSticky
-                            sx={{
-                              lineHeight: 1.25,
-                              py: 0.45,
-                              px: 0.75,
-                              fontSize: '0.68rem',
-                              fontWeight: 800,
-                              color: epoNotenPalette.heading,
-                              bgcolor: epoNotenPalette.sand,
-                              borderBottom: '1px solid',
-                              borderTop: sectionIndex > 0 ? '1px solid' : undefined,
-                              borderColor: 'divider',
-                            }}
-                          >
-                            {section.groupName}
-                          </ListSubheader>
-                          {!studentListGroupFilter &&
-                          section.groupId !== '__other__' &&
-                          releasableCountInGroup(section.groupId) > 0 ? (
-                            <ListItemButton
-                              dense
-                              disabled={saving}
-                              onClick={() => void releaseAllInGroup(section.groupId)}
+                          {!studentListGroupFilter && (
+                            <ListSubheader
+                              disableSticky
                               sx={{
-                                py: 0.35,
+                                lineHeight: 1.25,
+                                py: 0.45,
                                 px: 0.75,
+                                fontSize: '0.68rem',
+                                fontWeight: 800,
+                                color: epoNotenPalette.heading,
+                                bgcolor: epoNotenPalette.sand,
                                 borderBottom: '1px solid',
+                                borderTop: sectionIndex > 0 ? '1px solid' : undefined,
                                 borderColor: 'divider',
-                                bgcolor: 'rgba(46, 125, 50, 0.06)',
                               }}
                             >
-                              <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: 'success.dark' }}>
-                                Alle freigeben ({releasableCountInGroup(section.groupId)} SuS)
-                              </Typography>
-                            </ListItemButton>
-                          ) : null}
+                              {section.groupName}
+                            </ListSubheader>
+                          )}
                           {section.students.length === 0 ? (
                             <ListItemButton dense disabled sx={{ py: 0.5, px: 0.75, opacity: 1 }}>
                               <Typography variant="caption" color="text.secondary">
@@ -1493,18 +1365,6 @@ export function EpoNotenTeacherView() {
                         </React.Fragment>
                       ))}
                     </List>
-                    {activeCourseGroupId && releasableCountInGroup(activeCourseGroupId) > 0 ? (
-                      <Button
-                        fullWidth
-                        size="small"
-                        variant="contained"
-                        onClick={() => void releaseAllInGroup(activeCourseGroupId)}
-                        disabled={saving}
-                        sx={{ ...epoNotenCompactBtnSx, mt: 0.35 }}
-                      >
-                        Alle SuS freigeben ({releasableCountInGroup(activeCourseGroupId)}) · {activeCourseName}
-                      </Button>
-                    ) : null}
                   </Box>
 
                   <Box sx={{ minWidth: 0, width: '100%', maxWidth: 'none' }}>
@@ -1776,6 +1636,8 @@ export function EpoNotenTeacherView() {
                 </Box>
               </Stack>
             </Box>
+            </>
+            )}
           </Card>
         ) : (
           <Box
