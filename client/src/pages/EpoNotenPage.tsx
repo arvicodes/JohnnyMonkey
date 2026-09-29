@@ -82,6 +82,8 @@ export default function EpoNotenPage() {
   const [canEditSelf, setCanEditSelf] = useState(false);
   const [canEditGoals, setCanEditGoals] = useState(false);
   const [teacherId, setTeacherId] = useState('');
+  const [studentCategories, setStudentCategories] = useState<string[]>(EPO_NOTEN_STUDENT_CATEGORIES);
+  const [teacherCategoriesView, setTeacherCategoriesView] = useState<string[]>(EPO_NOTEN_TEACHER_CATEGORIES);
 
   const [suggestedGrade, setSuggestedGrade] = useState('');
   const [assessmentMode, setAssessmentMode] = useState<EpoNotenAssessmentMode>('note');
@@ -146,8 +148,20 @@ export default function EpoNotenPage() {
             date: string;
             groupName: string;
             assessmentMode?: EpoNotenAssessmentMode;
+            studentCategories?: string[];
+            teacherCategories?: string[];
           };
           setRoundMeta({ id: r.id, title: r.title, date: r.date, groupName: r.groupName });
+          if (Array.isArray(r.studentCategories) && r.studentCategories.length > 0) {
+            setStudentCategories(r.studentCategories);
+          } else {
+            setStudentCategories(EPO_NOTEN_STUDENT_CATEGORIES);
+          }
+          if (Array.isArray(r.teacherCategories) && r.teacherCategories.length > 0) {
+            setTeacherCategoriesView(r.teacherCategories);
+          } else {
+            setTeacherCategoriesView(EPO_NOTEN_TEACHER_CATEGORIES);
+          }
           mode =
             epoGroupUsesMssPoints(r.groupName) || r.assessmentMode === 'mss' ? 'mss' : 'note';
         } else if (fromList) {
@@ -369,6 +383,7 @@ export default function EpoNotenPage() {
                     locked={phase === 'wait' || !canEditSelf}
                     submitting={submitting}
                     assessmentMode={assessmentMode}
+                    studentCategories={studentCategories}
                     suggestedGrade={suggestedGrade}
                     justification={justification}
                     selfScores={selfScores}
@@ -490,7 +505,7 @@ export default function EpoNotenPage() {
                                     studentGhost
                                     label="Deine Selbsteinschätzung"
                                     radioGroupId={`sus-self-${selectedRoundId}`}
-                                    categories={EPO_NOTEN_STUDENT_CATEGORIES}
+                                    categories={studentCategories}
                                     scores={normalizeCategoryScores(myEntry.selfScores)}
                                     readOnly
                                   />
@@ -501,7 +516,7 @@ export default function EpoNotenPage() {
                                     teacherEmphasis
                                     label="Lehrkraft"
                                     radioGroupId={`sus-teacher-${selectedRoundId}`}
-                                    categories={EPO_NOTEN_TEACHER_CATEGORIES}
+                                    categories={teacherCategoriesView}
                                     scores={normalizeCategoryScores(myEntry.teacherScores)}
                                     readOnly
                                   />

@@ -38,6 +38,7 @@ type Props = {
   locked: boolean;
   submitting: boolean;
   assessmentMode: EpoNotenAssessmentMode;
+  studentCategories?: string[];
   suggestedGrade: string;
   justification: string;
   selfScores: number[];
@@ -54,6 +55,7 @@ export function EpoNotenStudentSelfWizard({
   locked,
   submitting,
   assessmentMode,
+  studentCategories = EPO_NOTEN_STUDENT_CATEGORIES,
   suggestedGrade,
   justification,
   selfScores,
@@ -218,7 +220,7 @@ export function EpoNotenStudentSelfWizard({
                 <Stack spacing={0}>
                   <EpoNotenCategoryGrid
                     radioGroupId="self-wizard"
-                    categories={EPO_NOTEN_STUDENT_CATEGORIES}
+                    categories={studentCategories}
                     scores={selfScores}
                     onChange={onSelfScoresChange}
                     readOnly={readOnly || step !== 2}

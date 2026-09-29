@@ -25,6 +25,10 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PublishIcon from '@mui/icons-material/Publish';
+import TuneIcon from '@mui/icons-material/Tune';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import FormControl from '@mui/material/FormControl';
 import UnpublishedIcon from '@mui/icons-material/Unpublished';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
@@ -34,7 +38,10 @@ import {
   EPO_NOTEN_TEACHER_CATEGORIES,
   type EpoNotenEntry,
   type EpoNotenRound,
+  type EpoNotenVariantSheet,
   allCategoriesSelected,
+  isEpoGroupCompleted,
+  isEpoGroupPublished,
   assessmentModeForGroup,
   compareEpoStudentListOrder,
   epoGroupUsesMssPoints,
@@ -52,6 +59,7 @@ import {
 import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-icon-button';
 import DualStudentAvatars from '../DualStudentAvatars';
 import { EpoNotenCategoryGrid } from './EpoNotenCategoryGrid';
+import { EpoNotenVariantsDialog } from './EpoNotenVariantsDialog';
 import {
   epoNotenCardSx,
   epoNotenCompactBtnSx,
@@ -80,6 +88,8 @@ type RoundListItem = {
   date: string;
   groupIds: string[];
   publishedAt: string | null;
+  variantId?: string | null;
+  groupMeta?: Record<string, { publishedAt?: string | null; completedAt?: string | null }>;
   stats: { submitted: number; graded: number; released: number; goals: number };
   activeGroups: { id: string; name: string }[];
 };
@@ -110,6 +120,16 @@ export function EpoNotenTeacherView() {
   const [studentListGroupFilter, setStudentListGroupFilter] = useState<string | null>(null);
 
   const [passiveSaving, setPassiveSaving] = useState(false);
+  const [variants, setVariants] = useState<EpoNotenVariantSheet[]>([]);
+  const [teacherCategories, setTeacherCategories] = useState<string[]>(EPO_NOTEN_TEACHER_CATEGORIES);
+  const [variantsOpen, setVariantsOpen] = useState(false);
+
+  const loadVariants = useCallback(async () => {
+    const res = await apiGetSafe('/api/epo-noten/variants');
+    if (!res?.ok) return;
+    const data = await res.json();
+    setVariants(Array.isArray(data.variants) ? data.variants : []);
+  }, []);
 
   const loadList = useCallback(async () => {
     const res = await apiGetSafe('/api/epo-noten/list');
@@ -130,6 +150,11 @@ export function EpoNotenTeacherView() {
     const data = await res.json();
     setRound(data.round as EpoNotenRound);
     setStudents(Array.isArray(data.students) ? data.students : []);
+    if (Array.isArray(data.teacherCategories) && data.teacherCategories.length > 0) {
+      setTeacherCategories(data.teacherCategories as string[]);
+    } else {
+      setTeacherCategories(EPO_NOTEN_TEACHER_CATEGORIES);
+    }
   }, []);
 
   const refresh = useCallback(async () => {
@@ -147,6 +172,7 @@ export function EpoNotenTeacherView() {
 
   useEffect(() => {
     refresh();
+    loadVariants();
   }, []);
 
   useEffect(() => {
@@ -184,6 +210,16 @@ export function EpoNotenTeacherView() {
     [groups, round],
   );
 
+  const isStudentGroupLive = useCallback(
+    (entry: EpoNotenEntry) => {
+      if (!round) return false;
+      const gid = entry.groupId;
+      if (!gid) return Boolean(round.publishedAt);
+      return isEpoGroupPublished(round, gid);
+    },
+    [round],
+  );
+
   const passiveIdsForGroup = useCallback(
     (groupId: string) => parsePassiveStudentIds(groups.find((g) => g.id === groupId)?.passiveStudentIds),
     [groups],
@@ -200,9 +236,11 @@ export function EpoNotenTeacherView() {
   const sortStudentsForGroup = useCallback(
     (list: EpoNotenEntry[]) =>
       [...list].sort((a, b) =>
-        compareEpoStudentListOrder(a, b, Boolean(round?.publishedAt), allPassiveStudentIds),
+        compareEpoStudentListOrder(a, b, Boolean(round?.publishedAt), allPassiveStudentIds, (e) =>
+          isStudentGroupLive(e),
+        ),
       ),
-    [allPassiveStudentIds, round?.publishedAt],
+    [allPassiveStudentIds, isStudentGroupLive, round?.publishedAt],
   );
 
   const updatePassiveStudentsForGroup = async (groupId: string, studentIds: string[]) => {
@@ -520,6 +558,49 @@ export function EpoNotenTeacherView() {
     }
   };
 
+  const publishGroup = async (groupId: string) => {
+    if (!round) return;
+    setSaving(true);
+    try {
+      const res = await apiPost(`/api/epo-noten/${round.id}/publish-group`, { groupId });
+      if (!res?.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(typeof err.error === 'string' ? err.error : 'Freigabe fehlgeschlagen');
+      }
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Fehler');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const setGroupCompleted = async (groupId: string, completed: boolean) => {
+    if (!round) return;
+    setSaving(true);
+    try {
+      const res = await apiPut(`/api/epo-noten/${round.id}/group-meta`, { groupId, completed });
+      if (!res?.ok) throw new Error('Status konnte nicht gespeichert werden');
+      const data = await res.json();
+      if (data.round) setRound(data.round as EpoNotenRound);
+      await loadList();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Fehler');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateRoundVariant = async (variantId: string) => {
+    if (!round) return;
+    const res = await apiPut(`/api/epo-noten/${round.id}`, { variantId });
+    if (!res?.ok) {
+      setError('Variante konnte nicht gespeichert werden');
+      return;
+    }
+    await loadDetail(round.id);
+  };
+
   const updateRoundGroups = async (groupIds: string[]) => {
     if (!round) return;
     try {
@@ -704,6 +785,17 @@ export function EpoNotenTeacherView() {
     }
   };
 
+  const groupCourseStats = useCallback(
+    (gid: string) => {
+      const rows = students.filter((s) => s.groupId === gid);
+      const total = rows.length;
+      const submitted = rows.filter((s) => s.studentSubmittedAt).length;
+      const released = rows.filter((s) => s.teacherReleasedAt).length;
+      return { total, submitted, released };
+    },
+    [students],
+  );
+
   if (loading && rounds.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
@@ -782,43 +874,142 @@ export function EpoNotenTeacherView() {
           <List dense disablePadding sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
             {rounds.map((r) => {
               const active = r.id === selectedId;
+              const roundForCourses = active && round ? round : null;
+              const publishedCount =
+                roundForCourses?.groupIds.filter((gid) => isEpoGroupPublished(roundForCourses, gid)).length ?? 0;
+              const completedCount =
+                roundForCourses?.groupIds.filter((gid) => isEpoGroupCompleted(roundForCourses, gid)).length ?? 0;
               return (
-                <ListItemButton
-                  key={r.id}
-                  selected={active}
-                  onClick={() => void selectRound(r.id)}
-                  sx={{
-                    py: 0.35,
-                    px: 0.65,
-                    alignItems: 'stretch',
-                    flexDirection: 'column',
-                    gap: 0.15,
-                    borderBottom: '1px solid',
-                    borderColor: 'divider',
-                    '&.Mui-selected': {
-                      bgcolor: epoNotenPalette.primaryTint,
-                      borderLeft: `3px solid ${epoNotenPalette.primary}`,
-                    },
-                  }}
-                >
-                  <Stack direction="row" alignItems="center" justifyContent="space-between" gap={0.5} width="100%">
-                    <Typography
-                      noWrap
-                      sx={{ fontWeight: 700, fontSize: '0.8rem', color: epoNotenPalette.textPrimary, flex: 1, minWidth: 0 }}
-                    >
-                      {r.title}
+                <React.Fragment key={r.id}>
+                  <ListItemButton
+                    selected={active}
+                    onClick={() => void selectRound(r.id)}
+                    sx={{
+                      py: 0.35,
+                      px: 0.65,
+                      alignItems: 'stretch',
+                      flexDirection: 'column',
+                      gap: 0.15,
+                      borderBottom: active && roundForCourses ? 'none' : '1px solid',
+                      borderColor: 'divider',
+                      '&.Mui-selected': {
+                        bgcolor: epoNotenPalette.primaryTint,
+                        borderLeft: `3px solid ${epoNotenPalette.primary}`,
+                      },
+                    }}
+                  >
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={0.5} width="100%">
+                      <Typography
+                        noWrap
+                        sx={{ fontWeight: 700, fontSize: '0.8rem', color: epoNotenPalette.textPrimary, flex: 1, minWidth: 0 }}
+                      >
+                        {r.title}
+                      </Typography>
+                      <Chip
+                        size="small"
+                        label={r.publishedAt ? 'live' : 'Entwurf'}
+                        color={r.publishedAt ? 'success' : 'default'}
+                        sx={{ height: 16, fontSize: '0.58rem', fontWeight: 700, flexShrink: 0 }}
+                      />
+                    </Stack>
+                    <Typography variant="caption" sx={{ color: epoNotenPalette.textSecondary, lineHeight: 1.2, fontSize: '0.62rem' }}>
+                      {r.date} · {r.stats.submitted}/{r.stats.graded}/{r.stats.released} (abgegeben/bewertet/frei)
                     </Typography>
-                    <Chip
-                      size="small"
-                      label={r.publishedAt ? 'live' : 'Entwurf'}
-                      color={r.publishedAt ? 'success' : 'default'}
-                      sx={{ height: 16, fontSize: '0.58rem', fontWeight: 700, flexShrink: 0 }}
-                    />
-                  </Stack>
-                  <Typography variant="caption" sx={{ color: epoNotenPalette.textSecondary, lineHeight: 1.2, fontSize: '0.62rem' }}>
-                    {r.date} · {r.stats.submitted}/{r.stats.graded}/{r.stats.released} (abgegeben/bewertet/frei)
-                  </Typography>
-                </ListItemButton>
+                  </ListItemButton>
+                  {active && roundForCourses && (
+                    <Box
+                      sx={{
+                        px: 0.65,
+                        pb: 0.5,
+                        borderBottom: '1px solid',
+                        borderColor: 'divider',
+                        bgcolor: 'rgba(25, 118, 210, 0.04)',
+                      }}
+                    >
+                      <Typography sx={{ fontSize: '0.58rem', fontWeight: 800, color: epoNotenPalette.textSecondary, mb: 0.35 }}>
+                        Kurse · {publishedCount} live · {completedCount} fertig
+                      </Typography>
+                      <Stack spacing={0.25}>
+                        {roundForCourses.groupIds.map((gid) => {
+                          const g = groups.find((x) => x.id === gid);
+                          const published = isEpoGroupPublished(roundForCourses, gid);
+                          const completed = isEpoGroupCompleted(roundForCourses, gid);
+                          const st = groupCourseStats(gid);
+                          return (
+                            <Box
+                              key={gid}
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: 0.25,
+                                py: 0.2,
+                                px: 0.35,
+                                borderRadius: 0.75,
+                                bgcolor: completed ? 'rgba(46, 125, 50, 0.14)' : 'rgba(255,255,255, 0.85)',
+                                border: '1px solid',
+                                borderColor: completed ? 'success.light' : 'divider',
+                              }}
+                            >
+                              <Checkbox
+                                size="small"
+                                checked={completed}
+                                onChange={(_, checked) => void setGroupCompleted(gid, checked)}
+                                disabled={saving}
+                                sx={{ p: 0, mt: 0.1 }}
+                                inputProps={{ 'aria-label': `${g?.name || gid} fertig` }}
+                              />
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, lineHeight: 1.2 }} noWrap>
+                                  {g?.name || gid}
+                                </Typography>
+                                <Typography sx={{ fontSize: '0.58rem', color: 'text.secondary', lineHeight: 1.15 }}>
+                                  {published ? 'live' : 'nicht frei'} · {st.submitted}/{st.total} abgegeben
+                                </Typography>
+                              </Box>
+                              {!published && (
+                                <Tooltip title="Kurs freischalten">
+                                  <IconButton
+                                    size="small"
+                                    aria-label="Freischalten"
+                                    disabled={saving}
+                                    onClick={() => void publishGroup(gid)}
+                                    sx={{
+                                      ...epoNotenCompactIconBtnSx,
+                                      bgcolor: epoNotenPalette.accent,
+                                      color: '#fff',
+                                      borderColor: epoNotenPalette.accent,
+                                      '&:hover': { bgcolor: '#1b5e20' },
+                                    }}
+                                  >
+                                    <PublishIcon sx={{ fontSize: '0.85rem' }} />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                            </Box>
+                          );
+                        })}
+                      </Stack>
+                      {groups.some((g) => !roundForCourses.groupIds.includes(g.id)) && (
+                        <Stack direction="row" flexWrap="wrap" gap={0.25} sx={{ mt: 0.45 }}>
+                          {groups
+                            .filter((g) => !roundForCourses.groupIds.includes(g.id))
+                            .map((g) => (
+                              <Chip
+                                key={g.id}
+                                size="small"
+                                icon={<AddIcon sx={{ fontSize: '0.8rem !important' }} />}
+                                label={g.name}
+                                clickable
+                                onClick={() => updateRoundGroups([...roundForCourses.groupIds, g.id])}
+                                variant="outlined"
+                                sx={{ height: 20, fontSize: '0.62rem', fontWeight: 700 }}
+                              />
+                            ))}
+                        </Stack>
+                      )}
+                    </Box>
+                  )}
+                </React.Fragment>
               );
             })}
             {rounds.length === 0 && (
@@ -866,7 +1057,26 @@ export function EpoNotenTeacherView() {
                   ) : null}
                 </Typography>
               </Box>
-              <Stack direction="row" spacing={0.35} flexShrink={0}>
+              <Stack direction="row" spacing={0.35} alignItems="center" flexShrink={0}>
+                <FormControl size="small" sx={{ minWidth: 100, maxWidth: 140 }}>
+                  <Select
+                    value={round.variantId || 'default'}
+                    onChange={(e) => void updateRoundVariant(String(e.target.value))}
+                    displayEmpty
+                    sx={{ fontSize: '0.65rem', height: 28 }}
+                  >
+                    {(variants.length > 0 ? variants : [{ id: 'default', name: 'Standard' }]).map((v) => (
+                      <MenuItem key={v.id} value={v.id} sx={{ fontSize: '0.72rem' }}>
+                        {v.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Tooltip title="Variantenzettel bearbeiten">
+                  <IconButton size="small" onClick={() => setVariantsOpen(true)} aria-label="Varianten" sx={epoNotenCompactIconBtnSx}>
+                    <TuneIcon sx={epoNotenCompactIconSx} />
+                  </IconButton>
+                </Tooltip>
                 {!round.publishedAt ? (
                   <Tooltip title="Für Lerngruppe freischalten">
                     <span>
@@ -1177,10 +1387,8 @@ export function EpoNotenTeacherView() {
                                 ? passiveIdsForGroup(section.groupId)
                                 : [...allPassiveStudentIds],
                             );
-                            const pendingKind =
-                              !passive && round?.publishedAt
-                                ? studentEpoPendingKind(s, Boolean(round.publishedAt))
-                                : null;
+                            const live = isStudentGroupLive(s);
+                            const pendingKind = !passive && live ? studentEpoPendingKind(s, true) : null;
                             const rowMode =
                               s.groupId && round ? groupMode(s.groupId) : selectedAssessmentMode;
                             const gradeLabel = s.teacherGrade
@@ -1351,17 +1559,14 @@ export function EpoNotenTeacherView() {
                             Länger abwesend — in der Liste unten, ausgegraut, ohne „Bitte ausfüllen“.
                           </Alert>
                         ) : null}
-                        {round?.publishedAt &&
+                        {isStudentGroupLive(selectedStudent) &&
                           selectedStudent?.groupId &&
                           !isPassiveStudentId(
                             selectedStudent.studentId,
                             passiveIdsForGroup(selectedStudent.groupId),
                           ) &&
                           (() => {
-                            const pending = studentEpoPendingKind(
-                              selectedStudent,
-                              Boolean(round.publishedAt),
-                            );
+                            const pending = studentEpoPendingKind(selectedStudent, true);
                             if (!pending) return null;
                             return (
                               <Alert severity="warning" sx={epoNotenBitteAusfuellenAlertSx}>
@@ -1372,7 +1577,7 @@ export function EpoNotenTeacherView() {
                           })()}
 
                         {!selectedStudent.studentSubmittedAt &&
-                          !round?.publishedAt && (
+                          !isStudentGroupLive(selectedStudent) && (
                           <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>
                             Runde noch nicht für SuS freigeschaltet.
                           </Typography>
@@ -1424,7 +1629,7 @@ export function EpoNotenTeacherView() {
                               compact
                               teacherEmphasis
                               label={selectedStudent.studentSubmittedAt ? 'Deine Bewertung (lila = SuS)' : 'Deine Bewertung'}
-                              categories={EPO_NOTEN_TEACHER_CATEGORIES}
+                              categories={teacherCategories}
                               scores={teacherScores}
                               onChange={handleTeacherScoresChange}
                               radioGroupId={selectedStudentId}
@@ -1735,6 +1940,15 @@ export function EpoNotenTeacherView() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <EpoNotenVariantsDialog
+        open={variantsOpen}
+        onClose={() => setVariantsOpen(false)}
+        onChanged={() => {
+          void loadVariants();
+          if (selectedId) void loadDetail(selectedId);
+        }}
+      />
     </Stack>
   );
 }

@@ -202,6 +202,7 @@ export function compareEpoStudentListOrder(
   b: EpoNotenEntry,
   roundPublished: boolean,
   passiveStudentIds: ReadonlySet<string> | string[],
+  liveForStudent?: (entry: EpoNotenEntry) => boolean,
 ): number {
   const passive = (id: string) => {
     if (Array.isArray(passiveStudentIds)) return passiveStudentIds.includes(id);
@@ -211,8 +212,10 @@ export function compareEpoStudentListOrder(
   const pb = passive(b.studentId);
   if (pa !== pb) return pa ? 1 : -1;
 
-  const pendA = !pa && Boolean(studentEpoPendingKind(a, roundPublished));
-  const pendB = !pb && Boolean(studentEpoPendingKind(b, roundPublished));
+  const liveA = liveForStudent ? liveForStudent(a) : roundPublished;
+  const liveB = liveForStudent ? liveForStudent(b) : roundPublished;
+  const pendA = !pa && Boolean(studentEpoPendingKind(a, liveA));
+  const pendB = !pb && Boolean(studentEpoPendingKind(b, liveB));
   if (pendA !== pendB) return pendA ? -1 : 1;
 
   return a.studentName.localeCompare(b.studentName, 'de');
@@ -313,6 +316,52 @@ export function teacherFormGradeFromEntry(
   return '';
 }
 
+export type EpoNotenGroupMeta = {
+  publishedAt?: string | null;
+  completedAt?: string | null;
+};
+
+export type EpoNotenVariantSheet = {
+  id: string;
+  name: string;
+  studentCategories: string[];
+  teacherCategories: string[];
+};
+
+const usesPerGroupEpoPublish = (round: {
+  groupIds: string[];
+  groupMeta?: Record<string, EpoNotenGroupMeta>;
+}): boolean => {
+  const meta = round.groupMeta;
+  if (!meta) return false;
+  return Object.entries(meta).some(
+    ([gid, m]) => round.groupIds.includes(gid) && Boolean(m?.publishedAt),
+  );
+};
+
+/** SuS/Lehrkraft: Ist dieser Kurs für die Runde freigeschaltet? */
+export function isEpoGroupPublished(
+  round: {
+    publishedAt: string | null;
+    groupIds: string[];
+    groupMeta?: Record<string, EpoNotenGroupMeta>;
+  },
+  groupId: string,
+): boolean {
+  if (!round.groupIds.includes(groupId)) return false;
+  const gm = round.groupMeta?.[groupId];
+  if (gm?.publishedAt) return true;
+  if (usesPerGroupEpoPublish(round)) return false;
+  return Boolean(round.publishedAt);
+}
+
+export function isEpoGroupCompleted(
+  round: { groupMeta?: Record<string, EpoNotenGroupMeta> },
+  groupId: string,
+): boolean {
+  return Boolean(round.groupMeta?.[groupId]?.completedAt);
+}
+
 export type EpoNotenRound = {
   id: string;
   title: string;
@@ -320,6 +369,8 @@ export type EpoNotenRound = {
   groupIds: string[];
   /** Note vs. MSS-Punkte (0–15) — pro Lerngruppe, legt die Lehrkraft fest */
   assessmentModeByGroup?: Record<string, EpoNotenAssessmentMode>;
+  groupMeta?: Record<string, EpoNotenGroupMeta>;
+  variantId?: string | null;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
