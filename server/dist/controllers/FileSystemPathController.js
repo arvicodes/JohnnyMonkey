@@ -47,6 +47,7 @@ const path_1 = __importDefault(require("path"));
 const mammoth_1 = __importDefault(require("mammoth"));
 const XLSX = __importStar(require("xlsx"));
 const libreoffice_convert_1 = require("libreoffice-convert");
+const examSubsectionShuffle_1 = require("../lib/examSubsectionShuffle");
 const examVersionPaths_1 = require("../lib/examVersionPaths");
 const examAutoPoints_1 = require("../utils/examAutoPoints");
 const prisma = new client_1.PrismaClient();
@@ -208,8 +209,10 @@ class FileSystemPathController {
             if (!fileContent) {
                 return res.status(404).json({ error: 'File not found' });
             }
+            let htmlOut = fileContent.toString('utf-8');
+            htmlOut = (0, examSubsectionShuffle_1.transformExamHtmlForDelivery)(htmlOut, String(filePath));
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
-            res.send(fileContent.toString('utf-8'));
+            res.send(htmlOut);
         }
         catch (error) {
             console.error('Error reading HTML file:', error);

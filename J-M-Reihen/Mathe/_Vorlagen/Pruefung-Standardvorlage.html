@@ -2292,7 +2292,72 @@
             });
         }
 
+        function setupExamSubsectionShuffleForStudent() {
+            if (localStorage.getItem('teacherId') !== null) return;
+            const studentId = localStorage.getItem('studentId') || localStorage.getItem('loginCode') || 'anonymous';
+            const examKey = typeof KA_KEY !== 'undefined' ? String(KA_KEY) : (document.title || 'exam');
+            const seedStr = `${studentId}|${examKey}|subsection-order-v1`;
+            const hashSeed = (s) => {
+                let h = 2166136261;
+                for (let i = 0; i < s.length; i++) {
+                    h ^= s.charCodeAt(i);
+                    h = Math.imul(h, 16777619);
+                }
+                return h >>> 0;
+            };
+            const mulberry32 = (a) => () => {
+                a |= 0;
+                a = (a + 0x6d2b79f5) | 0;
+                let t = Math.imul(a ^ (a >>> 15), 1 | a);
+                t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            };
+            const shuffleInPlace = (arr, rng) => {
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(rng() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+            };
+            let taskIndex = 0;
+            document.querySelectorAll('.task').forEach((taskEl) => {
+                taskIndex += 1;
+                const rng = mulberry32(hashSeed(`${seedStr}|task-${taskIndex}`));
+                const stack = taskEl.querySelector('.exam-task-stack');
+                if (stack) {
+                    const subs = [...stack.querySelectorAll(':scope > .exam-subsection')];
+                    if (subs.length > 1) {
+                        shuffleInPlace(subs, rng);
+                        subs.forEach((el) => stack.appendChild(el));
+                    }
+                }
+                const flow = taskEl.querySelector('.exam-task-flow');
+                if (flow) {
+                    const flowParts = [...flow.querySelectorAll(':scope > .exam-subsection')];
+                    if (flowParts.length > 1) {
+                        shuffleInPlace(flowParts, rng);
+                        flowParts.forEach((el) => flow.appendChild(el));
+                    }
+                }
+                const grid = taskEl.querySelector('.exam-task-grid');
+                if (grid) {
+                    const cells = [...grid.querySelectorAll(':scope > .exam-task-grid-cell')];
+                    if (cells.length > 1) {
+                        shuffleInPlace(cells, rng);
+                        cells.forEach((el) => grid.appendChild(el));
+                    }
+                }
+                taskEl.querySelectorAll('.exam-wf-group').forEach((group) => {
+                    const rows = [...group.querySelectorAll(':scope > .exam-wf-row')];
+                    if (rows.length > 1) {
+                        shuffleInPlace(rows, rng);
+                        rows.forEach((el) => group.appendChild(el));
+                    }
+                });
+            });
+        }
+
         // Initialisierung
+        setupExamSubsectionShuffleForStudent();
         attachInputListeners();
         setupExamSortDrag();
         // Punkteanzeige nur im Lehrer-Modus aktualisieren

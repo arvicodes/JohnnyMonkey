@@ -13,6 +13,7 @@ import path from 'path';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import { convert } from 'libreoffice-convert';
+import { transformExamHtmlForDelivery } from '../lib/examSubsectionShuffle';
 import {
   applyVersionsToExamHtml,
   baseStemFromStem,
@@ -242,8 +243,11 @@ export class FileSystemPathController {
         return res.status(404).json({ error: 'File not found' });
       }
 
+      let htmlOut = fileContent.toString('utf-8');
+      htmlOut = transformExamHtmlForDelivery(htmlOut, String(filePath));
+
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.send(fileContent.toString('utf-8'));
+      res.send(htmlOut);
 
     } catch (error) {
       console.error('Error reading HTML file:', error);
