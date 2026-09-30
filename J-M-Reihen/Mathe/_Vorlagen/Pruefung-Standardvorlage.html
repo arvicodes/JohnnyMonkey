@@ -2156,8 +2156,20 @@
             return { achieved: achievedPoints, total: 14 };
         }
 
-        // Funktion zur Aktualisierung der Anzeige
+        function setScoreFooterVisible(show) {
+            const pointsDisplay = document.getElementById('pointsDisplay');
+            const noteLine = document.querySelector('.footer-note-line');
+            const display = show ? 'block' : 'none';
+            if (pointsDisplay) pointsDisplay.style.display = display;
+            if (noteLine) noteLine.style.display = display;
+        }
+
+        // Funktion zur Aktualisierung der Anzeige (nur Lehrer — SuS nie während der Bearbeitung)
         function updatePointsDisplay() {
+            if (!isTeacher) {
+                setScoreFooterVisible(false);
+                return;
+            }
             const points = calculatePoints();
             const pointsDisplay = document.getElementById('pointsDisplay');
             const noteText = document.getElementById('noteText');
@@ -2364,16 +2376,7 @@
         if (isTeacher) {
             updatePointsDisplay();
         } else {
-            // Im Schüler-Modus: Platzhalter anzeigen
-            const pointsDisplay = document.getElementById('pointsDisplay');
-            if (pointsDisplay) {
-                const points = calculatePoints(); // Für totalPoints
-                pointsDisplay.style.display = 'block';
-                document.getElementById('achievedPoints').textContent = '___';
-                document.getElementById('totalPoints').textContent = points.total;
-                document.getElementById('noteText').textContent = '___';
-                document.getElementById('noteNumber').textContent = '___';
-            }
+            setScoreFooterVisible(false);
         }
         
         // Bilder werden jetzt direkt über URLs geladen - keine Aktualisierung mehr nötig

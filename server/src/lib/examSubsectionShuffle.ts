@@ -108,33 +108,70 @@ export const EXAM_SUBSECTION_SHUFFLE_FUNCTION = `
 const INIT_HOOK =
   'setupExamSubsectionShuffleForStudent();\n        attachInputListeners();';
 
+/** SuS dürfen während der Bearbeitung keine Live-Punkte/Note im Footer sehen. */
+export const EXAM_HIDE_LIVE_SCORE_MARKER = 'data-jm-hide-live-exam-scores';
+
+const EXAM_HIDE_LIVE_SCORE_SCRIPT = `<script ${EXAM_HIDE_LIVE_SCORE_MARKER}="1">
+(function(){
+  function isTeacherExamView(){try{return localStorage.getItem('teacherId')!==null;}catch(e){return false;}}
+  function hideScoreFooter(){
+    var pd=document.getElementById('pointsDisplay');
+    var nl=document.querySelector('.footer-note-line');
+    if(pd)pd.style.display='none';
+    if(nl)nl.style.display='none';
+  }
+  function patch(){
+    if(isTeacherExamView())return;
+    hideScoreFooter();
+    if(typeof updatePointsDisplay!=='function')return;
+    if(updatePointsDisplay.__jmHideLiveScores)return;
+    updatePointsDisplay=function(){hideScoreFooter();};
+    updatePointsDisplay.__jmHideLiveScores=true;
+  }
+  patch();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',patch);
+  setTimeout(patch,0);
+  setTimeout(patch,50);
+})();
+</script>`;
+
+function injectHideLiveScoreForStudents(html: string): string {
+  if (html.includes(EXAM_HIDE_LIVE_SCORE_MARKER)) return html;
+  if (html.includes('</body>')) {
+    return html.replace('</body>', `${EXAM_HIDE_LIVE_SCORE_SCRIPT}\n</body>`);
+  }
+  return `${html}\n${EXAM_HIDE_LIVE_SCORE_SCRIPT}`;
+}
+
 export function transformExamHtmlForDelivery(html: string, filePath?: string): string {
   if (!isDeliverableExamHtml(html, filePath)) return html;
-  if (html.includes('setupExamSubsectionShuffleForStudent')) {
-    if (!html.includes('setupExamSubsectionShuffleForStudent();')) {
-      return html.replace(/\battachInputListeners\(\);/, INIT_HOOK);
-    }
-    return html;
-  }
 
   let out = html;
-  const initAnchor = out.match(/(\s*\/\/ Initialisierung\s*\r?\n\s*)attachInputListeners\(\);/);
-  if (initAnchor) {
-    out = out.replace(
-      /(\s*\/\/ Initialisierung\s*\r?\n\s*)attachInputListeners\(\);/,
-      `$1${INIT_HOOK}`,
-    );
-    const scriptInsert = `\n        /* ${EXAM_SUBSECTION_SHUFFLE_MARKER} */\n${EXAM_SUBSECTION_SHUFFLE_FUNCTION}\n`;
-    const initIdx = out.indexOf('// Initialisierung');
-    if (initIdx >= 0) {
-      out = `${out.slice(0, initIdx)}${scriptInsert}${out.slice(initIdx)}`;
+  if (out.includes('setupExamSubsectionShuffleForStudent')) {
+    if (!out.includes('setupExamSubsectionShuffleForStudent();')) {
+      out = out.replace(/\battachInputListeners\(\);/, INIT_HOOK);
     }
-    return out;
+  } else {
+    const initAnchor = out.match(/(\s*\/\/ Initialisierung\s*\r?\n\s*)attachInputListeners\(\);/);
+    if (initAnchor) {
+      out = out.replace(
+        /(\s*\/\/ Initialisierung\s*\r?\n\s*)attachInputListeners\(\);/,
+        `$1${INIT_HOOK}`,
+      );
+      const scriptInsert = `\n        /* ${EXAM_SUBSECTION_SHUFFLE_MARKER} */\n${EXAM_SUBSECTION_SHUFFLE_FUNCTION}\n`;
+      const initIdx = out.indexOf('// Initialisierung');
+      if (initIdx >= 0) {
+        out = `${out.slice(0, initIdx)}${scriptInsert}${out.slice(initIdx)}`;
+      }
+    } else {
+      const snippet = `<script ${EXAM_SUBSECTION_SHUFFLE_MARKER}="1">\n(function(){\n${EXAM_SUBSECTION_SHUFFLE_FUNCTION}\nif (document.readyState === 'loading') {\n  document.addEventListener('DOMContentLoaded', setupExamSubsectionShuffleForStudent);\n} else {\n  setupExamSubsectionShuffleForStudent();\n}\n})();\n</script>`;
+      if (out.includes('</body>')) {
+        out = out.replace('</body>', `${snippet}\n</body>`);
+      } else {
+        out = `${out}\n${snippet}`;
+      }
+    }
   }
 
-  const snippet = `<script ${EXAM_SUBSECTION_SHUFFLE_MARKER}="1">\n(function(){\n${EXAM_SUBSECTION_SHUFFLE_FUNCTION}\nif (document.readyState === 'loading') {\n  document.addEventListener('DOMContentLoaded', setupExamSubsectionShuffleForStudent);\n} else {\n  setupExamSubsectionShuffleForStudent();\n}\n})();\n</script>`;
-  if (out.includes('</body>')) {
-    return out.replace('</body>', `${snippet}\n</body>`);
-  }
-  return `${out}\n${snippet}`;
+  return injectHideLiveScoreForStudents(out);
 }
