@@ -11,7 +11,7 @@ const RL_TERM_OPTS = [
 export function ki1QuizTask3(): ExamGridTaskSpec {
   return {
     taskNumber: 3,
-    points: 14,
+    points: 13,
     afbLevel: 2,
     layout: 'stack',
     subsections: [
@@ -84,36 +84,8 @@ export function ki1QuizTask3(): ExamGridTaskSpec {
         solution: 'D',
       },
       {
-        id: 'ki3-f',
-        letter: 'F',
-        title: '',
-        quadrant: 'tl',
-        kind: 'multi-select',
-        prompt:
-          'Nach mehreren Trainingsrunden springt das Äffchen meistens über die Fässer. Trotzdem läuft es gelegentlich noch absichtlich wirkend in ein Fass hinein. Welche Erklärung passt am besten?',
-        options: [
-          {
-            value: 'A',
-            label:
-              'Ein Reinforcement-Learning-Agent vergisst nach jedem erfolgreichen Sprung sein gesamtes Wissen.',
-          },
-          {
-            value: 'B',
-            label:
-              'Der Agent kann weiterhin zufällige Aktionen ausprobieren, um möglicherweise bessere Strategien zu entdecken.',
-          },
-          {
-            value: 'C',
-            label:
-              'Ein Agent darf eine bereits gelernte Aktion grundsätzlich nicht zweimal hintereinander verwenden.',
-          },
-          { value: 'D', label: 'Die Q-Tabelle wird nach jedem Sprung vollständig gelöscht.' },
-        ],
-        solution: 'B',
-      },
-      {
         id: 'ki3-g',
-        letter: 'G',
+        letter: 'F',
         title: 'Ein Agent spielt ein einfaches Spiel. Nun wird seine Explorationsrate verändert. Beurteile die Aussagen:',
         quadrant: 'tl',
         kind: 'wahr-falsch-group',
@@ -138,7 +110,7 @@ export function ki1QuizTask3(): ExamGridTaskSpec {
       },
       {
         id: 'ki3-h',
-        letter: 'H',
+        letter: 'G',
         title: '',
         quadrant: 'tl',
         kind: 'multi-select',
@@ -154,7 +126,7 @@ export function ki1QuizTask3(): ExamGridTaskSpec {
       },
       {
         id: 'ki3-i',
-        letter: 'I',
+        letter: 'H',
         title: '',
         quadrant: 'tl',
         kind: 'multi-select',
@@ -176,7 +148,7 @@ export function ki1QuizTask3(): ExamGridTaskSpec {
       },
       {
         id: 'ki3-j',
-        letter: 'J',
+        letter: 'I',
         title: '',
         quadrant: 'tl',
         kind: 'multi-select',
@@ -199,7 +171,7 @@ export function ki1QuizTask3(): ExamGridTaskSpec {
       },
       {
         id: 'ki3-k',
-        letter: 'K',
+        letter: 'J',
         title: '',
         quadrant: 'tl',
         kind: 'multi-select',

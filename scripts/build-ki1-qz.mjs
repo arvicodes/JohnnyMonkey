@@ -57,7 +57,8 @@ html = html.replace(
   `const correctAnswers = {\n${answerLines}\n        };`,
 );
 
-const totalPoints = 5 + 14 + 14;
+const totalPoints =
+  ki1QuizTask1().points + ki1QuizTask2().points + ki1QuizTask3().points;
 html = html.replace(/id="totalPoints"[^>]*>\d+</, `id="totalPoints">${totalPoints}<`);
 html = html.replace(
   /return \{ achieved: achievedPoints, total: \d+ \};/,

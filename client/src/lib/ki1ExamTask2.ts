@@ -20,7 +20,7 @@ const RL_STEPS_SCRAMBLED = [
 export function ki1QuizTask2(): ExamGridTaskSpec {
   return {
     taskNumber: 2,
-    points: 14,
+    points: 12,
     afbLevel: 2,
     layout: 'stack',
     subsections: [
@@ -66,23 +66,8 @@ export function ki1QuizTask2(): ExamGridTaskSpec {
         solution: 'C',
       },
       {
-        id: 'ki2-c',
-        letter: 'C',
-        title: '',
-        quadrant: 'tl',
-        kind: 'multi-select',
-        prompt: 'Zusatzfrage: Was hat sich dadurch verändert?',
-        options: [
-          { value: 'A', label: 'Rot wird beim nächsten Mal sicher gewählt.' },
-          { value: 'B', label: 'Rot wird beim nächsten Mal wahrscheinlicher gewählt.' },
-          { value: 'C', label: 'Blau kann nicht mehr gewählt werden.' },
-          { value: 'D', label: 'Der Computer kennt jetzt die gesamte optimale Strategie.' },
-        ],
-        solution: 'B',
-      },
-      {
         id: 'ki2-d',
-        letter: 'D',
+        letter: 'C',
         title: 'Bringe die Schritte in die richtige Reihenfolge:',
         quadrant: 'tl',
         kind: 'sort',
@@ -94,7 +79,7 @@ export function ki1QuizTask2(): ExamGridTaskSpec {
       },
       {
         id: 'ki2-e',
-        letter: 'E',
+        letter: 'D',
         title: '',
         quadrant: 'tl',
         kind: 'multi-select',
@@ -117,7 +102,7 @@ export function ki1QuizTask2(): ExamGridTaskSpec {
       },
       {
         id: 'ki2-f',
-        letter: 'F',
+        letter: 'E',
         title: '',
         quadrant: 'tl',
         kind: 'multi-select',
@@ -137,7 +122,7 @@ export function ki1QuizTask2(): ExamGridTaskSpec {
       },
       {
         id: 'ki2-g',
-        letter: 'G',
+        letter: 'F',
         title: '',
         quadrant: 'tl',
         kind: 'wahr-falsch-group',
@@ -162,7 +147,7 @@ export function ki1QuizTask2(): ExamGridTaskSpec {
       },
       {
         id: 'ki2-k',
-        letter: 'K',
+        letter: 'G',
         title: '',
         quadrant: 'tl',
         kind: 'multi-select',
@@ -179,7 +164,7 @@ export function ki1QuizTask2(): ExamGridTaskSpec {
       },
       {
         id: 'ki2-l',
-        letter: 'L',
+        letter: 'H',
         title: '',
         quadrant: 'tl',
         kind: 'multi-select',
@@ -204,39 +189,8 @@ export function ki1QuizTask2(): ExamGridTaskSpec {
         solution: 'A|C|E',
       },
       {
-        id: 'ki2-m',
-        letter: 'M',
-        title: '',
-        quadrant: 'tl',
-        kind: 'multi-select',
-        prompt:
-          'Welche Rolle spielt der Mensch beim Lernverfahren „Verstärkendes Lernen“? (Mehrere Antworten sind richtig.)',
-        options: [
-          { value: 'A', label: 'Der Mensch legt die möglichen Spielregeln fest.' },
-          {
-            value: 'B',
-            label: 'Der Mensch muss dem Computer für jede Spielsituation den besten Zug nennen.',
-          },
-          {
-            value: 'C',
-            label:
-              'Das Lernverfahren benötigt eine Form von Rückmeldung darüber, ob das Ergebnis günstig oder ungünstig war.',
-          },
-          {
-            value: 'D',
-            label: 'Der Mensch programmiert nicht für jede einzelne Spielsituation eine fertige Lösung.',
-          },
-          {
-            value: 'E',
-            label:
-              'Der Mensch spielt nach dem Start des Trainings überhaupt keine Rolle mehr, weil das System völlig unabhängig von menschlichen Vorgaben ist.',
-          },
-        ],
-        solution: 'A|C|D',
-      },
-      {
         id: 'ki2-n',
-        letter: 'N',
+        letter: 'I',
         title: '',
         quadrant: 'tl',
         kind: 'multi-select',
