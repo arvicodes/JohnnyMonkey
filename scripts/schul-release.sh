@@ -151,9 +151,11 @@ if [[ "$CODE_ONLY" == 1 ]]; then
   wait "$pid_s" "$pid_c"
   "$ROOT/scripts/school-code-only.sh"
 else
-  deploy_args=()
-  [[ "$SKIP_SYNC" == 1 ]] && deploy_args+=(--skip-sync)
-  "$ROOT/scripts/school-deploy.sh" "${deploy_args[@]}"
+  if [[ "$SKIP_SYNC" == 1 ]]; then
+    "$ROOT/scripts/school-deploy.sh" --skip-sync
+  else
+    "$ROOT/scripts/school-deploy.sh"
+  fi
 fi
 
 log "==> Schul-Release fertig."
