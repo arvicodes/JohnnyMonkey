@@ -2,6 +2,52 @@
 
 A comprehensive learning management system built with React, Node.js, and Prisma.
 
+## Schul-Release (Commit → Push → Deploy)
+
+Ein Durchlauf für **Commit**, **Push auf `main`** und **ordentliches Schul-Deploy** (Portainer). Skript: `scripts/schul-release.sh`.
+
+**Voraussetzungen:** Branch `main`, GitHub-Token (`git credential`), **VPN/LAN**, Datei **`.env.school`** (Vorlage: `.env.school.example`).
+
+### Normal (empfohlen)
+
+```bash
+./scripts/schul-release.sh
+# oder
+npm run release:school
+```
+
+1. **Commit** (wie `auto-commit-push.sh`, inkl. `server/prisma/dev.db`, ohne Secrets)
+2. **Push** auf `main`
+3. **`school-deploy.sh`:** Datenabgleich Mac ↔ Schule (`school-sync`), dann **parallel** Server- + Client-Build, App + DB + Login-Pepper auf die Schule
+
+Mit eigener Commit-Message:
+
+```bash
+./scripts/schul-release.sh -m "Mathe: interaktive Längen-Übung"
+```
+
+### Schneller (nur wenn bewusst)
+
+| Flag | Wirkung |
+|------|--------|
+| `--code-only` | Nur App-Code auf die Schule — **kein** Sync, **keine** DB (reine Code-Fixes) |
+| `--skip-sync` | Deploy **mit** Laptop-DB, **ohne** vorherigen bidirektionalen Sync |
+| `--no-commit` | Nur Push + Deploy (wenn schon committed) |
+| `--no-push` | Nur Commit + Deploy (selten) |
+| `--dry-run` | Plan anzeigen, nichts ändern |
+
+Beispiele:
+
+```bash
+./scripts/schul-release.sh --code-only -m "fix: UI"
+./scripts/schul-release.sh --skip-sync
+./scripts/schul-release.sh --no-commit
+```
+
+Nur Deploy ohne Commit/Push: `npm run deploy:school` bzw. `./scripts/school-deploy.sh`.
+
+Nach dem Deploy im Browser **Hard-Reload** (Schul-URLs siehe Abschnitt [Portainer.io Deployment](#portainerio-deployment)).
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -129,21 +175,15 @@ Nach `git push` auf `main` kann ein **post-push-Hook** den Sync automatisch star
 
 ### Auf den Schulserver deployen
 
-Baut App + Client, lädt alles per GitHub-Release in Portainer und startet den Container neu. **VPN/LAN** und **`.env.school`** mit Portainer-Passwort nötig.
+Siehe oben **[Schul-Release](#schul-release-commit--push--deploy)** für Commit + Push + Deploy in einem Schritt (`npm run release:school`).
+
+Nur Deploy (ohne Git):
 
 ```bash
-# Sync, dann Deploy (empfohlen):
-npm run deploy:school
-# oder: ./scripts/school-deploy.sh
-
-# Nur Deploy, ohne vorherigen Datenabgleich:
+npm run deploy:school          # Sync + Deploy (empfohlen)
 ./scripts/school-deploy.sh --skip-sync
-
-# Nur prüfen ob Schulserver erreichbar:
-./scripts/school-deploy.sh --check
+./scripts/school-deploy.sh --check   # Erreichbarkeit prüfen
 ```
-
-Nach dem Deploy im Browser **Hard-Reload** (Schul-URLs siehe unten).
 
 ### Einmalige Einrichtung Schule
 
@@ -164,7 +204,8 @@ cp .env.school.example .env.school
 | Stand nach GitHub | `npm run git:sicherungen` |
 | Stand von GitHub holen | `npm run git:pull` |
 | Mac ↔ Schule sync | `npm run sync:school` |
-| Schule deployen | `npm run deploy:school` |
+| Commit + Push + Schule | `npm run release:school` |
+| Nur Schule deployen | `npm run deploy:school` |
 | Ports/Health prüfen | `npm run check:local` |
 
 ### Problem: „Verbindung abgelehnt“ / Website nicht erreichbar
@@ -398,7 +439,8 @@ JohnnyMonkey/
 - `npm run git:sicherungen` — Stand nach GitHub
 - `npm run git:pull` — Stand von GitHub holen
 - `npm run sync:school` — Mac ↔ Schule abgleichen
-- `npm run deploy:school` — Schulserver deployen
+- `npm run release:school` — Commit + Push + Schul-Deploy (ein Schritt)
+- `npm run deploy:school` — nur Schulserver deployen
 - `npm run check:local` — Ports 3000/3003 prüfen
 - `npm run diagnose:local` — Fehlerdiagnose lokal
 
