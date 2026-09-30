@@ -1000,7 +1000,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const tabIndexSkipWhenAnswersOnly: number | undefined = tabThroughAnswersOnly ? -1 : undefined;
 
   const sumTaskPoints = (
-    taskAnswers: Array<{ taskId: string; isCorrect?: boolean; points?: number }>,
+    taskAnswers: Array<{ taskId: string; answer?: unknown; isCorrect?: boolean; points?: number }>,
     submission: KASubmission,
   ) => {
     let totalPoints = 0;
