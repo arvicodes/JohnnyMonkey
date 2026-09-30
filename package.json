@@ -22,6 +22,7 @@
     "git:pull": "bash scripts/git-pull-sicherungen.sh",
     "sync:school": "bash scripts/school-sync.sh",
     "deploy:school": "bash scripts/school-deploy.sh",
+    "release:school": "bash scripts/schul-release.sh",
     "git:school-token": "bash scripts/install-school-github-token.sh",
     "build": "npm install && cd server && npm install && npm run prisma:generate && cd ../client && npm install && npm install --save-dev @types/file-saver && REACT_APP_API_URL=https://johnnymonkey.onrender.com npm run build && cd ../server && rm -rf client-build && cp -r ../client/build ./client-build && npm run build",
     "build:server": "cd server && npm install && npm run prisma:generate && npm run build",

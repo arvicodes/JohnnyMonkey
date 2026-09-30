@@ -84,9 +84,18 @@ else
   log "Datenabgleich übersprungen (--skip-sync). Schul-DB wird durch die Laptop-DB ersetzt."
 fi
 
-log "==> Build Server + Client"
-(cd server && npx tsc --pretty false)
-(cd client && NODE_OPTIONS=--max_old_space_size=4096 CI=false GENERATE_SOURCEMAP=false npm run build)
+log "==> Build Server + Client (parallel)"
+(
+  cd server
+  npx tsc --pretty false
+) &
+_pid_tsc=$!
+(
+  cd client
+  NODE_OPTIONS=--max_old_space_size=4096 CI=false GENERATE_SOURCEMAP=false npm run build
+) &
+_pid_client=$!
+wait "$_pid_tsc" "$_pid_client"
 
 [[ -f server/prisma/dev.db ]] || die "server/prisma/dev.db fehlt"
 cp server/prisma/dev.db backup_latest.db
