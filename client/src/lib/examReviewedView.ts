@@ -4,6 +4,7 @@ import {
   parseExamAnswerKey,
   sortExamAnswerFieldIds,
 } from './examAnswerKey';
+import { examAnswerScoreFraction } from './examMcPartialScore';
 import {
   EXAM_TEACHER_COMMENT_FONT,
   injectHandwritingFontsIntoDocument,
@@ -110,8 +111,10 @@ function fillAndMark(
     const value = normAnswer(raw);
     const expected = key.answers[taskId];
     const maxPts = key.points[taskId] ?? 1;
-    let isCorrect = expected !== undefined ? examAnswerMatches(expected, raw) : false;
-    let achieved = isCorrect ? maxPts : 0;
+    const scoreFrac =
+      expected !== undefined ? examAnswerScoreFraction(expected, raw) : 0;
+    let isCorrect = scoreFrac >= 1 - 1e-9;
+    let achieved = maxPts * scoreFrac;
     if (corrByTask[taskId] != null) {
       achieved = corrByTask[taskId];
       isCorrect = achieved >= maxPts;

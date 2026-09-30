@@ -19,6 +19,7 @@ exports.calculateAutoPoints = calculateAutoPoints;
 exports.computeSubmissionTotal = computeSubmissionTotal;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const examMcPartialScore_1 = require("../lib/examMcPartialScore");
 const storageManager_1 = require("./storageManager");
 const examHtmlBasenameCache = new Map();
 function parseExamTaskPointsFromHtml(html) {
@@ -354,9 +355,9 @@ function writeExamHtml(filePath, html) {
 function calculateAutoPoints(answers, key) {
     let total = 0;
     for (const taskId of Object.keys(key.answers)) {
-        if (examAnswerMatches(key.answers[taskId], answers[taskId])) {
-            total += key.points[taskId] || 1;
-        }
+        const max = key.points[taskId] || 1;
+        const frac = (0, examMcPartialScore_1.examAnswerScoreFraction)(key.answers[taskId], answers[taskId]);
+        total += max * frac;
     }
     return total;
 }
@@ -379,8 +380,9 @@ function computeSubmissionTotal(answersJson, key, corrections) {
         if ((corr === null || corr === void 0 ? void 0 : corr.manualPoints) != null && !Number.isNaN(corr.manualPoints)) {
             totalPoints += corr.manualPoints;
         }
-        else if (examAnswerMatches(key.answers[taskId], answers[taskId])) {
-            totalPoints += key.points[taskId] || 1;
+        else {
+            const max = key.points[taskId] || 1;
+            totalPoints += max * (0, examMcPartialScore_1.examAnswerScoreFraction)(key.answers[taskId], answers[taskId]);
         }
     }
     const legacyManual = corrections

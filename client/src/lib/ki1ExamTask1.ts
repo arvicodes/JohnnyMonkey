@@ -1,10 +1,26 @@
 import type { ExamGridTaskSpec } from './examGridTaskBuilder';
 
-/** Aufgabe 1 — Turing-Test & Captcha (ohne inhaltliche Dopplungen). */
+const TURING_TEST_ORDERED = [
+  'Ein Prüfer führt ein Gespräch mit zwei Partnern.',
+  'Einer der Partner ist ein Mensch, der andere eine Maschine.',
+  'Der Prüfer weiß nicht, welcher Partner der Mensch und welcher die Maschine ist.',
+  'Der Prüfer vergleicht die Antworten der beiden Partner.',
+  'Die Maschine gilt als intelligent, wenn der Prüfer sie nicht zuverlässig vom Menschen unterscheiden kann.',
+].join('|');
+
+const TURING_TEST_SCRAMBLED = [
+  'Der Prüfer vergleicht die Antworten der beiden Partner.',
+  'Die Maschine gilt als intelligent, wenn der Prüfer sie nicht zuverlässig vom Menschen unterscheiden kann.',
+  'Ein Prüfer führt ein Gespräch mit zwei Partnern.',
+  'Einer der Partner ist ein Mensch, der andere eine Maschine.',
+  'Der Prüfer weiß nicht, welcher Partner der Mensch und welcher die Maschine ist.',
+].join('|');
+
+/** Aufgabe 1 — Turing-Test & Captcha */
 export function ki1QuizTask1(): ExamGridTaskSpec {
   return {
     taskNumber: 1,
-    points: 3,
+    points: 5,
     afbLevel: 1,
     layout: 'stack',
     subsections: [
@@ -15,33 +31,23 @@ export function ki1QuizTask1(): ExamGridTaskSpec {
         quadrant: 'tl',
         kind: 'paragraph',
         variant: 'instruction',
-        text: 'Kreuze jeweils die richtige Antwort an.',
+        text: 'Kreuze jeweils eine oder mehrere richtige Antworten an.',
       },
       {
         id: 'ki1-a',
         letter: 'A',
         title: '',
         quadrant: 'tl',
-        kind: 'choice',
-        prompt: 'Welche Aussage beschreibt die Idee des Turing Tests am besten?',
+        kind: 'multi-select',
+        prompt: 'Alan Turing schlug … im Zusammenhang mit künstlicher Intelligenz vor.',
         options: [
-          {
-            value: 'A',
-            label: 'Eine Maschine gilt als intelligent, wenn sie schneller rechnet als ein Mensch.',
-          },
+          { value: 'A', label: 'eine feste Liste intelligenter Programme' },
           {
             value: 'B',
-            label:
-              'Eine Maschine zeigt intelligentes Verhalten, wenn sie in einem Gespräch nicht zuverlässig von einem Menschen unterschieden werden kann.',
+            label: 'eine operative Definition anhand beobachtbaren Verhaltens',
           },
-          {
-            value: 'C',
-            label: 'Eine Maschine gilt als intelligent, sobald sie Sprache erzeugen kann.',
-          },
-          {
-            value: 'D',
-            label: 'Eine Maschine gilt als intelligent, wenn sie menschliche Gefühle besitzt.',
-          },
+          { value: 'C', label: 'einen Intelligenzquotienten für Computer' },
+          { value: 'D', label: 'einen Test der Rechengeschwindigkeit' },
         ],
         solution: 'B',
       },
@@ -50,26 +56,22 @@ export function ki1QuizTask1(): ExamGridTaskSpec {
         letter: 'B',
         title: '',
         quadrant: 'tl',
-        kind: 'choice',
-        prompt:
-          'Warum wird ein Captcha manchmal als „umgekehrter Turing Test“ bezeichnet?',
+        kind: 'multi-select',
+        prompt: 'Welche Aussage beschreibt Turings Idee am besten?',
         options: [
           {
             value: 'A',
-            label: 'Ein Computer versucht herauszufinden, ob ein anderer Computer intelligent ist.',
+            label: 'Eine Maschine ist intelligent, wenn sie schneller rechnet als ein Mensch.',
           },
           {
             value: 'B',
-            label: 'Ein Mensch soll beweisen, dass er kein Computerprogramm ist.',
+            label:
+              'Eine Maschine ist intelligent, wenn ihr Verhalten in einem Gespräch nicht zuverlässig von dem eines Menschen unterschieden werden kann.',
           },
-          {
-            value: 'C',
-            label: 'Zwei Computer vergleichen ihre Rechengeschwindigkeit.',
-          },
+          { value: 'C', label: 'Eine Maschine ist intelligent, wenn sie Gefühle besitzt.' },
           {
             value: 'D',
-            label:
-              'Menschen müssen Aufgaben lösen, die Computer grundsätzlich niemals lösen können.',
+            label: 'Eine Maschine ist intelligent, sobald sie Sprache erzeugen kann.',
           },
         ],
         solution: 'B',
@@ -77,11 +79,45 @@ export function ki1QuizTask1(): ExamGridTaskSpec {
       {
         id: 'ki1-c',
         letter: 'C',
+        title:
+          'Im folgenden Ablauf sind die Schritte durcheinander geraten. Ordne sie von 1 bis 5.',
+        quadrant: 'tl',
+        kind: 'sort',
+        interaction: 'drag',
+        sortJoin: 'pipe',
+        sortLayout: 'steps',
+        given: TURING_TEST_SCRAMBLED,
+        solution: TURING_TEST_ORDERED,
+      },
+      {
+        id: 'ki1-d',
+        letter: 'D',
         title: '',
         quadrant: 'tl',
-        kind: 'choice',
+        kind: 'multi-select',
         prompt:
-          'Welche Captcha-Aufgabe erfüllt die Grundidee eines Captchas am besten?',
+          'Welche zwei Aussagen beschreiben sinnvolle Eigenschaften eines Captchas? Kreuze zwei Antworten an.',
+        options: [
+          { value: 'A', label: 'Es sollte für Menschen relativ einfach zu lösen sein.' },
+          {
+            value: 'B',
+            label: 'Es sollte für Computerprogramme möglichst schwierig zu lösen sein.',
+          },
+          {
+            value: 'C',
+            label: 'Es sollte für Menschen und Computer genau gleich schwierig sein.',
+          },
+          { value: 'D', label: 'Es sollte immer aus einer Rechenaufgabe bestehen.' },
+        ],
+        solution: 'A|B',
+      },
+      {
+        id: 'ki1-e',
+        letter: 'E',
+        title: '',
+        quadrant: 'tl',
+        kind: 'multi-select',
+        prompt: 'Welche Captcha-Aufgabe erfüllt die Grundidee eines Captchas am besten?',
         options: [
           {
             value: 'A',

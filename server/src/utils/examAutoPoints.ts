@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { examAnswerScoreFraction } from '../lib/examMcPartialScore';
 import { StorageManager } from './storageManager';
 
 const examHtmlBasenameCache = new Map<string, string>();
@@ -377,9 +378,9 @@ export function calculateAutoPoints(
 ): number {
   let total = 0;
   for (const taskId of Object.keys(key.answers)) {
-    if (examAnswerMatches(key.answers[taskId], answers[taskId])) {
-      total += key.points[taskId] || 1;
-    }
+    const max = key.points[taskId] || 1;
+    const frac = examAnswerScoreFraction(key.answers[taskId], answers[taskId]);
+    total += max * frac;
   }
   return total;
 }
@@ -413,8 +414,9 @@ export function computeSubmissionTotal(
     const corr = corrMap.get(taskId);
     if (corr?.manualPoints != null && !Number.isNaN(corr.manualPoints)) {
       totalPoints += corr.manualPoints;
-    } else if (examAnswerMatches(key.answers[taskId], answers[taskId])) {
-      totalPoints += key.points[taskId] || 1;
+    } else {
+      const max = key.points[taskId] || 1;
+      totalPoints += max * examAnswerScoreFraction(key.answers[taskId], answers[taskId]);
     }
   }
 

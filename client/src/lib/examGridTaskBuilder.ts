@@ -810,7 +810,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
         : '';
       body = `<div class="item input-group full-width exam-mc-block exam-wf-choice-wrap"><div class="exam-wf-group">${renderWahrFalschInlineRow(letterLabel, allowBasicHtml(sub.prompt), id)}</div></div>`;
     } else {
-      body = `<div class="item input-group full-width exam-mc-block">${heading}<div class="exam-mc-options exam-mc-single-select" data-answer-id="${id}">${opts}</div><input type="hidden" id="${id}" value=""></div>`;
+      body = `<div class="item input-group full-width exam-mc-block">${heading}<div class="exam-multi-select" data-answer-id="${id}">${opts}</div><input type="hidden" id="${id}" value=""></div>`;
     }
   } else if (sub.kind === 'wahr-falsch-group') {
     const rows = sub.items.map((item, i) => {

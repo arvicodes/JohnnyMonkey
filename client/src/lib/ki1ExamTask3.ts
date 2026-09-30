@@ -1,17 +1,17 @@
 import type { ExamGridTaskSpec } from './examGridTaskBuilder';
 
-const RL_BEGRIFF_OPTS = [
-  { value: 'A', label: 'Agent' },
-  { value: 'B', label: 'Zustand' },
-  { value: 'C', label: 'Aktion' },
-  { value: 'D', label: 'Belohnung' },
+const RL_TERM_OPTS = [
+  { value: 'A', label: 'Aktion' },
+  { value: 'B', label: 'Belohnung' },
+  { value: 'C', label: 'Zustand' },
+  { value: 'D', label: 'Modell' },
 ];
 
-/** Aufgabe 3 — Q-Learning am Äffchen (getrennte Prüfaspekte). */
+/** Aufgabe 3 — Q-Learning / Reinforcement Learning */
 export function ki1QuizTask3(): ExamGridTaskSpec {
   return {
     taskNumber: 3,
-    points: 8,
+    points: 14,
     afbLevel: 2,
     layout: 'stack',
     subsections: [
@@ -22,141 +22,194 @@ export function ki1QuizTask3(): ExamGridTaskSpec {
         quadrant: 'tl',
         kind: 'paragraph',
         variant: 'instruction',
-        text: 'Kreuze jeweils die richtige Antwort an.',
+        text: 'Kreuze jeweils eine oder mehrere richtige Antworten an.',
       },
       {
-        id: 'ki3-a-intro',
+        id: 'ki3-a',
         letter: 'A',
-        title: 'Ordne jedem Beispiel den passenden Begriff zu.',
-        quadrant: 'tl',
-        kind: 'paragraph',
-        text: 'Agent · Zustand · Aktion · Belohnung',
-      },
-      {
-        id: 'ki3-a1',
-        letter: '',
         title: '',
         quadrant: 'tl',
-        kind: 'choice',
-        prompt: 'Das Äffchen beziehungsweise das steuernde Programm',
-        options: RL_BEGRIFF_OPTS,
-        solution: 'A',
-      },
-      {
-        id: 'ki3-a2',
-        letter: '',
-        title: '',
-        quadrant: 'tl',
-        kind: 'choice',
-        prompt: '„Das Fass ist noch 80 Pixel entfernt.“',
-        options: RL_BEGRIFF_OPTS,
+        kind: 'multi-select',
+        prompt:
+          'Ein selbstlernendes Äffchen soll in einem Spiel über Fässer springen. Was bezeichnet man beim Reinforcement Learning als Agenten?',
+        options: [
+          { value: 'A', label: 'Das Fass, weil es die Umgebung verändert' },
+          {
+            value: 'B',
+            label: 'Das Äffchen beziehungsweise das Programm, das Entscheidungen trifft',
+          },
+          { value: 'C', label: 'Die Punktzahl, weil sie das Verhalten bewertet' },
+          { value: 'D', label: 'Die gesamte Spielwelt mit allen Hindernissen' },
+        ],
         solution: 'B',
-      },
-      {
-        id: 'ki3-a3',
-        letter: '',
-        title: '',
-        quadrant: 'tl',
-        kind: 'choice',
-        prompt: '„Springen“',
-        options: RL_BEGRIFF_OPTS,
-        solution: 'C',
-      },
-      {
-        id: 'ki3-a4',
-        letter: '',
-        title: '',
-        quadrant: 'tl',
-        kind: 'choice',
-        prompt: '„+10 Punkte“',
-        options: RL_BEGRIFF_OPTS,
-        solution: 'D',
       },
       {
         id: 'ki3-b',
         letter: 'B',
         title: '',
         quadrant: 'tl',
-        kind: 'choice',
-        prompt:
-          'Nach mehreren Trainingsrunden kann das Äffchen die Fässer schon meistens überspringen. Trotzdem probiert es gelegentlich einen anderen Zug aus. Warum kann das sinnvoll sein?',
-        options: [
-          {
-            value: 'A',
-            label: 'Es könnte dadurch noch eine bessere Strategie entdecken.',
-          },
-          { value: 'B', label: 'Es muss nach jedem Erfolg sein Wissen zurücksetzen.' },
-          {
-            value: 'C',
-            label: 'Es darf dieselbe Aktion niemals zweimal hintereinander wählen.',
-          },
-          { value: 'D', label: 'Seine bisher gelernten Werte werden dadurch gelöscht.' },
-        ],
-        solution: 'A',
+        kind: 'multi-select',
+        prompt: '1. „Das Fass ist noch 80 Pixel entfernt.“',
+        options: RL_TERM_OPTS,
+        solution: 'C',
       },
       {
         id: 'ki3-c',
         letter: 'C',
         title: '',
         quadrant: 'tl',
-        kind: 'choice',
-        prompt:
-          'Gegeben sei der Zustand „Fass 20 Pixel entfernt“. In der vereinfachten Q-Tabelle stehen dafür die Q-Werte: links = 2, rechts = 1, springen = 8. Der Agent nutzt gerade nur Exploitation (keine zufällige Exploration). Welche Aktion wählt er?',
-        options: [
-          { value: 'A', label: 'links (Q = 2)' },
-          { value: 'B', label: 'rechts (Q = 1)' },
-          { value: 'C', label: 'springen (Q = 8)' },
-          { value: 'D', label: 'eine zufällige der drei Aktionen' },
-        ],
-        solution: 'C',
+        kind: 'multi-select',
+        prompt: '2. „Springen“',
+        options: RL_TERM_OPTS,
+        solution: 'A',
       },
       {
         id: 'ki3-d',
         letter: 'D',
         title: '',
         quadrant: 'tl',
-        kind: 'choice',
-        prompt:
-          'Jetzt gibt es kleine und große Fässer. Für große Fässer ist ein anderer Sprung notwendig. Welche Veränderung ist sinnvoll?',
-        options: [
-          { value: 'A', label: 'Die Fassgröße wird Bestandteil des Zustands.' },
-          { value: 'B', label: 'Die Fassgröße wird Bestandteil der Belohnung.' },
-          { value: 'C', label: 'Die Fassgröße wird als mögliche Aktion gespeichert.' },
-          {
-            value: 'D',
-            label:
-              'Die Fassgröße spielt keine Rolle, solange die Entfernung bekannt ist.',
-          },
-        ],
-        solution: 'A',
+        kind: 'multi-select',
+        prompt: '3. „+10 Punkte“',
+        options: RL_TERM_OPTS,
+        solution: 'B',
       },
       {
         id: 'ki3-e',
         letter: 'E',
         title: '',
         quadrant: 'tl',
-        kind: 'choice',
+        kind: 'multi-select',
+        prompt: '4. Die gespeicherten Erfahrungen des Agenten',
+        options: RL_TERM_OPTS,
+        solution: 'D',
+      },
+      {
+        id: 'ki3-f',
+        letter: 'F',
+        title: '',
+        quadrant: 'tl',
+        kind: 'multi-select',
         prompt:
-          'Warum kann eine Q-Tabelle bei Millionen möglicher Spielsituationen problematisch werden?',
+          'Nach mehreren Trainingsrunden springt das Äffchen meistens über die Fässer. Trotzdem läuft es gelegentlich noch absichtlich wirkend in ein Fass hinein. Welche Erklärung passt am besten?',
         options: [
           {
             value: 'A',
             label:
-              'Für sehr viele Zustände und Aktionen müssen entsprechend viele Werte gespeichert und gelernt werden.',
+              'Ein Reinforcement-Learning-Agent vergisst nach jedem erfolgreichen Sprung sein gesamtes Wissen.',
           },
           {
             value: 'B',
             label:
-              'Mit zunehmender Zahl an Zuständen kann jede Aktion nur noch einmal ausprobiert werden.',
+              'Der Agent kann weiterhin zufällige Aktionen ausprobieren, um möglicherweise bessere Strategien zu entdecken.',
           },
           {
             value: 'C',
-            label: 'Eine Q-Tabelle kann nur Zustände mit Zahlenwerten speichern.',
+            label:
+              'Ein Agent darf eine bereits gelernte Aktion grundsätzlich nicht zweimal hintereinander verwenden.',
+          },
+          { value: 'D', label: 'Die Q-Tabelle wird nach jedem Sprung vollständig gelöscht.' },
+        ],
+        solution: 'B',
+      },
+      {
+        id: 'ki3-g',
+        letter: 'G',
+        title: 'Ein Agent spielt ein einfaches Spiel. Nun wird seine Explorationsrate verändert. Beurteile die Aussagen:',
+        quadrant: 'tl',
+        kind: 'wahr-falsch-group',
+        items: [
+          {
+            text: 'Bei einer Explorationsrate von 0 werden keine zufälligen Aktionen aufgrund der Exploration gewählt.',
+            solution: 'W',
           },
           {
-            value: 'D',
-            label: 'Bei mehr als zwei möglichen Aktionen können keine Q-Werte mehr berechnet werden.',
+            text: 'Eine hohe Explorationsrate kann dazu führen, dass ein bereits recht guter Agent trotzdem ungewöhnliche Aktionen ausprobiert.',
+            solution: 'W',
           },
+          {
+            text: 'Je höher die Explorationsrate ist, desto häufiger wählt der Agent automatisch die momentan beste bekannte Aktion.',
+            solution: 'F',
+          },
+          {
+            text: 'Exploration kann sinnvoll sein, weil der Agent dadurch neue Handlungsalternativen entdeckt.',
+            solution: 'W',
+          },
+        ],
+      },
+      {
+        id: 'ki3-h',
+        letter: 'H',
+        title: '',
+        quadrant: 'tl',
+        kind: 'multi-select',
+        prompt:
+          'Für einen Zustand enthält eine vereinfachte Q-Tabelle folgende Werte: <em>Fass 20 Pixel entfernt</em> — links: 2, rechts: 1, springen: 8. Der Agent nutzt gerade keine zufällige Exploration. Welche Aktion sollte er auswählen?',
+        options: [
+          { value: 'A', label: 'links' },
+          { value: 'B', label: 'rechts' },
+          { value: 'C', label: 'springen' },
+          { value: 'D', label: 'Eine zufällige Aktion, weil alle drei Aktionen möglich sind' },
+        ],
+        solution: 'C',
+      },
+      {
+        id: 'ki3-i',
+        letter: 'I',
+        title: '',
+        quadrant: 'tl',
+        kind: 'multi-select',
+        prompt:
+          'Das ursprüngliche Spiel besitzt nur gleich große Fässer. Nun gibt es plötzlich kleine und große Fässer. Für große Fässer ist ein anderer Sprung notwendig. Welche Veränderungen könnten sinnvoll sein? (Mehrere Antworten sind richtig.)',
+        options: [
+          { value: 'A', label: 'Die Größe des Fasses wird Teil des Zustands.' },
+          {
+            value: 'B',
+            label: 'Der Agent erhält Informationen darüber, wie weit das Fass entfernt ist.',
+          },
+          { value: 'C', label: 'Man entfernt alle Informationen über die Position des Fasses.' },
+          {
+            value: 'D',
+            label: 'Jeder Zustand erhält unabhängig vom Verhalten dieselbe Belohnung.',
+          },
+        ],
+        solution: 'A|B',
+      },
+      {
+        id: 'ki3-j',
+        letter: 'J',
+        title: '',
+        quadrant: 'tl',
+        kind: 'multi-select',
+        prompt:
+          'Bei Pong kann eine Q-Tabelle noch relativ klein bleiben. Ein komplexes Spiel besitzt dagegen Millionen möglicher Situationen. Warum kann eine klassische Q-Tabelle dabei problematisch werden?',
+        options: [
+          { value: 'A', label: 'Eine Q-Tabelle kann grundsätzlich höchstens 100 Zustände enthalten.' },
+          {
+            value: 'B',
+            label:
+              'Jeder neue Zustand benötigt zusätzliche Einträge. Bei sehr vielen möglichen Zuständen wird das Lernen dadurch extrem aufwendig.',
+          },
+          { value: 'C', label: 'Q-Learning funktioniert ausschließlich bei Spielen ohne Grafik.' },
+          {
+            value: 'D',
+            label: 'Reinforcement Learning erlaubt grundsätzlich nur drei verschiedene Aktionen.',
+          },
+        ],
+        solution: 'B',
+      },
+      {
+        id: 'ki3-k',
+        letter: 'K',
+        title: '',
+        quadrant: 'tl',
+        kind: 'multi-select',
+        prompt:
+          'Zusatzfrage: Welcher Ansatz kann bei solchen sehr großen Zustandsräumen eingesetzt werden?',
+        options: [
+          { value: 'A', label: 'Deep Q-Learning mit einem neuronalen Netz' },
+          { value: 'B', label: 'Ausschließlich eine größere Schriftart in der Q-Tabelle' },
+          { value: 'C', label: 'Das zufällige Löschen alter Zustände' },
+          { value: 'D', label: 'Das Abschalten sämtlicher Sensoren' },
         ],
         solution: 'A',
       },

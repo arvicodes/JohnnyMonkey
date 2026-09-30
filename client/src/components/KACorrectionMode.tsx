@@ -63,6 +63,7 @@ import {
   parseExamAnswerKey,
   sortExamAnswerFieldIds,
 } from '../lib/examAnswerKey';
+import { examAnswerScoreFraction } from '../lib/examMcPartialScore';
 import {
   examGradeLabelForCorrection,
   examGradeNumericForCorrection,
@@ -1007,7 +1008,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     let autoPoints = 0;
     let manualPoints = 0;
 
-    taskAnswers.forEach(({ taskId, isCorrect, points: fieldMax }) => {
+    taskAnswers.forEach(({ taskId, isCorrect, answer, points: fieldMax }) => {
       const maxPoints = fieldMax ?? pointsDistribution[taskId] ?? 1;
       totalPoints += maxPoints;
       const key = correctionStorageKey(submission.id, taskId);
@@ -1023,9 +1024,17 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       if (manual !== undefined && !Number.isNaN(manual)) {
         manualPoints += manual;
         achievedPoints += manual;
-      } else if (isCorrect === true) {
-        autoPoints += maxPoints;
-        achievedPoints += maxPoints;
+      } else {
+        const correctAnswer = correctAnswers[taskId];
+        const frac =
+          correctAnswer !== undefined
+            ? examAnswerScoreFraction(correctAnswer, answer)
+            : isCorrect === true
+              ? 1
+              : 0;
+        const pts = maxPoints * frac;
+        if (pts > 0) autoPoints += pts;
+        achievedPoints += pts;
       }
     });
 
