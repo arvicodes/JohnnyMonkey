@@ -131,7 +131,7 @@ export function ki1QuizTask3(): ExamGridTaskSpec {
         quadrant: 'tl',
         kind: 'multi-select',
         prompt:
-          'Das ursprüngliche Spiel besitzt nur gleich große Fässer. Nun gibt es plötzlich kleine und große Fässer. Für große Fässer ist ein anderer Sprung notwendig. Welche Veränderungen könnten sinnvoll sein? (Mehrere Antworten sind richtig.)',
+          'Das ursprüngliche Spiel besitzt nur gleich große Fässer. Nun gibt es plötzlich kleine und große Fässer. Für große Fässer ist ein anderer Sprung notwendig. Welche Veränderungen könnten sinnvoll sein?',
         options: [
           { value: 'A', label: 'Die Größe des Fasses wird Teil des Zustands.' },
           {

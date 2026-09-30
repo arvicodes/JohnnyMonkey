@@ -20,7 +20,7 @@ const TURING_TEST_SCRAMBLED = [
 export function ki1QuizTask1(): ExamGridTaskSpec {
   return {
     taskNumber: 1,
-    points: 5,
+    points: 4,
     afbLevel: 1,
     layout: 'stack',
     subsections: [
@@ -88,28 +88,6 @@ export function ki1QuizTask1(): ExamGridTaskSpec {
         sortLayout: 'steps',
         given: TURING_TEST_SCRAMBLED,
         solution: TURING_TEST_ORDERED,
-      },
-      {
-        id: 'ki1-d',
-        letter: 'D',
-        title: '',
-        quadrant: 'tl',
-        kind: 'multi-select',
-        prompt:
-          'Welche zwei Aussagen beschreiben sinnvolle Eigenschaften eines Captchas? Kreuze zwei Antworten an.',
-        options: [
-          { value: 'A', label: 'Es sollte für Menschen relativ einfach zu lösen sein.' },
-          {
-            value: 'B',
-            label: 'Es sollte für Computerprogramme möglichst schwierig zu lösen sein.',
-          },
-          {
-            value: 'C',
-            label: 'Es sollte für Menschen und Computer genau gleich schwierig sein.',
-          },
-          { value: 'D', label: 'Es sollte immer aus einer Rechenaufgabe bestehen.' },
-        ],
-        solution: 'A|B',
       },
       {
         id: 'ki1-e',

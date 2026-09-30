@@ -148,7 +148,7 @@ if (!html.includes('function mcScoreFraction')) {
 }
 
 html = html.replace(
-  /function calculatePoints\(\) \{[\s\S]*?return \{ achieved: achievedPoints, total: \d+ \};\n        \}/,
+  /function calculatePoints\(\) \{[\s\S]*?return \{ achieved: Math\.round\(achievedPoints \* 100\) \/ 100, total: \d+ \};\n        \}/,
   `function calculatePoints() {
             let achievedPoints = 0;
             const fieldMax = ${totalPoints} / Object.keys(correctAnswers).length;

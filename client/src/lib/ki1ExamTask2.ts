@@ -56,7 +56,7 @@ export function ki1QuizTask2(): ExamGridTaskSpec {
         quadrant: 'tl',
         kind: 'multi-select',
         prompt:
-          'Für eine Spielsituation liegen in der Box: 🔴 🔴 🔴 🔴 🔵. Der Computer zieht 🔴 und gewinnt anschließend das Spiel. Was passiert? (Danach: 🔴 🔴 🔴 🔴 🔴 🔵)',
+          'Für eine Spielsituation liegen in der Box: 🔴 🔴 🔴 🔴 🔵. Der Computer zieht 🔴 und gewinnt anschließend das Spiel. Was passiert?',
         options: [
           { value: 'A', label: 'Ein rotes Token wird entfernt.' },
           { value: 'B', label: 'Ein blaues Token wird hinzugefügt.' },
@@ -151,8 +151,7 @@ export function ki1QuizTask2(): ExamGridTaskSpec {
         title: '',
         quadrant: 'tl',
         kind: 'multi-select',
-        prompt:
-          'Welche Situationen führen nach den Regeln von Minischach zu einem Sieg? (Mehrere Antworten sind richtig.)',
+        prompt: 'Welche Situationen führen nach den Regeln von Minischach zu einem Sieg?',
         options: [
           { value: 'A', label: 'Eine eigene Figur erreicht die gegenüberliegende Seite.' },
           { value: 'B', label: 'Alle gegnerischen Figuren wurden geschlagen.' },
@@ -169,7 +168,7 @@ export function ki1QuizTask2(): ExamGridTaskSpec {
         quadrant: 'tl',
         kind: 'multi-select',
         prompt:
-          'In einer Spielsituation liegen zunächst gleich viele rote und blaue Tokens vor. Rot führt mehrfach zum Sieg, Blau mehrfach zur Niederlage. Welche Aussagen können daraus folgen? (Mehrere Antworten sind richtig.)',
+          'In einer Spielsituation liegen zunächst gleich viele rote und blaue Tokens vor. Rot führt mehrfach zum Sieg, Blau mehrfach zur Niederlage. Welche Aussagen können daraus folgen?',
         options: [
           {
             value: 'A',
@@ -195,7 +194,7 @@ export function ki1QuizTask2(): ExamGridTaskSpec {
         quadrant: 'tl',
         kind: 'multi-select',
         prompt:
-          'Ein anderes KI-System soll ebenfalls durch verstärkendes Lernen trainiert werden. Welche Szenarien passen grundsätzlich zu diesem Prinzip? (Mehrere Antworten sind richtig.)',
+          'Ein anderes KI-System soll ebenfalls durch verstärkendes Lernen trainiert werden. Welche Szenarien passen grundsätzlich zu diesem Prinzip?',
         options: [
           {
             value: 'A',
