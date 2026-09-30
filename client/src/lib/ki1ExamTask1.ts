@@ -21,7 +21,6 @@ export function ki1QuizTask1(): ExamGridTaskSpec {
   return {
     taskNumber: 1,
     points: 4,
-    afbLevel: 1,
     layout: 'stack',
     subsections: [
       {

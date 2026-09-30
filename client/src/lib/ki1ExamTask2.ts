@@ -21,7 +21,6 @@ export function ki1QuizTask2(): ExamGridTaskSpec {
   return {
     taskNumber: 2,
     points: 12,
-    afbLevel: 2,
     layout: 'stack',
     subsections: [
       {
@@ -84,7 +83,7 @@ export function ki1QuizTask2(): ExamGridTaskSpec {
         quadrant: 'tl',
         kind: 'multi-select',
         prompt:
-          'Was unterscheidet das Verfahren von klassischer KI? (AFB II) Welche Aussage beschreibt den wichtigsten Unterschied passend?',
+          'Was unterscheidet das Verfahren von klassischer KI? Welche Aussage beschreibt den wichtigsten Unterschied passend?',
         options: [
           { value: 'A', label: 'Bei klassischer KI muss der Computer nicht programmiert werden.' },
           {

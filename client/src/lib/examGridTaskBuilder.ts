@@ -244,7 +244,7 @@ export type GridSubsection =
 export type ExamGridTaskSpec = {
   taskNumber: number;
   points: number;
-  afbLevel: 1 | 2 | 3;
+  afbLevel?: 1 | 2 | 3;
   subsections: GridSubsection[];
   /** grid = 2×2; stack = untereinander (längere Aufgaben) */
   layout?: 'grid' | 'stack';
@@ -1157,7 +1157,12 @@ function buildTaskShell(
   extraClass = '',
   inlineInstructionHtml = '',
 ): string {
-  const afbRoman = spec.afbLevel === 1 ? 'I' : spec.afbLevel === 2 ? 'II' : 'III';
+  const afbRoman =
+    spec.afbLevel === 1 ? 'I' : spec.afbLevel === 2 ? 'II' : spec.afbLevel === 3 ? 'III' : '';
+  const afbBadge =
+    spec.afbLevel && afbRoman
+      ? `                <span class="afb-badge afb-${spec.afbLevel}">AFB ${afbRoman}</span>\n`
+      : '';
   const pointsSpan = inlineInstructionHtml
     ? ''
     : ` <span style="font-size: 11px; color: #666; font-weight: normal;">(${spec.points} Punkte)</span>`;
@@ -1167,8 +1172,7 @@ function buildTaskShell(
         <div class="task-header">
             <div class="task-number">Aufgabe ${spec.taskNumber}${pointsSpan}${instructionSuffix}</div>
             <div class="task-meta teacher-only">
-                <span class="afb-badge afb-${spec.afbLevel}">AFB ${afbRoman}</span>
-                <div class="points">${spec.points} Punkte</div>
+${afbBadge}                <div class="points">${spec.points} Punkte</div>
             </div>
         </div>
         <div class="task-content${extraClass ? ` ${extraClass}` : ''}">
