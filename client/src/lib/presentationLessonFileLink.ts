@@ -11,6 +11,11 @@ export type LessonFolderFsItem = {
 };
 
 export const PRESENTATION_FILE_BROWSER_ROOT = 'J-M-Reihen';
+export const GIT_INTERN_MATERIAL_ROOT = 'git-intern';
+
+function isMaterialRoot(folder: string): boolean {
+  return folder === PRESENTATION_FILE_BROWSER_ROOT || folder === GIT_INTERN_MATERIAL_ROOT;
+}
 
 /** Deck-/Editor-Hilfsdateien nicht in der Link-Liste anbieten. */
 export function isLinkableLessonFileName(name: string): boolean {
@@ -68,12 +73,35 @@ export function lessonFileDisplayLabel(filePath: string, basePath: string): stri
 
 export function parentFolderPath(folderPath: string): string | null {
   const folder = normalizeFsPath(folderPath);
-  if (!folder || folder === PRESENTATION_FILE_BROWSER_ROOT) return null;
+  if (!folder || isMaterialRoot(folder)) return null;
   const idx = folder.lastIndexOf('/');
-  if (idx <= 0) return PRESENTATION_FILE_BROWSER_ROOT;
+  if (idx <= 0) return isMaterialRoot(folder) ? null : PRESENTATION_FILE_BROWSER_ROOT;
   const parent = folder.slice(0, idx);
-  if (!parent.startsWith(PRESENTATION_FILE_BROWSER_ROOT)) return PRESENTATION_FILE_BROWSER_ROOT;
-  return parent;
+  if (isMaterialRoot(parent)) return null;
+
+  if (folder.startsWith(`${GIT_INTERN_MATERIAL_ROOT}/`)) {
+    return parent.startsWith(`${GIT_INTERN_MATERIAL_ROOT}/`) ? parent : null;
+  }
+  if (
+    folder.startsWith(`${PRESENTATION_FILE_BROWSER_ROOT}/`) ||
+    folder === PRESENTATION_FILE_BROWSER_ROOT
+  ) {
+    return parent.startsWith(`${PRESENTATION_FILE_BROWSER_ROOT}/`) ||
+      parent === PRESENTATION_FILE_BROWSER_ROOT
+      ? parent === PRESENTATION_FILE_BROWSER_ROOT
+        ? null
+        : parent
+      : PRESENTATION_FILE_BROWSER_ROOT;
+  }
+
+  const markerIdx = folder.indexOf(JM_REIHEN_MARKER);
+  if (markerIdx >= 0) {
+    const rootEnd = markerIdx + JM_REIHEN_MARKER.length;
+    if (parent.length < rootEnd) return PRESENTATION_FILE_BROWSER_ROOT;
+    return parent;
+  }
+
+  return null;
 }
 
 /** Startordner für den Browser: Eltern des Stundenordners, sonst J-M-Reihen. */
@@ -169,7 +197,7 @@ export async function fetchExamHtmlFilesForLesson(
   lessonPath: string,
   isExamName: (name: string) => boolean,
 ): Promise<LessonFolderFsItem[]> {
-  const lesson = normalizeFsPath(lessonPath);
+  const lesson = toGitInternMaterialPath(normalizeFsPath(lessonPath));
   if (!lesson) return [];
   const byPath = new Map<string, LessonFolderFsItem>();
   const add = (items: LessonFolderFsItem[]) => {
@@ -182,12 +210,19 @@ export async function fetchExamHtmlFilesForLesson(
     }
   };
 
-  add(await fetchLessonFolderLinkableFiles(lesson));
+  try {
+    add(await fetchLessonFolderLinkableFiles(lesson));
+  } catch {
+    /* Stundenordner evtl. nicht lesbar — übergeordnete Ordner trotzdem versuchen */
+  }
 
   let folder: string | null = parentFolderPath(lesson);
-  for (let depth = 0; depth < 4 && folder && folder !== PRESENTATION_FILE_BROWSER_ROOT; depth += 1) {
-    const listing = await fetchFolderBrowseListing(folder);
-    add(listing.files);
+  for (let depth = 0; depth < 4 && folder; depth += 1) {
+    try {
+      add((await fetchFolderBrowseListing(folder)).files);
+    } catch {
+      /* eine Ebene überspringen */
+    }
     folder = parentFolderPath(folder);
   }
 
@@ -197,8 +232,8 @@ export async function fetchExamHtmlFilesForLesson(
 }
 
 export function examFileMenuLabel(filePath: string, lessonPath: string, fileName: string): string {
-  const lesson = normalizeFsPath(lessonPath);
-  const file = normalizeFsPath(filePath);
+  const lesson = toGitInternMaterialPath(normalizeFsPath(lessonPath));
+  const file = toGitInternMaterialPath(normalizeFsPath(filePath));
   const base = (fileName || '').replace(/\.(html|htm)$/i, '');
   if (lesson && file.startsWith(`${lesson}/`)) return base;
   const rel = lessonFileDisplayLabel(file, lesson || '');
