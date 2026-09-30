@@ -4,6 +4,7 @@ import {
   LESSON_PRESENTATION_PDF_EDITED,
   LESSON_PRESENTATION_PDF_ORIGINAL,
 } from './presentationLessonAssets';
+import { isLessonCorrectionFileName } from './openLessonFolderFile';
 
 export const WOCHENAUFGABEN_COLOR = '#ffb74d';
 export const WOCHENAUFGABEN_TEXT_COLOR = '#ef6c00';
@@ -81,9 +82,18 @@ export function hasWochenaufgabenAktivMarker(children: WochenaufgabenFsNode[] | 
   );
 }
 
+/** QZ/KA/HU im Themenordner (neben Stundenordnern) — nur über Folie/Prüfungen, nicht als lose Dateizeile. */
+function omitLooseExamFilesWhenFolderHasSubdirs(items: WochenaufgabenFsNode[]): WochenaufgabenFsNode[] {
+  const hasSubdir = items.some((i) => i?.type === 'directory');
+  if (!hasSubdir) return items;
+  return items.filter(
+    (i) => !(i?.type === 'file' && isLessonCorrectionFileName(String(i.name || ''))),
+  );
+}
+
 /** Ordner/Dateien für die Baum-Vorschau filtern (Wochenaufgaben, Grafiken, nummerierte WA). */
 export function filterVisibleFolderChildren(items: WochenaufgabenFsNode[] | undefined): WochenaufgabenFsNode[] {
-  return (Array.isArray(items) ? items : [])
+  const filtered = (Array.isArray(items) ? items : [])
     .filter((item) => {
       const name = String(item.name || '');
       if (item?.type === 'file' && isWochenaufgabenAktivMarkerName(name)) return false;
@@ -99,6 +109,7 @@ export function filterVisibleFolderChildren(items: WochenaufgabenFsNode[] | unde
       }
       return item;
     });
+  return omitLooseExamFilesWhenFolderHasSubdirs(filtered);
 }
 
 export function isNumberedWochenaufgabePath(path: string): boolean {
