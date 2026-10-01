@@ -189,7 +189,7 @@ export function huKiMss11Task1(): ExamGridTaskSpec {
 export function huKiMss11Task2(): ExamGridTaskSpec {
   return {
     taskNumber: 2,
-    points: 6,
+    points: 12,
     layout: 'stack',
     subsections: [
       {
@@ -228,42 +228,24 @@ export function huKiMss11Task2(): ExamGridTaskSpec {
         letter: 'C',
         title: '',
         quadrant: 'tl',
-        kind: 'one-line',
+        kind: 'essay',
         prompt:
-          'Erläutere die Lernart, die sich am besten eignet, um einem Computer das Schachspielen beizubringen. (2 P)',
+          'Erläutere die Lernart, die sich am besten eignet, um einem Computer das Schachspielen beizubringen. <em>(4 Punkte — manuelle Bewertung)</em>',
         solution: MSS11_SCHACH_MODEL,
-        answerId: 'a2c1',
-      },
-      {
-        id: 'hu11-schach-2',
-        letter: '',
-        title: '',
-        quadrant: 'tl',
-        kind: 'one-line',
-        prompt: '',
-        solution: MSS11_SCHACH_MODEL,
-        answerId: 'a2c2',
+        answerId: 'a2c',
+        rows: 10,
       },
       {
         id: 'hu11-hund',
         letter: 'D',
         title: '',
         quadrant: 'tl',
-        kind: 'one-line',
+        kind: 'essay',
         prompt:
-          'Bewerte, warum diese Lernart nicht dafür geeignet ist, einem Computer beizubringen, in Bildern Hunde und Katzen zu unterscheiden. (2 P)',
+          'Bewerte, warum diese Lernart nicht dafür geeignet ist, einem Computer beizubringen, in Bildern Hunde und Katzen zu unterscheiden. <em>(4 Punkte — manuelle Bewertung)</em>',
         solution: MSS11_HUND_MODEL,
-        answerId: 'a2d1',
-      },
-      {
-        id: 'hu11-hund-2',
-        letter: '',
-        title: '',
-        quadrant: 'tl',
-        kind: 'one-line',
-        prompt: '',
-        solution: MSS11_HUND_MODEL,
-        answerId: 'a2d2',
+        answerId: 'a2d',
+        rows: 10,
       },
     ],
   };
@@ -276,7 +258,7 @@ export function huKiMss13Task1(): ExamGridTaskSpec {
 export function huKiMss13Task2(): ExamGridTaskSpec {
   return {
     taskNumber: 2,
-    points: 4,
+    points: 8,
     layout: 'stack',
     subsections: [
       {
@@ -316,17 +298,8 @@ export function huKiMss13Task2(): ExamGridTaskSpec {
         solution: 'C',
       },
       {
-        id: 'hu13-snap-intro',
-        letter: 'C',
-        title: '',
-        quadrant: 'tl',
-        kind: 'paragraph',
-        text:
-          'Erläutere diesen Snap-Baustein im Bezug auf das Spiel Bananenjagd und die dort verwendete Lernart. Erläutere, welche Lernart sich am besten eignet, um Spam-E-Mails zu erkennen. (2 P)',
-      },
-      {
         id: 'hu13-snap-img',
-        letter: '',
+        letter: 'C',
         title: '',
         quadrant: 'tl',
         kind: 'standalone-image',
@@ -335,27 +308,32 @@ export function huKiMss13Task2(): ExamGridTaskSpec {
         size: 'compact',
       },
       {
-        id: 'hu13-snap-1',
+        id: 'hu13-snap',
         letter: '',
         title: '',
         quadrant: 'tl',
-        kind: 'one-line',
-        prompt: '',
+        kind: 'essay',
+        prompt:
+          'Erläutere den Snap-Baustein im Bezug auf das Spiel Bananenjagd und die dort verwendete Lernart. Erläutere außerdem, welche Lernart sich am besten eignet, um Spam-E-Mails zu erkennen. <em>(4 Punkte — manuelle Bewertung)</em>',
         solution: MSS13_SNAP_MODEL,
-        answerId: 'a2c1',
-      },
-      {
-        id: 'hu13-snap-2',
-        letter: '',
-        title: '',
-        quadrant: 'tl',
-        kind: 'one-line',
-        prompt: '',
-        solution: MSS13_SNAP_MODEL,
-        answerId: 'a2c2',
+        answerId: 'a2c',
+        rows: 10,
       },
     ],
   };
+}
+
+/** Gewichtung: Aufg.1 je 1 P; 2a/2b je 2 P; Freitext(e) je 4 P (manuell in der Korrektur). */
+export function buildHuFieldPoints(answerIds: string[], variant: 'mss11' | 'mss13'): Record<string, number> {
+  const pts: Record<string, number> = {};
+  answerIds.forEach((id) => {
+    if (/^a1/.test(id)) pts[id] = 1;
+  });
+  if (answerIds.includes('a2a')) pts.a2a = 2;
+  if (answerIds.includes('a2b')) pts.a2b = 2;
+  if (answerIds.includes('a2c')) pts.a2c = 4;
+  if (variant === 'mss11' && answerIds.includes('a2d')) pts.a2d = 4;
+  return pts;
 }
 
 export const HU_KI_MSS_EXAMS = [
@@ -365,6 +343,7 @@ export const HU_KI_MSS_EXAMS = [
     title: 'Hausaufgabenüberprüfung (HÜ): Künstliche Intelligenz – MSS 11',
     shortTitle: 'HÜ KI – MSS 11',
     mssClass: 'MSS 11 INFORMATIK',
+    scoringVariant: 'mss11' as const,
     task1: huKiMss11Task1,
     task2: huKiMss11Task2,
   },
@@ -374,6 +353,7 @@ export const HU_KI_MSS_EXAMS = [
     title: 'Hausaufgabenüberprüfung (HÜ): Künstliche Intelligenz – MSS 13',
     shortTitle: 'HÜ KI – MSS 13',
     mssClass: 'MSS 13 INFORMATIK',
+    scoringVariant: 'mss13' as const,
     task1: huKiMss13Task1,
     task2: huKiMss13Task2,
   },

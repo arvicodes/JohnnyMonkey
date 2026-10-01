@@ -16,7 +16,7 @@ const shellPath = path.join(
 );
 
 const { buildExamGridTaskHtml } = await import(pathToFileURL(clientLib).href);
-const { HU_KI_MSS_EXAMS } = await import(pathToFileURL(specsLib).href);
+const { HU_KI_MSS_EXAMS, buildHuFieldPoints } = await import(pathToFileURL(specsLib).href);
 
 const shell = readFileSync(shellPath, 'utf-8');
 
@@ -47,6 +47,8 @@ const mcScoreJs = `
         }
 
         function mcScoreFraction(expected, student) {
+            const manualList = Array.isArray(expected) ? expected : [expected];
+            if (manualList.some(function (a) { return String(a) === '__manual__'; })) return 0;
             if (!examUsesMcPartialScoring(expected)) {
                 return isCorrectMatch(expected, student) ? 1 : 0;
             }
@@ -147,6 +149,24 @@ const HU_EXTRA_CSS = `
         .exam-chart-figure { margin: 6px 0 10px; }
         .exam-chart-figure img { max-width: 100%; height: auto; display: block; }
         .exam-chart-figure--compact { max-width: min(92%, 520px); }
+        .exam-essay-input {
+            display: block;
+            width: 100%;
+            min-height: 10em;
+            padding: 8px 10px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: Arial, sans-serif;
+            line-height: 1.45;
+            resize: vertical;
+        }
+        .exam-essay-input:focus {
+            outline: none;
+            border-color: #E10600;
+            box-shadow: 0 0 0 1px #E10600;
+        }
+        .exam-essay-block { margin-top: 10px; }
 `;
 
 function patchGeneratedHtml(html) {
@@ -170,8 +190,6 @@ function patchGeneratedHtml(html) {
 function applyExamMeta(html, exam) {
   const task1 = exam.task1();
   const task2 = exam.task2();
-  const totalPoints = task1.points + task2.points;
-
   let out = replaceTask(html, 1, buildExamGridTaskHtml(task1));
   out = replaceTask(out, 2, buildExamGridTaskHtml(task2));
   out = removeTask3(out);
@@ -195,24 +213,44 @@ function applyExamMeta(html, exam) {
     `const correctAnswers = {\n${answerLines}\n        };`,
   );
 
-  out = out.replace(/id="totalPoints"[^>]*>\d+</, `id="totalPoints">${totalPoints}<`);
-  out = out.replace(
-    /return \{ achieved: achievedPoints, total: \d+ \};/,
-    `return { achieved: achievedPoints, total: ${totalPoints} };`,
-  );
+  const fieldPoints = buildHuFieldPoints(Object.keys(allAnswers), exam.scoringVariant);
+  const fieldPointsJson = JSON.stringify(fieldPoints);
+  const weightedTotal = Object.values(fieldPoints).reduce((s, n) => s + n, 0);
 
   out = out.replace(
     /function calculatePoints\(\) \{[\s\S]*?return \{ achieved: Math\.round\(achievedPoints \* 100\) \/ 100, total: \d+ \};\n        \}/,
-    `function calculatePoints() {
+    `const EXAM_FIELD_POINTS = ${fieldPointsJson};
+        const EXAM_TOTAL_POINTS = ${weightedTotal};
+        function calculatePoints() {
             let achievedPoints = 0;
-            const fieldMax = ${totalPoints} / Object.keys(correctAnswers).length;
-            Object.keys(correctAnswers).forEach(function (id) {
+            Object.keys(EXAM_FIELD_POINTS).forEach(function (id) {
+                const max = EXAM_FIELD_POINTS[id] || 0;
+                if (!max) return;
                 const frac = mcScoreFraction(correctAnswers[id], getAnswerValue(id));
-                achievedPoints += fieldMax * frac;
+                achievedPoints += max * frac;
             });
-            return { achieved: Math.round(achievedPoints * 100) / 100, total: ${totalPoints} };
+            return { achieved: Math.round(achievedPoints * 100) / 100, total: EXAM_TOTAL_POINTS };
         }`,
   );
+
+  out = out.replace(/id="totalPoints"[^>]*>\d+</, `id="totalPoints">${weightedTotal}<`);
+
+  out = out.replace(
+    /function getAnswerValue\(id\) \{[\s\S]*?\n        \}/,
+    `function getAnswerValue(id) {
+            const input = document.getElementById(id);
+            if (input) {
+                if (input.tagName === 'TEXTAREA' || input.type === 'text' || input.type === 'number') {
+                    return input.value || '';
+                }
+            }
+            const radio = document.querySelector(\`input[name="\${id}"]:checked\`);
+            if (radio) return radio.value || '';
+            return '';
+        }`,
+  );
+
+  out = out.replace(/let timeLeft = \d+ \* 60;/, 'let timeLeft = 20 * 60;');
 
   const key = exam.key;
   out = out.replace(/const KA_KEY = '[^']*'/g, `const KA_KEY = '${key}'`);
@@ -232,7 +270,7 @@ function applyExamMeta(html, exam) {
 
   out = patchGeneratedHtml(out);
 
-  return { html: out, fieldCount: Object.keys(allAnswers).length, totalPoints };
+  return { html: out, fieldCount: Object.keys(allAnswers).length, totalPoints: weightedTotal };
 }
 
 for (const exam of HU_KI_MSS_EXAMS) {

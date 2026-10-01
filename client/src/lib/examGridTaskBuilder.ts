@@ -99,6 +99,18 @@ export type GridSubsection =
       letter: string;
       title: string;
       quadrant: GridQuadrant;
+      kind: 'essay';
+      prompt: string;
+      /** Musterlösung / Hinweis für Lehrer (keine Auto-Bewertung). */
+      solution: string;
+      answerId?: string;
+      rows?: number;
+    } & SubImage
+  | {
+      id: string;
+      letter: string;
+      title: string;
+      quadrant: GridQuadrant;
       kind: 'choice';
       prompt: string;
       options: { label: string; value: string }[];
@@ -789,6 +801,20 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       : '';
     const titleInHeader = Boolean(sub.letter && sub.title && !sub.prompt);
     body = `<div class="item input-group full-width" style="margin-top:${titleInHeader ? 4 : 8}px;">${promptBlock}<input type="text" id="${id}" class="blank-wide" autocomplete="off">${suffix}</div>`;
+  } else if (sub.kind === 'essay') {
+    const id = fieldId(sub, taskNumber, fieldIndex);
+    if (!sub.answerId) fieldIndex.n++;
+    fields.push({
+      id,
+      answers: ['__manual__'],
+      solutionHtml: allowBasicHtml(sub.solution),
+    });
+    const rows = Math.max(4, sub.rows ?? 8);
+    const promptBlock = sub.prompt
+      ? `<p style="margin:0 0 8px;">${allowBasicHtml(sub.prompt)}</p>`
+      : '';
+    const titleInHeader = Boolean(sub.letter && sub.title && !sub.prompt);
+    body = `<div class="item input-group full-width exam-essay-block" style="margin-top:${titleInHeader ? 4 : 8}px;">${promptBlock}<textarea id="${id}" class="exam-essay-input" rows="${rows}" autocomplete="off"></textarea></div>`;
   } else if (sub.kind === 'choice') {
     const id = allocId(taskNumber, fieldIndex.n++);
     const answers = parseSolutionAlternatives(sub.solution, 'text');

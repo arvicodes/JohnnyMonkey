@@ -130,6 +130,7 @@ const PresentationSlideExamBox: React.FC<Props> = ({
   const [groupPickOpen, setGroupPickOpen] = useState(false);
   const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
+  const [startGroupIds, setStartGroupIds] = useState<string[]>([]);
   const [targetGroupIds, setTargetGroupIds] = useState<string[]>([]);
   const [gridBuilderOpen, setGridBuilderOpen] = useState(false);
   const [gridTaskNumbers, setGridTaskNumbers] = useState<number[]>([]);
@@ -157,16 +158,17 @@ const PresentationSlideExamBox: React.FC<Props> = ({
       });
       if (!res.ok) {
         setGroups([]);
-        return;
+        return [];
       }
       const data = (await res.json()) as Array<{ id?: string; name?: string }>;
-      setGroups(
-        (Array.isArray(data) ? data : [])
-          .filter((g) => g.id)
-          .map((g) => ({ id: String(g.id), name: g.name || 'Lerngruppe' })),
-      );
+      const next = (Array.isArray(data) ? data : [])
+        .filter((g) => g.id)
+        .map((g) => ({ id: String(g.id), name: g.name || 'Lerngruppe' }));
+      setGroups(next);
+      return next;
     } catch {
       setGroups([]);
+      return [];
     } finally {
       setLoadingGroups(false);
     }
@@ -300,8 +302,28 @@ const PresentationSlideExamBox: React.FC<Props> = ({
     }
   };
 
+  const openStartGroupPicker = async () => {
+    const list = await loadGroups();
+    const preselect =
+      pickedGroupIds.length > 0
+        ? pickedGroupIds
+        : groupId?.trim()
+          ? [groupId.trim()]
+          : targetGroupIds.length > 0
+            ? targetGroupIds
+            : list.length === 1
+              ? [list[0].id]
+              : [];
+    setStartGroupIds(preselect);
+    setGroupPickOpen(true);
+  };
+
   const toggleRun = async () => {
-    await startForGroups(activeGroupIds);
+    if (isRunning) {
+      await startForGroups(activeGroupIds);
+      return;
+    }
+    await openStartGroupPicker();
   };
 
   const createExam = async () => {
@@ -883,10 +905,13 @@ const PresentationSlideExamBox: React.FC<Props> = ({
         fullWidth
       >
         <DialogTitle sx={dialogCloseTitleSx}>
-          Lerngruppe
+          Prüfung starten — Lerngruppe(n)
           <DialogCloseIconButton onClose={() => setGroupPickOpen(false)} />
         </DialogTitle>
         <DialogContent sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+            Wähle die Lerngruppe(n), die die Prüfung im Vollbild sehen sollen.
+          </Typography>
           {loadingGroups ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 2 }}>
               <CircularProgress size={18} />
@@ -894,20 +919,41 @@ const PresentationSlideExamBox: React.FC<Props> = ({
           ) : groups.length === 0 ? (
             <Typography variant="body2">Keine Lerngruppe gefunden.</Typography>
           ) : (
-            groups.map((g) => (
-              <Button
-                key={g.id}
-                onClick={() => {
-                  setGroupPickOpen(false);
-                  void startForGroups([g.id]);
-                }}
-                sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-              >
-                {g.name}
-              </Button>
-            ))
+            <FormGroup>
+              {groups.map((g) => (
+                <FormControlLabel
+                  key={g.id}
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={startGroupIds.includes(g.id)}
+                      onChange={(_, checked) => {
+                        setStartGroupIds((prev) =>
+                          checked ? [...new Set([...prev, g.id])] : prev.filter((id) => id !== g.id),
+                        );
+                      }}
+                    />
+                  }
+                  label={g.name}
+                />
+              ))}
+            </FormGroup>
           )}
         </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setGroupPickOpen(false)}>Abbrechen</Button>
+          <Button
+            variant="contained"
+            disabled={!startGroupIds.length || busy}
+            onClick={() => {
+              setGroupPickOpen(false);
+              void startForGroups(startGroupIds);
+            }}
+            sx={{ bgcolor: EXAM_RED, '&:hover': { bgcolor: '#b71c1c' } }}
+          >
+            Starten
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );

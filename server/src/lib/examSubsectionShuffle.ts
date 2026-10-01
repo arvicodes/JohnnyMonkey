@@ -53,8 +53,21 @@ export const EXAM_SUBSECTION_SHUFFLE_FUNCTION = `
                 taskIndex += 1;
                 var rng = mulberry32(hashSeed(seedStr + '|task-' + taskIndex));
 
+                var wfTableBody = taskEl.querySelector('.exam-wf-table tbody');
+                if (wfTableBody) {
+                    var tableRows = Array.prototype.slice.call(
+                        wfTableBody.querySelectorAll(':scope > tr'),
+                    );
+                    if (tableRows.length > 1) {
+                        shuffleInPlace(tableRows, rng);
+                        tableRows.forEach(function (el) {
+                            wfTableBody.appendChild(el);
+                        });
+                    }
+                }
+
                 var stack = taskEl.querySelector('.exam-task-stack');
-                if (stack) {
+                if (stack && !wfTableBody) {
                     var subs = Array.prototype.slice.call(
                         stack.querySelectorAll(':scope > .exam-subsection'),
                     );
