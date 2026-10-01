@@ -1418,6 +1418,53 @@
             max-width: 100%;
             justify-content: flex-start;
         }
+    
+        .exam-wf-row {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 12px;
+        }
+        .exam-wf-table {
+            width: 100%;
+            margin: 10px 0 14px;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .exam-wf-table th,
+        .exam-wf-table td {
+            border: 1px solid #333;
+            padding: 6px 8px;
+            vertical-align: middle;
+            text-align: left;
+        }
+        .exam-wf-table th:nth-child(1),
+        .exam-wf-table-num {
+            text-align: center;
+            white-space: nowrap;
+            width: 2.5em;
+        }
+        .exam-wf-table th:nth-child(3),
+        .exam-wf-table th:nth-child(4) {
+            text-align: center;
+            width: 3.5em;
+        }
+        .exam-wf-table-choices {
+            white-space: nowrap;
+        }
+        .exam-wf-table-choices .exam-mc-wf-inline {
+            margin: 0;
+            justify-content: center;
+            width: 100%;
+        }
+        .exam-wf-table-text {
+            line-height: 1.45;
+        }
+        .exam-chart-figure { margin: 6px 0 10px; }
+        .exam-chart-figure img { max-width: 100%; height: auto; display: block; }
+        .exam-chart-figure--compact { max-width: min(92%, 520px); }
+
     </style>
 </head>
 <body>
@@ -1536,7 +1583,7 @@
             </div>
         </div>
         <div class="task-content exam-task-stack">
-<div class="exam-subsection" data-sub-kind="wahr-falsch-group" data-sub-id="hu11-wf" data-exam-spec="%7B%22id%22%3A%22hu11-wf%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22wahr-falsch-group%22%2C%22items%22%3A%5B%7B%22text%22%3A%22Alle%20heutigen%20KI-Systeme%20sind%20als%20%E2%80%9Eschwache%20KI%E2%80%9C%20klassifiziert.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Beim%20maschinellen%20Lernen%20erkennen%20Computer%20Muster.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Beim%20verst%C3%A4rkenden%20Lernen%20probiert%20ein%20Computer%20verschiedene%20Aktionen%20aus%20und%20bewertet%20deren%20Folgen.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Ein%20Computerspiel%2C%20bei%20dem%20eine%20KI%20durch%20Punkte%20f%C3%BCr%20gute%20Aktionen%20lernt%2C%20ist%20ein%20Beispiel%20f%C3%BCr%20ein%20klassisches%20KI-System.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Beim%20verst%C3%A4rkenden%20Lernen%20lernt%20der%20Agent%20durch%20Belohnung%20und%20Bestrafung.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22F%C3%BCr%20den%20Turing%20Test%20ist%20vor%20allem%20das%20beobachtbare%20Verhalten%20der%20Maschine%20entscheidend.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Eine%20Maschine%20kann%20beim%20Turing%20Test%20auch%20dann%20%C3%BCberzeugend%20wirken%2C%20wenn%20einzelne%20Antworten%20sachlich%20falsch%20sind.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Die%20KI%20muss%20beim%20Lernen%20immer%20die%20Aktion%20mit%20dem%20h%C3%B6chsten%20Q-Wert%20ausw%C3%A4hlen.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Eine%20Q-Tabelle%20enth%C3%A4lt%20direkt%20die%20vollst%C3%A4ndigen%20Spielregeln%20des%20Nim-Spiels.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Eine%20hohe%20Learning%20Rate%20bedeutet%2C%20dass%20neue%20Erfahrungen%20die%20bestehenden%20Q-Werte%20st%C3%A4rker%20ver%C3%A4ndern.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Bei%20einer%20%C3%BCberschaubaren%20Anzahl%20m%C3%B6glicher%20Zust%C3%A4nde%20kann%20der%20Agent%20schneller%20Erfahrungen%20sammeln.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Der%20Agent%20kann%20trotz%20seines%20Wissens%2C%20dass%20die%20Aktion%20%E2%80%9Espringen%E2%80%9C%20meist%20erfolgreich%20ist%2C%20eine%20andere%20Aktion%20ausprobieren%2C%20wenn%20die%20Explorationsrate%20dies%20zul%C3%A4sst.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Ein%20selbstlernendes%20%C3%84ffchen%20soll%20in%20einem%20Spiel%20%C3%BCber%20F%C3%A4sser%20springen.%20Beim%20Reinforcement%20Learning%20bezeichnet%20man%20das%20Fass%2C%20weil%20es%20die%20Umgebung%20ver%C3%A4ndert%2C%20als%20Agenten.%22%2C%22solution%22%3A%22F%22%7D%5D%7D"><div class="exam-wf-group"><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">I.</span></span><span class="exam-wf-text">Alle heutigen KI-Systeme sind als „schwache KI“ klassifiziert.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1a"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1a" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">II.</span></span><span class="exam-wf-text">Beim maschinellen Lernen erkennen Computer Muster.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1b"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1b" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">III.</span></span><span class="exam-wf-text">Beim verstärkenden Lernen probiert ein Computer verschiedene Aktionen aus und bewertet deren Folgen.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1c"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1c" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">IV.</span></span><span class="exam-wf-text">Ein Computerspiel, bei dem eine KI durch Punkte für gute Aktionen lernt, ist ein Beispiel für ein klassisches KI-System.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1d"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1d" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">V.</span></span><span class="exam-wf-text">Beim verstärkenden Lernen lernt der Agent durch Belohnung und Bestrafung.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1e"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1e" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">VI.</span></span><span class="exam-wf-text">Für den Turing Test ist vor allem das beobachtbare Verhalten der Maschine entscheidend.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1f"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1f" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">VII.</span></span><span class="exam-wf-text">Eine Maschine kann beim Turing Test auch dann überzeugend wirken, wenn einzelne Antworten sachlich falsch sind.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1g"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1g" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">VIII.</span></span><span class="exam-wf-text">Die KI muss beim Lernen immer die Aktion mit dem höchsten Q-Wert auswählen.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1h"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1h" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">IX.</span></span><span class="exam-wf-text">Eine Q-Tabelle enthält direkt die vollständigen Spielregeln des Nim-Spiels.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1i"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1i" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">10.</span></span><span class="exam-wf-text">Eine hohe Learning Rate bedeutet, dass neue Erfahrungen die bestehenden Q-Werte stärker verändern.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1j"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1j" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">11.</span></span><span class="exam-wf-text">Bei einer überschaubaren Anzahl möglicher Zustände kann der Agent schneller Erfahrungen sammeln.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1k"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1k" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">12.</span></span><span class="exam-wf-text">Der Agent kann trotz seines Wissens, dass die Aktion „springen“ meist erfolgreich ist, eine andere Aktion ausprobieren, wenn die Explorationsrate dies zulässt.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1l"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1l" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">13.</span></span><span class="exam-wf-text">Ein selbstlernendes Äffchen soll in einem Spiel über Fässer springen. Beim Reinforcement Learning bezeichnet man das Fass, weil es die Umgebung verändert, als Agenten.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1m"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1m" value=""></div></div></div>
+<div class="exam-subsection" data-sub-kind="wahr-falsch-group" data-sub-id="hu11-wf" data-exam-spec="%7B%22id%22%3A%22hu11-wf%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22wahr-falsch-group%22%2C%22tableLayout%22%3Atrue%2C%22items%22%3A%5B%7B%22text%22%3A%22Alle%20heutigen%20KI-Systeme%20sind%20als%20%E2%80%9Eschwache%20KI%E2%80%9C%20klassifiziert.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Beim%20maschinellen%20Lernen%20erkennen%20Computer%20Muster.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Beim%20verst%C3%A4rkenden%20Lernen%20probiert%20ein%20Computer%20verschiedene%20Aktionen%20aus%20und%20bewertet%20deren%20Folgen.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Ein%20Computerspiel%2C%20bei%20dem%20eine%20KI%20durch%20Punkte%20f%C3%BCr%20gute%20Aktionen%20lernt%2C%20ist%20ein%20Beispiel%20f%C3%BCr%20ein%20klassisches%20KI-System.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Beim%20verst%C3%A4rkenden%20Lernen%20lernt%20der%20Agent%20durch%20Belohnung%20und%20Bestrafung.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22F%C3%BCr%20den%20Turing%20Test%20ist%20vor%20allem%20das%20beobachtbare%20Verhalten%20der%20Maschine%20entscheidend.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Eine%20Maschine%20kann%20beim%20Turing%20Test%20auch%20dann%20%C3%BCberzeugend%20wirken%2C%20wenn%20einzelne%20Antworten%20sachlich%20falsch%20sind.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Die%20KI%20muss%20beim%20Lernen%20immer%20die%20Aktion%20mit%20dem%20h%C3%B6chsten%20Q-Wert%20ausw%C3%A4hlen.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Eine%20Q-Tabelle%20enth%C3%A4lt%20direkt%20die%20vollst%C3%A4ndigen%20Spielregeln%20des%20Nim-Spiels.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Eine%20hohe%20Learning%20Rate%20bedeutet%2C%20dass%20neue%20Erfahrungen%20die%20bestehenden%20Q-Werte%20st%C3%A4rker%20ver%C3%A4ndern.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Bei%20einer%20%C3%BCberschaubaren%20Anzahl%20m%C3%B6glicher%20Zust%C3%A4nde%20kann%20der%20Agent%20schneller%20Erfahrungen%20sammeln.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Der%20Agent%20kann%20trotz%20seines%20Wissens%2C%20dass%20die%20Aktion%20%E2%80%9Espringen%E2%80%9C%20meist%20erfolgreich%20ist%2C%20eine%20andere%20Aktion%20ausprobieren%2C%20wenn%20die%20Explorationsrate%20dies%20zul%C3%A4sst.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Ein%20selbstlernendes%20%C3%84ffchen%20soll%20in%20einem%20Spiel%20%C3%BCber%20F%C3%A4sser%20springen.%20Beim%20Reinforcement%20Learning%20bezeichnet%20man%20das%20Fass%2C%20weil%20es%20die%20Umgebung%20ver%C3%A4ndert%2C%20als%20Agenten.%22%2C%22solution%22%3A%22F%22%7D%5D%7D"><table class="grade-table exam-wf-table" aria-label="Wahr oder Falsch"><thead><tr><th>Nr.</th><th>Aussage</th><th>Wahr</th><th>Falsch</th></tr></thead><tbody><tr class="exam-wf-table-row"><td class="exam-wf-table-num">1</td><td class="exam-wf-table-text">Alle heutigen KI-Systeme sind als „schwache KI“ klassifiziert.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1a"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1a" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">2</td><td class="exam-wf-table-text">Beim maschinellen Lernen erkennen Computer Muster.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1b"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1b" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">3</td><td class="exam-wf-table-text">Beim verstärkenden Lernen probiert ein Computer verschiedene Aktionen aus und bewertet deren Folgen.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1c"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1c" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">4</td><td class="exam-wf-table-text">Ein Computerspiel, bei dem eine KI durch Punkte für gute Aktionen lernt, ist ein Beispiel für ein klassisches KI-System.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1d"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1d" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">5</td><td class="exam-wf-table-text">Beim verstärkenden Lernen lernt der Agent durch Belohnung und Bestrafung.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1e"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1e" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">6</td><td class="exam-wf-table-text">Für den Turing Test ist vor allem das beobachtbare Verhalten der Maschine entscheidend.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1f"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1f" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">7</td><td class="exam-wf-table-text">Eine Maschine kann beim Turing Test auch dann überzeugend wirken, wenn einzelne Antworten sachlich falsch sind.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1g"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1g" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">8</td><td class="exam-wf-table-text">Die KI muss beim Lernen immer die Aktion mit dem höchsten Q-Wert auswählen.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1h"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1h" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">9</td><td class="exam-wf-table-text">Eine Q-Tabelle enthält direkt die vollständigen Spielregeln des Nim-Spiels.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1i"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1i" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">10</td><td class="exam-wf-table-text">Eine hohe Learning Rate bedeutet, dass neue Erfahrungen die bestehenden Q-Werte stärker verändern.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1j"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1j" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">11</td><td class="exam-wf-table-text">Bei einer überschaubaren Anzahl möglicher Zustände kann der Agent schneller Erfahrungen sammeln.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1k"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1k" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">12</td><td class="exam-wf-table-text">Der Agent kann trotz seines Wissens, dass die Aktion „springen“ meist erfolgreich ist, eine andere Aktion ausprobieren, wenn die Explorationsrate dies zulässt.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1l"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1l" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">13</td><td class="exam-wf-table-text">Ein selbstlernendes Äffchen soll in einem Spiel über Fässer springen. Beim Reinforcement Learning bezeichnet man das Fass, weil es die Umgebung verändert, als Agenten.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1m"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1m" value=""></td></tr></tbody></table></div>
             <div class="solution">
                 <h4>Musterlösung:</h4>
                 <p> I) <strong>Wahr</strong></p>
@@ -1571,10 +1618,10 @@
 <input type="hidden" id="a2a" value="">
 </div><p class="exam-sort-hint">Ordne durch Ziehen: Klicke einen Schritt an und dann die Position, oder ziehe ihn in die Reihe.</p></div>
 <div class="exam-subsection" data-sub-kind="choice" data-sub-id="hu11-q" data-exam-spec="%7B%22id%22%3A%22hu11-q%22%2C%22letter%22%3A%22B%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22choice%22%2C%22prompt%22%3A%22F%C3%BCr%20einen%20Zustand%20enth%C3%A4lt%20eine%20vereinfachte%20Q-Tabelle%20folgende%20Werte%3A%20%3Cem%3EFass%2020%20Pixel%20entfernt%3C%2Fem%3E%20%E2%80%94%20links%3A%202%2C%20rechts%3A%201%2C%20springen%3A%208.%20Der%20Agent%20nutzt%20gerade%20keine%20zuf%C3%A4llige%20Exploration.%20Welche%20Aktion%20sollte%20er%20ausw%C3%A4hlen%3F%22%2C%22options%22%3A%5B%7B%22value%22%3A%22A%22%2C%22label%22%3A%22links%22%7D%2C%7B%22value%22%3A%22B%22%2C%22label%22%3A%22rechts%22%7D%2C%7B%22value%22%3A%22C%22%2C%22label%22%3A%22springen%22%7D%2C%7B%22value%22%3A%22D%22%2C%22label%22%3A%22Eine%20zuf%C3%A4llige%20Aktion%2C%20weil%20alle%20drei%20Aktionen%20m%C3%B6glich%20sind%22%7D%5D%2C%22solution%22%3A%22C%22%7D"><div class="item input-group full-width exam-mc-block"><div class="exam-subsection-title"><span class="item-label">B)</span> Für einen Zustand enthält eine vereinfachte Q-Tabelle folgende Werte: <em>Fass 20 Pixel entfernt</em> — links: 2, rechts: 1, springen: 8. Der Agent nutzt gerade keine zufällige Exploration. Welche Aktion sollte er auswählen?</div><div class="exam-multi-select" data-answer-id="a2b"><label class="exam-mc-option"><input type="checkbox" value="A"> links</label><label class="exam-mc-option"><input type="checkbox" value="B"> rechts</label><label class="exam-mc-option"><input type="checkbox" value="C"> springen</label><label class="exam-mc-option"><input type="checkbox" value="D"> Eine zufällige Aktion, weil alle drei Aktionen möglich sind</label></div><input type="hidden" id="a2b" value=""></div></div>
-<div class="exam-subsection" data-sub-kind="one-line" data-sub-id="hu11-schach" data-exam-spec="%7B%22id%22%3A%22hu11-schach%22%2C%22letter%22%3A%22C%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22Erl%C3%A4utere%20die%20Lernart%2C%20die%20sich%20am%20besten%20eignet%2C%20um%20einem%20Computer%20das%20Schachspielen%20beizubringen.%20(2%20P)%22%2C%22solution%22%3A%22Verst%C3%A4rkendes%20Lernen%20(Reinforcement%20Learning)%3A%20viele%20Partien%2C%20Belohnungen%20f%C3%BCr%20gute%20Z%C3%BCge%2C%20Strategie%20wird%20durch%20Erfahrung%20verbessert.%22%2C%22answerId%22%3A%22hu11-schach-1%22%7D"><div class="exam-subsection-title"><span class="item-label">C)</span> </div><div class="item input-group full-width" style="margin-top:8px;"><p style="margin:0 0 6px;">Erläutere die Lernart, die sich am besten eignet, um einem Computer das Schachspielen beizubringen. (2 P)</p><input type="text" id="hu11-schach-1" class="blank-wide" autocomplete="off"></div></div>
-<div class="exam-subsection" data-sub-kind="one-line" data-sub-id="hu11-schach-2" data-exam-spec="%7B%22id%22%3A%22hu11-schach-2%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22%22%2C%22solution%22%3A%22Verst%C3%A4rkendes%20Lernen%20(Reinforcement%20Learning)%3A%20viele%20Partien%2C%20Belohnungen%20f%C3%BCr%20gute%20Z%C3%BCge%2C%20Strategie%20wird%20durch%20Erfahrung%20verbessert.%22%2C%22answerId%22%3A%22hu11-schach-2%22%7D"><div class="item input-group full-width" style="margin-top:8px;"><input type="text" id="hu11-schach-2" class="blank-wide" autocomplete="off"></div></div>
-<div class="exam-subsection" data-sub-kind="one-line" data-sub-id="hu11-hund" data-exam-spec="%7B%22id%22%3A%22hu11-hund%22%2C%22letter%22%3A%22D%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22Bewerte%2C%20warum%20diese%20Lernart%20nicht%20daf%C3%BCr%20geeignet%20ist%2C%20einem%20Computer%20beizubringen%2C%20in%20Bildern%20Hunde%20und%20Katzen%20zu%20unterscheiden.%20(2%20P)%22%2C%22solution%22%3A%22Bilderkennung%20braucht%20beschriftete%20Beispielbilder%20(%C3%BCberwachtes%2Fbeschriftetes%20Lernen)%2C%20nicht%20Belohnungen%20f%C3%BCr%20Aktionen%20in%20einer%20Umgebung.%22%2C%22answerId%22%3A%22hu11-hund-1%22%7D"><div class="exam-subsection-title"><span class="item-label">D)</span> </div><div class="item input-group full-width" style="margin-top:8px;"><p style="margin:0 0 6px;">Bewerte, warum diese Lernart nicht dafür geeignet ist, einem Computer beizubringen, in Bildern Hunde und Katzen zu unterscheiden. (2 P)</p><input type="text" id="hu11-hund-1" class="blank-wide" autocomplete="off"></div></div>
-<div class="exam-subsection" data-sub-kind="one-line" data-sub-id="hu11-hund-2" data-exam-spec="%7B%22id%22%3A%22hu11-hund-2%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22%22%2C%22solution%22%3A%22Bilderkennung%20braucht%20beschriftete%20Beispielbilder%20(%C3%BCberwachtes%2Fbeschriftetes%20Lernen)%2C%20nicht%20Belohnungen%20f%C3%BCr%20Aktionen%20in%20einer%20Umgebung.%22%2C%22answerId%22%3A%22hu11-hund-2%22%7D"><div class="item input-group full-width" style="margin-top:8px;"><input type="text" id="hu11-hund-2" class="blank-wide" autocomplete="off"></div></div>
+<div class="exam-subsection" data-sub-kind="one-line" data-sub-id="hu11-schach" data-exam-spec="%7B%22id%22%3A%22hu11-schach%22%2C%22letter%22%3A%22C%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22Erl%C3%A4utere%20die%20Lernart%2C%20die%20sich%20am%20besten%20eignet%2C%20um%20einem%20Computer%20das%20Schachspielen%20beizubringen.%20(2%20P)%22%2C%22solution%22%3A%22Verst%C3%A4rkendes%20Lernen%20(Reinforcement%20Learning)%3A%20viele%20Partien%2C%20Belohnungen%20f%C3%BCr%20gute%20Z%C3%BCge%2C%20Strategie%20wird%20durch%20Erfahrung%20verbessert.%22%2C%22answerId%22%3A%22a2c1%22%7D"><div class="exam-subsection-title"><span class="item-label">C)</span> </div><div class="item input-group full-width" style="margin-top:8px;"><p style="margin:0 0 6px;">Erläutere die Lernart, die sich am besten eignet, um einem Computer das Schachspielen beizubringen. (2 P)</p><input type="text" id="a2c1" class="blank-wide" autocomplete="off"></div></div>
+<div class="exam-subsection" data-sub-kind="one-line" data-sub-id="hu11-schach-2" data-exam-spec="%7B%22id%22%3A%22hu11-schach-2%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22%22%2C%22solution%22%3A%22Verst%C3%A4rkendes%20Lernen%20(Reinforcement%20Learning)%3A%20viele%20Partien%2C%20Belohnungen%20f%C3%BCr%20gute%20Z%C3%BCge%2C%20Strategie%20wird%20durch%20Erfahrung%20verbessert.%22%2C%22answerId%22%3A%22a2c2%22%7D"><div class="item input-group full-width" style="margin-top:8px;"><input type="text" id="a2c2" class="blank-wide" autocomplete="off"></div></div>
+<div class="exam-subsection" data-sub-kind="one-line" data-sub-id="hu11-hund" data-exam-spec="%7B%22id%22%3A%22hu11-hund%22%2C%22letter%22%3A%22D%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22Bewerte%2C%20warum%20diese%20Lernart%20nicht%20daf%C3%BCr%20geeignet%20ist%2C%20einem%20Computer%20beizubringen%2C%20in%20Bildern%20Hunde%20und%20Katzen%20zu%20unterscheiden.%20(2%20P)%22%2C%22solution%22%3A%22Bilderkennung%20braucht%20beschriftete%20Beispielbilder%20(%C3%BCberwachtes%2Fbeschriftetes%20Lernen)%2C%20nicht%20Belohnungen%20f%C3%BCr%20Aktionen%20in%20einer%20Umgebung.%22%2C%22answerId%22%3A%22a2d1%22%7D"><div class="exam-subsection-title"><span class="item-label">D)</span> </div><div class="item input-group full-width" style="margin-top:8px;"><p style="margin:0 0 6px;">Bewerte, warum diese Lernart nicht dafür geeignet ist, einem Computer beizubringen, in Bildern Hunde und Katzen zu unterscheiden. (2 P)</p><input type="text" id="a2d1" class="blank-wide" autocomplete="off"></div></div>
+<div class="exam-subsection" data-sub-kind="one-line" data-sub-id="hu11-hund-2" data-exam-spec="%7B%22id%22%3A%22hu11-hund-2%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22%22%2C%22solution%22%3A%22Bilderkennung%20braucht%20beschriftete%20Beispielbilder%20(%C3%BCberwachtes%2Fbeschriftetes%20Lernen)%2C%20nicht%20Belohnungen%20f%C3%BCr%20Aktionen%20in%20einer%20Umgebung.%22%2C%22answerId%22%3A%22a2d2%22%7D"><div class="item input-group full-width" style="margin-top:8px;"><input type="text" id="a2d2" class="blank-wide" autocomplete="off"></div></div>
             <div class="solution">
                 <h4>Musterlösung:</h4>
                 <p>A) 1. Ein Prüfer führt ein Gespräch mit zwei Partnern.<br>2. Einer der Partner ist ein Mensch, der andere eine Maschine.<br>3. Der Prüfer weiß nicht, welcher Partner der Mensch und welcher die Maschine ist.<br>4. Der Prüfer vergleicht die Antworten der beiden Partner.<br>5. Die Maschine gilt als intelligent, wenn der Prüfer sie nicht zuverlässig vom Menschen unterscheiden kann.</p>
@@ -2395,10 +2442,10 @@
             a1m: ['F'],
             a2a: ['Ein Prüfer führt ein Gespräch mit zwei Partnern.|Einer der Partner ist ein Mensch, der andere eine Maschine.|Der Prüfer weiß nicht, welcher Partner der Mensch und welcher die Maschine ist.|Der Prüfer vergleicht die Antworten der beiden Partner.|Die Maschine gilt als intelligent, wenn der Prüfer sie nicht zuverlässig vom Menschen unterscheiden kann.', 'Ein Prüfer führt ein Gespräch mit zwei Partnern. | Einer der Partner ist ein Mensch, der andere eine Maschine. | Der Prüfer weiß nicht, welcher Partner der Mensch und welcher die Maschine ist. | Der Prüfer vergleicht die Antworten der beiden Partner. | Die Maschine gilt als intelligent, wenn der Prüfer sie nicht zuverlässig vom Menschen unterscheiden kann.', 'Ein Pruefer fuehrt ein Gespraech mit zwei Partnern.|Einer der Partner ist ein Mensch, der andere eine Maschine.|Der Pruefer weiss nicht, welcher Partner der Mensch und welcher die Maschine ist.|Der Pruefer vergleicht die Antworten der beiden Partner.|Die Maschine gilt als intelligent, wenn der Pruefer sie nicht zuverlaessig vom Menschen unterscheiden kann.'],
             a2b: ['C'],
-            hu11-schach-1: ['Verstärkendes Lernen (Reinforcement Learning): viele Partien, Belohnungen für gute Züge, Strategie wird durch Erfahrung verbessert.', 'VerstärkendesLernen(ReinforcementLearning):vielePartien,BelohnungenfürguteZüge,StrategiewirddurchErfahrungverbessert.', 'Verstärkendes Lernen (Reinforcement Learning): viele Partien; Belohnungen für gute Züge; Strategie wird durch Erfahrung verbessert.', 'Verstärkendes Lernen (Reinforcement Learning): viele Partien Belohnungen für gute Züge Strategie wird durch Erfahrung verbessert.', 'Verstärkendes Lernen (Reinforcement Learning): viele Partien,Belohnungen für gute Züge,Strategie wird durch Erfahrung verbessert.', 'Verstaerkendes Lernen (Reinforcement Learning): viele Partien, Belohnungen fuer gute Zuege, Strategie wird durch Erfahrung verbessert.'],
-            hu11-schach-2: ['Verstärkendes Lernen (Reinforcement Learning): viele Partien, Belohnungen für gute Züge, Strategie wird durch Erfahrung verbessert.', 'VerstärkendesLernen(ReinforcementLearning):vielePartien,BelohnungenfürguteZüge,StrategiewirddurchErfahrungverbessert.', 'Verstärkendes Lernen (Reinforcement Learning): viele Partien; Belohnungen für gute Züge; Strategie wird durch Erfahrung verbessert.', 'Verstärkendes Lernen (Reinforcement Learning): viele Partien Belohnungen für gute Züge Strategie wird durch Erfahrung verbessert.', 'Verstärkendes Lernen (Reinforcement Learning): viele Partien,Belohnungen für gute Züge,Strategie wird durch Erfahrung verbessert.', 'Verstaerkendes Lernen (Reinforcement Learning): viele Partien, Belohnungen fuer gute Zuege, Strategie wird durch Erfahrung verbessert.'],
-            hu11-hund-1: ['Bilderkennung braucht beschriftete Beispielbilder (überwachtes', 'BilderkennungbrauchtbeschrifteteBeispielbilder(überwachtes', 'Bilderkennung braucht beschriftete Beispielbilder (ueberwachtes', 'beschriftetes Lernen), nicht Belohnungen für Aktionen in einer Umgebung.', 'beschriftetesLernen),nichtBelohnungenfürAktionenineinerUmgebung.', 'beschriftetes Lernen); nicht Belohnungen für Aktionen in einer Umgebung.', 'beschriftetes Lernen) nicht Belohnungen für Aktionen in einer Umgebung.', 'beschriftetes Lernen),nicht Belohnungen für Aktionen in einer Umgebung.', 'beschriftetes Lernen), nicht Belohnungen fuer Aktionen in einer Umgebung.'],
-            hu11-hund-2: ['Bilderkennung braucht beschriftete Beispielbilder (überwachtes', 'BilderkennungbrauchtbeschrifteteBeispielbilder(überwachtes', 'Bilderkennung braucht beschriftete Beispielbilder (ueberwachtes', 'beschriftetes Lernen), nicht Belohnungen für Aktionen in einer Umgebung.', 'beschriftetesLernen),nichtBelohnungenfürAktionenineinerUmgebung.', 'beschriftetes Lernen); nicht Belohnungen für Aktionen in einer Umgebung.', 'beschriftetes Lernen) nicht Belohnungen für Aktionen in einer Umgebung.', 'beschriftetes Lernen),nicht Belohnungen für Aktionen in einer Umgebung.', 'beschriftetes Lernen), nicht Belohnungen fuer Aktionen in einer Umgebung.'],
+            a2c1: ['Verstärkendes Lernen (Reinforcement Learning): viele Partien, Belohnungen für gute Züge, Strategie wird durch Erfahrung verbessert.', 'VerstärkendesLernen(ReinforcementLearning):vielePartien,BelohnungenfürguteZüge,StrategiewirddurchErfahrungverbessert.', 'Verstärkendes Lernen (Reinforcement Learning): viele Partien; Belohnungen für gute Züge; Strategie wird durch Erfahrung verbessert.', 'Verstärkendes Lernen (Reinforcement Learning): viele Partien Belohnungen für gute Züge Strategie wird durch Erfahrung verbessert.', 'Verstärkendes Lernen (Reinforcement Learning): viele Partien,Belohnungen für gute Züge,Strategie wird durch Erfahrung verbessert.', 'Verstaerkendes Lernen (Reinforcement Learning): viele Partien, Belohnungen fuer gute Zuege, Strategie wird durch Erfahrung verbessert.'],
+            a2c2: ['Verstärkendes Lernen (Reinforcement Learning): viele Partien, Belohnungen für gute Züge, Strategie wird durch Erfahrung verbessert.', 'VerstärkendesLernen(ReinforcementLearning):vielePartien,BelohnungenfürguteZüge,StrategiewirddurchErfahrungverbessert.', 'Verstärkendes Lernen (Reinforcement Learning): viele Partien; Belohnungen für gute Züge; Strategie wird durch Erfahrung verbessert.', 'Verstärkendes Lernen (Reinforcement Learning): viele Partien Belohnungen für gute Züge Strategie wird durch Erfahrung verbessert.', 'Verstärkendes Lernen (Reinforcement Learning): viele Partien,Belohnungen für gute Züge,Strategie wird durch Erfahrung verbessert.', 'Verstaerkendes Lernen (Reinforcement Learning): viele Partien, Belohnungen fuer gute Zuege, Strategie wird durch Erfahrung verbessert.'],
+            a2d1: ['Bilderkennung braucht beschriftete Beispielbilder (überwachtes', 'BilderkennungbrauchtbeschrifteteBeispielbilder(überwachtes', 'Bilderkennung braucht beschriftete Beispielbilder (ueberwachtes', 'beschriftetes Lernen), nicht Belohnungen für Aktionen in einer Umgebung.', 'beschriftetesLernen),nichtBelohnungenfürAktionenineinerUmgebung.', 'beschriftetes Lernen); nicht Belohnungen für Aktionen in einer Umgebung.', 'beschriftetes Lernen) nicht Belohnungen für Aktionen in einer Umgebung.', 'beschriftetes Lernen),nicht Belohnungen für Aktionen in einer Umgebung.', 'beschriftetes Lernen), nicht Belohnungen fuer Aktionen in einer Umgebung.'],
+            a2d2: ['Bilderkennung braucht beschriftete Beispielbilder (überwachtes', 'BilderkennungbrauchtbeschrifteteBeispielbilder(überwachtes', 'Bilderkennung braucht beschriftete Beispielbilder (ueberwachtes', 'beschriftetes Lernen), nicht Belohnungen für Aktionen in einer Umgebung.', 'beschriftetesLernen),nichtBelohnungenfürAktionenineinerUmgebung.', 'beschriftetes Lernen); nicht Belohnungen für Aktionen in einer Umgebung.', 'beschriftetes Lernen) nicht Belohnungen für Aktionen in einer Umgebung.', 'beschriftetes Lernen),nicht Belohnungen für Aktionen in einer Umgebung.', 'beschriftetes Lernen), nicht Belohnungen fuer Aktionen in einer Umgebung.'],
         };
 
         function getAnswerValue(id) {
@@ -2408,252 +2455,6 @@
             if (radio) return radio.value || '';
             return '';
         }
-
-        
-        function parseMcLetterSet(raw) {
-            const parts = Array.isArray(raw) ? raw.map(String) : [String(raw || '')];
-            const letters = new Set();
-            parts.forEach(function (p) {
-                const s = String(p).trim();
-                if (!s) return;
-                if (/[|,;]/.test(s)) {
-                    s.split(/[|,;/]/).forEach(function (x) {
-                        const t = x.trim().toUpperCase();
-                        if (/^[A-Z]$/.test(t)) letters.add(t);
-                    });
-                } else if (/^[A-Za-z]$/.test(s)) {
-                    letters.add(s.toUpperCase());
-                }
-            });
-            return Array.from(letters).sort();
-        }
-
-        function examUsesMcPartialScoring(expected) {
-            const letters = parseMcLetterSet(expected);
-            if (!letters.length) return false;
-            if (letters.some(function (l) { return l === 'W' || l === 'F'; })) return false;
-            return letters.every(function (l) { return /^[A-Z]$/.test(l); });
-        }
-
-        function mcScoreFraction(expected, student) {
-            if (!examUsesMcPartialScoring(expected)) {
-                return isCorrectMatch(expected, student) ? 1 : 0;
-            }
-            const correct = parseMcLetterSet(expected);
-            if (!correct.length) return 0;
-            const studentStr = String(student || '').trim();
-            if (!studentStr) return 0;
-            const studentSet = new Set();
-            if (/[|,;]/.test(studentStr)) {
-                studentStr.split(/[|,;/]/).forEach(function (x) {
-                    const t = x.trim().toUpperCase();
-                    if (/^[A-Z]$/.test(t)) studentSet.add(t);
-                });
-            } else if (/^[A-Za-z]$/.test(studentStr)) {
-                studentSet.add(studentStr.toUpperCase());
-            } else {
-                return isCorrectMatch(expected, student) ? 1 : 0;
-            }
-            var right = 0;
-            var wrong = 0;
-            studentSet.forEach(function (l) {
-                if (correct.indexOf(l) >= 0) right += 1;
-                else wrong += 1;
-            });
-            return Math.max(0, (right - wrong) / correct.length);
-        }
-
-        function isCorrectMatch(accepted, value) {
-            const n = normalizeAnswer(value);
-            if (!n) return false;
-            const list = Array.isArray(accepted) ? accepted : [accepted];
-            return list.some(function (a) { return normalizeAnswer(a) === n; });
-        }
-
-        
-        function parseMcLetterSet(raw) {
-            const parts = Array.isArray(raw) ? raw.map(String) : [String(raw || '')];
-            const letters = new Set();
-            parts.forEach(function (p) {
-                const s = String(p).trim();
-                if (!s) return;
-                if (/[|,;]/.test(s)) {
-                    s.split(/[|,;/]/).forEach(function (x) {
-                        const t = x.trim().toUpperCase();
-                        if (/^[A-Z]$/.test(t)) letters.add(t);
-                    });
-                } else if (/^[A-Za-z]$/.test(s)) {
-                    letters.add(s.toUpperCase());
-                }
-            });
-            return Array.from(letters).sort();
-        }
-
-        function examUsesMcPartialScoring(expected) {
-            const letters = parseMcLetterSet(expected);
-            if (!letters.length) return false;
-            if (letters.some(function (l) { return l === 'W' || l === 'F'; })) return false;
-            return letters.every(function (l) { return /^[A-Z]$/.test(l); });
-        }
-
-        function mcScoreFraction(expected, student) {
-            if (!examUsesMcPartialScoring(expected)) {
-                return isCorrectMatch(expected, student) ? 1 : 0;
-            }
-            const correct = parseMcLetterSet(expected);
-            if (!correct.length) return 0;
-            const studentStr = String(student || '').trim();
-            if (!studentStr) return 0;
-            const studentSet = new Set();
-            if (/[|,;]/.test(studentStr)) {
-                studentStr.split(/[|,;/]/).forEach(function (x) {
-                    const t = x.trim().toUpperCase();
-                    if (/^[A-Z]$/.test(t)) studentSet.add(t);
-                });
-            } else if (/^[A-Za-z]$/.test(studentStr)) {
-                studentSet.add(studentStr.toUpperCase());
-            } else {
-                return isCorrectMatch(expected, student) ? 1 : 0;
-            }
-            var right = 0;
-            var wrong = 0;
-            studentSet.forEach(function (l) {
-                if (correct.indexOf(l) >= 0) right += 1;
-                else wrong += 1;
-            });
-            return Math.max(0, (right - wrong) / correct.length);
-        }
-
-        function isCorrectMatch(accepted, value) {
-            const n = normalizeAnswer(value);
-            if (!n) return false;
-            const list = Array.isArray(accepted) ? accepted : [accepted];
-            return list.some(function (a) { return normalizeAnswer(a) === n; });
-        }
-
-        
-        function parseMcLetterSet(raw) {
-            const parts = Array.isArray(raw) ? raw.map(String) : [String(raw || '')];
-            const letters = new Set();
-            parts.forEach(function (p) {
-                const s = String(p).trim();
-                if (!s) return;
-                if (/[|,;]/.test(s)) {
-                    s.split(/[|,;/]/).forEach(function (x) {
-                        const t = x.trim().toUpperCase();
-                        if (/^[A-Z]$/.test(t)) letters.add(t);
-                    });
-                } else if (/^[A-Za-z]$/.test(s)) {
-                    letters.add(s.toUpperCase());
-                }
-            });
-            return Array.from(letters).sort();
-        }
-
-        function examUsesMcPartialScoring(expected) {
-            const letters = parseMcLetterSet(expected);
-            if (!letters.length) return false;
-            if (letters.some(function (l) { return l === 'W' || l === 'F'; })) return false;
-            return letters.every(function (l) { return /^[A-Z]$/.test(l); });
-        }
-
-        function mcScoreFraction(expected, student) {
-            if (!examUsesMcPartialScoring(expected)) {
-                return isCorrectMatch(expected, student) ? 1 : 0;
-            }
-            const correct = parseMcLetterSet(expected);
-            if (!correct.length) return 0;
-            const studentStr = String(student || '').trim();
-            if (!studentStr) return 0;
-            const studentSet = new Set();
-            if (/[|,;]/.test(studentStr)) {
-                studentStr.split(/[|,;/]/).forEach(function (x) {
-                    const t = x.trim().toUpperCase();
-                    if (/^[A-Z]$/.test(t)) studentSet.add(t);
-                });
-            } else if (/^[A-Za-z]$/.test(studentStr)) {
-                studentSet.add(studentStr.toUpperCase());
-            } else {
-                return isCorrectMatch(expected, student) ? 1 : 0;
-            }
-            var right = 0;
-            var wrong = 0;
-            studentSet.forEach(function (l) {
-                if (correct.indexOf(l) >= 0) right += 1;
-                else wrong += 1;
-            });
-            return Math.max(0, (right - wrong) / correct.length);
-        }
-
-        function isCorrectMatch(accepted, value) {
-            const n = normalizeAnswer(value);
-            if (!n) return false;
-            const list = Array.isArray(accepted) ? accepted : [accepted];
-            return list.some(function (a) { return normalizeAnswer(a) === n; });
-        }
-
-        
-        function parseMcLetterSet(raw) {
-            const parts = Array.isArray(raw) ? raw.map(String) : [String(raw || '')];
-            const letters = new Set();
-            parts.forEach(function (p) {
-                const s = String(p).trim();
-                if (!s) return;
-                if (/[|,;]/.test(s)) {
-                    s.split(/[|,;/]/).forEach(function (x) {
-                        const t = x.trim().toUpperCase();
-                        if (/^[A-Z]$/.test(t)) letters.add(t);
-                    });
-                } else if (/^[A-Za-z]$/.test(s)) {
-                    letters.add(s.toUpperCase());
-                }
-            });
-            return Array.from(letters).sort();
-        }
-
-        function examUsesMcPartialScoring(expected) {
-            const letters = parseMcLetterSet(expected);
-            if (!letters.length) return false;
-            if (letters.some(function (l) { return l === 'W' || l === 'F'; })) return false;
-            return letters.every(function (l) { return /^[A-Z]$/.test(l); });
-        }
-
-        function mcScoreFraction(expected, student) {
-            if (!examUsesMcPartialScoring(expected)) {
-                return isCorrectMatch(expected, student) ? 1 : 0;
-            }
-            const correct = parseMcLetterSet(expected);
-            if (!correct.length) return 0;
-            const studentStr = String(student || '').trim();
-            if (!studentStr) return 0;
-            const studentSet = new Set();
-            if (/[|,;]/.test(studentStr)) {
-                studentStr.split(/[|,;/]/).forEach(function (x) {
-                    const t = x.trim().toUpperCase();
-                    if (/^[A-Z]$/.test(t)) studentSet.add(t);
-                });
-            } else if (/^[A-Za-z]$/.test(studentStr)) {
-                studentSet.add(studentStr.toUpperCase());
-            } else {
-                return isCorrectMatch(expected, student) ? 1 : 0;
-            }
-            var right = 0;
-            var wrong = 0;
-            studentSet.forEach(function (l) {
-                if (correct.indexOf(l) >= 0) right += 1;
-                else wrong += 1;
-            });
-            return Math.max(0, (right - wrong) / correct.length);
-        }
-
-        function isCorrectMatch(accepted, value) {
-            const n = normalizeAnswer(value);
-            if (!n) return false;
-            const list = Array.isArray(accepted) ? accepted : [accepted];
-            return list.some(function (a) { return normalizeAnswer(a) === n; });
-        }
-
-        
         function parseMcLetterSet(raw) {
             const parts = Array.isArray(raw) ? raw.map(String) : [String(raw || '')];
             const letters = new Set();
@@ -2718,8 +2519,7 @@
             const accepted = correctAnswers[id] || [];
             return mcScoreFraction(accepted, value) >= 1 - 1e-9;
         }
-
-        const GRADE_TABLE = {
+const GRADE_TABLE = {
             14: { text: 'sehr gut', withTendency: '1' },
             13: { text: 'sehr gut', withTendency: '1−' },
             12: { text: 'gut', withTendency: '2+' },
@@ -2982,8 +2782,7 @@
         <p>Du hast ${points.achieved} von ${points.total} Punkten erreicht.</p>
         <p><strong>Note:</strong> ${grade.text} / ${grade.withTendency}</p>
     </div>
-</body>
-</html>`;
+<\/body>\n<\/html>`;
             const printWindow = window.open('', '_blank');
             printWindow.document.write(printHTML);
             printWindow.document.close();

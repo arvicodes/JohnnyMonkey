@@ -16,19 +16,24 @@ const TURING_TEST_SCRAMBLED = [
   'Der Prüfer weiß nicht, welcher Partner der Mensch und welcher die Maschine ist.',
 ].join('|');
 
-const RL_FOUR_ORDERED = [
-  'Der Agent befindet sich in einem bestimmten Zustand.',
-  'Der Agent führt eine Aktion aus.',
-  'Der Agent erhält eine Belohnung oder Bestrafung.',
-  'Das Modell des Agenten wird angepasst.',
+const RL_FIVE_ORDERED = [
+  'Der Computer befindet sich in einer Spielsituation.',
+  'Ein möglicher Zug wird ausgewählt.',
+  'Der Zug wird ausgeführt.',
+  'Das Ergebnis wird bewertet.',
+  'Die Wahrscheinlichkeit zukünftiger Entscheidungen wird angepasst.',
 ].join('|');
 
-const RL_FOUR_SCRAMBLED = [
-  'Der Agent erhält eine Belohnung oder Bestrafung.',
-  'Der Agent befindet sich in einem bestimmten Zustand.',
-  'Das Modell des Agenten wird angepasst.',
-  'Der Agent führt eine Aktion aus.',
+const RL_FIVE_SCRAMBLED = [
+  'Das Ergebnis wird bewertet.',
+  'Die Wahrscheinlichkeit zukünftiger Entscheidungen wird angepasst.',
+  'Ein möglicher Zug wird ausgewählt.',
+  'Der Zug wird ausgeführt.',
+  'Der Computer befindet sich in einer Spielsituation.',
 ].join('|');
+
+const SNAP_IMAGE_SRC =
+  '/api/file-system-paths/read-image?filePath=git-intern%2FInformatik%2FMSS%20Grundthemen%2F11-04%20KI%2Fhu-ki-mss-13-snap-belohnung.png';
 
 /** Freitext: Musterlösung für Lehreransicht (keine exakte Auto-Bewertung erwartet). */
 const MSS11_SCHACH_MODEL =
@@ -170,6 +175,7 @@ function wfTask1(items: { text: string; solution: 'W' | 'F' }[], idPrefix: strin
         title: '',
         quadrant: 'tl',
         kind: 'wahr-falsch-group',
+        tableLayout: true,
         items,
       },
     ],
@@ -226,7 +232,7 @@ export function huKiMss11Task2(): ExamGridTaskSpec {
         prompt:
           'Erläutere die Lernart, die sich am besten eignet, um einem Computer das Schachspielen beizubringen. (2 P)',
         solution: MSS11_SCHACH_MODEL,
-        answerId: 'hu11-schach-1',
+        answerId: 'a2c1',
       },
       {
         id: 'hu11-schach-2',
@@ -236,7 +242,7 @@ export function huKiMss11Task2(): ExamGridTaskSpec {
         kind: 'one-line',
         prompt: '',
         solution: MSS11_SCHACH_MODEL,
-        answerId: 'hu11-schach-2',
+        answerId: 'a2c2',
       },
       {
         id: 'hu11-hund',
@@ -247,7 +253,7 @@ export function huKiMss11Task2(): ExamGridTaskSpec {
         prompt:
           'Bewerte, warum diese Lernart nicht dafür geeignet ist, einem Computer beizubringen, in Bildern Hunde und Katzen zu unterscheiden. (2 P)',
         solution: MSS11_HUND_MODEL,
-        answerId: 'hu11-hund-1',
+        answerId: 'a2d1',
       },
       {
         id: 'hu11-hund-2',
@@ -257,7 +263,7 @@ export function huKiMss11Task2(): ExamGridTaskSpec {
         kind: 'one-line',
         prompt: '',
         solution: MSS11_HUND_MODEL,
-        answerId: 'hu11-hund-2',
+        answerId: 'a2d2',
       },
     ],
   };
@@ -277,14 +283,14 @@ export function huKiMss13Task2(): ExamGridTaskSpec {
         id: 'hu13-sort',
         letter: 'A',
         title:
-          'Bringe die vier Schritte des Reinforcement Learnings in eine sinnvolle Reihenfolge.',
+          'Bringe die Schritte des verstärkenden Lernens in eine sinnvolle Reihenfolge.',
         quadrant: 'tl',
         kind: 'sort',
         interaction: 'drag',
         sortJoin: 'pipe',
         sortLayout: 'steps',
-        given: RL_FOUR_SCRAMBLED,
-        solution: RL_FOUR_ORDERED,
+        given: RL_FIVE_SCRAMBLED,
+        solution: RL_FIVE_ORDERED,
       },
       {
         id: 'hu13-train',
@@ -324,7 +330,7 @@ export function huKiMss13Task2(): ExamGridTaskSpec {
         title: '',
         quadrant: 'tl',
         kind: 'standalone-image',
-        src: 'hu-ki-mss-13-snap-belohnung.png',
+        src: SNAP_IMAGE_SRC,
         alt: 'Snap-Baustein: Belohnung abhängig vom Berühren eines Fasses',
         size: 'compact',
       },
@@ -336,7 +342,7 @@ export function huKiMss13Task2(): ExamGridTaskSpec {
         kind: 'one-line',
         prompt: '',
         solution: MSS13_SNAP_MODEL,
-        answerId: 'hu13-snap-1',
+        answerId: 'a2c1',
       },
       {
         id: 'hu13-snap-2',
@@ -346,7 +352,7 @@ export function huKiMss13Task2(): ExamGridTaskSpec {
         kind: 'one-line',
         prompt: '',
         solution: MSS13_SNAP_MODEL,
-        answerId: 'hu13-snap-2',
+        answerId: 'a2c2',
       },
     ],
   };

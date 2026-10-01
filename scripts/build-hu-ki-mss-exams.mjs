@@ -97,6 +97,76 @@ function removeTask3(html) {
   return html.replace(re, '');
 }
 
+function formatAnswerKey(key) {
+  return /^[a-zA-Z_$][\w$]*$/.test(key) ? key : `'${key.replace(/'/g, "\\'")}'`;
+}
+
+const HU_EXTRA_CSS = `
+        .exam-wf-row {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 12px;
+        }
+        .exam-wf-table {
+            width: 100%;
+            margin: 10px 0 14px;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .exam-wf-table th,
+        .exam-wf-table td {
+            border: 1px solid #333;
+            padding: 6px 8px;
+            vertical-align: middle;
+            text-align: left;
+        }
+        .exam-wf-table th:nth-child(1),
+        .exam-wf-table-num {
+            text-align: center;
+            white-space: nowrap;
+            width: 2.5em;
+        }
+        .exam-wf-table th:nth-child(3),
+        .exam-wf-table th:nth-child(4) {
+            text-align: center;
+            width: 3.5em;
+        }
+        .exam-wf-table-choices {
+            white-space: nowrap;
+        }
+        .exam-wf-table-choices .exam-mc-wf-inline {
+            margin: 0;
+            justify-content: center;
+            width: 100%;
+        }
+        .exam-wf-table-text {
+            line-height: 1.45;
+        }
+        .exam-chart-figure { margin: 6px 0 10px; }
+        .exam-chart-figure img { max-width: 100%; height: auto; display: block; }
+        .exam-chart-figure--compact { max-width: min(92%, 520px); }
+`;
+
+function patchGeneratedHtml(html) {
+  let out = html;
+  if (!out.includes('.exam-wf-table')) {
+    out = out.replace('</style>', `${HU_EXTRA_CSS}\n    </style>`);
+  }
+  out = out.replace(
+    /(\s+function parseMcLetterSet\([\s\S]*?function isCorrect\(id, value\)[\s\S]*?\n        \}\s*)+/g,
+    `${mcScoreJs}
+        function isCorrect(id, value) {
+            const accepted = correctAnswers[id] || [];
+            return mcScoreFraction(accepted, value) >= 1 - 1e-9;
+        }
+`,
+  );
+  out = out.replace(/<\/body>\s*\n<\/html>`;/g, '<\\/body>\\n<\\/html>`;');
+  return out;
+}
+
 function applyExamMeta(html, exam) {
   const task1 = exam.task1();
   const task2 = exam.task2();
@@ -116,7 +186,7 @@ function applyExamMeta(html, exam) {
       const inner = vals
         .map((x) => `'${String(x).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`)
         .join(', ');
-      return `            ${k}: [${inner}],`;
+      return `            ${formatAnswerKey(k)}: [${inner}],`;
     })
     .join('\n');
 
@@ -129,15 +199,6 @@ function applyExamMeta(html, exam) {
   out = out.replace(
     /return \{ achieved: achievedPoints, total: \d+ \};/,
     `return { achieved: achievedPoints, total: ${totalPoints} };`,
-  );
-
-  out = out.replace(
-    /function isCorrect\(id, value\) \{[\s\S]*?\n        \}/,
-    `${mcScoreJs}
-        function isCorrect(id, value) {
-            const accepted = correctAnswers[id] || [];
-            return mcScoreFraction(accepted, value) >= 1 - 1e-9;
-        }`,
   );
 
   out = out.replace(
@@ -168,6 +229,8 @@ function applyExamMeta(html, exam) {
     `<div class="header-class">${exam.mssClass}</div>`,
   );
   out = out.replace(/id="aidsTime"[^>]*>[^<]*</, 'id="aidsTime" contenteditable="false">20 Min<');
+
+  out = patchGeneratedHtml(out);
 
   return { html: out, fieldCount: Object.keys(allAnswers).length, totalPoints };
 }

@@ -1418,6 +1418,53 @@
             max-width: 100%;
             justify-content: flex-start;
         }
+    
+        .exam-wf-row {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 12px;
+        }
+        .exam-wf-table {
+            width: 100%;
+            margin: 10px 0 14px;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .exam-wf-table th,
+        .exam-wf-table td {
+            border: 1px solid #333;
+            padding: 6px 8px;
+            vertical-align: middle;
+            text-align: left;
+        }
+        .exam-wf-table th:nth-child(1),
+        .exam-wf-table-num {
+            text-align: center;
+            white-space: nowrap;
+            width: 2.5em;
+        }
+        .exam-wf-table th:nth-child(3),
+        .exam-wf-table th:nth-child(4) {
+            text-align: center;
+            width: 3.5em;
+        }
+        .exam-wf-table-choices {
+            white-space: nowrap;
+        }
+        .exam-wf-table-choices .exam-mc-wf-inline {
+            margin: 0;
+            justify-content: center;
+            width: 100%;
+        }
+        .exam-wf-table-text {
+            line-height: 1.45;
+        }
+        .exam-chart-figure { margin: 6px 0 10px; }
+        .exam-chart-figure img { max-width: 100%; height: auto; display: block; }
+        .exam-chart-figure--compact { max-width: min(92%, 520px); }
+
     </style>
 </head>
 <body>
@@ -1536,7 +1583,7 @@
             </div>
         </div>
         <div class="task-content exam-task-stack">
-<div class="exam-subsection" data-sub-kind="wahr-falsch-group" data-sub-id="hu13-wf" data-exam-spec="%7B%22id%22%3A%22hu13-wf%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22wahr-falsch-group%22%2C%22items%22%3A%5B%7B%22text%22%3A%22KI-Systeme%2C%20die%20sich%20nur%20auf%20bestimmte%20Anwendungsgebiete%20spezialisieren%2C%20z.%E2%80%AFB.%20Chatbots%2C%20sind%20als%20%E2%80%9Estarke%20KI%E2%80%9C%20klassifiziert.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Beim%20maschinellen%20Lernen%20k%C3%B6nnen%20erkannte%20Muster%20genutzt%20werden%2C%20um%20neue%20Daten%20einzuordnen.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Beim%20beschrifteten%20Lernen%20erh%C3%A4lt%20der%20Computer%20f%C3%BCr%20seine%20Aktionen%20Belohnungen%20oder%20Bestrafungen.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Ein%20Computerspiel%2C%20bei%20dem%20eine%20KI%20durch%20Punkte%20f%C3%BCr%20gute%20Aktionen%20lernt%2C%20ist%20ein%20Beispiel%20f%C3%BCr%20verst%C3%A4rkendes%20Lernen.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Beispieldaten%2C%20bei%20denen%20die%20richtige%20Beschriftung%20bekannt%20ist%2C%20nennt%20man%20Testdaten.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Eine%20Maschine%20besteht%20den%20Turing%20Test%20automatisch%2C%20wenn%20sie%20alle%20gestellten%20Fragen%20richtig%20beantwortet.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Beim%20Turing%20Test%20spielt%20es%20keine%20Rolle%2C%20mit%20welchem%20Verfahren%20die%20Maschine%20ihre%20Antworten%20erzeugt.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Das%20Nim-Spiel%20ist%20ein%20klassisches%20Beispiel%20f%C3%BCr%20beschriftetes%20Lernen.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Eine%20hohe%20Explorationsrate%20bedeutet%2C%20dass%20besonders%20h%C3%A4ufig%20neue%20oder%20zuf%C3%A4llige%20Aktionen%20ausprobiert%20werden.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Eine%20hohe%20Learning%20Rate%20bedeutet%2C%20dass%20besonders%20h%C3%A4ufig%20neue%20oder%20zuf%C3%A4llige%20Aktionen%20ausprobiert%20werden.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22In%20der%20Q-Tabelle%20wird%20gez%C3%A4hlt%2C%20wie%20oft%20der%20Agent%20ein%20Spiel%20bereits%20gespielt%20hat.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Wenn%20die%20Explorationsrate%20sehr%20hoch%20ist%2C%20werden%20alle%20Werte%20in%20der%20Q-Tabelle%20gleich%20gro%C3%9F.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Alan%20Turing%20schlug%20im%20Zusammenhang%20mit%20KI%20eine%20operative%20Definition%20anhand%20beobachtbaren%20Verhaltens%20vor.%22%2C%22solution%22%3A%22W%22%7D%5D%7D"><div class="exam-wf-group"><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">I.</span></span><span class="exam-wf-text">KI-Systeme, die sich nur auf bestimmte Anwendungsgebiete spezialisieren, z. B. Chatbots, sind als „starke KI“ klassifiziert.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1a"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1a" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">II.</span></span><span class="exam-wf-text">Beim maschinellen Lernen können erkannte Muster genutzt werden, um neue Daten einzuordnen.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1b"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1b" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">III.</span></span><span class="exam-wf-text">Beim beschrifteten Lernen erhält der Computer für seine Aktionen Belohnungen oder Bestrafungen.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1c"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1c" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">IV.</span></span><span class="exam-wf-text">Ein Computerspiel, bei dem eine KI durch Punkte für gute Aktionen lernt, ist ein Beispiel für verstärkendes Lernen.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1d"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1d" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">V.</span></span><span class="exam-wf-text">Beispieldaten, bei denen die richtige Beschriftung bekannt ist, nennt man Testdaten.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1e"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1e" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">VI.</span></span><span class="exam-wf-text">Eine Maschine besteht den Turing Test automatisch, wenn sie alle gestellten Fragen richtig beantwortet.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1f"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1f" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">VII.</span></span><span class="exam-wf-text">Beim Turing Test spielt es keine Rolle, mit welchem Verfahren die Maschine ihre Antworten erzeugt.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1g"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1g" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">VIII.</span></span><span class="exam-wf-text">Das Nim-Spiel ist ein klassisches Beispiel für beschriftetes Lernen.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1h"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1h" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">IX.</span></span><span class="exam-wf-text">Eine hohe Explorationsrate bedeutet, dass besonders häufig neue oder zufällige Aktionen ausprobiert werden.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1i"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1i" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">10.</span></span><span class="exam-wf-text">Eine hohe Learning Rate bedeutet, dass besonders häufig neue oder zufällige Aktionen ausprobiert werden.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1j"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1j" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">11.</span></span><span class="exam-wf-text">In der Q-Tabelle wird gezählt, wie oft der Agent ein Spiel bereits gespielt hat.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1k"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1k" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">12.</span></span><span class="exam-wf-text">Wenn die Explorationsrate sehr hoch ist, werden alle Werte in der Q-Tabelle gleich groß.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1l"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1l" value=""></div><div class="exam-wf-item item input-group exam-wf-row"><div class="exam-wf-prompt-line"><span class="exam-wf-roman"><span class="item-label">13.</span></span><span class="exam-wf-text">Alan Turing schlug im Zusammenhang mit KI eine operative Definition anhand beobachtbaren Verhaltens vor.</span></div><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1m"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1m" value=""></div></div></div>
+<div class="exam-subsection" data-sub-kind="wahr-falsch-group" data-sub-id="hu13-wf" data-exam-spec="%7B%22id%22%3A%22hu13-wf%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22wahr-falsch-group%22%2C%22tableLayout%22%3Atrue%2C%22items%22%3A%5B%7B%22text%22%3A%22KI-Systeme%2C%20die%20sich%20nur%20auf%20bestimmte%20Anwendungsgebiete%20spezialisieren%2C%20z.%E2%80%AFB.%20Chatbots%2C%20sind%20als%20%E2%80%9Estarke%20KI%E2%80%9C%20klassifiziert.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Beim%20maschinellen%20Lernen%20k%C3%B6nnen%20erkannte%20Muster%20genutzt%20werden%2C%20um%20neue%20Daten%20einzuordnen.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Beim%20beschrifteten%20Lernen%20erh%C3%A4lt%20der%20Computer%20f%C3%BCr%20seine%20Aktionen%20Belohnungen%20oder%20Bestrafungen.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Ein%20Computerspiel%2C%20bei%20dem%20eine%20KI%20durch%20Punkte%20f%C3%BCr%20gute%20Aktionen%20lernt%2C%20ist%20ein%20Beispiel%20f%C3%BCr%20verst%C3%A4rkendes%20Lernen.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Beispieldaten%2C%20bei%20denen%20die%20richtige%20Beschriftung%20bekannt%20ist%2C%20nennt%20man%20Testdaten.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Eine%20Maschine%20besteht%20den%20Turing%20Test%20automatisch%2C%20wenn%20sie%20alle%20gestellten%20Fragen%20richtig%20beantwortet.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Beim%20Turing%20Test%20spielt%20es%20keine%20Rolle%2C%20mit%20welchem%20Verfahren%20die%20Maschine%20ihre%20Antworten%20erzeugt.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Das%20Nim-Spiel%20ist%20ein%20klassisches%20Beispiel%20f%C3%BCr%20beschriftetes%20Lernen.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Eine%20hohe%20Explorationsrate%20bedeutet%2C%20dass%20besonders%20h%C3%A4ufig%20neue%20oder%20zuf%C3%A4llige%20Aktionen%20ausprobiert%20werden.%22%2C%22solution%22%3A%22W%22%7D%2C%7B%22text%22%3A%22Eine%20hohe%20Learning%20Rate%20bedeutet%2C%20dass%20besonders%20h%C3%A4ufig%20neue%20oder%20zuf%C3%A4llige%20Aktionen%20ausprobiert%20werden.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22In%20der%20Q-Tabelle%20wird%20gez%C3%A4hlt%2C%20wie%20oft%20der%20Agent%20ein%20Spiel%20bereits%20gespielt%20hat.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Wenn%20die%20Explorationsrate%20sehr%20hoch%20ist%2C%20werden%20alle%20Werte%20in%20der%20Q-Tabelle%20gleich%20gro%C3%9F.%22%2C%22solution%22%3A%22F%22%7D%2C%7B%22text%22%3A%22Alan%20Turing%20schlug%20im%20Zusammenhang%20mit%20KI%20eine%20operative%20Definition%20anhand%20beobachtbaren%20Verhaltens%20vor.%22%2C%22solution%22%3A%22W%22%7D%5D%7D"><table class="grade-table exam-wf-table" aria-label="Wahr oder Falsch"><thead><tr><th>Nr.</th><th>Aussage</th><th>Wahr</th><th>Falsch</th></tr></thead><tbody><tr class="exam-wf-table-row"><td class="exam-wf-table-num">1</td><td class="exam-wf-table-text">KI-Systeme, die sich nur auf bestimmte Anwendungsgebiete spezialisieren, z. B. Chatbots, sind als „starke KI“ klassifiziert.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1a"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1a" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">2</td><td class="exam-wf-table-text">Beim maschinellen Lernen können erkannte Muster genutzt werden, um neue Daten einzuordnen.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1b"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1b" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">3</td><td class="exam-wf-table-text">Beim beschrifteten Lernen erhält der Computer für seine Aktionen Belohnungen oder Bestrafungen.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1c"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1c" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">4</td><td class="exam-wf-table-text">Ein Computerspiel, bei dem eine KI durch Punkte für gute Aktionen lernt, ist ein Beispiel für verstärkendes Lernen.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1d"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1d" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">5</td><td class="exam-wf-table-text">Beispieldaten, bei denen die richtige Beschriftung bekannt ist, nennt man Testdaten.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1e"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1e" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">6</td><td class="exam-wf-table-text">Eine Maschine besteht den Turing Test automatisch, wenn sie alle gestellten Fragen richtig beantwortet.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1f"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1f" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">7</td><td class="exam-wf-table-text">Beim Turing Test spielt es keine Rolle, mit welchem Verfahren die Maschine ihre Antworten erzeugt.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1g"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1g" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">8</td><td class="exam-wf-table-text">Das Nim-Spiel ist ein klassisches Beispiel für beschriftetes Lernen.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1h"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1h" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">9</td><td class="exam-wf-table-text">Eine hohe Explorationsrate bedeutet, dass besonders häufig neue oder zufällige Aktionen ausprobiert werden.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1i"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1i" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">10</td><td class="exam-wf-table-text">Eine hohe Learning Rate bedeutet, dass besonders häufig neue oder zufällige Aktionen ausprobiert werden.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1j"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1j" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">11</td><td class="exam-wf-table-text">In der Q-Tabelle wird gezählt, wie oft der Agent ein Spiel bereits gespielt hat.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1k"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1k" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">12</td><td class="exam-wf-table-text">Wenn die Explorationsrate sehr hoch ist, werden alle Werte in der Q-Tabelle gleich groß.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1l"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1l" value=""></td></tr><tr class="exam-wf-table-row"><td class="exam-wf-table-num">13</td><td class="exam-wf-table-text">Alan Turing schlug im Zusammenhang mit KI eine operative Definition anhand beobachtbaren Verhaltens vor.</td><td class="exam-wf-table-choices" colspan="2"><div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="a1m"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label></div><input type="hidden" id="a1m" value=""></td></tr></tbody></table></div>
             <div class="solution">
                 <h4>Musterlösung:</h4>
                 <p> I) <strong>Falsch</strong></p>
@@ -1565,19 +1612,19 @@
             </div>
         </div>
         <div class="task-content exam-task-stack">
-<div class="exam-subsection" data-sub-kind="sort" data-sub-id="hu13-sort" data-exam-spec="%7B%22id%22%3A%22hu13-sort%22%2C%22letter%22%3A%22A%22%2C%22title%22%3A%22Bringe%20die%20vier%20Schritte%20des%20Reinforcement%20Learnings%20in%20eine%20sinnvolle%20Reihenfolge.%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22sort%22%2C%22interaction%22%3A%22drag%22%2C%22sortJoin%22%3A%22pipe%22%2C%22sortLayout%22%3A%22steps%22%2C%22given%22%3A%22Der%20Agent%20erh%C3%A4lt%20eine%20Belohnung%20oder%20Bestrafung.%7CDer%20Agent%20befindet%20sich%20in%20einem%20bestimmten%20Zustand.%7CDas%20Modell%20des%20Agenten%20wird%20angepasst.%7CDer%20Agent%20f%C3%BChrt%20eine%20Aktion%20aus.%22%2C%22solution%22%3A%22Der%20Agent%20befindet%20sich%20in%20einem%20bestimmten%20Zustand.%7CDer%20Agent%20f%C3%BChrt%20eine%20Aktion%20aus.%7CDer%20Agent%20erh%C3%A4lt%20eine%20Belohnung%20oder%20Bestrafung.%7CDas%20Modell%20des%20Agenten%20wird%20angepasst.%22%7D"><div class="exam-subsection-title"><span class="item-label">A)</span> Bringe die vier Schritte des Reinforcement Learnings in eine sinnvolle Reihenfolge.</div><div class="exam-sort-drag exam-sort-drag--steps" data-answer-id="a2a" data-sort-join="|">
-<div class="exam-sort-pool" aria-label="Schritte zum Ziehen"><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Der Agent erhält eine Belohnung oder Bestrafung.">Der Agent erhält eine Belohnung oder Bestrafung.</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Der Agent befindet sich in einem bestimmten Zustand.">Der Agent befindet sich in einem bestimmten Zustand.</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Das Modell des Agenten wird angepasst.">Das Modell des Agenten wird angepasst.</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Der Agent führt eine Aktion aus.">Der Agent führt eine Aktion aus.</span></div>
-<div class="exam-sort-slots-row" aria-label="Reihenfolge 1 bis 4"><div class="exam-sort-slot" data-slot="0" aria-label="Position 1"><span class="exam-sort-slot-num" aria-hidden="true">1</span></div><div class="exam-sort-slot" data-slot="1" aria-label="Position 2"><span class="exam-sort-slot-num" aria-hidden="true">2</span></div><div class="exam-sort-slot" data-slot="2" aria-label="Position 3"><span class="exam-sort-slot-num" aria-hidden="true">3</span></div><div class="exam-sort-slot" data-slot="3" aria-label="Position 4"><span class="exam-sort-slot-num" aria-hidden="true">4</span></div></div>
+<div class="exam-subsection" data-sub-kind="sort" data-sub-id="hu13-sort" data-exam-spec="%7B%22id%22%3A%22hu13-sort%22%2C%22letter%22%3A%22A%22%2C%22title%22%3A%22Bringe%20die%20Schritte%20des%20verst%C3%A4rkenden%20Lernens%20in%20eine%20sinnvolle%20Reihenfolge.%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22sort%22%2C%22interaction%22%3A%22drag%22%2C%22sortJoin%22%3A%22pipe%22%2C%22sortLayout%22%3A%22steps%22%2C%22given%22%3A%22Das%20Ergebnis%20wird%20bewertet.%7CDie%20Wahrscheinlichkeit%20zuk%C3%BCnftiger%20Entscheidungen%20wird%20angepasst.%7CEin%20m%C3%B6glicher%20Zug%20wird%20ausgew%C3%A4hlt.%7CDer%20Zug%20wird%20ausgef%C3%BChrt.%7CDer%20Computer%20befindet%20sich%20in%20einer%20Spielsituation.%22%2C%22solution%22%3A%22Der%20Computer%20befindet%20sich%20in%20einer%20Spielsituation.%7CEin%20m%C3%B6glicher%20Zug%20wird%20ausgew%C3%A4hlt.%7CDer%20Zug%20wird%20ausgef%C3%BChrt.%7CDas%20Ergebnis%20wird%20bewertet.%7CDie%20Wahrscheinlichkeit%20zuk%C3%BCnftiger%20Entscheidungen%20wird%20angepasst.%22%7D"><div class="exam-subsection-title"><span class="item-label">A)</span> Bringe die Schritte des verstärkenden Lernens in eine sinnvolle Reihenfolge.</div><div class="exam-sort-drag exam-sort-drag--steps" data-answer-id="a2a" data-sort-join="|">
+<div class="exam-sort-pool" aria-label="Schritte zum Ziehen"><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Das Ergebnis wird bewertet.">Das Ergebnis wird bewertet.</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Die Wahrscheinlichkeit zukünftiger Entscheidungen wird angepasst.">Die Wahrscheinlichkeit zukünftiger Entscheidungen wird angepasst.</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Ein möglicher Zug wird ausgewählt.">Ein möglicher Zug wird ausgewählt.</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Der Zug wird ausgeführt.">Der Zug wird ausgeführt.</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Der Computer befindet sich in einer Spielsituation.">Der Computer befindet sich in einer Spielsituation.</span></div>
+<div class="exam-sort-slots-row" aria-label="Reihenfolge 1 bis 5"><div class="exam-sort-slot" data-slot="0" aria-label="Position 1"><span class="exam-sort-slot-num" aria-hidden="true">1</span></div><div class="exam-sort-slot" data-slot="1" aria-label="Position 2"><span class="exam-sort-slot-num" aria-hidden="true">2</span></div><div class="exam-sort-slot" data-slot="2" aria-label="Position 3"><span class="exam-sort-slot-num" aria-hidden="true">3</span></div><div class="exam-sort-slot" data-slot="3" aria-label="Position 4"><span class="exam-sort-slot-num" aria-hidden="true">4</span></div><div class="exam-sort-slot" data-slot="4" aria-label="Position 5"><span class="exam-sort-slot-num" aria-hidden="true">5</span></div></div>
 <input type="hidden" id="a2a" value="">
 </div><p class="exam-sort-hint">Ordne durch Ziehen: Klicke einen Schritt an und dann die Position, oder ziehe ihn in die Reihe.</p></div>
 <div class="exam-subsection" data-sub-kind="choice" data-sub-id="hu13-train" data-exam-spec="%7B%22id%22%3A%22hu13-train%22%2C%22letter%22%3A%22B%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22choice%22%2C%22prompt%22%3A%22Eine%20KI%20soll%20%C3%84pfel%20und%20Birnen%20unterscheiden.%20Es%20stehen%201.000%20beschriftete%20Bilder%20zur%20Verf%C3%BCgung.%20Nach%20dem%20Training%20erzielt%20die%20KI%20bei%20genau%20diesen%201.000%20Bildern%20eine%20Trefferquote%20von%2099%20Prozent.%20Kreuze%20die%20sinnvollste%20Schlussfolgerung%20an.%22%2C%22options%22%3A%5B%7B%22value%22%3A%22A%22%2C%22label%22%3A%22Die%20KI%20erkennt%20%C3%84pfel%20und%20Birnen%20definitiv%20zuverl%C3%A4ssig.%22%7D%2C%7B%22value%22%3A%22B%22%2C%22label%22%3A%22Die%201.000%20Bilder%20sollten%20zus%C3%A4tzlich%20als%20Testdaten%20verwendet%20werden.%22%7D%2C%7B%22value%22%3A%22C%22%2C%22label%22%3A%22F%C3%BCr%20eine%20sinnvolle%20%C3%9Cberpr%C3%BCfung%20sollten%20bisher%20nicht%20zum%20Training%20verwendete%20Bilder%20eingesetzt%20werden.%22%7D%2C%7B%22value%22%3A%22D%22%2C%22label%22%3A%22Die%20KI%20ben%C3%B6tigt%20nun%20keine%20weiteren%20Daten%20mehr.%22%7D%5D%2C%22solution%22%3A%22C%22%7D"><div class="item input-group full-width exam-mc-block"><div class="exam-subsection-title"><span class="item-label">B)</span> Eine KI soll Äpfel und Birnen unterscheiden. Es stehen 1.000 beschriftete Bilder zur Verfügung. Nach dem Training erzielt die KI bei genau diesen 1.000 Bildern eine Trefferquote von 99 Prozent. Kreuze die sinnvollste Schlussfolgerung an.</div><div class="exam-multi-select" data-answer-id="a2b"><label class="exam-mc-option"><input type="checkbox" value="A"> Die KI erkennt Äpfel und Birnen definitiv zuverlässig.</label><label class="exam-mc-option"><input type="checkbox" value="B"> Die 1.000 Bilder sollten zusätzlich als Testdaten verwendet werden.</label><label class="exam-mc-option"><input type="checkbox" value="C"> Für eine sinnvolle Überprüfung sollten bisher nicht zum Training verwendete Bilder eingesetzt werden.</label><label class="exam-mc-option"><input type="checkbox" value="D"> Die KI benötigt nun keine weiteren Daten mehr.</label></div><input type="hidden" id="a2b" value=""></div></div>
 <div class="exam-subsection" data-sub-kind="paragraph" data-sub-id="hu13-snap-intro" data-exam-spec="%7B%22id%22%3A%22hu13-snap-intro%22%2C%22letter%22%3A%22C%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22paragraph%22%2C%22text%22%3A%22Erl%C3%A4utere%20diesen%20Snap-Baustein%20im%20Bezug%20auf%20das%20Spiel%20Bananenjagd%20und%20die%20dort%20verwendete%20Lernart.%20Erl%C3%A4utere%2C%20welche%20Lernart%20sich%20am%20besten%20eignet%2C%20um%20Spam-E-Mails%20zu%20erkennen.%20(2%20P)%22%7D"><div class="exam-subsection-title"><span class="item-label">C)</span> </div><p>Erläutere diesen Snap-Baustein im Bezug auf das Spiel Bananenjagd und die dort verwendete Lernart. Erläutere, welche Lernart sich am besten eignet, um Spam-E-Mails zu erkennen. (2 P)</p></div>
-<div class="exam-subsection" data-sub-kind="standalone-image" data-sub-id="hu13-snap-img" data-exam-spec="%7B%22id%22%3A%22hu13-snap-img%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22standalone-image%22%2C%22src%22%3A%22hu-ki-mss-13-snap-belohnung.png%22%2C%22alt%22%3A%22Snap-Baustein%3A%20Belohnung%20abh%C3%A4ngig%20vom%20Ber%C3%BChren%20eines%20Fasses%22%2C%22size%22%3A%22compact%22%7D"><figure class="exam-chart-figure exam-chart-figure--compact"><img src="hu-ki-mss-13-snap-belohnung.png" alt="Snap-Baustein: Belohnung abhängig vom Berühren eines Fasses" loading="lazy"></figure></div>
-<div class="exam-subsection" data-sub-kind="one-line" data-sub-id="hu13-snap-1" data-exam-spec="%7B%22id%22%3A%22hu13-snap-1%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22%22%2C%22solution%22%3A%22Belohnung%20%E2%88%9210%20bei%20Fass%2C%20sonst%20%2B1%20%E2%86%92%20verst%C3%A4rkendes%20Lernen%20wie%20Bananenjagd.%20Spam%3A%20beschriftetes%20Lernen%20mit%20markierten%20E-Mails.%22%2C%22answerId%22%3A%22hu13-snap-1%22%7D"><div class="item input-group full-width" style="margin-top:8px;"><input type="text" id="hu13-snap-1" class="blank-wide" autocomplete="off"></div></div>
-<div class="exam-subsection" data-sub-kind="one-line" data-sub-id="hu13-snap-2" data-exam-spec="%7B%22id%22%3A%22hu13-snap-2%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22%22%2C%22solution%22%3A%22Belohnung%20%E2%88%9210%20bei%20Fass%2C%20sonst%20%2B1%20%E2%86%92%20verst%C3%A4rkendes%20Lernen%20wie%20Bananenjagd.%20Spam%3A%20beschriftetes%20Lernen%20mit%20markierten%20E-Mails.%22%2C%22answerId%22%3A%22hu13-snap-2%22%7D"><div class="item input-group full-width" style="margin-top:8px;"><input type="text" id="hu13-snap-2" class="blank-wide" autocomplete="off"></div></div>
+<div class="exam-subsection" data-sub-kind="standalone-image" data-sub-id="hu13-snap-img" data-exam-spec="%7B%22id%22%3A%22hu13-snap-img%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22standalone-image%22%2C%22src%22%3A%22%2Fapi%2Ffile-system-paths%2Fread-image%3FfilePath%3Dgit-intern%252FInformatik%252FMSS%2520Grundthemen%252F11-04%2520KI%252Fhu-ki-mss-13-snap-belohnung.png%22%2C%22alt%22%3A%22Snap-Baustein%3A%20Belohnung%20abh%C3%A4ngig%20vom%20Ber%C3%BChren%20eines%20Fasses%22%2C%22size%22%3A%22compact%22%7D"><figure class="exam-chart-figure exam-chart-figure--compact"><img src="/api/file-system-paths/read-image?filePath=git-intern%2FInformatik%2FMSS%20Grundthemen%2F11-04%20KI%2Fhu-ki-mss-13-snap-belohnung.png" alt="Snap-Baustein: Belohnung abhängig vom Berühren eines Fasses" loading="lazy"></figure></div>
+<div class="exam-subsection" data-sub-kind="one-line" data-sub-id="hu13-snap-1" data-exam-spec="%7B%22id%22%3A%22hu13-snap-1%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22%22%2C%22solution%22%3A%22Belohnung%20%E2%88%9210%20bei%20Fass%2C%20sonst%20%2B1%20%E2%86%92%20verst%C3%A4rkendes%20Lernen%20wie%20Bananenjagd.%20Spam%3A%20beschriftetes%20Lernen%20mit%20markierten%20E-Mails.%22%2C%22answerId%22%3A%22a2c1%22%7D"><div class="item input-group full-width" style="margin-top:8px;"><input type="text" id="a2c1" class="blank-wide" autocomplete="off"></div></div>
+<div class="exam-subsection" data-sub-kind="one-line" data-sub-id="hu13-snap-2" data-exam-spec="%7B%22id%22%3A%22hu13-snap-2%22%2C%22letter%22%3A%22%22%2C%22title%22%3A%22%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22one-line%22%2C%22prompt%22%3A%22%22%2C%22solution%22%3A%22Belohnung%20%E2%88%9210%20bei%20Fass%2C%20sonst%20%2B1%20%E2%86%92%20verst%C3%A4rkendes%20Lernen%20wie%20Bananenjagd.%20Spam%3A%20beschriftetes%20Lernen%20mit%20markierten%20E-Mails.%22%2C%22answerId%22%3A%22a2c2%22%7D"><div class="item input-group full-width" style="margin-top:8px;"><input type="text" id="a2c2" class="blank-wide" autocomplete="off"></div></div>
             <div class="solution">
                 <h4>Musterlösung:</h4>
-                <p>A) 1. Der Agent befindet sich in einem bestimmten Zustand.<br>2. Der Agent führt eine Aktion aus.<br>3. Der Agent erhält eine Belohnung oder Bestrafung.<br>4. Das Modell des Agenten wird angepasst.</p>
+                <p>A) 1. Der Computer befindet sich in einer Spielsituation.<br>2. Ein möglicher Zug wird ausgewählt.<br>3. Der Zug wird ausgeführt.<br>4. Das Ergebnis wird bewertet.<br>5. Die Wahrscheinlichkeit zukünftiger Entscheidungen wird angepasst.</p>
                 <p>B) <strong>C</strong></p>
                 <p>— <strong>Belohnung −10 bei Fass, sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails. / Belohnung−10beiFass,sonst+1→verstärkendesLernenwieBananenjagd.Spam:beschriftetesLernenmitmarkiertenE-Mails. / Belohnung −10 bei Fass; sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails. / Belohnung −10 bei Fass sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails. / Belohnung −10 bei Fass,sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails. / Belohnung −10 bei Fass, sonst +1 → verstaerkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.</strong></p>
                 <p>— <strong>Belohnung −10 bei Fass, sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails. / Belohnung−10beiFass,sonst+1→verstärkendesLernenwieBananenjagd.Spam:beschriftetesLernenmitmarkiertenE-Mails. / Belohnung −10 bei Fass; sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails. / Belohnung −10 bei Fass sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails. / Belohnung −10 bei Fass,sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails. / Belohnung −10 bei Fass, sonst +1 → verstaerkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.</strong></p>
@@ -2391,10 +2438,10 @@
             a1k: ['F'],
             a1l: ['F'],
             a1m: ['W'],
-            a2a: ['Der Agent befindet sich in einem bestimmten Zustand.|Der Agent führt eine Aktion aus.|Der Agent erhält eine Belohnung oder Bestrafung.|Das Modell des Agenten wird angepasst.', 'Der Agent befindet sich in einem bestimmten Zustand. | Der Agent führt eine Aktion aus. | Der Agent erhält eine Belohnung oder Bestrafung. | Das Modell des Agenten wird angepasst.', 'Der Agent befindet sich in einem bestimmten Zustand.|Der Agent fuehrt eine Aktion aus.|Der Agent erhaelt eine Belohnung oder Bestrafung.|Das Modell des Agenten wird angepasst.'],
+            a2a: ['Der Computer befindet sich in einer Spielsituation.|Ein möglicher Zug wird ausgewählt.|Der Zug wird ausgeführt.|Das Ergebnis wird bewertet.|Die Wahrscheinlichkeit zukünftiger Entscheidungen wird angepasst.', 'Der Computer befindet sich in einer Spielsituation. | Ein möglicher Zug wird ausgewählt. | Der Zug wird ausgeführt. | Das Ergebnis wird bewertet. | Die Wahrscheinlichkeit zukünftiger Entscheidungen wird angepasst.', 'Der Computer befindet sich in einer Spielsituation.|Ein moeglicher Zug wird ausgewaehlt.|Der Zug wird ausgefuehrt.|Das Ergebnis wird bewertet.|Die Wahrscheinlichkeit zukuenftiger Entscheidungen wird angepasst.'],
             a2b: ['C'],
-            hu13-snap-1: ['Belohnung −10 bei Fass, sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.', 'Belohnung−10beiFass,sonst+1→verstärkendesLernenwieBananenjagd.Spam:beschriftetesLernenmitmarkiertenE-Mails.', 'Belohnung −10 bei Fass; sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.', 'Belohnung −10 bei Fass sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.', 'Belohnung −10 bei Fass,sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.', 'Belohnung −10 bei Fass, sonst +1 → verstaerkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.'],
-            hu13-snap-2: ['Belohnung −10 bei Fass, sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.', 'Belohnung−10beiFass,sonst+1→verstärkendesLernenwieBananenjagd.Spam:beschriftetesLernenmitmarkiertenE-Mails.', 'Belohnung −10 bei Fass; sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.', 'Belohnung −10 bei Fass sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.', 'Belohnung −10 bei Fass,sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.', 'Belohnung −10 bei Fass, sonst +1 → verstaerkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.'],
+            a2c1: ['Belohnung −10 bei Fass, sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.', 'Belohnung−10beiFass,sonst+1→verstärkendesLernenwieBananenjagd.Spam:beschriftetesLernenmitmarkiertenE-Mails.', 'Belohnung −10 bei Fass; sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.', 'Belohnung −10 bei Fass sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.', 'Belohnung −10 bei Fass,sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.', 'Belohnung −10 bei Fass, sonst +1 → verstaerkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.'],
+            a2c2: ['Belohnung −10 bei Fass, sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.', 'Belohnung−10beiFass,sonst+1→verstärkendesLernenwieBananenjagd.Spam:beschriftetesLernenmitmarkiertenE-Mails.', 'Belohnung −10 bei Fass; sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.', 'Belohnung −10 bei Fass sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.', 'Belohnung −10 bei Fass,sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.', 'Belohnung −10 bei Fass, sonst +1 → verstaerkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.'],
         };
 
         function getAnswerValue(id) {
@@ -2404,252 +2451,6 @@
             if (radio) return radio.value || '';
             return '';
         }
-
-        
-        function parseMcLetterSet(raw) {
-            const parts = Array.isArray(raw) ? raw.map(String) : [String(raw || '')];
-            const letters = new Set();
-            parts.forEach(function (p) {
-                const s = String(p).trim();
-                if (!s) return;
-                if (/[|,;]/.test(s)) {
-                    s.split(/[|,;/]/).forEach(function (x) {
-                        const t = x.trim().toUpperCase();
-                        if (/^[A-Z]$/.test(t)) letters.add(t);
-                    });
-                } else if (/^[A-Za-z]$/.test(s)) {
-                    letters.add(s.toUpperCase());
-                }
-            });
-            return Array.from(letters).sort();
-        }
-
-        function examUsesMcPartialScoring(expected) {
-            const letters = parseMcLetterSet(expected);
-            if (!letters.length) return false;
-            if (letters.some(function (l) { return l === 'W' || l === 'F'; })) return false;
-            return letters.every(function (l) { return /^[A-Z]$/.test(l); });
-        }
-
-        function mcScoreFraction(expected, student) {
-            if (!examUsesMcPartialScoring(expected)) {
-                return isCorrectMatch(expected, student) ? 1 : 0;
-            }
-            const correct = parseMcLetterSet(expected);
-            if (!correct.length) return 0;
-            const studentStr = String(student || '').trim();
-            if (!studentStr) return 0;
-            const studentSet = new Set();
-            if (/[|,;]/.test(studentStr)) {
-                studentStr.split(/[|,;/]/).forEach(function (x) {
-                    const t = x.trim().toUpperCase();
-                    if (/^[A-Z]$/.test(t)) studentSet.add(t);
-                });
-            } else if (/^[A-Za-z]$/.test(studentStr)) {
-                studentSet.add(studentStr.toUpperCase());
-            } else {
-                return isCorrectMatch(expected, student) ? 1 : 0;
-            }
-            var right = 0;
-            var wrong = 0;
-            studentSet.forEach(function (l) {
-                if (correct.indexOf(l) >= 0) right += 1;
-                else wrong += 1;
-            });
-            return Math.max(0, (right - wrong) / correct.length);
-        }
-
-        function isCorrectMatch(accepted, value) {
-            const n = normalizeAnswer(value);
-            if (!n) return false;
-            const list = Array.isArray(accepted) ? accepted : [accepted];
-            return list.some(function (a) { return normalizeAnswer(a) === n; });
-        }
-
-        
-        function parseMcLetterSet(raw) {
-            const parts = Array.isArray(raw) ? raw.map(String) : [String(raw || '')];
-            const letters = new Set();
-            parts.forEach(function (p) {
-                const s = String(p).trim();
-                if (!s) return;
-                if (/[|,;]/.test(s)) {
-                    s.split(/[|,;/]/).forEach(function (x) {
-                        const t = x.trim().toUpperCase();
-                        if (/^[A-Z]$/.test(t)) letters.add(t);
-                    });
-                } else if (/^[A-Za-z]$/.test(s)) {
-                    letters.add(s.toUpperCase());
-                }
-            });
-            return Array.from(letters).sort();
-        }
-
-        function examUsesMcPartialScoring(expected) {
-            const letters = parseMcLetterSet(expected);
-            if (!letters.length) return false;
-            if (letters.some(function (l) { return l === 'W' || l === 'F'; })) return false;
-            return letters.every(function (l) { return /^[A-Z]$/.test(l); });
-        }
-
-        function mcScoreFraction(expected, student) {
-            if (!examUsesMcPartialScoring(expected)) {
-                return isCorrectMatch(expected, student) ? 1 : 0;
-            }
-            const correct = parseMcLetterSet(expected);
-            if (!correct.length) return 0;
-            const studentStr = String(student || '').trim();
-            if (!studentStr) return 0;
-            const studentSet = new Set();
-            if (/[|,;]/.test(studentStr)) {
-                studentStr.split(/[|,;/]/).forEach(function (x) {
-                    const t = x.trim().toUpperCase();
-                    if (/^[A-Z]$/.test(t)) studentSet.add(t);
-                });
-            } else if (/^[A-Za-z]$/.test(studentStr)) {
-                studentSet.add(studentStr.toUpperCase());
-            } else {
-                return isCorrectMatch(expected, student) ? 1 : 0;
-            }
-            var right = 0;
-            var wrong = 0;
-            studentSet.forEach(function (l) {
-                if (correct.indexOf(l) >= 0) right += 1;
-                else wrong += 1;
-            });
-            return Math.max(0, (right - wrong) / correct.length);
-        }
-
-        function isCorrectMatch(accepted, value) {
-            const n = normalizeAnswer(value);
-            if (!n) return false;
-            const list = Array.isArray(accepted) ? accepted : [accepted];
-            return list.some(function (a) { return normalizeAnswer(a) === n; });
-        }
-
-        
-        function parseMcLetterSet(raw) {
-            const parts = Array.isArray(raw) ? raw.map(String) : [String(raw || '')];
-            const letters = new Set();
-            parts.forEach(function (p) {
-                const s = String(p).trim();
-                if (!s) return;
-                if (/[|,;]/.test(s)) {
-                    s.split(/[|,;/]/).forEach(function (x) {
-                        const t = x.trim().toUpperCase();
-                        if (/^[A-Z]$/.test(t)) letters.add(t);
-                    });
-                } else if (/^[A-Za-z]$/.test(s)) {
-                    letters.add(s.toUpperCase());
-                }
-            });
-            return Array.from(letters).sort();
-        }
-
-        function examUsesMcPartialScoring(expected) {
-            const letters = parseMcLetterSet(expected);
-            if (!letters.length) return false;
-            if (letters.some(function (l) { return l === 'W' || l === 'F'; })) return false;
-            return letters.every(function (l) { return /^[A-Z]$/.test(l); });
-        }
-
-        function mcScoreFraction(expected, student) {
-            if (!examUsesMcPartialScoring(expected)) {
-                return isCorrectMatch(expected, student) ? 1 : 0;
-            }
-            const correct = parseMcLetterSet(expected);
-            if (!correct.length) return 0;
-            const studentStr = String(student || '').trim();
-            if (!studentStr) return 0;
-            const studentSet = new Set();
-            if (/[|,;]/.test(studentStr)) {
-                studentStr.split(/[|,;/]/).forEach(function (x) {
-                    const t = x.trim().toUpperCase();
-                    if (/^[A-Z]$/.test(t)) studentSet.add(t);
-                });
-            } else if (/^[A-Za-z]$/.test(studentStr)) {
-                studentSet.add(studentStr.toUpperCase());
-            } else {
-                return isCorrectMatch(expected, student) ? 1 : 0;
-            }
-            var right = 0;
-            var wrong = 0;
-            studentSet.forEach(function (l) {
-                if (correct.indexOf(l) >= 0) right += 1;
-                else wrong += 1;
-            });
-            return Math.max(0, (right - wrong) / correct.length);
-        }
-
-        function isCorrectMatch(accepted, value) {
-            const n = normalizeAnswer(value);
-            if (!n) return false;
-            const list = Array.isArray(accepted) ? accepted : [accepted];
-            return list.some(function (a) { return normalizeAnswer(a) === n; });
-        }
-
-        
-        function parseMcLetterSet(raw) {
-            const parts = Array.isArray(raw) ? raw.map(String) : [String(raw || '')];
-            const letters = new Set();
-            parts.forEach(function (p) {
-                const s = String(p).trim();
-                if (!s) return;
-                if (/[|,;]/.test(s)) {
-                    s.split(/[|,;/]/).forEach(function (x) {
-                        const t = x.trim().toUpperCase();
-                        if (/^[A-Z]$/.test(t)) letters.add(t);
-                    });
-                } else if (/^[A-Za-z]$/.test(s)) {
-                    letters.add(s.toUpperCase());
-                }
-            });
-            return Array.from(letters).sort();
-        }
-
-        function examUsesMcPartialScoring(expected) {
-            const letters = parseMcLetterSet(expected);
-            if (!letters.length) return false;
-            if (letters.some(function (l) { return l === 'W' || l === 'F'; })) return false;
-            return letters.every(function (l) { return /^[A-Z]$/.test(l); });
-        }
-
-        function mcScoreFraction(expected, student) {
-            if (!examUsesMcPartialScoring(expected)) {
-                return isCorrectMatch(expected, student) ? 1 : 0;
-            }
-            const correct = parseMcLetterSet(expected);
-            if (!correct.length) return 0;
-            const studentStr = String(student || '').trim();
-            if (!studentStr) return 0;
-            const studentSet = new Set();
-            if (/[|,;]/.test(studentStr)) {
-                studentStr.split(/[|,;/]/).forEach(function (x) {
-                    const t = x.trim().toUpperCase();
-                    if (/^[A-Z]$/.test(t)) studentSet.add(t);
-                });
-            } else if (/^[A-Za-z]$/.test(studentStr)) {
-                studentSet.add(studentStr.toUpperCase());
-            } else {
-                return isCorrectMatch(expected, student) ? 1 : 0;
-            }
-            var right = 0;
-            var wrong = 0;
-            studentSet.forEach(function (l) {
-                if (correct.indexOf(l) >= 0) right += 1;
-                else wrong += 1;
-            });
-            return Math.max(0, (right - wrong) / correct.length);
-        }
-
-        function isCorrectMatch(accepted, value) {
-            const n = normalizeAnswer(value);
-            if (!n) return false;
-            const list = Array.isArray(accepted) ? accepted : [accepted];
-            return list.some(function (a) { return normalizeAnswer(a) === n; });
-        }
-
-        
         function parseMcLetterSet(raw) {
             const parts = Array.isArray(raw) ? raw.map(String) : [String(raw || '')];
             const letters = new Set();
@@ -2714,8 +2515,7 @@
             const accepted = correctAnswers[id] || [];
             return mcScoreFraction(accepted, value) >= 1 - 1e-9;
         }
-
-        const GRADE_TABLE = {
+const GRADE_TABLE = {
             14: { text: 'sehr gut', withTendency: '1' },
             13: { text: 'sehr gut', withTendency: '1−' },
             12: { text: 'gut', withTendency: '2+' },
@@ -2978,8 +2778,7 @@
         <p>Du hast ${points.achieved} von ${points.total} Punkten erreicht.</p>
         <p><strong>Note:</strong> ${grade.text} / ${grade.withTendency}</p>
     </div>
-</body>
-</html>`;
+<\/body>\n<\/html>`;
             const printWindow = window.open('', '_blank');
             printWindow.document.write(printHTML);
             printWindow.document.close();

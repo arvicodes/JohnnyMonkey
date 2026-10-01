@@ -123,6 +123,8 @@ export type GridSubsection =
       quadrant: GridQuadrant;
       kind: 'wahr-falsch-group';
       items: { text: string; solution: 'W' | 'F' }[];
+      /** Tabellenlayout mit Rahmen (Nr. | Aussage | Wahr/Falsch in einer Zeile). */
+      tableLayout?: boolean;
     } & SubImage
   | {
       id: string;
@@ -820,11 +822,20 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
         answers: [item.solution],
         solutionHtml: `<strong>${item.solution === 'W' ? 'Wahr' : 'Falsch'}</strong>`,
       });
+      const numLabel = String(i + 1);
       const roman = `<span class="item-label">${wahrFalschRomanLabel(i)}.</span>`;
       const text = allowBasicHtml(String(item.text || '').replace(/^[a-d]\)\s*/i, ''));
+      const wfControls = `<div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="${id}">${WAHR_FALSCH_OPTS_HTML}</div><input type="hidden" id="${id}" value="">`;
+      if (sub.tableLayout) {
+        return `<tr class="exam-wf-table-row"><td class="exam-wf-table-num">${escapeHtml(numLabel)}</td><td class="exam-wf-table-text">${text}</td><td class="exam-wf-table-choices" colspan="2">${wfControls}</td></tr>`;
+      }
       return renderWahrFalschInlineRow(roman, text, id);
     });
-    body = `<div class="exam-wf-group">${rows.join('')}</div>`;
+    if (sub.tableLayout) {
+      body = `<table class="grade-table exam-wf-table" aria-label="Wahr oder Falsch"><thead><tr><th>Nr.</th><th>Aussage</th><th>Wahr</th><th>Falsch</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+    } else {
+      body = `<div class="exam-wf-group">${rows.join('')}</div>`;
+    }
   } else if (sub.kind === 'multi-select') {
     const id = allocId(taskNumber, fieldIndex.n++);
     const canonical = sub.solution
