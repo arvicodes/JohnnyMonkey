@@ -221,6 +221,7 @@ const KIND_LABEL: Record<GridSubsection['kind'], string> = {
   'multi-select': 'Multi-Select (mehrere Antworten)',
   'wahr-falsch-group': 'Wahr/Falsch (mehrere Aussagen)',
   'one-line': 'Antwort eingeben (kurz)',
+  essay: 'Freitext (großes Feld, manuelle Bewertung)',
   cloze: 'Lückentext (___)',
   sort: 'Sortieren',
   'bullet-blanks': 'Stichpunkte mit Lücken',
@@ -243,6 +244,7 @@ const TASK_TYPE_GROUPS: { label: string; kinds: GridSubsection['kind'][] }[] = [
       'multi-select',
       'wahr-falsch-group',
       'one-line',
+      'essay',
       'cloze',
       'sort',
       'bullet-blanks',
@@ -259,6 +261,7 @@ const TASK_TYPE_GROUPS: { label: string; kinds: GridSubsection['kind'][] }[] = [
 const STACK_KINDS: GridSubsection['kind'][] = [
   'paragraph',
   'standalone-image',
+  'essay',
   'wahr-falsch-group',
   'life-dates',
   'roman-table',
@@ -278,6 +281,8 @@ function newSubsection(kind: GridSubsection['kind']): GridSubsection {
       return { ...base, kind, given: '1, 2, 3', solution: '1, 2, 3' };
     case 'one-line':
       return { ...base, kind, prompt: '…', solution: '' };
+    case 'essay':
+      return { ...base, kind, prompt: '…', solution: 'Musterlösung …', rows: 8 };
     case 'choice':
       return {
         ...base,
@@ -780,6 +785,40 @@ export default function GridTaskEditorPanel({
                   onChange={(e) => updateSub(sub.id, { suffix: e.target.value })}
                 />
               ) : null}
+            </Box>
+          )}
+
+          {sub.kind === 'essay' && (
+            <Box sx={{ ...editorRowFill(subIndex, 0) }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Aufgabentext"
+                value={sub.prompt}
+                onChange={(e) => updateSub(sub.id, { prompt: e.target.value })}
+                sx={{ mb: 1 }}
+              />
+              <TextField
+                fullWidth
+                size="small"
+                type="number"
+                label="Sichtbare Zeilen (Textarea)"
+                value={sub.rows ?? 8}
+                onChange={(e) =>
+                  updateSub(sub.id, { rows: Math.max(4, parseInt(e.target.value, 10) || 8) })
+                }
+                sx={{ mb: 1 }}
+                inputProps={{ min: 4, step: 1 }}
+              />
+              <TextField
+                fullWidth
+                size="small"
+                label="Musterlösung / Hinweis (Lehrer)"
+                value={sub.solution}
+                onChange={(e) => updateSub(sub.id, { solution: e.target.value })}
+                multiline
+                minRows={2}
+              />
             </Box>
           )}
 
