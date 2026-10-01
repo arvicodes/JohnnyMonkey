@@ -41,7 +41,9 @@ const MSS11_SCHACH_MODEL =
 const MSS11_HUND_MODEL =
   'Bilderkennung braucht beschriftete Beispielbilder (überwachtes/beschriftetes Lernen), nicht Belohnungen für Aktionen in einer Umgebung.';
 const MSS13_SNAP_MODEL =
-  'Belohnung −10 bei Fass, sonst +1 → verstärkendes Lernen wie Bananenjagd. Spam: beschriftetes Lernen mit markierten E-Mails.';
+  'Der Baustein setzt die Belohnung: Berührung mit „Fass“ → −10, sonst +1. Das ist verstärkendes Lernen (Belohnung/Bestrafung) wie in Bananenjagd.';
+const MSS13_SPAM_MODEL =
+  'Spam-Erkennung: beschriftetes/überwachtes Lernen mit vielen E-Mails, die als Spam oder Ham markiert sind.';
 
 const MSS11_WF: { text: string; solution: 'W' | 'F' }[] = [
   { text: 'Alle heutigen KI-Systeme sind als „schwache KI“ klassifiziert.', solution: 'W' },
@@ -210,8 +212,12 @@ export function huKiMss11Task2(): ExamGridTaskSpec {
         title: '',
         quadrant: 'tl',
         kind: 'choice',
+        table: {
+          headers: ['Zustand', 'links', 'rechts', 'springen'],
+          rows: [['Fass 20 Pixel entfernt', '2', '1', '8']],
+        },
         prompt:
-          'Für einen Zustand enthält eine vereinfachte Q-Tabelle folgende Werte: <em>Fass 20 Pixel entfernt</em> — links: 2, rechts: 1, springen: 8. Der Agent nutzt gerade keine zufällige Exploration. Welche Aktion sollte er auswählen?',
+          'Der Agent nutzt gerade keine zufällige Exploration. Welche Aktion sollte er auswählen?',
         options: [
           { value: 'A', label: 'links' },
           { value: 'B', label: 'rechts' },
@@ -258,7 +264,7 @@ export function huKiMss13Task1(): ExamGridTaskSpec {
 export function huKiMss13Task2(): ExamGridTaskSpec {
   return {
     taskNumber: 2,
-    points: 8,
+    points: 12,
     layout: 'stack',
     subsections: [
       {
@@ -299,7 +305,7 @@ export function huKiMss13Task2(): ExamGridTaskSpec {
       },
       {
         id: 'hu13-snap-img',
-        letter: 'C',
+        letter: '',
         title: '',
         quadrant: 'tl',
         kind: 'standalone-image',
@@ -309,14 +315,26 @@ export function huKiMss13Task2(): ExamGridTaskSpec {
       },
       {
         id: 'hu13-snap',
-        letter: '',
+        letter: 'C',
         title: '',
         quadrant: 'tl',
         kind: 'essay',
         prompt:
-          'Erläutere den Snap-Baustein im Bezug auf das Spiel Bananenjagd und die dort verwendete Lernart. Erläutere außerdem, welche Lernart sich am besten eignet, um Spam-E-Mails zu erkennen. <em>(4 Punkte — manuelle Bewertung)</em>',
+          'Erläutere den Snap-Baustein im Bezug auf das Spiel Bananenjagd und die dort verwendete Lernart. <em>(4 Punkte — manuelle Bewertung)</em>',
         solution: MSS13_SNAP_MODEL,
         answerId: 'a2c',
+        rows: 10,
+      },
+      {
+        id: 'hu13-spam',
+        letter: 'D',
+        title: '',
+        quadrant: 'tl',
+        kind: 'essay',
+        prompt:
+          'Erläutere, welche Lernart sich am besten eignet, um Spam-E-Mails zu erkennen. <em>(4 Punkte — manuelle Bewertung)</em>',
+        solution: MSS13_SPAM_MODEL,
+        answerId: 'a2d',
         rows: 10,
       },
     ],
@@ -332,7 +350,7 @@ export function buildHuFieldPoints(answerIds: string[], variant: 'mss11' | 'mss1
   if (answerIds.includes('a2a')) pts.a2a = 2;
   if (answerIds.includes('a2b')) pts.a2b = 2;
   if (answerIds.includes('a2c')) pts.a2c = 4;
-  if (variant === 'mss11' && answerIds.includes('a2d')) pts.a2d = 4;
+  if (answerIds.includes('a2d')) pts.a2d = 4;
   return pts;
 }
 

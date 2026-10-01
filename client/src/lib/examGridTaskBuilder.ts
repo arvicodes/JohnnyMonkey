@@ -116,6 +116,8 @@ export type GridSubsection =
       options: { label: string; value: string }[];
       /** Wert der richtigen Option (z. B. A) */
       solution: string;
+      /** Optionale Anzeige-Tabelle vor der Frage (z. B. Q-Tabelle). */
+      table?: { headers: string[]; rows: string[][] };
     } & SubImage
   | {
       id: string;
@@ -823,9 +825,27 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       answers,
       solutionHtml: `<strong>${escapeHtml(sub.solution.trim())}</strong>`,
     });
+    const tableBlock =
+      sub.table && sub.table.headers.length
+        ? (() => {
+            const heads = sub.table!.headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('');
+            const dataRows = (sub.table!.rows || [])
+              .map(
+                (row) =>
+                  `<tr>${row.map((cell) => `<td>${allowBasicHtml(cell)}</td>`).join('')}</tr>`,
+              )
+              .join('');
+            return `<table class="grade-table exam-q-value-table" aria-label="Q-Tabelle"><thead><tr>${heads}</tr></thead><tbody>${dataRows}</tbody></table>`;
+          })()
+        : '';
+    const tableIntro = tableBlock
+      ? `<p style="margin:0 0 8px;">Für einen Zustand enthält eine vereinfachte Q-Tabelle folgende Werte:</p>${tableBlock}`
+      : '';
     const heading = sub.prompt
       ? examMcHeadingHtml(sub.letter || '', sub.prompt)
-      : '';
+      : sub.letter
+        ? `<div class="exam-subsection-title"><span class="item-label">${escapeHtml(sub.letter)})</span></div>`
+        : '';
     const opts = sub.options
       .map(
         (o) =>
@@ -838,7 +858,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
         : '';
       body = `<div class="item input-group full-width exam-mc-block exam-wf-choice-wrap"><div class="exam-wf-group">${renderWahrFalschInlineRow(letterLabel, allowBasicHtml(sub.prompt), id)}</div></div>`;
     } else {
-      body = `<div class="item input-group full-width exam-mc-block">${heading}<div class="exam-multi-select" data-answer-id="${id}">${opts}</div><input type="hidden" id="${id}" value=""></div>`;
+      body = `<div class="item input-group full-width exam-mc-block">${tableIntro}${heading}<div class="exam-multi-select" data-answer-id="${id}">${opts}</div><input type="hidden" id="${id}" value=""></div>`;
     }
   } else if (sub.kind === 'wahr-falsch-group') {
     const rows = sub.items.map((item, i) => {

@@ -167,6 +167,22 @@ const HU_EXTRA_CSS = `
             box-shadow: 0 0 0 1px #E10600;
         }
         .exam-essay-block { margin-top: 10px; }
+        .exam-q-value-table {
+            width: auto;
+            min-width: min(100%, 420px);
+            margin: 8px 0 12px;
+            border-collapse: collapse;
+        }
+        .exam-q-value-table th,
+        .exam-q-value-table td {
+            border: 1px solid #333;
+            padding: 6px 10px;
+            text-align: center;
+        }
+        .exam-q-value-table th:first-child,
+        .exam-q-value-table td:first-child {
+            text-align: left;
+        }
 `;
 
 function patchGeneratedHtml(html) {
