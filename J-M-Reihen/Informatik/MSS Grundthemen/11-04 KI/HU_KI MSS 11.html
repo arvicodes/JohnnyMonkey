@@ -1482,10 +1482,18 @@
             box-shadow: 0 0 0 1px #E10600;
         }
         .exam-essay-block { margin-top: 10px; }
-        .exam-q-value-table {
+        .grade-table.exam-q-value-table {
             width: auto;
-            min-width: min(100%, 420px);
+            max-width: 100%;
             margin: 8px 0 12px;
+            margin-left: 0;
+            margin-right: auto;
+        }
+        .exam-mc-block .exam-q-value-table {
+            align-self: flex-start;
+        }
+        .exam-q-value-table {
+            min-width: min(100%, 420px);
             border-collapse: collapse;
         }
         .exam-q-value-table th,
@@ -1645,7 +1653,7 @@
                 <div class="points">12 Punkte</div>
             </div>
         </div>
-        <div class="task-content exam-task-stack">
+        <div class="task-content exam-task-stack" data-exam-fixed-subsection-order="1">
 <div class="exam-subsection" data-sub-kind="sort" data-sub-id="hu11-sort" data-exam-spec="%7B%22id%22%3A%22hu11-sort%22%2C%22letter%22%3A%22A%22%2C%22title%22%3A%22Im%20folgenden%20Ablauf%20sind%20die%20Schritte%20durcheinander%20geraten.%20Ordne%20sie.%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22sort%22%2C%22interaction%22%3A%22drag%22%2C%22sortJoin%22%3A%22pipe%22%2C%22sortLayout%22%3A%22steps%22%2C%22given%22%3A%22Der%20Pr%C3%BCfer%20vergleicht%20die%20Antworten%20der%20beiden%20Partner.%7CDie%20Maschine%20gilt%20als%20intelligent%2C%20wenn%20der%20Pr%C3%BCfer%20sie%20nicht%20zuverl%C3%A4ssig%20vom%20Menschen%20unterscheiden%20kann.%7CEin%20Pr%C3%BCfer%20f%C3%BChrt%20ein%20Gespr%C3%A4ch%20mit%20zwei%20Partnern.%7CEiner%20der%20Partner%20ist%20ein%20Mensch%2C%20der%20andere%20eine%20Maschine.%7CDer%20Pr%C3%BCfer%20wei%C3%9F%20nicht%2C%20welcher%20Partner%20der%20Mensch%20und%20welcher%20die%20Maschine%20ist.%22%2C%22solution%22%3A%22Ein%20Pr%C3%BCfer%20f%C3%BChrt%20ein%20Gespr%C3%A4ch%20mit%20zwei%20Partnern.%7CEiner%20der%20Partner%20ist%20ein%20Mensch%2C%20der%20andere%20eine%20Maschine.%7CDer%20Pr%C3%BCfer%20wei%C3%9F%20nicht%2C%20welcher%20Partner%20der%20Mensch%20und%20welcher%20die%20Maschine%20ist.%7CDer%20Pr%C3%BCfer%20vergleicht%20die%20Antworten%20der%20beiden%20Partner.%7CDie%20Maschine%20gilt%20als%20intelligent%2C%20wenn%20der%20Pr%C3%BCfer%20sie%20nicht%20zuverl%C3%A4ssig%20vom%20Menschen%20unterscheiden%20kann.%22%7D"><div class="exam-subsection-title"><span class="item-label">A)</span> Im folgenden Ablauf sind die Schritte durcheinander geraten. Ordne sie.</div><div class="exam-sort-drag exam-sort-drag--steps" data-answer-id="a2a" data-sort-join="|">
 <div class="exam-sort-pool" aria-label="Schritte zum Ziehen"><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Der Prüfer vergleicht die Antworten der beiden Partner.">Der Prüfer vergleicht die Antworten der beiden Partner.</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Die Maschine gilt als intelligent, wenn der Prüfer sie nicht zuverlässig vom Menschen unterscheiden kann.">Die Maschine gilt als intelligent, wenn der Prüfer sie nicht zuverlässig vom Menschen unterscheiden kann.</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Ein Prüfer führt ein Gespräch mit zwei Partnern.">Ein Prüfer führt ein Gespräch mit zwei Partnern.</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Einer der Partner ist ein Mensch, der andere eine Maschine.">Einer der Partner ist ein Mensch, der andere eine Maschine.</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Der Prüfer weiß nicht, welcher Partner der Mensch und welcher die Maschine ist.">Der Prüfer weiß nicht, welcher Partner der Mensch und welcher die Maschine ist.</span></div>
 <div class="exam-sort-slots-row" aria-label="Reihenfolge 1 bis 5"><div class="exam-sort-slot" data-slot="0" aria-label="Position 1"><span class="exam-sort-slot-num" aria-hidden="true">1</span></div><div class="exam-sort-slot" data-slot="1" aria-label="Position 2"><span class="exam-sort-slot-num" aria-hidden="true">2</span></div><div class="exam-sort-slot" data-slot="2" aria-label="Position 3"><span class="exam-sort-slot-num" aria-hidden="true">3</span></div><div class="exam-sort-slot" data-slot="3" aria-label="Position 4"><span class="exam-sort-slot-num" aria-hidden="true">4</span></div><div class="exam-sort-slot" data-slot="4" aria-label="Position 5"><span class="exam-sort-slot-num" aria-hidden="true">5</span></div></div>

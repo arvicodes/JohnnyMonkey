@@ -67,7 +67,7 @@ export const EXAM_SUBSECTION_SHUFFLE_FUNCTION = `
                 }
 
                 var stack = taskEl.querySelector('.exam-task-stack');
-                if (stack && !wfTableBody) {
+                if (stack && !wfTableBody && !stack.getAttribute('data-exam-fixed-subsection-order')) {
                     var subs = Array.prototype.slice.call(
                         stack.querySelectorAll(':scope > .exam-subsection'),
                     );

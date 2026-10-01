@@ -1482,10 +1482,18 @@
             box-shadow: 0 0 0 1px #E10600;
         }
         .exam-essay-block { margin-top: 10px; }
-        .exam-q-value-table {
+        .grade-table.exam-q-value-table {
             width: auto;
-            min-width: min(100%, 420px);
+            max-width: 100%;
             margin: 8px 0 12px;
+            margin-left: 0;
+            margin-right: auto;
+        }
+        .exam-mc-block .exam-q-value-table {
+            align-self: flex-start;
+        }
+        .exam-q-value-table {
+            min-width: min(100%, 420px);
             border-collapse: collapse;
         }
         .exam-q-value-table th,
@@ -1645,7 +1653,7 @@
                 <div class="points">12 Punkte</div>
             </div>
         </div>
-        <div class="task-content exam-task-stack">
+        <div class="task-content exam-task-stack" data-exam-fixed-subsection-order="1">
 <div class="exam-subsection" data-sub-kind="sort" data-sub-id="hu13-sort" data-exam-spec="%7B%22id%22%3A%22hu13-sort%22%2C%22letter%22%3A%22A%22%2C%22title%22%3A%22Bringe%20die%20Schritte%20des%20verst%C3%A4rkenden%20Lernens%20in%20eine%20sinnvolle%20Reihenfolge.%22%2C%22quadrant%22%3A%22tl%22%2C%22kind%22%3A%22sort%22%2C%22interaction%22%3A%22drag%22%2C%22sortJoin%22%3A%22pipe%22%2C%22sortLayout%22%3A%22steps%22%2C%22given%22%3A%22Das%20Ergebnis%20wird%20bewertet.%7CDie%20Wahrscheinlichkeit%20zuk%C3%BCnftiger%20Entscheidungen%20wird%20angepasst.%7CEin%20m%C3%B6glicher%20Zug%20wird%20ausgew%C3%A4hlt.%7CDer%20Zug%20wird%20ausgef%C3%BChrt.%7CDer%20Computer%20befindet%20sich%20in%20einer%20Spielsituation.%22%2C%22solution%22%3A%22Der%20Computer%20befindet%20sich%20in%20einer%20Spielsituation.%7CEin%20m%C3%B6glicher%20Zug%20wird%20ausgew%C3%A4hlt.%7CDer%20Zug%20wird%20ausgef%C3%BChrt.%7CDas%20Ergebnis%20wird%20bewertet.%7CDie%20Wahrscheinlichkeit%20zuk%C3%BCnftiger%20Entscheidungen%20wird%20angepasst.%22%7D"><div class="exam-subsection-title"><span class="item-label">A)</span> Bringe die Schritte des verstärkenden Lernens in eine sinnvolle Reihenfolge.</div><div class="exam-sort-drag exam-sort-drag--steps" data-answer-id="a2a" data-sort-join="|">
 <div class="exam-sort-pool" aria-label="Schritte zum Ziehen"><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Das Ergebnis wird bewertet.">Das Ergebnis wird bewertet.</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Die Wahrscheinlichkeit zukünftiger Entscheidungen wird angepasst.">Die Wahrscheinlichkeit zukünftiger Entscheidungen wird angepasst.</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Ein möglicher Zug wird ausgewählt.">Ein möglicher Zug wird ausgewählt.</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Der Zug wird ausgeführt.">Der Zug wird ausgeführt.</span><span class="exam-sort-chip" draggable="true" role="button" tabindex="0" data-value="Der Computer befindet sich in einer Spielsituation.">Der Computer befindet sich in einer Spielsituation.</span></div>
 <div class="exam-sort-slots-row" aria-label="Reihenfolge 1 bis 5"><div class="exam-sort-slot" data-slot="0" aria-label="Position 1"><span class="exam-sort-slot-num" aria-hidden="true">1</span></div><div class="exam-sort-slot" data-slot="1" aria-label="Position 2"><span class="exam-sort-slot-num" aria-hidden="true">2</span></div><div class="exam-sort-slot" data-slot="2" aria-label="Position 3"><span class="exam-sort-slot-num" aria-hidden="true">3</span></div><div class="exam-sort-slot" data-slot="3" aria-label="Position 4"><span class="exam-sort-slot-num" aria-hidden="true">4</span></div><div class="exam-sort-slot" data-slot="4" aria-label="Position 5"><span class="exam-sort-slot-num" aria-hidden="true">5</span></div></div>

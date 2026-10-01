@@ -167,10 +167,18 @@ const HU_EXTRA_CSS = `
             box-shadow: 0 0 0 1px #E10600;
         }
         .exam-essay-block { margin-top: 10px; }
-        .exam-q-value-table {
+        .grade-table.exam-q-value-table {
             width: auto;
-            min-width: min(100%, 420px);
+            max-width: 100%;
             margin: 8px 0 12px;
+            margin-left: 0;
+            margin-right: auto;
+        }
+        .exam-mc-block .exam-q-value-table {
+            align-self: flex-start;
+        }
+        .exam-q-value-table {
+            min-width: min(100%, 420px);
             border-collapse: collapse;
         }
         .exam-q-value-table th,

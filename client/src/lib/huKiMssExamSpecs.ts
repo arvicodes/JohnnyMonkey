@@ -194,6 +194,7 @@ export function huKiMss11Task2(): ExamGridTaskSpec {
     taskNumber: 2,
     points: 12,
     hidePointsLabel: true,
+    fixedSubsectionOrder: true,
     layout: 'stack',
     subsections: [
       {
@@ -268,6 +269,7 @@ export function huKiMss13Task2(): ExamGridTaskSpec {
     taskNumber: 2,
     points: 12,
     hidePointsLabel: true,
+    fixedSubsectionOrder: true,
     layout: 'stack',
     subsections: [
       {

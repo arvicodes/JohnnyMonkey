@@ -268,6 +268,8 @@ export type ExamGridTaskSpec = {
   layout?: 'grid' | 'stack';
   /** Kein „(X Punkte)“ neben der Aufgabennummer (z. B. HÜ für SuS). */
   hidePointsLabel?: boolean;
+  /** A/B/C-Teile nicht pro SuS mischen (nur Zeilen-Mischung z. B. W/F bleibt möglich). */
+  fixedSubsectionOrder?: boolean;
 };
 
 function escapeHtml(s: string): string {
@@ -1244,6 +1246,7 @@ function buildTaskShell(
       ? ''
       : ` <span style="font-size: 11px; color: #666; font-weight: normal;">(${spec.points} Punkte)</span>`;
   const instructionSuffix = inlineInstructionHtml ? ` ${inlineInstructionHtml}` : '';
+  const fixedOrderAttr = spec.fixedSubsectionOrder ? ' data-exam-fixed-subsection-order="1"' : '';
   return `    <!-- Aufgabe ${spec.taskNumber} -->
     <div class="task">
         <div class="task-header">
@@ -1252,7 +1255,7 @@ function buildTaskShell(
 ${afbBadge}                <div class="points">${spec.points} Punkte</div>
             </div>
         </div>
-        <div class="task-content${extraClass ? ` ${extraClass}` : ''}">
+        <div class="task-content${extraClass ? ` ${extraClass}` : ''}"${fixedOrderAttr}>
 ${innerContent}
         </div>
     </div>`;
