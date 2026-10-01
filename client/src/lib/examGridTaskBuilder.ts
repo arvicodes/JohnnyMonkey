@@ -851,12 +851,18 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
             return `<table class="grade-table exam-q-value-table" aria-label="Q-Tabelle"><thead><tr>${heads}</tr></thead><tbody>${dataRows}</tbody></table>`;
           })()
         : '';
+    const qTableIntro =
+      'Für einen Zustand enthält eine vereinfachte Q-Tabelle folgende Werte:';
     const tableIntro = tableBlock
-      ? `<p style="margin:0 0 8px;">Für einen Zustand enthält eine vereinfachte Q-Tabelle folgende Werte:</p>${tableBlock}`
+      ? sub.letter
+        ? `<div class="exam-subsection-title"><span class="item-label">${escapeHtml(sub.letter)})</span> ${escapeHtml(qTableIntro)}</div>${tableBlock}`
+        : `<p style="margin:0 0 8px;">${escapeHtml(qTableIntro)}</p>${tableBlock}`
       : '';
     const heading = sub.prompt
-      ? examMcHeadingHtml(sub.letter || '', sub.prompt)
-      : sub.letter
+      ? tableBlock && sub.letter
+        ? `<div class="exam-subsection-title">${allowBasicHtml(sub.prompt)}</div>`
+        : examMcHeadingHtml(sub.letter || '', sub.prompt)
+      : sub.letter && !tableBlock
         ? `<div class="exam-subsection-title"><span class="item-label">${escapeHtml(sub.letter)})</span></div>`
         : '';
     const opts = sub.options
