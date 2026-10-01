@@ -159,6 +159,7 @@ function wfTask1(items: { text: string; solution: 'W' | 'F' }[], idPrefix: strin
   return {
     taskNumber: 1,
     points: 13,
+    hidePointsLabel: true,
     layout: 'stack',
     subsections: [
       {
@@ -192,6 +193,7 @@ export function huKiMss11Task2(): ExamGridTaskSpec {
   return {
     taskNumber: 2,
     points: 12,
+    hidePointsLabel: true,
     layout: 'stack',
     subsections: [
       {
@@ -236,7 +238,7 @@ export function huKiMss11Task2(): ExamGridTaskSpec {
         quadrant: 'tl',
         kind: 'essay',
         prompt:
-          'Erläutere die Lernart, die sich am besten eignet, um einem Computer das Schachspielen beizubringen. <em>(4 Punkte — manuelle Bewertung)</em>',
+          'Erläutere die Lernart, die sich am besten eignet, um einem Computer das Schachspielen beizubringen.',
         solution: MSS11_SCHACH_MODEL,
         answerId: 'a2c',
         rows: 10,
@@ -248,7 +250,7 @@ export function huKiMss11Task2(): ExamGridTaskSpec {
         quadrant: 'tl',
         kind: 'essay',
         prompt:
-          'Bewerte, warum diese Lernart nicht dafür geeignet ist, einem Computer beizubringen, in Bildern Hunde und Katzen zu unterscheiden. <em>(4 Punkte — manuelle Bewertung)</em>',
+          'Bewerte, warum diese Lernart nicht dafür geeignet ist, einem Computer beizubringen, in Bildern Hunde und Katzen zu unterscheiden.',
         solution: MSS11_HUND_MODEL,
         answerId: 'a2d',
         rows: 10,
@@ -265,6 +267,7 @@ export function huKiMss13Task2(): ExamGridTaskSpec {
   return {
     taskNumber: 2,
     points: 12,
+    hidePointsLabel: true,
     layout: 'stack',
     subsections: [
       {
@@ -304,23 +307,18 @@ export function huKiMss13Task2(): ExamGridTaskSpec {
         solution: 'C',
       },
       {
-        id: 'hu13-snap-img',
-        letter: '',
-        title: '',
-        quadrant: 'tl',
-        kind: 'standalone-image',
-        src: SNAP_IMAGE_SRC,
-        alt: 'Snap-Baustein: Belohnung abhängig vom Berühren eines Fasses',
-        size: 'compact',
-      },
-      {
         id: 'hu13-snap',
         letter: 'C',
         title: '',
         quadrant: 'tl',
         kind: 'essay',
         prompt:
-          'Erläutere den Snap-Baustein im Bezug auf das Spiel Bananenjagd und die dort verwendete Lernart. <em>(4 Punkte — manuelle Bewertung)</em>',
+          'Erläutere den Snap-Baustein im Bezug auf das Spiel Bananenjagd und die dort verwendete Lernart.',
+        embedImage: {
+          src: SNAP_IMAGE_SRC,
+          alt: 'Snap-Baustein: Belohnung abhängig vom Berühren eines Fasses',
+          size: 'compact',
+        },
         solution: MSS13_SNAP_MODEL,
         answerId: 'a2c',
         rows: 10,
@@ -332,7 +330,7 @@ export function huKiMss13Task2(): ExamGridTaskSpec {
         quadrant: 'tl',
         kind: 'essay',
         prompt:
-          'Erläutere, welche Lernart sich am besten eignet, um Spam-E-Mails zu erkennen. <em>(4 Punkte — manuelle Bewertung)</em>',
+          'Erläutere, welche Lernart sich am besten eignet, um Spam-E-Mails zu erkennen.',
         solution: MSS13_SPAM_MODEL,
         answerId: 'a2d',
         rows: 10,

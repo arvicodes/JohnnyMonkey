@@ -105,6 +105,8 @@ export type GridSubsection =
       solution: string;
       answerId?: string;
       rows?: number;
+      /** Bild zwischen Aufgabentext und Antwortfeld. */
+      embedImage?: { src: string; alt?: string; size?: 'compact' };
     } & SubImage
   | {
       id: string;
@@ -264,6 +266,8 @@ export type ExamGridTaskSpec = {
   subsections: GridSubsection[];
   /** grid = 2×2; stack = untereinander (längere Aufgaben) */
   layout?: 'grid' | 'stack';
+  /** Kein „(X Punkte)“ neben der Aufgabennummer (z. B. HÜ für SuS). */
+  hidePointsLabel?: boolean;
 };
 
 function escapeHtml(s: string): string {
@@ -815,8 +819,17 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
     const promptBlock = sub.prompt
       ? `<p style="margin:0 0 8px;">${allowBasicHtml(sub.prompt)}</p>`
       : '';
+    const embed = sub.embedImage?.src
+      ? (() => {
+          const figClass =
+            sub.embedImage!.size === 'compact'
+              ? 'exam-chart-figure exam-chart-figure--compact'
+              : 'exam-chart-figure';
+          return `<figure class="${figClass}"><img src="${escapeHtml(sub.embedImage!.src)}" alt="${escapeHtml(sub.embedImage!.alt || '')}" loading="lazy"></figure>`;
+        })()
+      : '';
     const titleInHeader = Boolean(sub.letter && sub.title && !sub.prompt);
-    body = `<div class="item input-group full-width exam-essay-block" style="margin-top:${titleInHeader ? 4 : 8}px;">${promptBlock}<textarea id="${id}" class="exam-essay-input" rows="${rows}" autocomplete="off"></textarea></div>`;
+    body = `<div class="item input-group full-width exam-essay-block" style="margin-top:${titleInHeader ? 4 : 8}px;">${promptBlock}${embed}<textarea id="${id}" class="exam-essay-input" rows="${rows}" autocomplete="off"></textarea></div>`;
   } else if (sub.kind === 'choice') {
     const id = allocId(taskNumber, fieldIndex.n++);
     const answers = parseSolutionAlternatives(sub.solution, 'text');
@@ -1220,9 +1233,10 @@ function buildTaskShell(
     spec.afbLevel && afbRoman
       ? `                <span class="afb-badge afb-${spec.afbLevel}">AFB ${afbRoman}</span>\n`
       : '';
-  const pointsSpan = inlineInstructionHtml
-    ? ''
-    : ` <span style="font-size: 11px; color: #666; font-weight: normal;">(${spec.points} Punkte)</span>`;
+  const pointsSpan =
+    inlineInstructionHtml || spec.hidePointsLabel
+      ? ''
+      : ` <span style="font-size: 11px; color: #666; font-weight: normal;">(${spec.points} Punkte)</span>`;
   const instructionSuffix = inlineInstructionHtml ? ` ${inlineInstructionHtml}` : '';
   return `    <!-- Aufgabe ${spec.taskNumber} -->
     <div class="task">
