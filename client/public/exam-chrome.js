@@ -16,25 +16,8 @@
       '.exam-chrome-clock-btn:hover{background:#fff5f5}' +
       '.teacher-mode .exam-chrome-clock-btn.teacher-only{display:flex}' +
       '.exam-chrome.exam-timer-collapsed .timer-container{display:none}' +
-      '.teacher-mode .exam-chrome .submit-section{display:none!important}' +
-      '#examChromeComposeMount{width:100%}' +
-      '#examChromeComposeMount .exam-dollar-compose{margin:0;padding:8px;border-radius:8px}' +
-      '#examChromeComposeMount .exam-dollar-compose-input{font-size:10px;padding:6px;min-height:48px}' +
-      '#examChromeComposeMount .exam-dollar-compose-label,#examChromeComposeMount .exam-dollar-hint{font-size:9px;line-height:1.3}';
+      '.teacher-mode .exam-chrome .submit-section{display:none!important}';
     document.head.appendChild(st);
-  }
-
-  function ensureChromeComposeMount() {
-    if (document.getElementById('examChromeComposeMount')) return;
-    var chrome = document.querySelector('.exam-chrome');
-    if (!chrome) return;
-    var mount = document.createElement('div');
-    mount.id = 'examChromeComposeMount';
-    mount.className = 'teacher-only';
-    mount.setAttribute('aria-label', 'Neue Aufgabe');
-    var submit = chrome.querySelector('.submit-section');
-    if (submit) chrome.insertBefore(mount, submit);
-    else chrome.appendChild(mount);
   }
 
   function setupExamChromeTimerToggle() {
@@ -101,7 +84,6 @@
   function setupExamChrome() {
     injectChromeStyles();
     ensureExamToolbar();
-    ensureChromeComposeMount();
     setupExamChromeTimerToggle();
   }
 

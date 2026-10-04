@@ -13,7 +13,9 @@ export function taskBodyUsesGridEditor(body: string): boolean {
 export function isStandardTemplateExamHtml(html: string): boolean {
   return (
     /class=["']exam-shell["']/i.test(html) &&
-    (html.includes('exam-dollar-live-edit') || html.includes('id="examChromeComposeMount"'))
+    (html.includes('exam-dollar-live-edit') ||
+      html.includes('id="examPaperComposeMount"') ||
+      html.includes('id="examChromeComposeMount"'))
   );
 }
 

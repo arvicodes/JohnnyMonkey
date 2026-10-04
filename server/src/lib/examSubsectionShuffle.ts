@@ -184,10 +184,10 @@ export const EXAM_CHROME_SCRIPT_MARKER = 'data-jm-exam-chrome-script';
 const EXAM_CHROME_CLOCK_BTN =
   '<button type="button" class="exam-chrome-clock-btn teacher-only" id="examTimerToggle" aria-expanded="false" title="Bearbeitungszeit ein- oder ausblenden">🕐</button>';
 
-const EXAM_CHROME_COMPOSE_MOUNT =
-  '<div id="examChromeComposeMount" class="teacher-only" aria-label="Neue Aufgabe"></div>';
+const EXAM_PAPER_COMPOSE_MOUNT =
+  '<div id="examPaperComposeMount" class="teacher-only" aria-label="Neue Aufgabe"></div>';
 
-/** Statisches Markup der Standardvorlage, falls ältere Prüfungen es noch nicht im HTML haben. */
+/** Uhr-Button in der linken Leiste (ältere Dateien). */
 export function patchExamChromeMarkup(html: string): string {
   if (!/class=["'][^"']*exam-chrome/i.test(html)) return html;
 
@@ -198,15 +198,26 @@ export function patchExamChromeMarkup(html: string): string {
       `$1\n        ${EXAM_CHROME_CLOCK_BTN}`,
     );
   }
-  if (!out.includes('id="examChromeComposeMount"')) {
-    if (/<div class="submit-section"/i.test(out)) {
-      out = out.replace(
-        /(\s*)(<div class="submit-section")/i,
-        `$1${EXAM_CHROME_COMPOSE_MOUNT}\n$1$2`,
-      );
-    } else {
-      out = out.replace(/(\s*)(<\/aside>)/i, `$1${EXAM_CHROME_COMPOSE_MOUNT}\n$1$2`);
-    }
+  return out;
+}
+
+/** „+ Aufgabe“-Eingabe unter den Aufgaben im Blatt, nicht in der Sidebar. */
+export function patchExamPaperComposeMarkup(html: string): string {
+  if (!/class=["'][^"']*exam-paper/i.test(html)) return html;
+  if (html.includes('id="examPaperComposeMount"')) return html;
+
+  let out = html;
+  if (out.includes('id="examChromeComposeMount"')) {
+    out = out.replace(
+      /\s*<div id="examChromeComposeMount"[^>]*><\/div>\s*/i,
+      '\n',
+    );
+  }
+  if (/<div class="footer"/i.test(out)) {
+    out = out.replace(
+      /(\s*)(<div class="footer")/i,
+      `$1${EXAM_PAPER_COMPOSE_MOUNT}\n$1$2`,
+    );
   }
   return out;
 }
@@ -254,6 +265,7 @@ export function transformExamHtmlForDelivery(html: string, filePath?: string): s
   }
 
   out = patchExamChromeMarkup(out);
+  out = patchExamPaperComposeMarkup(out);
   out = injectExamChromeRuntime(out);
   out = injectExamDollarAuthoring(out);
   return injectHideLiveScoreForStudents(out);

@@ -139,8 +139,9 @@
 
   function createTaskFromTemplate(aufgabeLabel) {
     var paper = document.querySelector('.exam-paper');
+    var composeMount = document.getElementById('examPaperComposeMount');
     var footer = paper ? paper.querySelector('.footer') : null;
-    var insertBefore = footer;
+    var insertBefore = composeMount || footer;
     if (!paper || !insertBefore) return null;
     var proto = paper.querySelector('.task');
     var taskEl;
@@ -292,6 +293,37 @@
       if (live) live.focus();
     }
     textarea.value = '';
+    updateComposePlaceholder();
+  }
+
+  function updateComposePlaceholder() {
+    var ta = document.querySelector('.exam-dollar-compose-input');
+    if (ta) ta.placeholder = '$Aufgabe ' + nextTaskNumber() + '$';
+  }
+
+  function ensurePaperComposeMount() {
+    var paper = document.querySelector('.exam-paper');
+    if (!paper) return null;
+    var mount = document.getElementById('examPaperComposeMount');
+    if (!mount) {
+      mount = document.createElement('div');
+      mount.id = 'examPaperComposeMount';
+      mount.className = 'teacher-only';
+      mount.setAttribute('aria-label', 'Neue Aufgabe');
+      var footer = paper.querySelector('.footer');
+      if (footer) paper.insertBefore(mount, footer);
+      else paper.appendChild(mount);
+    }
+    var legacyChrome = document.getElementById('examChromeComposeMount');
+    if (legacyChrome) {
+      while (legacyChrome.firstChild) mount.appendChild(legacyChrome.firstChild);
+      if (legacyChrome.parentNode) legacyChrome.parentNode.removeChild(legacyChrome);
+    }
+    var compose = document.querySelector('.exam-dollar-compose');
+    if (compose && compose.parentNode !== mount) {
+      mount.appendChild(compose);
+    }
+    return mount;
   }
 
   function injectStyles() {
@@ -304,6 +336,7 @@
       '.teacher-mode .exam-dollar-live-edit{display:block;min-height:72px;padding:4px 2px;font-size:14px;line-height:1.55;font-family:Arial,sans-serif;color:#222;outline:none;border-radius:4px;white-space:pre-wrap;word-break:break-word}' +
       '.teacher-mode .exam-dollar-live-edit:focus{box-shadow:0 0 0 2px rgba(225,6,0,0.25)}' +
       '.teacher-mode .exam-dollar-live-edit:empty::before{content:attr(data-placeholder);color:#999;font-style:italic}' +
+      '#examPaperComposeMount{margin:20px 0 8px}' +
       '.exam-dollar-compose{margin:0;padding:10px;border:1px dashed #ef6c00;border-radius:8px;background:#fff8f0}' +
       '.exam-dollar-compose-label{font-size:11px;font-weight:700;color:#e65100;margin-bottom:6px}' +
       '.exam-dollar-compose-input{width:100%;font-family:Consolas,Monaco,monospace;font-size:12px;padding:8px;border:1px solid #ffb74d;border-radius:6px;resize:vertical;box-sizing:border-box}' +
@@ -320,29 +353,35 @@
   }
 
   function ensureComposeArea() {
-    if (document.querySelector('.exam-dollar-compose')) return;
-    var mount = document.getElementById('examChromeComposeMount');
-    var wrap = document.createElement('div');
-    wrap.className = 'exam-dollar-compose teacher-only';
-    wrap.innerHTML =
-      '<div class="exam-dollar-compose-label">+ Aufgabe</div>' +
-      '<textarea class="exam-dollar-compose-input" rows="2" placeholder="$Aufgabe 2$"></textarea>' +
-      '<div class="exam-dollar-hint">Strg+Eingabe oder Tab verlassen</div>';
-    if (mount) mount.appendChild(wrap);
-    else {
-      var chrome = document.querySelector('.exam-chrome');
-      if (chrome) chrome.appendChild(wrap);
+    var mount = ensurePaperComposeMount();
+    var wrap = document.querySelector('.exam-dollar-compose');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.className = 'exam-dollar-compose teacher-only';
+      wrap.innerHTML =
+        '<div class="exam-dollar-compose-label">+ Aufgabe</div>' +
+        '<textarea class="exam-dollar-compose-input" rows="2"></textarea>' +
+        '<div class="exam-dollar-hint">Strg+Eingabe oder Tab verlassen</div>';
+      if (mount) mount.appendChild(wrap);
+      else {
+        var paper = document.querySelector('.exam-paper');
+        if (paper) paper.appendChild(wrap);
+      }
     }
     var ta = wrap.querySelector('.exam-dollar-compose-input');
-    ta.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
+    if (ta && !ta.__jmComposeBound) {
+      ta.__jmComposeBound = true;
+      ta.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+          e.preventDefault();
+          handleComposeInput(ta);
+        }
+      });
+      ta.addEventListener('blur', function () {
         handleComposeInput(ta);
-      }
-    });
-    ta.addEventListener('blur', function () {
-      handleComposeInput(ta);
-    });
+      });
+    }
+    updateComposePlaceholder();
   }
 
   function setupExamDollarAuthoring() {
