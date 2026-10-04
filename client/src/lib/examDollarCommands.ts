@@ -11,4 +11,7 @@ export const EXAM_DOLLAR_COMMANDS_HELP = [
   { syntax: '$_Lösung1/Lösung2/Lösung3_$', meaning: 'Lücke; alle Teile zwischen / sind gültige Lösungen' },
   { syntax: '$__$', meaning: 'großes Eingabefeld' },
   { syntax: '$B Wort B$', meaning: 'fett (analog $I … I$ kursiv, $U … U$ unterstrichen)' },
+  { syntax: '$rot Wort rot$', meaning: 'Textfarbe (rot, gruen, blau, orange, lila) oder $#ff0000$ Text $#ff0000$' },
+  { syntax: '$Bild datei.png$', meaning: 'Bild aus dem Prüfungsordner (Drag & Drop ins Textfeld)' },
+  { syntax: '$Musterlösung$', meaning: 'ab dieser Zeile: Inhalt für „Musterlösungen anzeigen“ (grüne Box)' },
 ] as const;

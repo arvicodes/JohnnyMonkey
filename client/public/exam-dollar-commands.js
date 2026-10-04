@@ -8,6 +8,9 @@
  * $_a/b/c_$    Lücke mit mehreren gültigen Lösungen
  * $__$         großes Eingabefeld
  * $B Wort B$   fett · $I Wort I$ kursiv · $U Wort U$ unterstrichen
+ * $rot Wort rot$  Farbe (rot/gruen/blau/orange/lila) · $#ff0000$ Text $#ff0000$ Hex
+ * $Bild name.png$  Bild (gleicher Ordner wie die Prüfung; Drag & Drop ins Textfeld)
+ * $Musterlösung$    ab dieser Zeile: Text für die grüne Musterlösungsbox
  */
 (function (global) {
   'use strict';
@@ -160,6 +163,40 @@
     return m ? m[1].replace(',', '.') : null;
   }
 
+  var NAMED_COLORS = {
+    rot: '#c62828',
+    gruen: '#2e7d32',
+    grün: '#2e7d32',
+    blau: '#1565c0',
+    orange: '#e65100',
+    lila: '#7b1fa2',
+    violett: '#7b1fa2',
+    schwarz: '#111111',
+  };
+
+  function isMusterloesungMarker(line) {
+    var t = String(line || '').trim();
+    return /^\$Musterlösung\$$/i.test(t) || /^\$Musterloesung\$$/i.test(t);
+  }
+
+  function splitBodyAndSolutionLines(bodyLines) {
+    var idx = -1;
+    var i;
+    for (i = 0; i < bodyLines.length; i++) {
+      if (isMusterloesungMarker(bodyLines[i])) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx < 0) {
+      return { body: bodyLines.join('\n').trim(), solution: '' };
+    }
+    return {
+      body: bodyLines.slice(0, idx).join('\n').trim(),
+      solution: bodyLines.slice(idx + 1).join('\n').trim(),
+    };
+  }
+
   function parseTaskSource(source) {
     var lines = String(source || '').split(/\r?\n/);
     var aufgabeLabel = null;
@@ -169,9 +206,9 @@
     for (i = 0; i < lines.length; i++) {
       var raw = lines[i];
       var t = raw.trim();
-      if (!t) continue;
+      if (!t && bodyLines.length === 0 && aufgabeLabel == null && pointsVal == null) continue;
       var solo = t.match(/^\$([^$]+)\$$/);
-      if (solo) {
+      if (solo && bodyLines.length === 0) {
         var cmd = solo[1].trim();
         var a = parseAufgabe(cmd);
         if (a) {
@@ -186,21 +223,56 @@
       }
       bodyLines.push(raw);
     }
+    var split = splitBodyAndSolutionLines(bodyLines);
     return {
       aufgabeLabel: aufgabeLabel,
       pointsVal: pointsVal,
-      body: bodyLines.join('\n').trim(),
+      body: split.body,
+      solution: split.solution,
     };
   }
 
-  function composeTaskSource(aufgabeLabel, pointsVal, body) {
+  function parseLiveEditText(text) {
+    return splitBodyAndSolutionLines(String(text || '').split(/\r?\n/));
+  }
+
+  function composeTaskSource(aufgabeLabel, pointsVal, body, solution) {
     var lines = [];
     if (aufgabeLabel) lines.push('$Aufgabe ' + aufgabeLabel + '$');
     if (pointsVal != null && pointsVal !== '') lines.push('$' + pointsVal + ' Punkte$');
     var b = String(body || '').trim();
     if (b) lines.push(b);
+    var sol = String(solution || '').trim();
+    if (sol) {
+      lines.push('$Musterlösung$');
+      lines.push(sol);
+    }
     if (!lines.length) return '';
     return lines.join('\n') + '\n';
+  }
+
+  function liveEditTextFromMeta(meta) {
+    var text = String(meta.body || '');
+    if (meta.solution) {
+      text += (text ? '\n' : '') + '$Musterlösung$\n' + meta.solution;
+    }
+    return text;
+  }
+
+  function getExamFolderPath() {
+    var fp = getExamFilePath();
+    if (!fp) return '';
+    var p = String(fp).replace(/\\/g, '/');
+    var slash = p.lastIndexOf('/');
+    return slash >= 0 ? p.slice(0, slash) : p;
+  }
+
+  function resolveExamImageUrl(ref) {
+    var r = String(ref || '').trim().replace(/\\/g, '/');
+    if (!r) return '';
+    if (/^https?:\/\//i.test(r) || r.indexOf('/api/') === 0) return r;
+    var full = r.indexOf('/') >= 0 ? r : getExamFolderPath() + '/' + r;
+    return '/api/file-system-paths/read-image?filePath=' + encodeURIComponent(full);
   }
 
   function syncSourceFromLiveEdit(taskEl) {
@@ -208,7 +280,13 @@
     var src = taskEl.querySelector('.exam-dollar-source');
     if (!live || !src) return;
     var meta = parseTaskSource(src.value);
-    src.value = composeTaskSource(meta.aufgabeLabel, meta.pointsVal, live.innerText || '');
+    var liveParts = parseLiveEditText(live.innerText || '');
+    src.value = composeTaskSource(
+      meta.aufgabeLabel,
+      meta.pointsVal,
+      liveParts.body,
+      liveParts.solution,
+    );
   }
 
   function renumberExamTasks() {
@@ -219,10 +297,11 @@
       var meta = parseTaskSource(src ? src.value : '');
       if (meta.pointsVal == null) meta.pointsVal = '5';
       meta.aufgabeLabel = n;
-      var body = meta.body;
       var live = taskEl.querySelector('.exam-dollar-live-edit');
-      if (live) live.textContent = body;
-      if (src) src.value = composeTaskSource(meta.aufgabeLabel, meta.pointsVal, body);
+      if (live) live.textContent = liveEditTextFromMeta(meta);
+      if (src) {
+        src.value = composeTaskSource(meta.aufgabeLabel, meta.pointsVal, meta.body, meta.solution);
+      }
       applySourceToTask(taskEl, src ? src.value : '');
     });
     updateComposePlaceholder();
@@ -281,6 +360,35 @@
     return { answers: [body] };
   }
 
+  function parseColorSpan(inner) {
+    var hexM = inner.match(/^#([0-9a-f]{3,8})\s+([\s\S]+?)\s+#([0-9a-f]{3,8})$/i);
+    if (hexM && hexM[1].toLowerCase() === hexM[3].toLowerCase()) {
+      return { css: '#' + hexM[1], text: hexM[2] };
+    }
+    var name;
+    for (name in NAMED_COLORS) {
+      if (!Object.prototype.hasOwnProperty.call(NAMED_COLORS, name)) continue;
+      var re = new RegExp('^' + name + '\\s+([\\s\\S]+?)\\s+' + name + '$', 'i');
+      var nm = inner.match(re);
+      if (nm) return { css: NAMED_COLORS[name], text: nm[1] };
+    }
+    return null;
+  }
+
+  function renderBlockToHtml(blockText, idGen) {
+    var lines = String(blockText || '').split(/\r?\n/);
+    var html = '';
+    var i;
+    var hasLine = false;
+    for (i = 0; i < lines.length; i++) {
+      if (!String(lines[i]).trim()) continue;
+      hasLine = true;
+      html += '<p>' + renderInline(lines[i], idGen) + '</p>';
+    }
+    if (!hasLine) return '';
+    return html;
+  }
+
   function renderInline(text, idGen) {
     var re = /\$([^$]+)\$/g;
     var out = '';
@@ -292,12 +400,31 @@
       var boldM = inner.match(/^B\s+([\s\S]+?)\s+B$/i);
       var italicM = inner.match(/^I\s+([\s\S]+?)\s+I$/i);
       var underM = inner.match(/^U\s+([\s\S]+?)\s+U$/i);
+      var colorM = parseColorSpan(inner);
+      var bildM = inner.match(/^Bild\s+(.+)$/i);
       if (boldM) {
         out += '<strong>' + renderInline(boldM[1], idGen) + '</strong>';
       } else if (italicM) {
         out += '<em>' + renderInline(italicM[1], idGen) + '</em>';
       } else if (underM) {
         out += '<u>' + renderInline(underM[1], idGen) + '</u>';
+      } else if (colorM) {
+        out +=
+          '<span style="color:' +
+          escapeHtml(colorM.css) +
+          '">' +
+          renderInline(colorM.text, idGen) +
+          '</span>';
+      } else if (bildM) {
+        var imgUrl = resolveExamImageUrl(bildM[1]);
+        if (imgUrl) {
+          out +=
+            '<img class="exam-dollar-img" src="' +
+            escapeHtml(imgUrl) +
+            '" alt="" loading="lazy">';
+        } else {
+          out += escapeHtml(m[0]);
+        }
       } else if (inner === '__') {
         out +=
           '<div class="item input-group full-width exam-dollar-biggap">' +
@@ -345,56 +472,47 @@
     if (!rendered) return;
     var taskNumEl = taskEl.querySelector('.task-number');
     var pointsEl = taskEl.querySelector('.task-meta .points');
-    var lines = String(source || '').split(/\r?\n/);
-    var aufgabeLabel = null;
-    var pointsVal = null;
-    var bodyLines = [];
-    var i;
-    for (i = 0; i < lines.length; i++) {
-      var raw = lines[i];
-      var t = raw.trim();
-      var solo = t.match(/^\$([^$]+)\$$/);
-      if (solo) {
-        var cmd = solo[1].trim();
-        var a = parseAufgabe(cmd);
-        if (a) {
-          aufgabeLabel = a;
-          continue;
-        }
-        var p = parsePunkte(cmd);
-        if (p) {
-          pointsVal = p;
-          continue;
-        }
-      }
-      if (t.length) bodyLines.push(raw);
-    }
-    if (aufgabeLabel && taskNumEl) {
-      if (pointsVal != null && taskNumEl.querySelector('span')) {
+    var parsed = parseTaskSource(source);
+    if (parsed.aufgabeLabel && taskNumEl) {
+      if (parsed.pointsVal != null && taskNumEl.querySelector('span')) {
         taskNumEl.innerHTML =
           'Aufgabe ' +
-          escapeHtml(aufgabeLabel) +
+          escapeHtml(parsed.aufgabeLabel) +
           ' <span style="font-size: 11px; color: #666; font-weight: normal;">(' +
-          escapeHtml(pointsVal) +
+          escapeHtml(parsed.pointsVal) +
           ' Punkte)</span>';
       } else {
-        taskNumEl.textContent = 'Aufgabe ' + aufgabeLabel;
+        taskNumEl.textContent = 'Aufgabe ' + parsed.aufgabeLabel;
       }
     }
-    if (pointsVal != null && pointsEl) {
-      pointsEl.textContent = pointsVal + ' Punkte';
+    if (parsed.pointsVal != null && pointsEl) {
+      pointsEl.textContent = parsed.pointsVal + ' Punkte';
     }
     var n = 0;
     function idGen() {
       n += 1;
       return 'examDollar_' + Date.now().toString(36) + '_' + n;
     }
-    var html = '';
-    for (i = 0; i < bodyLines.length; i++) {
-      html += '<p>' + renderInline(bodyLines[i], idGen) + '</p>';
-    }
+    var html = renderBlockToHtml(parsed.body, idGen);
     if (!html) html = '<p class="exam-dollar-empty-hint"></p>';
     rendered.innerHTML = html;
+
+    var content = taskEl.querySelector('.task-content');
+    var solEl = taskEl.querySelector('.solution');
+    if (!solEl && content) {
+      solEl = document.createElement('div');
+      solEl.className = 'solution';
+      content.appendChild(solEl);
+    }
+    if (solEl) {
+      var solHtml = renderBlockToHtml(parsed.solution, idGen);
+      if (solHtml) {
+        solEl.innerHTML = '<h4>Musterlösung:</h4>' + solHtml;
+      } else {
+        solEl.innerHTML = '';
+      }
+    }
+
     if (typeof global.attachInputListeners === 'function') {
       try {
         global.attachInputListeners();
@@ -453,7 +571,7 @@
     var src = taskEl.querySelector('.exam-dollar-source');
     var label = aufgabeLabel || String(nextTaskNumber());
     if (src) {
-      src.value = composeTaskSource(label, '5', '');
+      src.value = composeTaskSource(label, '5', '', '');
     }
     paper.insertBefore(taskEl, insertBefore);
     ensureDeleteButton(taskEl);
@@ -472,7 +590,99 @@
     var live = taskEl.querySelector('.exam-dollar-live-edit');
     if (!src || !live) return;
     var meta = parseTaskSource(src.value);
-    live.textContent = meta.body;
+    live.textContent = liveEditTextFromMeta(meta);
+  }
+
+  function insertTextIntoLiveEdit(taskEl, text) {
+    var live = taskEl.querySelector('.exam-dollar-live-edit');
+    var src = taskEl.querySelector('.exam-dollar-source');
+    if (!live || !src) return;
+    var cur = live.innerText || '';
+    var sep = cur && !/\n$/.test(cur) ? '\n' : '';
+    live.textContent = cur + sep + text;
+    live.dataset.jmTouched = '1';
+    syncSourceFromLiveEdit(taskEl);
+    applySourceToTask(taskEl, src.value);
+    scheduleSave();
+  }
+
+  function uploadExamImage(file) {
+    var folder = getExamFolderPath();
+    if (!folder || !file) return Promise.reject(new Error('no folder'));
+    var fd = new FormData();
+    fd.append('file', file);
+    fd.append('targetPath', folder);
+    return fetch('/api/file-system-paths/save-file', { method: 'POST', body: fd }).then(function (r) {
+      if (!r.ok) throw new Error('upload');
+      return r.json();
+    });
+  }
+
+  function handleImageFileForTask(taskEl, file) {
+    if (!file || !file.type || file.type.indexOf('image/') !== 0) return;
+    uploadExamImage(file)
+      .then(function (res) {
+        var name = (res && res.filename) || file.name;
+        insertTextIntoLiveEdit(taskEl, '$Bild ' + name + '$');
+      })
+      .catch(function () {
+        setSaveStatus('Bild-Upload fehlgeschlagen', true);
+      });
+  }
+
+  function wireImageDrop(el, taskEl) {
+    if (el.__jmImageDrop) return;
+    el.__jmImageDrop = true;
+    el.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      el.classList.add('exam-dollar-drag-over');
+    });
+    el.addEventListener('dragleave', function () {
+      el.classList.remove('exam-dollar-drag-over');
+    });
+    el.addEventListener('drop', function (e) {
+      e.preventDefault();
+      el.classList.remove('exam-dollar-drag-over');
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) handleImageFileForTask(taskEl, f);
+    });
+    el.addEventListener('paste', function (e) {
+      var items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      var i;
+      for (i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image/') === 0) {
+          e.preventDefault();
+          handleImageFileForTask(taskEl, items[i].getAsFile());
+          break;
+        }
+      }
+    });
+  }
+
+  function insertColorWrap(taskEl, colorName) {
+    insertTextIntoLiveEdit(taskEl, '$' + colorName + ' Text ' + colorName + '$');
+  }
+
+  function ensureColorBar(taskEl) {
+    var live = taskEl.querySelector('.exam-dollar-live-edit');
+    if (!live || taskEl.querySelector('.exam-dollar-color-bar')) return;
+    var bar = document.createElement('div');
+    bar.className = 'exam-dollar-color-bar teacher-only';
+    bar.setAttribute('aria-label', 'Farben');
+    ['rot', 'gruen', 'blau', 'orange', 'lila'].forEach(function (c) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'exam-dollar-color-swatch';
+      btn.title = c;
+      btn.style.background = NAMED_COLORS[c] || '#666';
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        insertColorWrap(taskEl, c);
+      });
+      bar.appendChild(btn);
+    });
+    live.parentNode.insertBefore(bar, live);
   }
 
   function wireLiveEdit(taskEl) {
@@ -496,6 +706,8 @@
       applySourceToTask(taskEl, src.value);
       scheduleSave({ immediate: true });
     });
+    ensureColorBar(taskEl);
+    wireImageDrop(live, taskEl);
   }
 
   function wireTaskSource(taskEl) {
@@ -579,7 +791,7 @@
       var restMeta = parseTaskSource(rest);
       var body = restMeta.body;
       var pts = restMeta.pointsVal != null ? restMeta.pointsVal : '5';
-      src.value = composeTaskSource(a, pts, body);
+      src.value = composeTaskSource(a, pts, body, restMeta.solution);
       syncLiveEditFromSource(task);
       applySourceToTask(task, src.value);
       var live = task.querySelector('.exam-dollar-live-edit');
@@ -630,14 +842,20 @@
     st.textContent =
       '.exam-dollar-source{display:none!important}' +
       '.teacher-mode .task-content{display:flex;flex-direction:column}' +
-      '.teacher-mode .exam-dollar-live-edit{order:1}' +
-      '.teacher-mode .exam-dollar-rendered{order:2}' +
-      '.teacher-mode .task-content .solution{order:3}' +
+      '.teacher-mode .exam-dollar-rendered{order:1}' +
+      '.teacher-mode .exam-dollar-color-bar{order:2}' +
+      '.teacher-mode .exam-dollar-live-edit{order:3}' +
+      '.teacher-mode .task-content .solution{order:4}' +
       '.exam-dollar-rendered{margin-bottom:6px;font-family:Arial,sans-serif;font-size:14px;line-height:1.55}' +
-      '.teacher-mode .task-content .exam-dollar-rendered{display:block!important;margin-top:10px;padding-top:8px;border-top:1px dashed #ddd}' +
+      '.teacher-mode .task-content .exam-dollar-rendered{display:block!important;margin:0 0 8px;padding:8px 6px;border:1px dashed #ddd;border-radius:6px;background:#fafafa}' +
       '.teacher-mode .task-content .exam-dollar-rendered::before{content:"Vorschau";display:block;font-size:10px;font-weight:700;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}' +
+      '.exam-dollar-color-bar{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 6px}' +
+      '.exam-dollar-color-swatch{width:20px;height:20px;border:1px solid rgba(0,0,0,.2);border-radius:4px;cursor:pointer;padding:0}' +
+      '.exam-dollar-color-swatch:hover{transform:scale(1.08)}' +
       '.teacher-mode .exam-dollar-live-edit{display:block;min-height:56px;padding:6px 4px;line-height:1.55;font-family:Arial,sans-serif;font-size:14px;color:#222;outline:none;border-radius:4px;white-space:pre-wrap;word-break:break-word}' +
       '.teacher-mode .exam-dollar-live-edit:focus{box-shadow:0 0 0 2px rgba(225,6,0,0.25)}' +
+      '.exam-dollar-live-edit.exam-dollar-drag-over,.exam-dollar-compose-input.exam-dollar-drag-over{box-shadow:0 0 0 2px rgba(21,101,192,.45)}' +
+      '.exam-dollar-img{display:block;max-width:100%;height:auto;margin:8px 0;border-radius:4px}' +
       '.task-header{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}' +
       '.task-header .task-number{flex:1;min-width:0}' +
       '.exam-task-delete{flex-shrink:0;width:24px;height:24px;border:1px solid #d0d0d0;border-radius:5px;background:#fff;color:#c62828;font-size:18px;line-height:1;cursor:pointer;padding:0;margin-top:2px}' +
@@ -685,6 +903,31 @@
       ta.addEventListener('blur', function () {
         handleComposeInput(ta);
       });
+      ta.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        ta.classList.add('exam-dollar-drag-over');
+      });
+      ta.addEventListener('dragleave', function () {
+        ta.classList.remove('exam-dollar-drag-over');
+      });
+      ta.addEventListener('drop', function (e) {
+        var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (!f || f.type.indexOf('image/') !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        ta.classList.remove('exam-dollar-drag-over');
+        uploadExamImage(f)
+          .then(function (res) {
+            var name = (res && res.filename) || f.name;
+            var pos = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
+            var ins = '$Bild ' + name + '$';
+            ta.value = ta.value.slice(0, pos) + ins + ta.value.slice(pos);
+            scheduleSave();
+          })
+          .catch(function () {
+            setSaveStatus('Bild-Upload fehlgeschlagen', true);
+          });
+      });
     }
     updateComposePlaceholder();
   }
@@ -715,11 +958,19 @@
       ensureDeleteButton(taskEl);
       wireTaskSource(taskEl);
       wireLiveEdit(taskEl);
+      ensureColorBar(taskEl);
+      var liveEl = taskEl.querySelector('.exam-dollar-live-edit');
+      if (liveEl) wireImageDrop(liveEl, taskEl);
       var src = taskEl.querySelector('.exam-dollar-source');
       if (src) {
         var cleaned = stripDefaultBoilerplateSource(src.value);
         var meta = parseTaskSource(cleaned);
-        src.value = composeTaskSource(meta.aufgabeLabel, meta.pointsVal, meta.body);
+        src.value = composeTaskSource(
+          meta.aufgabeLabel,
+          meta.pointsVal,
+          meta.body,
+          meta.solution,
+        );
         syncLiveEditFromSource(taskEl);
         applySourceToTask(taskEl, src.value);
       }
