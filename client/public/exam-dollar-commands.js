@@ -205,7 +205,7 @@
       return null;
     }
 
-    var hexOpen = rest.match(/^#([0-9a-f]{3,8})(\s+)/i);
+    var hexOpen = rest.match(/^#([0-9a-f]{3,8})(\s+|\$)/i);
     if (hexOpen) {
       var hexTag = '#' + hexOpen[1];
       var hexContentStart = start + 1 + hexOpen[0].length;
@@ -224,7 +224,7 @@
     var ci;
     for (ci = 0; ci < colorNames.length; ci++) {
       var cName = colorNames[ci];
-      var cOpen = new RegExp('^' + escapeRegExp(cName) + '(\\s+)', 'i').exec(rest);
+      var cOpen = new RegExp('^' + escapeRegExp(cName) + '(\\s+|\\$)', 'i').exec(rest);
       if (!cOpen) continue;
       var cContentStart = start + 1 + cOpen[0].length;
       var cClose = findBalancedDollarClose(text, cName, cContentStart);
@@ -399,6 +399,7 @@
       liveParts.body,
       liveParts.solution,
     );
+    src.value = applyAutoPointsToSource(taskEl, src.value);
   }
 
   function renumberExamTasks() {
@@ -532,6 +533,7 @@
     if (!src) return;
     var meta = parseTaskSource(src.value);
     meta.pointsVal = val;
+    taskEl.dataset.jmPointsManual = '1';
     src.value = composeTaskSource(meta.aufgabeLabel, meta.pointsVal, meta.body, meta.solution);
     applySourceToTask(taskEl, src.value);
     scheduleSave();
@@ -565,18 +567,165 @@
   }
 
   function parseColorSpan(inner) {
-    var hexM = inner.match(/^#([0-9a-f]{3,8})\s+([\s\S]+?)\s+#([0-9a-f]{3,8})$/i);
+    var hexM = inner.match(/^#([0-9a-f]{3,8})\s+([\s\S]+)\s+#([0-9a-f]{3,8})$/i);
     if (hexM && hexM[1].toLowerCase() === hexM[3].toLowerCase()) {
       return { css: '#' + hexM[1], text: hexM[2] };
     }
     var name;
     for (name in NAMED_COLORS) {
       if (!Object.prototype.hasOwnProperty.call(NAMED_COLORS, name)) continue;
-      var re = new RegExp('^' + name + '\\s+([\\s\\S]+?)\\s+' + name + '$', 'i');
+      var re = new RegExp('^' + escapeRegExp(name) + '\\s+([\\s\\S]+)\\s+' + escapeRegExp(name) + '$', 'i');
       var nm = inner.match(re);
       if (nm) return { css: NAMED_COLORS[name], text: nm[1] };
     }
     return null;
+  }
+
+  function scanBodyDollarTokens(body) {
+    var gaps = 0;
+    var choices = 0;
+    var i = 0;
+    var s = String(body || '');
+    while (i < s.length) {
+      if (s[i] !== '$') {
+        i += 1;
+        continue;
+      }
+      var tok = consumeDollarToken(s, i);
+      if (!tok) {
+        i += 1;
+        continue;
+      }
+      var innerTrim = String(tok.inner || '').trim();
+      if (parseGapToken(innerTrim)) gaps += 1;
+      else if (/^CC$/i.test(innerTrim)) choices += 1;
+      else if (/^C$/i.test(innerTrim)) choices += 1;
+      i = tok.end;
+    }
+    return { gaps: gaps, choices: choices };
+  }
+
+  function formatPointsNumber(n) {
+    if (n == null || isNaN(n)) return null;
+    var r = Math.round(n * 100) / 100;
+    if (Math.abs(r - Math.round(r)) < 0.001) return String(Math.round(r));
+    return String(r).replace('.', ',');
+  }
+
+  function computeAutoPointsFromBody(body) {
+    var scan = scanBodyDollarTokens(body);
+    if (scan.choices > 0 && scan.gaps === 0) {
+      return formatPointsNumber(scan.choices * 0.5);
+    }
+    if (scan.gaps > 0 && scan.choices === 0) {
+      return formatPointsNumber(scan.gaps);
+    }
+    if (scan.gaps > 0 && scan.choices > 0) {
+      return formatPointsNumber(scan.gaps + scan.choices * 0.5);
+    }
+    return null;
+  }
+
+  function applyAutoPointsToSource(taskEl, source) {
+    if (taskEl && taskEl.dataset && taskEl.dataset.jmPointsManual === '1') return source;
+    var parsed = parseTaskSource(source);
+    var auto = computeAutoPointsFromBody(parsed.body);
+    if (auto == null) return source;
+    if (String(parsed.pointsVal || '') === auto) return source;
+    parsed.pointsVal = auto;
+    return composeTaskSource(parsed.aufgabeLabel, parsed.pointsVal, parsed.body, parsed.solution);
+  }
+
+  function normalizeGapAnswer(raw) {
+    return String(raw || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .replace(/ä/g, 'ae')
+      .replace(/ö/g, 'oe')
+      .replace(/ü/g, 'ue')
+      .replace(/ß/g, 'ss');
+  }
+
+  function gapInputIsCorrect(inp) {
+    var accepted = inp.getAttribute('data-jm-accepted');
+    if (!accepted) return false;
+    var n = normalizeGapAnswer(inp.value);
+    if (!n) return false;
+    return accepted.split('|').some(function (a) {
+      return normalizeGapAnswer(a) === n;
+    });
+  }
+
+  function scoreCheckboxChoicesInTask(taskEl) {
+    var achieved = 0;
+    var inputs = taskEl.querySelectorAll('.exam-dollar-choice-input');
+    inputs.forEach(function (inp) {
+      var shouldCheck = inp.getAttribute('data-correct') === '1';
+      if (inp.checked === shouldCheck) achieved += 0.5;
+      else achieved -= 0.5;
+    });
+    return { achieved: achieved, total: inputs.length * 0.5 };
+  }
+
+  function calculateExamDollarPoints() {
+    var tasks = document.querySelectorAll('.exam-paper .task');
+    var total = 0;
+    var achieved = 0;
+    var any = false;
+    tasks.forEach(function (taskEl) {
+      var src = taskEl.querySelector('.exam-dollar-source');
+      if (!src || !String(src.value || '').trim()) return;
+      any = true;
+      var meta = parseTaskSource(src.value);
+      var scan = scanBodyDollarTokens(meta.body);
+      if (scan.choices > 0 && scan.gaps === 0) {
+        var ch = scoreCheckboxChoicesInTask(taskEl);
+        total += ch.total;
+        achieved += ch.achieved;
+        return;
+      }
+      if (scan.gaps > 0) {
+        total += scan.gaps;
+        taskEl.querySelectorAll('input.exam-dollar-gap').forEach(function (inp) {
+          if (gapInputIsCorrect(inp)) achieved += 1;
+        });
+        if (scan.choices > 0) {
+          var ch2 = scoreCheckboxChoicesInTask(taskEl);
+          total += ch2.total;
+          achieved += ch2.achieved;
+        }
+        return;
+      }
+      var p = parseFloat(String(meta.pointsVal || '0').replace(',', '.'));
+      if (!isNaN(p) && p > 0) total += p;
+    });
+    if (!any) return null;
+    return { achieved: achieved, total: total };
+  }
+
+  function wireExamDollarScoring() {
+    if (global.__jmExamDollarScoringWired) return;
+    global.__jmExamDollarScoringWired = true;
+    global.__jmExamDollarCalculatePoints = calculateExamDollarPoints;
+    var origCalc = typeof global.calculatePoints === 'function' ? global.calculatePoints : null;
+    global.calculatePoints = function () {
+      var d = calculateExamDollarPoints();
+      if (d) return d;
+      if (origCalc) return origCalc();
+      return { achieved: 0, total: 0 };
+    };
+    var origAttach = global.attachInputListeners;
+    global.attachInputListeners = function () {
+      if (typeof origAttach === 'function') origAttach();
+      document.querySelectorAll('.exam-dollar-choice-input').forEach(function (inp) {
+        if (inp.__jmScoreWired) return;
+        inp.__jmScoreWired = true;
+        inp.addEventListener('change', function () {
+          if (typeof global.updatePointsDisplay === 'function') global.updatePointsDisplay();
+        });
+      });
+    };
   }
 
   function renderBlockToHtml(blockText, idGen) {
@@ -741,6 +890,9 @@
   function applySourceToTask(taskEl, source) {
     var rendered = taskEl.querySelector('.exam-dollar-rendered');
     if (!rendered) return;
+    source = applyAutoPointsToSource(taskEl, source);
+    var srcEl = taskEl.querySelector('.exam-dollar-source');
+    if (srcEl && srcEl.value !== source) srcEl.value = source;
     var taskNumEl = taskEl.querySelector('.task-number');
     var pointsEl = taskEl.querySelector('.task-meta .points');
     var parsed = parseTaskSource(source);
@@ -1328,6 +1480,14 @@
     });
     renumberExamTasks();
     wireSolutionsInGapsToggle();
+    wireExamDollarScoring();
+    if (typeof global.attachInputListeners === 'function') {
+      try {
+        global.attachInputListeners();
+      } catch (e) {
+        /* ignore */
+      }
+    }
     var fp = getExamFilePath();
     if (fp) {
       setSaveStatus('');
