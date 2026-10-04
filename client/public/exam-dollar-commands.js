@@ -9,7 +9,7 @@
  * $__$         großes Eingabefeld
  * $B Wort B$   fett · $I Wort I$ kursiv · $U Wort U$ unterstrichen (⌘/Ctrl+B, I, U im Textfeld)
  * $rot Wort rot$  Farbe (rot/gruen/blau/orange/lila) · $#ff0000$ Text $#ff0000$ Hex
- * $Bild name.png$  Bild · $10%$ = 10 % der Originalbreite · $l$/$r$/$m$ = links/rechts/mittig
+ * $Bild name.png$ · $10%$ Originalbreite · $t$ Textumfluss · $r5b$ Rahmen 5px blau (r=rot,g=grün,…)
  * $Musterlösung$    ab dieser Zeile: Text für die grüne Musterlösungsbox
  */
 (function (global) {
@@ -574,7 +574,44 @@
     return n;
   }
 
+  function frameColorFromCode(code) {
+    var c = String(code || '').toLowerCase();
+    if (c === 'b' || c === 'blau') return '#1565c0';
+    if (c === 'r' || c === 'rot') return '#c62828';
+    if (c === 'g' || c === 'gruen' || c === 'grün') return '#2e7d32';
+    if (c === 'o' || c === 'orange') return '#e65100';
+    if (c === 'l' || c === 'lila' || c === 'violett') return '#7b1fa2';
+    if (c === 's' || c === 'schwarz') return '#111111';
+    return null;
+  }
+
+  function parseImageFrameToken(innerTrim) {
+    var m = String(innerTrim || '').trim().match(/^r(\d+)([a-zäöüß]+)$/i);
+    if (!m) return null;
+    var w = parseInt(m[1], 10);
+    if (!w || w > 48) return null;
+    var css = frameColorFromCode(m[2]);
+    if (!css) return null;
+    return { widthPx: w, color: css };
+  }
+
+  function parseImageTextWrapToken(innerTrim) {
+    var t = String(innerTrim || '').trim().toLowerCase();
+    if (t === 't' || t === 'textumfluss' || t === 'umfluss') return true;
+    return null;
+  }
+
+  function isImageSuffixOrphanToken(innerTrim) {
+    return (
+      parsePercentToken(innerTrim) != null ||
+      parseImageFrameToken(innerTrim) != null ||
+      parseImageTextWrapToken(innerTrim) != null ||
+      parseImageAlignToken(innerTrim) != null
+    );
+  }
+
   function parseImageAlignToken(innerTrim) {
+    if (parseImageFrameToken(innerTrim)) return null;
     var t = String(innerTrim || '').trim().toLowerCase();
     if (/^(r|rechts|right)$/.test(t)) return 'right';
     if (/^(l|links|left)$/.test(t)) return 'left';
@@ -591,9 +628,12 @@
     if (!pt) return null;
     var inner = String(pt.inner).trim();
     var pct = parsePercentToken(inner);
-    if (pct != null) return { end: pt.end, pct: pct, align: null };
+    if (pct != null) return { end: pt.end, pct: pct };
+    var frame = parseImageFrameToken(inner);
+    if (frame) return { end: pt.end, frame: frame };
+    if (parseImageTextWrapToken(inner)) return { end: pt.end, wrap: true };
     var align = parseImageAlignToken(inner);
-    if (align) return { end: pt.end, pct: null, align: align };
+    if (align) return { end: pt.end, align: align };
     return null;
   }
 
@@ -601,24 +641,21 @@
     var j = endIndex;
     var pct = null;
     var align = null;
+    var wrap = false;
+    var frame = null;
     var guard = 0;
-    while (guard < 4) {
+    while (guard < 6) {
       guard += 1;
       var opt = tryConsumeImageSuffixToken(text, j);
       if (!opt) break;
-      if (opt.pct != null && pct == null) {
-        pct = opt.pct;
-        j = opt.end;
-        continue;
-      }
-      if (opt.align && align == null) {
-        align = opt.align;
-        j = opt.end;
-        continue;
-      }
-      break;
+      j = opt.end;
+      if (opt.pct != null && pct == null) pct = opt.pct;
+      else if (opt.frame && frame == null) frame = opt.frame;
+      else if (opt.wrap && !wrap) wrap = true;
+      else if (opt.align && align == null) align = opt.align;
+      else break;
     }
-    return { end: j, pct: pct, align: align };
+    return { end: j, pct: pct, align: align, wrap: wrap, frame: frame };
   }
 
   function applyExamImageNaturalSizing(root) {
@@ -908,9 +945,26 @@
         var imgUrl = resolveExamImageUrl(bildM[1]);
         if (imgUrl) {
           var wrapCls = 'exam-dollar-img-wrap';
-          if (imgOpts.align === 'left') wrapCls += ' exam-dollar-img-wrap--left';
-          else if (imgOpts.align === 'right') wrapCls += ' exam-dollar-img-wrap--right';
-          else if (imgOpts.align === 'center') wrapCls += ' exam-dollar-img-wrap--center';
+          if (imgOpts.wrap) {
+            wrapCls += ' exam-dollar-img-wrap--wrap';
+            if (imgOpts.align === 'right') wrapCls += ' exam-dollar-img-wrap--right';
+            else if (imgOpts.align === 'center') wrapCls += ' exam-dollar-img-wrap--center';
+            else wrapCls += ' exam-dollar-img-wrap--left';
+          } else {
+            if (imgOpts.align === 'left') wrapCls += ' exam-dollar-img-wrap--left';
+            else if (imgOpts.align === 'right') wrapCls += ' exam-dollar-img-wrap--right';
+            else if (imgOpts.align === 'center') wrapCls += ' exam-dollar-img-wrap--center';
+          }
+          if (imgOpts.frame) wrapCls += ' exam-dollar-img-wrap--framed';
+          var wrapStyle = 'max-width:100%;';
+          if (imgOpts.frame) {
+            wrapStyle +=
+              'border:' +
+              imgOpts.frame.widthPx +
+              'px solid ' +
+              imgOpts.frame.color +
+              ';box-sizing:border-box;padding:2px;';
+          }
           var pctAttr =
             imgOpts.pct != null
               ? ' data-jm-width-pct="' + escapeHtml(String(imgOpts.pct)) + '"'
@@ -918,17 +972,19 @@
           out +=
             '<span class="' +
             wrapCls +
+            '" style="' +
+            escapeHtml(wrapStyle) +
             '"><img class="exam-dollar-img" src="' +
             escapeHtml(imgUrl) +
             '" alt="" loading="lazy"' +
             pctAttr +
-            ' style="max-width:100%;height:auto"></span>';
+            ' style="max-width:100%;height:auto;display:block"></span>';
         } else {
           out += escapeHtml(s.slice(i, imgEnd));
         }
         i = imgEnd;
         continue;
-      } else if (parsePercentToken(innerTrim) || parseImageAlignToken(innerTrim)) {
+      } else if (isImageSuffixOrphanToken(innerTrim)) {
         i = tok.end;
         continue;
       } else if (innerTrim === '__') {
@@ -1526,6 +1582,7 @@
       '.exam-dollar-img-wrap{max-width:100%;vertical-align:top;line-height:0}' +
       '.exam-dollar-img-wrap--left{float:left;margin:2px 14px 8px 0}' +
       '.exam-dollar-img-wrap--right{float:right;margin:2px 0 8px 14px}' +
+      '.exam-dollar-img-wrap--wrap.exam-dollar-img-wrap--center{float:none;display:block;margin:10px auto;text-align:center}' +
       '.exam-dollar-img-wrap--center{display:block;clear:both;margin:10px auto;text-align:center}' +
       '.exam-dollar-img-wrap--center .exam-dollar-img{display:inline-block}' +
       '.exam-dollar-rendered p::after{content:"";display:block;clear:both}' +
