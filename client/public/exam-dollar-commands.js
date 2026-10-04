@@ -920,10 +920,55 @@
     };
   }
 
+  function normalizeBodyDollarText(text) {
+    return String(text || '').replace(/\$\s*t\s*\$/gi, '$t$');
+  }
+
+  function isFlowImageOnlyLine(line) {
+    var s = normalizeBodyDollarText(line).trim();
+    if (!/\$t\$/i.test(s)) return false;
+    if (!/^\$Bild\s+/i.test(s)) return false;
+    var plain = s.replace(/\$[^$]+\$/g, ' ').replace(/\s+/g, '').trim();
+    return plain.length === 0;
+  }
+
   function renderBlockToHtml(blockText, idGen) {
-    var lines = String(blockText || '').split(/\r?\n/);
-    var chunks = [];
+    var body = normalizeBodyDollarText(blockText);
+    var lines = body.split(/\r?\n/);
+    var textLines = [];
+    var flowImgLines = [];
     var i;
+    for (i = 0; i < lines.length; i++) {
+      if (!String(lines[i]).trim()) continue;
+      if (isFlowImageOnlyLine(lines[i])) flowImgLines.push(lines[i]);
+      else textLines.push(lines[i]);
+    }
+    if (flowImgLines.length && textLines.length) {
+      var imgsHtml = flowImgLines
+        .map(function (ln) {
+          return renderInline(ln, idGen);
+        })
+        .join('');
+      var txtHtml = textLines
+        .map(function (ln) {
+          return renderInline(ln, idGen);
+        })
+        .join('<br>');
+      var imgRight = imgsHtml.indexOf('exam-dollar-img-wrap--flow-right') >= 0;
+      var sideCls =
+        'exam-dollar-flow exam-dollar-flow-side' +
+        (imgRight ? ' exam-dollar-flow-side--img-right' : '');
+      return (
+        '<div class="' +
+        sideCls +
+        '"><div class="exam-dollar-float-col">' +
+        imgsHtml +
+        '</div><div class="exam-dollar-text-col">' +
+        txtHtml +
+        '</div></div>'
+      );
+    }
+    var chunks = [];
     for (i = 0; i < lines.length; i++) {
       if (!String(lines[i]).trim()) continue;
       chunks.push(renderInline(lines[i], idGen));
@@ -935,7 +980,7 @@
   function renderInline(text, idGen) {
     var out = '';
     var i = 0;
-    var s = String(text || '');
+    var s = normalizeBodyDollarText(text);
     while (i < s.length) {
       if (s[i] !== '$') {
         var next = s.indexOf('$', i);
@@ -1619,6 +1664,11 @@
       '.exam-dollar-live-edit.exam-dollar-drag-over,.exam-dollar-compose-input.exam-dollar-drag-over{box-shadow:0 0 0 2px rgba(21,101,192,.45)}' +
       '.exam-dollar-rendered{line-height:1.55}' +
       '.exam-dollar-flow{line-height:1.55;margin:0 0 0.5em}' +
+      '.exam-dollar-flow-side{display:flex;flex-direction:row;align-items:flex-start;gap:12px;margin:0 0 0.5em}' +
+      '.exam-dollar-flow-side--img-right{flex-direction:row-reverse}' +
+      '.exam-dollar-float-col{flex:0 0 auto;max-width:min(46%,300px);min-width:72px}' +
+      '.exam-dollar-float-col .exam-dollar-img-wrap--flow{float:none!important;margin:0!important;max-width:100%!important}' +
+      '.exam-dollar-text-col{flex:1 1 0;min-width:0;line-height:1.55}' +
       '.exam-dollar-flow::after{content:"";display:block;clear:both}' +
       '.exam-dollar-rendered::after{content:"";display:block;clear:both}' +
       '.exam-dollar-img-wrap{vertical-align:top}' +
