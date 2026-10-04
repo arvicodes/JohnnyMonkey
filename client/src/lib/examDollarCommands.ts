@@ -17,7 +17,10 @@ export const EXAM_DOLLAR_COMMANDS_HELP = [
     syntax: '$B Wort B$',
     meaning: 'fett (⌘/Ctrl+B im Textfeld; analog $I … I$ mit ⌘/Ctrl+I, $U … U$ mit ⌘/Ctrl+U)',
   },
-  { syntax: '$rot Wort rot$', meaning: 'Textfarbe (rot, gruen, blau, orange, lila) oder $#ff0000$ Text $#ff0000$' },
+  {
+    syntax: '$blau $B Wort B$ blau$',
+    meaning: 'Farbe (rot, gruen, blau, …) auch um andere $…$-Befehle; Hex: $#ff0000$ … $#ff0000$',
+  },
   { syntax: '$Bild datei.png$', meaning: 'Bild aus dem Prüfungsordner (Drag & Drop ins Textfeld)' },
   { syntax: '$Musterlösung$', meaning: 'ab dieser Zeile: Inhalt für „Musterlösungen anzeigen“ (grüne Box)' },
 ] as const;

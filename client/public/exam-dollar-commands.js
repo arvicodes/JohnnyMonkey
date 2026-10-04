@@ -151,6 +151,118 @@
       .replace(/"/g, '&quot;');
   }
 
+  function escapeRegExp(s) {
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function countDollarSigns(s) {
+    var m = String(s || '').match(/\$/g);
+    return m ? m.length : 0;
+  }
+
+  function findBalancedDollarClose(text, closeTag, contentStart) {
+    var re = new RegExp('\\$\\s*' + escapeRegExp(closeTag) + '\\s*\\$', 'gi');
+    var idx = contentStart;
+    while (idx < text.length) {
+      var slice = text.slice(idx);
+      re.lastIndex = 0;
+      var m = re.exec(slice);
+      if (!m) return -1;
+      var closeStart = idx + m.index;
+      if (countDollarSigns(text.slice(contentStart, closeStart)) % 2 === 0) {
+        return closeStart;
+      }
+      idx = closeStart + 1;
+    }
+    return -1;
+  }
+
+  function namedColorNamesByLength() {
+    var names = Object.keys(NAMED_COLORS);
+    names.sort(function (a, b) {
+      return b.length - a.length;
+    });
+    return names;
+  }
+
+  function consumeDollarToken(text, start) {
+    if (text[start] !== '$') return null;
+    var rest = text.slice(start + 1);
+
+    if (rest.charAt(0) === '_') {
+      var gapM = rest.match(/^([\s\S]*?)_\$/);
+      if (gapM) {
+        return { end: start + 1 + gapM[0].length, inner: '_' + gapM[1] + '_' };
+      }
+      return null;
+    }
+
+    if (/^Bild\s+/i.test(rest)) {
+      var close = rest.indexOf('$');
+      if (close >= 0) {
+        return { end: start + 1 + close + 1, inner: rest.slice(0, close) };
+      }
+      return null;
+    }
+
+    var hexOpen = rest.match(/^#([0-9a-f]{3,8})(\s+)/i);
+    if (hexOpen) {
+      var hexTag = '#' + hexOpen[1];
+      var hexContentStart = start + 1 + hexOpen[0].length;
+      var hexClose = findBalancedDollarClose(text, hexTag, hexContentStart);
+      if (hexClose >= 0) {
+        var hexCloseEnd =
+          hexClose + text.slice(hexClose).match(/^\$\s*#[0-9a-f]{3,8}\s*\$/i)[0].length;
+        return {
+          end: hexCloseEnd,
+          inner: hexTag + ' ' + text.slice(hexContentStart, hexClose) + ' ' + hexTag,
+        };
+      }
+    }
+
+    var colorNames = namedColorNamesByLength();
+    var ci;
+    for (ci = 0; ci < colorNames.length; ci++) {
+      var cName = colorNames[ci];
+      var cOpen = new RegExp('^' + escapeRegExp(cName) + '(\\s+)', 'i').exec(rest);
+      if (!cOpen) continue;
+      var cContentStart = start + 1 + cOpen[0].length;
+      var cClose = findBalancedDollarClose(text, cName, cContentStart);
+      if (cClose < 0) continue;
+      var cCloseEnd =
+        cClose + text.slice(cClose).match(new RegExp('^\\$\\s*' + escapeRegExp(cName) + '\\s*\\$', 'i'))[0]
+          .length;
+      return {
+        end: cCloseEnd,
+        inner: cName + ' ' + text.slice(cContentStart, cClose) + ' ' + cName,
+      };
+    }
+
+    var fmtLetters = ['B', 'I', 'U'];
+    var fi;
+    for (fi = 0; fi < fmtLetters.length; fi++) {
+      var L = fmtLetters[fi];
+      if (L === 'B' && /^Bild\s+/i.test(rest)) continue;
+      var fOpen = new RegExp('^' + L + '(\\s+)', 'i').exec(rest);
+      if (!fOpen) continue;
+      var fContentStart = start + 1 + fOpen[0].length;
+      var fClose = findBalancedDollarClose(text, L, fContentStart);
+      if (fClose < 0) continue;
+      var fCloseEnd =
+        fClose + text.slice(fClose).match(new RegExp('^\\$\\s*' + L + '\\s*\\$', 'i'))[0].length;
+      return {
+        end: fCloseEnd,
+        inner: L + ' ' + text.slice(fContentStart, fClose) + ' ' + L,
+      };
+    }
+
+    var simple = rest.match(/^([^$]+)\$/);
+    if (simple) {
+      return { end: start + 1 + simple[0].length, inner: simple[1] };
+    }
+    return null;
+  }
+
   function parseAufgabe(inner) {
     var m = String(inner || '').trim().match(/^Aufgabe\s+(.+)$/i);
     return m ? m[1].trim() : null;
@@ -388,11 +500,13 @@
         delete inp.dataset.jmUserValue;
       }
     });
+    syncGapInputWidths();
   }
 
   function refreshGapSolutionDisplay() {
     var toggle = document.getElementById('solutionsToggle');
     applyGapSolutionHints(!!(toggle && toggle.checked));
+    syncGapInputWidths();
   }
 
   function wireSolutionsInGapsToggle() {
@@ -472,18 +586,33 @@
   }
 
   function renderInline(text, idGen) {
-    var re = /\$([^$]+)\$/g;
     var out = '';
-    var last = 0;
-    var m;
-    while ((m = re.exec(text)) !== null) {
-      out += escapeHtml(text.slice(last, m.index));
-      var inner = m[1].trim();
-      var boldM = inner.match(/^B\s+([\s\S]+?)\s+B$/i);
-      var italicM = inner.match(/^I\s+([\s\S]+?)\s+I$/i);
-      var underM = inner.match(/^U\s+([\s\S]+?)\s+U$/i);
-      var colorM = parseColorSpan(inner);
-      var bildM = inner.match(/^Bild\s+(.+)$/i);
+    var i = 0;
+    var s = String(text || '');
+    while (i < s.length) {
+      if (s[i] !== '$') {
+        var next = s.indexOf('$', i);
+        if (next < 0) {
+          out += escapeHtml(s.slice(i));
+          break;
+        }
+        out += escapeHtml(s.slice(i, next));
+        i = next;
+        continue;
+      }
+      var tok = consumeDollarToken(s, i);
+      if (!tok) {
+        out += escapeHtml(s[i]);
+        i += 1;
+        continue;
+      }
+      var inner = String(tok.inner || '');
+      var innerTrim = inner.trim();
+      var boldM = innerTrim.match(/^B\s+([\s\S]+)\s+B$/i);
+      var italicM = innerTrim.match(/^I\s+([\s\S]+)\s+I$/i);
+      var underM = innerTrim.match(/^U\s+([\s\S]+)\s+U$/i);
+      var colorM = parseColorSpan(innerTrim);
+      var bildM = innerTrim.match(/^Bild\s+(.+)$/i);
       if (boldM) {
         out += '<strong>' + renderInline(boldM[1], idGen) + '</strong>';
       } else if (italicM) {
@@ -505,48 +634,100 @@
             escapeHtml(imgUrl) +
             '" alt="" loading="lazy">';
         } else {
-          out += escapeHtml(m[0]);
+          out += escapeHtml(s.slice(i, tok.end));
         }
-      } else if (inner === '__') {
+      } else if (innerTrim === '__') {
         out +=
           '<div class="item input-group full-width exam-dollar-biggap">' +
           '<textarea class="exam-dollar-area" rows="4" id="' +
           idGen() +
           '"></textarea></div>';
       } else {
-        var gap = parseGapToken(inner);
+        var gap = parseGapToken(innerTrim);
         if (gap) {
           var id = idGen();
           var accepted = encodeAcceptedAttr(gap.answers);
           var attr = accepted
             ? ' data-jm-accepted="' + escapeHtml(accepted) + '"'
             : '';
+          var sizeAttr = '';
+          if (gap.answers.length) {
+            var maxLen = 2;
+            gap.answers.forEach(function (a) {
+              maxLen = Math.max(maxLen, String(a).length);
+            });
+            sizeAttr = ' size="' + String(maxLen + 1) + '"';
+          }
           out +=
             '<input type="text" class="exam-dollar-gap blank-tiny" id="' +
             id +
             '"' +
             attr +
+            sizeAttr +
             ' autocomplete="off">';
-        } else if (/^CC$/i.test(inner)) {
+        } else if (/^CC$/i.test(innerTrim)) {
           out +=
             '<label class="exam-dollar-choice exam-dollar-choice-correct">' +
             '<input type="checkbox" class="exam-dollar-choice-input" data-correct="1">' +
             '<span class="exam-dollar-choice-box" aria-hidden="true"></span></label>';
-        } else if (/^C$/i.test(inner)) {
+        } else if (/^C$/i.test(innerTrim)) {
           out +=
             '<label class="exam-dollar-choice">' +
             '<input type="checkbox" class="exam-dollar-choice-input">' +
             '<span class="exam-dollar-choice-box" aria-hidden="true"></span></label>';
-        } else if (parsePunkte(inner) || parseAufgabe(inner)) {
-          out += escapeHtml(m[0]);
+        } else if (parsePunkte(innerTrim) || parseAufgabe(innerTrim)) {
+          out += escapeHtml(s.slice(i, tok.end));
         } else {
-          out += escapeHtml(m[0]);
+          out += escapeHtml(s.slice(i, tok.end));
         }
       }
-      last = re.lastIndex;
+      i = tok.end;
     }
-    out += escapeHtml(text.slice(last));
     return out;
+  }
+
+  function gapInputWidthCh(inp) {
+    var accepted = inp.getAttribute('data-jm-accepted');
+    var parts = accepted ? accepted.split('|') : [];
+    var showSol = inp.classList.contains('exam-gap-solution-visible');
+    var candidates = parts.slice();
+    if (inp.value) candidates.push(inp.value);
+    var longest = 2;
+    candidates.forEach(function (a) {
+      longest = Math.max(longest, String(a).length);
+    });
+    if (!parts.length && !inp.value && !showSol) longest = Math.max(longest, 4);
+    return longest + 1;
+  }
+
+  function syncOneGapInputWidth(inp) {
+    if (!inp || !inp.classList || !inp.classList.contains('exam-dollar-gap')) return;
+    var ch = gapInputWidthCh(inp);
+    inp.style.width = ch + 'ch';
+    inp.style.minWidth = ch + 'ch';
+    inp.style.maxWidth = '100%';
+  }
+
+  function syncGapInputWidths(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    var list =
+      root && root.classList && root.classList.contains('task')
+        ? root.querySelectorAll('input.exam-dollar-gap')
+        : scope.querySelectorAll('input.exam-dollar-gap');
+    list.forEach(syncOneGapInputWidth);
+  }
+
+  function wireGapAutoWidth(container) {
+    var list = container.querySelectorAll
+      ? container.querySelectorAll('input.exam-dollar-gap')
+      : [];
+    list.forEach(function (inp) {
+      if (inp.__jmWidthWired) return;
+      inp.__jmWidthWired = true;
+      inp.addEventListener('input', function () {
+        syncOneGapInputWidth(inp);
+      });
+    });
   }
 
   function applySourceToTask(taskEl, source) {
@@ -602,6 +783,8 @@
         /* ignore */
       }
     }
+    wireGapAutoWidth(taskEl);
+    syncGapInputWidths(taskEl);
     refreshGapSolutionDisplay();
   }
 
@@ -1028,7 +1211,7 @@
       '.exam-dollar-choice-input:checked + .exam-dollar-choice-box{background:#E10600;border-color:#b71c1c;box-shadow:inset 0 0 0 2px #fff}' +
       '.exam-dollar-choice-correct .exam-dollar-choice-box{border-color:#2e7d32}' +
       '.teacher-mode .exam-dollar-choice-correct .exam-dollar-choice-box{outline:2px solid #81c784}' +
-      '.exam-dollar-gap{display:inline-block;vertical-align:baseline}' +
+      '.exam-dollar-gap{display:inline-block;vertical-align:baseline;width:auto!important;min-width:3ch!important;max-width:100%;text-align:left;padding:2px 5px;box-sizing:content-box}' +
       '.exam-dollar-area{width:100%;min-height:72px}' +
       '.exam-dollar-hint{font-size:10px;color:#888;margin-top:4px}';
   }
