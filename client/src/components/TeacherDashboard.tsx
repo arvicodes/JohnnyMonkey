@@ -136,6 +136,7 @@ import {
   exercisePresentUrl,
 } from '../lib/dashboardMaterialLibrary';
 import { examBaseGitPath } from '../lib/examVersionPaths';
+import { isCorrectionExamPath } from '../lib/examEditorDetection';
 import {
   Box,
   Typography,
@@ -11883,9 +11884,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         const data = await response.json();
         setExaminationQuestions(data.questions || []);
         setExaminationTitle(data.title || '');
-        const gridNums: number[] = Array.isArray(data.gridTaskNumbers)
+        let gridNums: number[] = Array.isArray(data.gridTaskNumbers)
           ? data.gridTaskNumbers.map((n: unknown) => Number(n)).filter((n: number) => n > 0)
           : [];
+        const hasLegacyQuestions = Array.isArray(data.questions) && data.questions.length > 0;
+        const usesModern =
+          data.usesModernExamEditor === true ||
+          gridNums.length > 0 ||
+          (isCorrectionExamPath(path) && !hasLegacyQuestions);
+        if (gridNums.length === 0 && usesModern) {
+          gridNums = [1];
+        }
         setExamGridTaskNumbers(gridNums);
         const textMax =
           data.questions?.length > 0
@@ -11893,7 +11902,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
             : 0;
         const defaultTask = gridNums.length > 0 ? gridNums[0] : Math.max(textMax, 1);
         setExamGridEditTaskNumber(defaultTask);
-        if (gridNums.length > 0) {
+        if (usesModern || gridNums.length > 0) {
           if (options?.openGridIfSaved !== false) {
             setSingleQuestionModalOpen(false);
             setExamGridBuilderOpen(true);
@@ -11921,14 +11930,21 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   };
 
   const handleEditSingleQuestion = async (item: any) => {
-    setSingleQuestionFilePath(item.path);
+    const path = String(item.path || '');
+    setSingleQuestionFilePath(path);
     setExaminationQuestions([]);
     setEditingQuestion(null);
     setSingleQuestionModalOpen(false);
-    setExamGridBuilderOpen(false);
-    await loadExamQuestionsForPath(item.path, {
+    if (isCorrectionExamPath(path)) {
+      setExamGridTaskNumbers([1]);
+      setExamGridEditTaskNumber(1);
+      setExamGridBuilderOpen(true);
+    } else {
+      setExamGridBuilderOpen(false);
+    }
+    await loadExamQuestionsForPath(path, {
       openGridIfSaved: true,
-      openLegacyModalIfNoGrid: true,
+      openLegacyModalIfNoGrid: !isCorrectionExamPath(path),
     });
   };
   
@@ -12063,12 +12079,13 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         showSnackbar(`Prüfung "${data.fileName}" erfolgreich erstellt!`, 'success');
         setCreateExaminationModalOpen(false);
 
-        const editPath = data.absolutePath || data.filePath;
+        const editPath = data.filePath || data.absolutePath;
         if (editPath && examinationCreateResultMode === 'standardPreviewTab') {
           const opened = window.open(examOpenUrl(editPath), '_blank', 'noopener,noreferrer');
           if (!opened) {
             showSnackbar('Tab konnte nicht geöffnet werden — Popup-Blocker prüfen.', 'warning');
           }
+          await handleEditSingleQuestion({ path: editPath, name: data.fileName });
         } else if (editPath) {
           await handleEditSingleQuestion({ path: editPath, name: data.fileName });
         }

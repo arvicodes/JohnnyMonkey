@@ -14,7 +14,10 @@ import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import { convert } from 'libreoffice-convert';
 import { transformExamHtmlForDelivery } from '../lib/examSubsectionShuffle';
-import { resolveGridTaskNumbers } from '../lib/examEditorDetection';
+import {
+  isStandardTemplateExamHtml,
+  resolveGridTaskNumbers,
+} from '../lib/examEditorDetection';
 import {
   directoryReadCacheKey,
   getDirectoryReadCache,
@@ -3160,6 +3163,8 @@ KRITISCH WICHTIG:
       }
 
       const gridTaskNumbers = resolveGridTaskNumbers(htmlContent);
+      const usesModernExamEditor =
+        gridTaskNumbers.length > 0 || isStandardTemplateExamHtml(htmlContent);
 
       const versionMeta = parseExamVersionsMeta(htmlContent);
       const fileName = path.basename(fullFilePath);
@@ -3174,6 +3179,7 @@ KRITISCH WICHTIG:
         title: title,
         questions: questions.sort((a, b) => a.taskNumber - b.taskNumber),
         gridTaskNumbers,
+        usesModernExamEditor,
         versionLetters: versionMeta.letters,
         currentVersionLetter: currentLetter,
         baseFilePath: baseGitPath.startsWith('git-intern/') ? baseGitPath : filePath,
