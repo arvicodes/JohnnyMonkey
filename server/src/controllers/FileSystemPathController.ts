@@ -14,6 +14,7 @@ import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import { convert } from 'libreoffice-convert';
 import { transformExamHtmlForDelivery } from '../lib/examSubsectionShuffle';
+import { resolveGridTaskNumbers } from '../lib/examEditorDetection';
 import {
   directoryReadCacheKey,
   getDirectoryReadCache,
@@ -3085,6 +3086,12 @@ KRITISCH WICHTIG:
         if (taskHTML.includes('exam-task-grid')) {
           continue;
         }
+        if (
+          taskHTML.includes('exam-dollar-live-edit') &&
+          !taskHTML.includes('type="radio"')
+        ) {
+          continue;
+        }
 
         // Bestimme den Fragentyp
         const isMultipleChoice = taskHTML.includes('type="radio"');
@@ -3152,24 +3159,7 @@ KRITISCH WICHTIG:
         });
       }
 
-      const gridTaskNumbers: number[] = [];
-      const gridTaskRe =
-        /<!-- Aufgabe (\d+)\s*(?::[^>]*)?\s*-->([\s\S]*?)(?=<!-- Aufgabe \d|<div class="submit-section">|<div class="footer">|$)/gi;
-      let gridMatch: RegExpExecArray | null;
-      while ((gridMatch = gridTaskRe.exec(htmlContent)) !== null) {
-        const n = parseInt(gridMatch[1], 10);
-        const body = gridMatch[2];
-        const editorTask =
-          body.includes('exam-task-grid') ||
-          body.includes('exam-task-stack') ||
-          body.includes('exam-task-flow') ||
-          body.includes('data-exam-flow=') ||
-          body.includes('data-exam-spec=');
-        if (editorTask && !Number.isNaN(n)) {
-          gridTaskNumbers.push(n);
-        }
-      }
-      gridTaskNumbers.sort((a, b) => a - b);
+      const gridTaskNumbers = resolveGridTaskNumbers(htmlContent);
 
       const versionMeta = parseExamVersionsMeta(htmlContent);
       const fileName = path.basename(fullFilePath);
