@@ -19,7 +19,9 @@ export function examMcSelectSetupJsSource(): string {
                         vals.sort();
                         if (hidden) hidden.value = vals.join('|');
                     }
-                    if (typeof updatePointsDisplay === 'function') updatePointsDisplay();
+                    if (localStorage.getItem('teacherId') !== null && typeof updatePointsDisplay === 'function') {
+                        updatePointsDisplay();
+                    }
                 };
                 wrap.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
                     cb.addEventListener('change', function () {

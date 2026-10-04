@@ -1,12 +1,16 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.EXAM_CHROME_SCRIPT_MARKER = exports.EXAM_DOLLAR_SCRIPT_MARKER = exports.EXAM_HIDE_LIVE_SCORE_MARKER = exports.EXAM_SUBSECTION_SHUFFLE_FUNCTION = exports.EXAM_SUBSECTION_SHUFFLE_MARKER = void 0;
+exports.isDeliverableExamHtml = isDeliverableExamHtml;
+exports.patchExamChromeMarkup = patchExamChromeMarkup;
+exports.patchExamPaperComposeMarkup = patchExamPaperComposeMarkup;
+exports.transformExamHtmlForDelivery = transformExamHtmlForDelivery;
+const examTimerTeacherBridge_1 = require("./examTimerTeacherBridge");
+const examDollarAuthoringSave_1 = require("./examDollarAuthoringSave");
 /**
  * Schüler: Teile innerhalb jeder Aufgabe (exam-subsection / Rasterzellen) pro SuS
  * deterministisch mischen — Aufgaben 1/2/3 bleiben in fester Reihenfolge.
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.EXAM_DOLLAR_SCRIPT_MARKER = exports.EXAM_HIDE_LIVE_SCORE_MARKER = exports.EXAM_SUBSECTION_SHUFFLE_FUNCTION = exports.EXAM_SUBSECTION_SHUFFLE_MARKER = void 0;
-exports.isDeliverableExamHtml = isDeliverableExamHtml;
-exports.transformExamHtmlForDelivery = transformExamHtmlForDelivery;
 exports.EXAM_SUBSECTION_SHUFFLE_MARKER = 'data-jm-exam-subsection-shuffle';
 function isDeliverableExamHtml(html, filePath) {
     const fp = (filePath || '').replace(/\\/g, '/');
@@ -125,14 +129,18 @@ exports.EXAM_SUBSECTION_SHUFFLE_FUNCTION = `
 const INIT_HOOK = 'setupExamSubsectionShuffleForStudent();\n        attachInputListeners();';
 /** SuS dürfen während der Bearbeitung keine Live-Punkte/Note im Footer sehen. */
 exports.EXAM_HIDE_LIVE_SCORE_MARKER = 'data-jm-hide-live-exam-scores';
+const EXAM_HIDE_LIVE_SCORE_STYLE = `<style ${exports.EXAM_HIDE_LIVE_SCORE_MARKER}-css="1">
+body:not(.teacher-mode) #pointsDisplay,
+body:not(.teacher-mode) .footer-note-line{display:none!important;visibility:hidden!important}
+</style>`;
 const EXAM_HIDE_LIVE_SCORE_SCRIPT = `<script ${exports.EXAM_HIDE_LIVE_SCORE_MARKER}="1">
 (function(){
   function isTeacherExamView(){try{return localStorage.getItem('teacherId')!==null;}catch(e){return false;}}
   function hideScoreFooter(){
     var pd=document.getElementById('pointsDisplay');
     var nl=document.querySelector('.footer-note-line');
-    if(pd)pd.style.display='none';
-    if(nl)nl.style.display='none';
+    if(pd)pd.style.setProperty('display','none','important');
+    if(nl)nl.style.setProperty('display','none','important');
   }
   function patch(){
     if(isTeacherExamView())return;
@@ -146,18 +154,26 @@ const EXAM_HIDE_LIVE_SCORE_SCRIPT = `<script ${exports.EXAM_HIDE_LIVE_SCORE_MARK
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',patch);
   setTimeout(patch,0);
   setTimeout(patch,50);
+  setInterval(hideScoreFooter,1500);
 })();
 </script>`;
+/** Nur das dokument-eigene </body> — nicht Vorkommen in JS-Strings (z. B. generatePrintVersion). */
+function injectBeforeLastBodyClose(html, snippet) {
+    const token = '</body>';
+    const idx = html.lastIndexOf(token);
+    if (idx === -1)
+        return `${html}\n${snippet}`;
+    return `${html.slice(0, idx)}${snippet}\n${html.slice(idx)}`;
+}
 function injectHideLiveScoreForStudents(html) {
     if (html.includes(exports.EXAM_HIDE_LIVE_SCORE_MARKER))
         return html;
-    if (html.includes('</body>')) {
-        return html.replace('</body>', `${EXAM_HIDE_LIVE_SCORE_SCRIPT}\n</body>`);
-    }
-    return `${html}\n${EXAM_HIDE_LIVE_SCORE_SCRIPT}`;
+    return injectBeforeLastBodyClose(html, `${EXAM_HIDE_LIVE_SCORE_STYLE}\n${EXAM_HIDE_LIVE_SCORE_SCRIPT}`);
 }
 exports.EXAM_DOLLAR_SCRIPT_MARKER = 'data-jm-exam-dollar-script';
-const EXAM_DOLLAR_BOOT_SNIPPET = `<script src="/exam-dollar-commands.js" ${exports.EXAM_DOLLAR_SCRIPT_MARKER}="1"></script>
+const EXAM_DOLLAR_BOOT_SNIPPET = `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" ${exports.EXAM_DOLLAR_SCRIPT_MARKER}-katex="css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js" ${exports.EXAM_DOLLAR_SCRIPT_MARKER}-katex="js"></script>
+<script src="/exam-dollar-commands.js" ${exports.EXAM_DOLLAR_SCRIPT_MARKER}="1"></script>
 <script ${exports.EXAM_DOLLAR_SCRIPT_MARKER}-init="1">
 (function(){
   function boot(){
@@ -170,10 +186,50 @@ const EXAM_DOLLAR_BOOT_SNIPPET = `<script src="/exam-dollar-commands.js" ${expor
 function injectExamDollarAuthoring(html) {
     if (html.includes(exports.EXAM_DOLLAR_SCRIPT_MARKER))
         return html;
-    if (html.includes('</body>')) {
-        return html.replace('</body>', `${EXAM_DOLLAR_BOOT_SNIPPET}\n</body>`);
+    return injectBeforeLastBodyClose(html, EXAM_DOLLAR_BOOT_SNIPPET);
+}
+exports.EXAM_CHROME_SCRIPT_MARKER = 'data-jm-exam-chrome-script';
+const EXAM_CHROME_CLOCK_BTN = '<button type="button" class="exam-chrome-clock-btn teacher-only" id="examTimerToggle" aria-expanded="false" title="Bearbeitungszeit ein- oder ausblenden">🕐</button>';
+const EXAM_PAPER_COMPOSE_MOUNT = '<div id="examPaperComposeMount" class="teacher-only" aria-label="Neue Aufgabe"></div>';
+/** Uhr-Button in der linken Leiste (ältere Dateien). */
+function patchExamChromeMarkup(html) {
+    if (!/class=["'][^"']*exam-chrome/i.test(html))
+        return html;
+    let out = html;
+    if (!out.includes('id="examTimerToggle"')) {
+        out = out.replace(/(<aside\b[^>]*\bclass=["'][^"']*exam-chrome[^"']*["'][^>]*>)/i, `$1\n        ${EXAM_CHROME_CLOCK_BTN}`);
     }
-    return `${html}\n${EXAM_DOLLAR_BOOT_SNIPPET}`;
+    return out;
+}
+/** „+ Aufgabe“-Eingabe unter den Aufgaben im Blatt, nicht in der Sidebar. */
+function patchExamPaperComposeMarkup(html) {
+    if (!/class=["'][^"']*exam-paper/i.test(html))
+        return html;
+    if (html.includes('id="examPaperComposeMount"'))
+        return html;
+    let out = html;
+    if (out.includes('id="examChromeComposeMount"')) {
+        out = out.replace(/\s*<div id="examChromeComposeMount"[^>]*><\/div>\s*/i, '\n');
+    }
+    if (/<div class="footer"/i.test(out)) {
+        out = out.replace(/(\s*)(<div class="footer")/i, `$1${EXAM_PAPER_COMPOSE_MOUNT}\n$1$2`);
+    }
+    return out;
+}
+const EXAM_CHROME_BOOT_SNIPPET = `<script src="/exam-chrome.js" ${exports.EXAM_CHROME_SCRIPT_MARKER}="1"></script>
+<script ${exports.EXAM_CHROME_SCRIPT_MARKER}-init="1">
+(function(){
+  function boot(){
+    if (typeof setupExamChrome === 'function') setupExamChrome();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>`;
+function injectExamChromeRuntime(html) {
+    if (html.includes(exports.EXAM_CHROME_SCRIPT_MARKER))
+        return html;
+    return injectBeforeLastBodyClose(html, EXAM_CHROME_BOOT_SNIPPET);
 }
 function transformExamHtmlForDelivery(html, filePath) {
     if (!isDeliverableExamHtml(html, filePath))
@@ -196,15 +252,17 @@ function transformExamHtmlForDelivery(html, filePath) {
         }
         else {
             const snippet = `<script ${exports.EXAM_SUBSECTION_SHUFFLE_MARKER}="1">\n(function(){\n${exports.EXAM_SUBSECTION_SHUFFLE_FUNCTION}\nif (document.readyState === 'loading') {\n  document.addEventListener('DOMContentLoaded', setupExamSubsectionShuffleForStudent);\n} else {\n  setupExamSubsectionShuffleForStudent();\n}\n})();\n</script>`;
-            if (out.includes('</body>')) {
-                out = out.replace('</body>', `${snippet}\n</body>`);
-            }
-            else {
-                out = `${out}\n${snippet}`;
-            }
+            out = injectBeforeLastBodyClose(out, snippet);
         }
     }
+    out = patchExamChromeMarkup(out);
+    out = (0, examDollarAuthoringSave_1.patchExamAidsGeneralRulesMarkup)(out);
+    out = (0, examDollarAuthoringSave_1.patchExamAidsRulesRowLayout)(out);
+    out = (0, examDollarAuthoringSave_1.patchAidsGeneralRulesListDisplay)(out);
+    out = patchExamPaperComposeMarkup(out);
+    out = injectExamChromeRuntime(out);
     out = injectExamDollarAuthoring(out);
+    out = (0, examTimerTeacherBridge_1.injectExamTimerTeacherBridge)(out);
     return injectHideLiveScoreForStudents(out);
 }
 //# sourceMappingURL=examSubsectionShuffle.js.map

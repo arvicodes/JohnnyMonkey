@@ -8,8 +8,15 @@
  * $_a/b/c_$    Lücke mit mehreren gültigen Lösungen
  * $__$         großes Eingabefeld
  * $B Wort B$   fett · $I Wort I$ kursiv · $U Wort U$ unterstrichen (⌘/Ctrl+B, I, U im Textfeld)
+ * $L Formel L$  Mathe/Formelschrift (LaTeX, KaTeX) · ⌘/Ctrl+L (auch $M … M$)
+ * $K Code K$    Code nur Monospace · ⌘/Ctrl+K
+ * $KK Code KK$  Code mit grauer Box · ⌘/Ctrl+⇧+K (älter: $N … N$ = Box)
+ * $e$          Zeilenumbruch in derselben Quellzeile (kein Enter) · sichtbar als $e$ in der Lehrervorschau
+ * $bB Wort Bb$  kompakt: Kleinbuchstabe=Farbe (b blau, g gelb, r rot, o orange, l lila), Großbuchstabe=Stil (B fett, I kursiv, U unterstr.)
  * $rot Wort rot$  Farbe (rot/gruen/blau/orange/lila) · $#ff0000$ Text $#ff0000$ Hex
- * $Bild name.png$ · $10%$ Originalbreite · $t$ Textumfluss (Bild im Fließtext) · $r5b$ Rahmen
+ * $Bild name.png$ · $10%$ Originalbreite · $t$ Textumfluss · $r5b$ Rahmen
+ * · kompakt: $Bild name.png 10% r t r5b$ (alles in einem $…$)
+ * Aussage … $wf$   Wahr/Falsch-Tabelle (|$wwf$| = Wahr richtig, |$wff$| = Falsch richtig)
  * $Musterlösung$    ab dieser Zeile: Text für die grüne Musterlösungsbox
  */
 (function (global) {
@@ -205,6 +212,15 @@
       return null;
     }
 
+    if (/^wwf\$/i.test(rest)) {
+      return { end: start + 5, inner: 'wwf' };
+    }
+    if (/^wff\$/i.test(rest)) {
+      return { end: start + 5, inner: 'wff' };
+    }
+    if (/^wf\$/i.test(rest)) {
+      return { end: start + 4, inner: 'wf' };
+    }
     if (/^CC\$/i.test(rest)) {
       return { end: start + 4, inner: 'CC' };
     }
@@ -289,12 +305,55 @@
     rot: '#c62828',
     gruen: '#2e7d32',
     grün: '#2e7d32',
+    gelb: '#f9a825',
     blau: '#1565c0',
     orange: '#e65100',
     lila: '#7b1fa2',
     violett: '#7b1fa2',
     schwarz: '#111111',
   };
+
+  function compactTextColorFromCode(code) {
+    var c = String(code || '').toLowerCase();
+    if (c === 'b') return NAMED_COLORS.blau;
+    if (c === 'g') return NAMED_COLORS.gelb;
+    if (c === 'r') return NAMED_COLORS.rot;
+    if (c === 'o') return NAMED_COLORS.orange;
+    if (c === 'l') return NAMED_COLORS.lila;
+    return null;
+  }
+
+  function parseCompactStyleSpan(inner) {
+    var m = String(inner || '').match(/^([rgbol])([BIU]+)\s+([\s\S]+?)\s+([BIU]+)([rgbol])$/i);
+    if (!m) return null;
+    var openColor = m[1].toLowerCase();
+    var openStyles = m[2].toUpperCase();
+    var text = m[3];
+    var closeStyles = m[4].toUpperCase();
+    var closeColor = m[5].toLowerCase();
+    if (closeColor !== openColor) return null;
+    var expectClose = openStyles
+      .split('')
+      .reverse()
+      .join('');
+    if (closeStyles !== expectClose) return null;
+    var css = compactTextColorFromCode(openColor);
+    if (!css) return null;
+    return { css: css, styles: openStyles, text: text };
+  }
+
+  function wrapRenderedCompactStyles(html, styles, colorCss) {
+    var out = html;
+    var chars = String(styles || '').toUpperCase();
+    if (chars.indexOf('B') >= 0) out = '<strong>' + out + '</strong>';
+    if (chars.indexOf('I') >= 0) out = '<em>' + out + '</em>';
+    if (chars.indexOf('U') >= 0) out = '<u>' + out + '</u>';
+    if (colorCss) {
+      out =
+        '<span style="color:' + escapeHtml(colorCss) + '">' + out + '</span>';
+    }
+    return out;
+  }
 
   function isMusterloesungMarker(line) {
     var t = String(line || '').trim();
@@ -520,18 +579,25 @@
     if (localStorage.getItem('teacherId') === null) show = false;
     document.querySelectorAll('.exam-dollar-choice-input').forEach(function (inp) {
       var isCorrect = inp.getAttribute('data-correct') === '1';
+      var box = inp.nextElementSibling;
       if (show) {
         if (!inp.dataset.jmChoiceSolutionShown) {
           inp.dataset.jmChoiceWasChecked = inp.checked ? '1' : '0';
         }
         inp.checked = isCorrect;
         inp.disabled = true;
-        if (isCorrect) inp.classList.add('exam-choice-solution-visible');
-        else inp.classList.remove('exam-choice-solution-visible');
+        if (isCorrect) {
+          inp.classList.add('exam-choice-solution-visible');
+          if (box && box.classList) box.classList.add('exam-dollar-choice-box--solution-mark');
+        } else {
+          inp.classList.remove('exam-choice-solution-visible');
+          if (box && box.classList) box.classList.remove('exam-dollar-choice-box--solution-mark');
+        }
         inp.dataset.jmChoiceSolutionShown = '1';
       } else {
         inp.disabled = false;
         inp.classList.remove('exam-choice-solution-visible');
+        if (box && box.classList) box.classList.remove('exam-dollar-choice-box--solution-mark');
         if (inp.dataset.jmChoiceSolutionShown) {
           inp.checked = inp.dataset.jmChoiceWasChecked === '1';
         }
@@ -694,6 +760,119 @@
     return { end: j, pct: pct, align: align, wrap: wrap, frame: frame };
   }
 
+  function parseBildInnerSuffixes(afterBild) {
+    var filename = String(afterBild || '').trim();
+    var pct = null;
+    var align = null;
+    var wrap = false;
+    var frame = null;
+    var guard = 0;
+    while (guard < 8 && filename) {
+      guard += 1;
+      var changed = false;
+      var frameM = filename.match(/^([\s\S]*?)\s+(r\d+[a-zäöüß]+)\s*$/i);
+      if (frameM) {
+        var fr = parseImageFrameToken(frameM[2]);
+        if (fr) {
+          frame = fr;
+          filename = frameM[1].trim();
+          changed = true;
+        }
+      }
+      if (changed) continue;
+      var pctM = filename.match(/^([\s\S]*?)\s+(\d+(?:[.,]\d+)?%)\s*$/);
+      if (pctM) {
+        var pVal = parsePercentToken(pctM[2]);
+        if (pVal != null) {
+          pct = pVal;
+          filename = pctM[1].trim();
+          changed = true;
+        }
+      }
+      if (changed) continue;
+      var wrapM = filename.match(/^([\s\S]*?)\s+(t|textumfluss|umfluss)\s*$/i);
+      if (wrapM && parseImageTextWrapToken(wrapM[2])) {
+        wrap = true;
+        filename = wrapM[1].trim();
+        changed = true;
+      }
+      if (changed) continue;
+      var alignM = filename.match(
+        /^([\s\S]*?)\s+(r|rechts|right|l|links|left|m|mitte|center|zentriert|c|z)\s*$/i,
+      );
+      if (alignM) {
+        var al = parseImageAlignToken(alignM[2]);
+        if (al) {
+          align = al;
+          filename = alignM[1].trim();
+          changed = true;
+        }
+      }
+      if (!changed) break;
+    }
+    return { filename: filename, pct: pct, align: align, wrap: wrap, frame: frame };
+  }
+
+  function parseBildCommand(innerTrim) {
+    var m = String(innerTrim || '')
+      .trim()
+      .match(/^Bild\s+([\s\S]+)$/i);
+    if (!m) return null;
+    return parseBildInnerSuffixes(m[1].trim());
+  }
+
+  function renderExamImageHtml(bildCmd, imgOpts, idGen) {
+    if (!bildCmd || !bildCmd.filename) return '';
+    var imgUrl = resolveExamImageUrl(bildCmd.filename);
+    if (!imgUrl) return '';
+    var wrapCls = 'exam-dollar-img-wrap';
+    if (imgOpts.wrap) {
+      wrapCls += ' exam-dollar-img-wrap--wrap';
+      if (imgOpts.align === 'right') {
+        wrapCls += ' exam-dollar-img-wrap--right exam-dollar-img-wrap--flow exam-dollar-img-wrap--flow-right';
+      } else if (imgOpts.align === 'center') {
+        wrapCls += ' exam-dollar-img-wrap--center exam-dollar-img-wrap--wrap-block';
+      } else {
+        wrapCls += ' exam-dollar-img-wrap--left exam-dollar-img-wrap--flow';
+      }
+    } else {
+      if (imgOpts.align === 'left') wrapCls += ' exam-dollar-img-wrap--left';
+      else if (imgOpts.align === 'right') wrapCls += ' exam-dollar-img-wrap--right';
+      else if (imgOpts.align === 'center') wrapCls += ' exam-dollar-img-wrap--center';
+    }
+    if (imgOpts.frame) wrapCls += ' exam-dollar-img-wrap--framed';
+    var wrapStyle = imgOpts.wrap ? '' : 'max-width:100%;';
+    if (imgOpts.frame || imgOpts.pct != null) {
+      wrapStyle += 'display:inline-block;width:fit-content;max-width:100%;vertical-align:top;';
+    }
+    if (imgOpts.frame) {
+      wrapStyle +=
+        'border:' +
+        imgOpts.frame.widthPx +
+        'px solid ' +
+        imgOpts.frame.color +
+        ';box-sizing:border-box;padding:2px;';
+    }
+    var pctAttr =
+      imgOpts.pct != null
+        ? ' data-jm-width-pct="' + escapeHtml(String(imgOpts.pct)) + '"'
+        : '';
+    return (
+      '<span class="' +
+      wrapCls +
+      '" style="' +
+      escapeHtml(wrapStyle) +
+      '"><img class="exam-dollar-img" src="' +
+      escapeHtml(imgUrl) +
+      '" alt="" loading="lazy"' +
+      pctAttr +
+      (imgOpts.wrap
+        ? ' style="height:auto;display:block;max-width:100%"'
+        : ' style="max-width:100%;height:auto;display:block"') +
+      '></span>'
+    );
+  }
+
   function applyExamImageNaturalSizing(root) {
     var list;
     if (root && root.querySelectorAll) {
@@ -758,6 +937,204 @@
     bindCollapsibleDetails(panel, 'jmExamTaskAuthorOpen', false);
   }
 
+  function normalizeProseMathText(raw) {
+    var s = String(raw || '').replace(/^\s+|\s+$/g, '').replace(/\t/g, ' ');
+    s = s.replace(/(\d)\s*:\s*(\d)/g, '$1:$2');
+    s = s.replace(/(\d)(Uhr)\b/gi, '$1 $2');
+    s = s.replace(/(\d)([tkgml])\b(?![a-zäöüß])/gi, '$1 $2');
+    return s;
+  }
+
+  function latexMathSpacesFromRun(spaceRun) {
+    var n = String(spaceRun || '').length;
+    if (!n) return '';
+    var out = '';
+    var i;
+    for (i = 0; i < n; i += 1) out += '\\ ';
+    return out;
+  }
+
+  function preserveSpacesInUserLatex(latex) {
+    var t = String(latex || '');
+    if (/\\[a-zA-Z]/.test(t)) return t;
+    return t.replace(/ /g, '\\ ');
+  }
+
+  function latexEscapeTextFragment(raw) {
+    return String(raw || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/([{}#%&_])/g, '\\$1');
+  }
+
+  function formatSimpleMathNumberToken(numStr) {
+    var n = String(numStr || '');
+    if (/\./.test(n)) {
+      return '\\text{' + latexEscapeTextFragment(n) + '}';
+    }
+    return n.replace(',', '{,}');
+  }
+
+  function simpleMathTermToLatex(termRaw) {
+    var term = normalizeProseMathText(String(termRaw || '').replace(/^\s+|\s+$/g, ''));
+    if (!term) return '';
+    var timeM = term.match(/^(\d{1,2}):(\d{1,2})(\s+)(Uhr)$/i);
+    if (timeM) {
+      return (
+        timeM[1] +
+        '{:}' +
+        timeM[2] +
+        latexMathSpacesFromRun(timeM[3]) +
+        '\\text{' +
+        latexEscapeTextFragment(timeM[4]) +
+        '}'
+      );
+    }
+    var timeOnly = term.match(/^(\d{1,2}):(\d{1,2})$/);
+    if (timeOnly) {
+      return timeOnly[1] + '{:}' + timeOnly[2];
+    }
+    var numUnit = term.match(/^(\d+(?:\.\d+)*|\d+(?:,\d+)?)(\s+)([a-zA-Zäöüß]{1,8})$/);
+    if (numUnit) {
+      return (
+        formatSimpleMathNumberToken(numUnit[1]) +
+        latexMathSpacesFromRun(numUnit[2]) +
+        '\\text{' +
+        latexEscapeTextFragment(numUnit[3]) +
+        '}'
+      );
+    }
+    if (/^\d+(?:\.\d+)*$/.test(term) || /^\d+(?:,\d+)?$/.test(term)) {
+      return formatSimpleMathNumberToken(term);
+    }
+    if (/^[\d\s:,{.·}]+$/.test(term)) {
+      return term.replace(/,/g, '{,}').replace(/ /g, '\\ ');
+    }
+    if (/^[a-zA-Zäöüß]{1,12}$/.test(term)) {
+      return '\\text{' + latexEscapeTextFragment(term) + '}';
+    }
+    return '\\text{' + latexEscapeTextFragment(term) + '}';
+  }
+
+  function simpleMathArithmeticToLatex(s) {
+    var parts = String(s || '').split(/(\s+\+\s+|\s+\-\s+)/);
+    var out = '';
+    var i;
+    for (i = 0; i < parts.length; i += 1) {
+      var p = parts[i];
+      if (!p) continue;
+      if (/^\s+\+\s+$/.test(p)) {
+        var pm = p.match(/^(\s*)\+(\s*)$/);
+        if (pm) {
+          out += latexMathSpacesFromRun(pm[1]) + '+' + latexMathSpacesFromRun(pm[2]);
+        }
+      } else if (/^\s+\-\s+$/.test(p)) {
+        var mm = p.match(/^(\s*)\-(\s*)$/);
+        if (mm) {
+          out += latexMathSpacesFromRun(mm[1]) + '-' + latexMathSpacesFromRun(mm[2]);
+        }
+      } else {
+        out += simpleMathTermToLatex(p);
+      }
+    }
+    return out;
+  }
+
+  function shouldUseSimpleMathLatex(raw) {
+    var t = String(raw || '').trim();
+    if (!t) return true;
+    if (/\\[a-zA-Z]|[\^_{}]|\{,\}|\\frac|\\cdot|\\sqrt|\\sum|\\times|\\div/.test(t)) {
+      return false;
+    }
+    if (/\d\s*:\s*\d/.test(t)) return true;
+    if (/\d[A-Za-zÄÖÜäöüß]{1,8}\b/.test(t)) return true;
+    if (/[+\-]/.test(t) && /^[\d\s:,.·+\-UuhrmtkgäöüßA-Za-z-]+$/i.test(t)) return true;
+    if (/^[\d\s:,.·UuhrmtkgäöüßA-Za-z-]+$/i.test(t)) return true;
+    return false;
+  }
+
+  function simpleMathContentToLatex(raw) {
+    var s = normalizeProseMathText(String(raw || ''));
+    if (!s) return '';
+    if (/[+\-]/.test(s)) {
+      return simpleMathArithmeticToLatex(s);
+    }
+    return simpleMathTermToLatex(s);
+  }
+
+  function examKatexInline(latex) {
+    if (global.katex && typeof global.katex.renderToString === 'function') {
+      try {
+        return global.katex.renderToString(latex, {
+          throwOnError: false,
+          displayMode: false,
+          output: 'html',
+        });
+      } catch (e) {
+        /* fallback */
+      }
+    }
+    return null;
+  }
+
+  function renderMathHtml(latex) {
+    var t = String(latex || '').replace(/^\s+|\s+$/g, '');
+    if (!t) return '';
+    var toRender = shouldUseSimpleMathLatex(t)
+      ? simpleMathContentToLatex(t)
+      : preserveSpacesInUserLatex(t);
+    var html = examKatexInline(toRender);
+    if (html) {
+      return (
+        '<span class="exam-dollar-math-latex exam-dollar-math-katex">' + html + '</span>'
+      );
+    }
+    return (
+      '<span class="exam-dollar-math-latex" data-latex="' +
+      escapeHtml(toRender) +
+      '"><span class="exam-dollar-math-fallback">' +
+      escapeHtml(toRender) +
+      '</span></span>'
+    );
+  }
+
+  function typesetExamMathInRoot(root) {
+    if (!global.katex || typeof global.katex.renderToString !== 'function') return;
+    var list;
+    if (root && root.querySelectorAll) {
+      list = root.querySelectorAll('.exam-dollar-math-latex[data-latex]');
+    } else {
+      list = document.querySelectorAll('.exam-dollar-math-latex[data-latex]');
+    }
+    list.forEach(function (el) {
+      if (el.__jmKatexDone) return;
+      var latex = el.getAttribute('data-latex') || '';
+      if (!latex) return;
+      var toRender = shouldUseSimpleMathLatex(latex)
+        ? simpleMathContentToLatex(latex)
+        : preserveSpacesInUserLatex(latex);
+      try {
+        el.innerHTML = global.katex.renderToString(toRender, {
+          throwOnError: false,
+          displayMode: false,
+          output: 'html',
+        });
+        el.classList.add('exam-dollar-math-katex');
+        el.removeAttribute('data-latex');
+        el.__jmKatexDone = true;
+      } catch (e2) {
+        /* keep fallback */
+      }
+    });
+  }
+
+  function renderCodeHtml(text, idGen, boxed) {
+    var cls =
+      'exam-dollar-code ' + (boxed ? 'exam-dollar-code--box' : 'exam-dollar-code--inline');
+    return (
+      '<code class="' + cls + '">' + renderInline(String(text || ''), idGen) + '</code>'
+    );
+  }
+
   function parseColorSpan(inner) {
     var hexM = inner.match(/^#([0-9a-f]{3,8})\s+([\s\S]+)\s+#([0-9a-f]{3,8})$/i);
     if (hexM && hexM[1].toLowerCase() === hexM[3].toLowerCase()) {
@@ -773,9 +1150,30 @@
     return null;
   }
 
+  function parseWfLine(line) {
+    var t = String(line || '').trim();
+    if (!t) return null;
+    var m = t.match(/^([\s\S]*?)\s+\$(wwf|wff|wf)\s*\$/i);
+    if (!m) return null;
+    var stmt = String(m[1] || '').trim();
+    if (!stmt) return null;
+    return { stmt: stmt, mode: String(m[2] || 'wf').toLowerCase() };
+  }
+
+  function countWfRowsInBody(body) {
+    var n = 0;
+    String(body || '')
+      .split(/\r?\n/)
+      .forEach(function (line) {
+        if (parseWfLine(line)) n += 1;
+      });
+    return n;
+  }
+
   function scanBodyDollarTokens(body) {
     var gaps = 0;
     var choices = 0;
+    choices += countWfRowsInBody(body);
     var i = 0;
     var s = String(body || '');
     while (i < s.length) {
@@ -849,15 +1247,43 @@
     });
   }
 
+  function scoreWfRowsInTask(taskEl) {
+    var achieved = 0;
+    var total = 0;
+    taskEl.querySelectorAll('.exam-dollar-wf-row').forEach(function (tr) {
+      var w = tr.querySelector('.exam-dollar-wf-input[data-jm-wf-col="w"]');
+      var f = tr.querySelector('.exam-dollar-wf-input[data-jm-wf-col="f"]');
+      if (!w || !f) return;
+      var wSol = w.getAttribute('data-correct') === '1';
+      var fSol = f.getAttribute('data-correct') === '1';
+      if (!wSol && !fSol) return;
+      total += 0.5;
+      var wOn = w.checked;
+      var fOn = f.checked;
+      if (wSol && wOn && !fOn) achieved += 0.5;
+      else if (fSol && fOn && !wOn) achieved += 0.5;
+      else if (wOn || fOn) achieved -= 0.5;
+    });
+    return { achieved: achieved, total: total };
+  }
+
   function scoreCheckboxChoicesInTask(taskEl) {
     var achieved = 0;
-    var inputs = taskEl.querySelectorAll('.exam-dollar-choice-input');
+    var inputs = taskEl.querySelectorAll(
+      '.exam-dollar-choice-input:not(.exam-dollar-wf-input)',
+    );
     inputs.forEach(function (inp) {
       var shouldCheck = inp.getAttribute('data-correct') === '1';
       if (inp.checked === shouldCheck) achieved += 0.5;
       else achieved -= 0.5;
     });
     return { achieved: achieved, total: inputs.length * 0.5 };
+  }
+
+  function scoreChoicesInTask(taskEl) {
+    var wf = scoreWfRowsInTask(taskEl);
+    var ch = scoreCheckboxChoicesInTask(taskEl);
+    return { achieved: wf.achieved + ch.achieved, total: wf.total + ch.total };
   }
 
   function calculateExamDollarPoints() {
@@ -872,7 +1298,7 @@
       var meta = parseTaskSource(src.value);
       var scan = scanBodyDollarTokens(meta.body);
       if (scan.choices > 0 && scan.gaps === 0) {
-        var ch = scoreCheckboxChoicesInTask(taskEl);
+        var ch = scoreChoicesInTask(taskEl);
         total += ch.total;
         achieved += ch.achieved;
         return;
@@ -883,7 +1309,7 @@
           if (gapInputIsCorrect(inp)) achieved += 1;
         });
         if (scan.choices > 0) {
-          var ch2 = scoreCheckboxChoicesInTask(taskEl);
+          var ch2 = scoreChoicesInTask(taskEl);
           total += ch2.total;
           achieved += ch2.achieved;
         }
@@ -894,6 +1320,52 @@
     });
     if (!any) return null;
     return { achieved: achieved, total: total };
+  }
+
+  function hideLiveExamScoreFooter() {
+    var pd = document.getElementById('pointsDisplay');
+    var nl = document.querySelector('.footer-note-line');
+    if (pd) pd.style.setProperty('display', 'none', 'important');
+    if (nl) nl.style.setProperty('display', 'none', 'important');
+  }
+
+  function injectStudentLiveScoreGuardStyles() {
+    var marker = 'data-jm-exam-live-score-guard';
+    if (document.querySelector('style[' + marker + ']')) return;
+    var st = document.createElement('style');
+    st.setAttribute(marker, '1');
+    st.textContent =
+      'body:not(.teacher-mode) #pointsDisplay,' +
+      'body:not(.teacher-mode) .footer-note-line{display:none!important;visibility:hidden!important}';
+    document.head.appendChild(st);
+  }
+
+  function installExamLiveScoreGuard() {
+    if (global.__jmExamLiveScoreGuard) return;
+    global.__jmExamLiveScoreGuard = true;
+    injectStudentLiveScoreGuardStyles();
+    var previous =
+      typeof global.updatePointsDisplay === 'function' ? global.updatePointsDisplay : null;
+    global.updatePointsDisplay = function jmGuardedUpdatePointsDisplay() {
+      if (localStorage.getItem('teacherId') === null) {
+        hideLiveExamScoreFooter();
+        return;
+      }
+      if (previous && !previous.__jmHideLiveScores) {
+        return previous.apply(this, arguments);
+      }
+    };
+    if (localStorage.getItem('teacherId') === null) {
+      hideLiveExamScoreFooter();
+    }
+  }
+
+  function maybeUpdateLivePointsDisplay() {
+    if (localStorage.getItem('teacherId') === null) {
+      hideLiveExamScoreFooter();
+      return;
+    }
+    if (typeof global.updatePointsDisplay === 'function') global.updatePointsDisplay();
   }
 
   function wireExamDollarScoring() {
@@ -914,67 +1386,305 @@
         if (inp.__jmScoreWired) return;
         inp.__jmScoreWired = true;
         inp.addEventListener('change', function () {
-          if (typeof global.updatePointsDisplay === 'function') global.updatePointsDisplay();
+          maybeUpdateLivePointsDisplay();
         });
       });
     };
   }
 
   function normalizeBodyDollarText(text) {
-    return String(text || '').replace(/\$\s*t\s*\$/gi, '$t$');
+    return String(text || '')
+      .replace(/\$\s*e\s*\$/gi, '$e$')
+      .replace(/\$\s*t\s*\$/gi, '$t$')
+      .replace(/\$\s*CC\s*\$/gi, '$CC$')
+      .replace(/\$\s*C\s*\$/gi, '$C$');
+  }
+
+  function parseChoiceLine(line) {
+    var t = String(line || '').trim();
+    var mcc = t.match(/^\$CC\$\s*([\s\S]*)$/i);
+    if (mcc) return { kind: 'cc', text: String(mcc[1] || '').trim() };
+    var mc = t.match(/^\$C\$\s*([\s\S]*)$/i);
+    if (mc) return { kind: 'c', text: String(mc[1] || '').trim() };
+    return null;
+  }
+
+  function renderChoiceCheckbox(isCorrect, idGen) {
+    var id = idGen();
+    if (isCorrect) {
+      return (
+        '<label class="exam-dollar-choice exam-dollar-choice-correct">' +
+        '<input type="checkbox" class="exam-dollar-choice-input" data-correct="1" data-jm-choice-kind="correct" id="' +
+        escapeHtml(id) +
+        '">' +
+        '<span class="exam-dollar-choice-box" aria-hidden="true"></span></label>'
+      );
+    }
+    return (
+      '<label class="exam-dollar-choice exam-dollar-choice-neutral">' +
+      '<input type="checkbox" class="exam-dollar-choice-input" data-jm-choice-kind="neutral" id="' +
+      escapeHtml(id) +
+      '">' +
+      '<span class="exam-dollar-choice-box" aria-hidden="true"></span></label>'
+    );
+  }
+
+  function renderChoiceList(rows, idGen) {
+    var html = '<ul class="exam-dollar-choice-list">';
+    rows.forEach(function (row) {
+      html +=
+        '<li class="exam-dollar-choice-list-item">' +
+        renderChoiceCheckbox(row.kind === 'cc', idGen);
+      if (row.text) {
+        html +=
+          ' <span class="exam-dollar-choice-text">' + renderInline(row.text, idGen) + '</span>';
+      }
+      html += '</li>';
+    });
+    html += '</ul>';
+    return html;
   }
 
   function isFlowImageOnlyLine(line) {
     var s = normalizeBodyDollarText(line).trim();
+    var solo = s.match(/^\$([\s\S]+)\$$/);
+    if (solo && /^Bild\s+/i.test(String(solo[1] || '').trim())) {
+      var cmd = parseBildCommand(String(solo[1]).trim());
+      return !!(cmd && cmd.wrap);
+    }
     if (!/\$t\$/i.test(s)) return false;
     if (!/^\$Bild\s+/i.test(s)) return false;
     var plain = s.replace(/\$[^$]+\$/g, ' ').replace(/\s+/g, '').trim();
     return plain.length === 0;
   }
 
-  function renderBlockToHtml(blockText, idGen) {
-    var body = normalizeBodyDollarText(blockText);
-    var lines = body.split(/\r?\n/);
-    var textLines = [];
-    var flowImgLines = [];
-    var i;
-    for (i = 0; i < lines.length; i++) {
-      if (!String(lines[i]).trim()) continue;
-      if (isFlowImageOnlyLine(lines[i])) flowImgLines.push(lines[i]);
-      else textLines.push(lines[i]);
+  function renderWfCheckboxCell(kind, isCorrect, idGen) {
+    var id = idGen();
+    var cls = 'exam-dollar-choice exam-dollar-wf-choice';
+    if (isCorrect) cls += ' exam-dollar-choice-correct';
+    else cls += ' exam-dollar-choice-neutral';
+    var dataCorrect = isCorrect ? ' data-correct="1"' : '';
+    var col = kind === 'w' ? 'w' : 'f';
+    return (
+      '<td class="exam-dollar-wf-check">' +
+      '<label class="' +
+      cls +
+      '">' +
+      '<input type="checkbox" class="exam-dollar-choice-input exam-dollar-wf-input"' +
+      dataCorrect +
+      ' data-jm-wf-col="' +
+      col +
+      '" id="' +
+      escapeHtml(id) +
+      '">' +
+      '<span class="exam-dollar-choice-box" aria-hidden="true"></span></label></td>'
+    );
+  }
+
+  function renderWfTable(rows, idGen) {
+    var html =
+      '<table class="exam-dollar-wf"><thead><tr>' +
+      '<th class="exam-dollar-wf-stmt" scope="col">Aussage</th>' +
+      '<th class="exam-dollar-wf-h" scope="col">Wahr</th>' +
+      '<th class="exam-dollar-wf-h" scope="col">Falsch</th>' +
+      '</tr></thead><tbody>';
+    rows.forEach(function (row) {
+      var wCorrect = row.mode === 'wwf';
+      var fCorrect = row.mode === 'wff';
+      html +=
+        '<tr class="exam-dollar-wf-row">' +
+        '<td class="exam-dollar-wf-stmt">' +
+        renderInline(row.stmt, idGen) +
+        '</td>' +
+        renderWfCheckboxCell('w', wCorrect, idGen) +
+        renderWfCheckboxCell('f', fCorrect, idGen) +
+        '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+  }
+
+  function buildSideFlowHtml(txtHtml, flowImgLines, idGen) {
+    var imgsHtml = flowImgLines
+      .map(function (ln) {
+        return renderInline(ln, idGen);
+      })
+      .join('');
+    if (!imgsHtml) {
+      return '<div class="exam-dollar-flow">' + txtHtml + '</div>';
     }
+    return (
+      '<div class="exam-dollar-flow-side exam-dollar-flow-side--wrap">' +
+      '<div class="exam-dollar-side-text">' +
+      imgsHtml +
+      txtHtml +
+      '</div></div>'
+    );
+  }
+
+  function insertFlowImageIntoSidePart(html, imgHtml) {
+    var split = '<div class="exam-dollar-side-text">';
+    var at = html.indexOf(split);
+    if (at >= 0) {
+      var openEnd = at + split.length;
+      return html.slice(0, openEnd) + imgHtml + html.slice(openEnd);
+    }
+    var legacy = '</div><div class="exam-dollar-side-text">';
+    var legAt = html.indexOf(legacy);
+    if (legAt >= 0) {
+      return html.slice(0, legAt) + imgHtml + html.slice(legAt);
+    }
+    return html;
+  }
+
+  function appendFlowImageToPreviousPart(parts, imgLine, idGen) {
+    if (!parts.length) return false;
+    var imgHtml = renderInline(imgLine, idGen);
+    if (!imgHtml) return false;
+    var idx = parts.length - 1;
+    var last = parts[idx];
+    if (last.indexOf('exam-dollar-flow-side') >= 0) {
+      parts[idx] = insertFlowImageIntoSidePart(last, imgHtml);
+      return true;
+    }
+    var flowM = last.match(/^<div class="exam-dollar-flow">([\s\S]*)<\/div>$/);
+    if (flowM) {
+      parts[idx] = buildSideFlowHtml(flowM[1], [imgLine], idGen);
+      return true;
+    }
+    return false;
+  }
+
+  function renderFlowTextAndImages(textLines, flowImgLines, idGen) {
+    if (!textLines.length && !flowImgLines.length) return '';
     if (flowImgLines.length && textLines.length) {
-      var imgsHtml = flowImgLines
-        .map(function (ln) {
-          return renderInline(ln, idGen);
-        })
-        .join('');
       var txtHtml = textLines
         .map(function (ln) {
           return renderInline(ln, idGen);
         })
-        .join('<br>');
-      var imgRight = imgsHtml.indexOf('exam-dollar-img-wrap--flow-right') >= 0;
-      var sideCls =
-        'exam-dollar-flow exam-dollar-flow-side' +
-        (imgRight ? ' exam-dollar-flow-side--img-right' : '');
-      return (
-        '<div class="' +
-        sideCls +
-        '"><div class="exam-dollar-float-col">' +
-        imgsHtml +
-        '</div><div class="exam-dollar-text-col">' +
-        txtHtml +
-        '</div></div>'
-      );
+        .join('<br><br>');
+      return buildSideFlowHtml(txtHtml, flowImgLines, idGen);
     }
     var chunks = [];
-    for (i = 0; i < lines.length; i++) {
-      if (!String(lines[i]).trim()) continue;
-      chunks.push(renderInline(lines[i], idGen));
-    }
-    if (!chunks.length) return '';
+    textLines.forEach(function (ln) {
+      chunks.push(renderInline(ln, idGen));
+    });
+    flowImgLines.forEach(function (ln) {
+      chunks.push(renderInline(ln, idGen));
+    });
     return '<div class="exam-dollar-flow">' + chunks.join('<br>') + '</div>';
+  }
+
+  function renderBlockToHtml(blockText, idGen) {
+    var body = normalizeBodyDollarText(blockText);
+    var lines = body.split(/\r?\n/);
+    var parts = [];
+    var wfBuffer = [];
+    var choiceBuffer = [];
+    var textBuffer = [];
+    var flowImgBuffer = [];
+    var i;
+
+    function flushChoice() {
+      if (!choiceBuffer.length) return;
+      parts.push(renderChoiceList(choiceBuffer, idGen));
+      choiceBuffer = [];
+    }
+
+    function flushWf() {
+      if (!wfBuffer.length) return;
+      parts.push(renderWfTable(wfBuffer, idGen));
+      wfBuffer = [];
+    }
+
+    function flushFlow() {
+      if (!textBuffer.length && !flowImgBuffer.length) return;
+      parts.push(renderFlowTextAndImages(textBuffer, flowImgBuffer, idGen));
+      textBuffer = [];
+      flowImgBuffer = [];
+    }
+
+    function nextNonEmptyLine(fromIndex) {
+      var j;
+      for (j = fromIndex; j < lines.length; j++) {
+        if (String(lines[j]).trim()) return { index: j, line: lines[j] };
+      }
+      return null;
+    }
+
+    for (i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (!String(line).trim()) {
+        flushWf();
+        flushChoice();
+        var nxt = nextNonEmptyLine(i + 1);
+        if (
+          nxt &&
+          isFlowImageOnlyLine(nxt.line) &&
+          textBuffer.length
+        ) {
+          continue;
+        }
+        if (nxt && parseChoiceLine(nxt.line) && choiceBuffer.length) {
+          continue;
+        }
+        if (nxt && parseWfLine(nxt.line) && wfBuffer.length) {
+          continue;
+        }
+        flushFlow();
+        continue;
+      }
+      var wf = parseWfLine(line);
+      if (wf) {
+        flushFlow();
+        flushChoice();
+        wfBuffer.push(wf);
+        continue;
+      }
+      var ch = parseChoiceLine(line);
+      if (ch) {
+        flushFlow();
+        flushWf();
+        choiceBuffer.push(ch);
+        continue;
+      }
+      flushWf();
+      flushChoice();
+      if (isFlowImageOnlyLine(line)) {
+        if (textBuffer.length) {
+          flowImgBuffer.push(line);
+        } else if (!appendFlowImageToPreviousPart(parts, line, idGen)) {
+          flowImgBuffer.push(line);
+        }
+      } else textBuffer.push(line);
+    }
+    flushWf();
+    flushChoice();
+    flushFlow();
+    return parts.join('');
+  }
+
+  function wireWfExclusiveCheckboxes(taskEl) {
+    taskEl.querySelectorAll('.exam-dollar-wf-row').forEach(function (tr) {
+      if (tr.__jmWfWired) return;
+      tr.__jmWfWired = true;
+      var w = tr.querySelector('.exam-dollar-wf-input[data-jm-wf-col="w"]');
+      var f = tr.querySelector('.exam-dollar-wf-input[data-jm-wf-col="f"]');
+      if (!w || !f) return;
+      function onChange(changed) {
+        if (changed.checked) {
+          var other = changed === w ? f : w;
+          other.checked = false;
+        }
+        maybeUpdateLivePointsDisplay();
+      }
+      w.addEventListener('change', function () {
+        onChange(w);
+      });
+      f.addEventListener('change', function () {
+        onChange(f);
+      });
+    });
   }
 
   function renderInline(text, idGen) {
@@ -1000,12 +1710,30 @@
       }
       var inner = String(tok.inner || '');
       var innerTrim = inner.trim();
+      var compactM = parseCompactStyleSpan(innerTrim);
+      var mathM =
+        innerTrim.match(/^L\s+([\s\S]*?)\s+L$/i) || innerTrim.match(/^M\s+([\s\S]*?)\s+M$/i);
+      var codeBoxM = innerTrim.match(/^KK\s+([\s\S]+)\s+KK$/);
+      var codeM =
+        innerTrim.match(/^K\s+([\s\S]+)\s+K$/) || innerTrim.match(/^N\s+([\s\S]+)\s+N$/);
       var boldM = innerTrim.match(/^B\s+([\s\S]+)\s+B$/i);
       var italicM = innerTrim.match(/^I\s+([\s\S]+)\s+I$/i);
       var underM = innerTrim.match(/^U\s+([\s\S]+)\s+U$/i);
       var colorM = parseColorSpan(innerTrim);
       var bildM = innerTrim.match(/^Bild\s+(.+)$/i);
-      if (boldM) {
+      if (compactM) {
+        out += wrapRenderedCompactStyles(
+          renderInline(compactM.text, idGen),
+          compactM.styles,
+          compactM.css,
+        );
+      } else if (mathM) {
+        out += renderMathHtml(mathM[1]);
+      } else if (codeBoxM) {
+        out += renderCodeHtml(codeBoxM[1], idGen, true);
+      } else if (codeM) {
+        out += renderCodeHtml(codeM[1], idGen, innerTrim.charAt(0) === 'N');
+      } else if (boldM) {
         out += '<strong>' + renderInline(boldM[1], idGen) + '</strong>';
       } else if (italicM) {
         out += '<em>' + renderInline(italicM[1], idGen) + '</em>';
@@ -1019,49 +1747,34 @@
           renderInline(colorM.text, idGen) +
           '</span>';
       } else if (bildM) {
-        var imgOpts = tryParseImageOptionsAfter(s, tok.end);
+        var bildCmd = parseBildCommand(innerTrim);
+        var rawAfterBild = String(bildM[1] || '').trim();
+        var imgOpts;
+        if (bildCmd && rawAfterBild !== bildCmd.filename) {
+          imgOpts = {
+            end: tok.end,
+            pct: bildCmd.pct,
+            align: bildCmd.align,
+            wrap: bildCmd.wrap,
+            frame: bildCmd.frame,
+          };
+        } else {
+          imgOpts = tryParseImageOptionsAfter(s, tok.end);
+          if (bildCmd) {
+            imgOpts.pct = imgOpts.pct != null ? imgOpts.pct : bildCmd.pct;
+            imgOpts.align = imgOpts.align != null ? imgOpts.align : bildCmd.align;
+            imgOpts.wrap = imgOpts.wrap || bildCmd.wrap;
+            imgOpts.frame = imgOpts.frame != null ? imgOpts.frame : bildCmd.frame;
+          }
+        }
         var imgEnd = imgOpts.end;
-        var imgUrl = resolveExamImageUrl(bildM[1]);
-        if (imgUrl) {
-          var wrapCls = 'exam-dollar-img-wrap';
-          if (imgOpts.wrap) {
-            wrapCls += ' exam-dollar-img-wrap--wrap';
-            if (imgOpts.align === 'right') {
-              wrapCls += ' exam-dollar-img-wrap--right exam-dollar-img-wrap--flow exam-dollar-img-wrap--flow-right';
-            } else if (imgOpts.align === 'center') wrapCls += ' exam-dollar-img-wrap--center';
-            else wrapCls += ' exam-dollar-img-wrap--left exam-dollar-img-wrap--flow';
-          } else {
-            if (imgOpts.align === 'left') wrapCls += ' exam-dollar-img-wrap--left';
-            else if (imgOpts.align === 'right') wrapCls += ' exam-dollar-img-wrap--right';
-            else if (imgOpts.align === 'center') wrapCls += ' exam-dollar-img-wrap--center';
-          }
-          if (imgOpts.frame) wrapCls += ' exam-dollar-img-wrap--framed';
-          var wrapStyle = imgOpts.wrap ? '' : 'max-width:100%;';
-          if (imgOpts.frame) {
-            wrapStyle +=
-              'border:' +
-              imgOpts.frame.widthPx +
-              'px solid ' +
-              imgOpts.frame.color +
-              ';box-sizing:border-box;padding:2px;';
-          }
-          var pctAttr =
-            imgOpts.pct != null
-              ? ' data-jm-width-pct="' + escapeHtml(String(imgOpts.pct)) + '"'
-              : '';
-          out +=
-            '<span class="' +
-            wrapCls +
-            '" style="' +
-            escapeHtml(wrapStyle) +
-            '"><img class="exam-dollar-img" src="' +
-            escapeHtml(imgUrl) +
-            '" alt="" loading="lazy"' +
-            pctAttr +
-            (imgOpts.wrap
-              ? ' style="height:auto;display:block;max-width:100%"'
-              : ' style="max-width:100%;height:auto;display:block"') +
-            '></span>';
+        var imgHtml = renderExamImageHtml(
+          bildCmd || { filename: rawAfterBild },
+          imgOpts,
+          idGen,
+        );
+        if (imgHtml) {
+          out += imgHtml;
         } else {
           out += escapeHtml(s.slice(i, imgEnd));
         }
@@ -1070,6 +1783,10 @@
       } else if (isImageSuffixOrphanToken(innerTrim)) {
         i = tok.end;
         continue;
+      } else if (/^e$/i.test(innerTrim)) {
+        out +=
+          '<span class="exam-dollar-e-hint teacher-only" title="Zeilenumbruch ($e$) — kein Enter in der Quelle">$e$</span>' +
+          '<br class="exam-dollar-soft-break">';
       } else if (innerTrim === '__') {
         out +=
           '<div class="item input-group full-width exam-dollar-biggap">' +
@@ -1099,16 +1816,12 @@
             attr +
             sizeAttr +
             ' autocomplete="off">';
+        } else if (/^wwf$/i.test(innerTrim) || /^wff$/i.test(innerTrim) || /^wf$/i.test(innerTrim)) {
+          /* Zeilenende in Wahr/Falsch-Tabelle */
         } else if (/^CC$/i.test(innerTrim)) {
-          out +=
-            '<label class="exam-dollar-choice exam-dollar-choice-correct">' +
-            '<input type="checkbox" class="exam-dollar-choice-input" data-correct="1" data-jm-choice-kind="correct">' +
-            '<span class="exam-dollar-choice-box" aria-hidden="true"></span></label>';
+          out += renderChoiceCheckbox(true, idGen);
         } else if (/^C$/i.test(innerTrim)) {
-          out +=
-            '<label class="exam-dollar-choice exam-dollar-choice-neutral">' +
-            '<input type="checkbox" class="exam-dollar-choice-input" data-jm-choice-kind="neutral">' +
-            '<span class="exam-dollar-choice-box" aria-hidden="true"></span></label>';
+          out += renderChoiceCheckbox(false, idGen);
         } else if (parsePunkte(innerTrim) || parseAufgabe(innerTrim)) {
           out += escapeHtml(s.slice(i, tok.end));
         } else {
@@ -1164,6 +1877,39 @@
     });
   }
 
+  function isPlaceholderSolutionText(text) {
+    var t = String(text || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!t) return true;
+    if (/^[a-z]\)\s*[.…\-–—\s]*$/i.test(t)) return true;
+    if (/^[.…\-–—]+$/.test(t)) return true;
+    return false;
+  }
+
+  function syncSolutionElement(solEl, parsed, idGen) {
+    if (!solEl) return;
+    var solBody = String(parsed.solution || '').trim();
+    if (!solBody || isPlaceholderSolutionText(solBody)) {
+      solEl.innerHTML = '';
+      solEl.setAttribute('hidden', 'hidden');
+      solEl.classList.add('solution--empty');
+      return;
+    }
+    var solHtml = renderBlockToHtml(solBody, idGen);
+    if (!solHtml) {
+      solEl.innerHTML = '';
+      solEl.setAttribute('hidden', 'hidden');
+      solEl.classList.add('solution--empty');
+      return;
+    }
+    solEl.removeAttribute('hidden');
+    solEl.classList.remove('solution--empty');
+    solEl.innerHTML = '<h4>Musterlösung:</h4>' + solHtml;
+    applyExamImageNaturalSizing(solEl);
+    typesetExamMathInRoot(solEl);
+  }
+
   function applySourceToTask(taskEl, source) {
     var rendered = taskEl.querySelector('.exam-dollar-rendered');
     if (!rendered) return;
@@ -1194,9 +1940,9 @@
       return 'examDollar_' + Date.now().toString(36) + '_' + n;
     }
     var html = renderBlockToHtml(parsed.body, idGen);
-    if (!html) html = '<p class="exam-dollar-empty-hint"></p>';
-    rendered.innerHTML = html;
+    rendered.innerHTML = html || '';
     applyExamImageNaturalSizing(rendered);
+    typesetExamMathInRoot(rendered);
 
     var content = taskEl.querySelector('.task-content');
     var solEl = taskEl.querySelector('.solution');
@@ -1206,13 +1952,7 @@
       content.appendChild(solEl);
     }
     if (solEl) {
-      var solHtml = renderBlockToHtml(parsed.solution, idGen);
-      if (solHtml) {
-        solEl.innerHTML = '<h4>Musterlösung:</h4>' + solHtml;
-        applyExamImageNaturalSizing(solEl);
-      } else {
-        solEl.innerHTML = '';
-      }
+      syncSolutionElement(solEl, parsed, idGen);
     }
 
     if (typeof global.attachInputListeners === 'function') {
@@ -1224,6 +1964,7 @@
     }
     wireGapAutoWidth(taskEl);
     syncGapInputWidths(taskEl);
+    wireWfExclusiveCheckboxes(taskEl);
     refreshGapSolutionDisplay();
   }
 
@@ -1420,24 +2161,62 @@
     live.parentNode.insertBefore(bar, live);
   }
 
+  function normalizeEmptyDollarWraps(text) {
+    var t = String(text || '');
+    ['KK', 'K', 'B', 'I', 'U', 'L'].forEach(function (mk) {
+      var re = new RegExp(
+        '\\$' + escapeRegExp(mk) + '\\s+([\\s\\S]*?)\\s+' + escapeRegExp(mk) + '\\$',
+        'gi',
+      );
+      t = t.replace(re, function (m, inner) {
+        return String(inner || '').trim() ? m : '';
+      });
+    });
+    return t;
+  }
+
   function wrapLiveEditDollarMarkup(live, marker) {
+    var mk = String(marker || '');
+    if (!mk) return false;
+    var now = Date.now();
+    if (live.__jmWrapAt && now - live.__jmWrapAt < 400) return false;
     var sel = window.getSelection();
     if (!sel || !sel.rangeCount) return false;
     var range = sel.getRangeAt(0);
     if (!live.contains(range.commonAncestorContainer)) return false;
     var selected = range.toString();
-    var inner = selected.length ? selected : ' ';
-    var wrapped = '$' + marker + ' ' + inner + ' ' + marker + '$';
+    if (!selected.length) return false;
+    var inner = selected.trim();
+    if (!inner) return false;
+    var fullWrap = new RegExp(
+      '^\\$' + escapeRegExp(mk) + '\\s+([\\s\\S]+)\\s+' + escapeRegExp(mk) + '\\$$',
+      'i',
+    );
+    if (fullWrap.test(inner)) return false;
+    var wrapped = '$' + mk + ' ' + inner + ' ' + mk + '$';
     range.deleteContents();
     var node = document.createTextNode(wrapped);
     range.insertNode(node);
-    if (!selected.length) {
-      range.setStart(node, '$' + marker + ' '.length);
-      range.setEnd(node, '$' + marker + ' '.length + 1);
-    } else {
-      range.setStartAfter(node);
-      range.collapse(true);
-    }
+    range.setStartAfter(node);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    live.__jmWrapAt = now;
+    live.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  }
+
+  function insertLiveEditToken(live, token) {
+    live.focus();
+    var sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return false;
+    var range = sel.getRangeAt(0);
+    if (!live.contains(range.commonAncestorContainer)) return false;
+    range.deleteContents();
+    var node = document.createTextNode(token);
+    range.insertNode(node);
+    range.setStartAfter(node);
+    range.collapse(true);
     sel.removeAllRanges();
     sel.addRange(range);
     live.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1447,17 +2226,46 @@
   function wireLiveEditFormattingShortcuts(live) {
     if (live.__jmFmtKeysWired) return;
     live.__jmFmtKeysWired = true;
-    live.addEventListener('keydown', function (e) {
-      if (!e.metaKey && !e.ctrlKey) return;
-      if (e.altKey) return;
-      var marker = null;
-      if (e.key === 'b' || e.key === 'B') marker = 'B';
-      else if (e.key === 'i' || e.key === 'I') marker = 'I';
-      else if (e.key === 'u' || e.key === 'U') marker = 'U';
-      if (!marker) return;
-      e.preventDefault();
-      wrapLiveEditDollarMarkup(live, marker);
-    });
+    live.addEventListener(
+      'beforeinput',
+      function (e) {
+        var t = String(e.inputType || '');
+        if (
+          t === 'formatBold' ||
+          t === 'formatItalic' ||
+          t === 'formatUnderline' ||
+          t === 'formatStrikeThrough'
+        ) {
+          e.preventDefault();
+        }
+      },
+      true,
+    );
+    live.addEventListener(
+      'keydown',
+      function (e) {
+        if (e.key === 'Enter' && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          insertLiveEditToken(live, '$e$');
+          return;
+        }
+        if (!e.metaKey && !e.ctrlKey) return;
+        if (e.altKey) return;
+        var marker = null;
+        if (e.key === 'b' || e.key === 'B') marker = 'B';
+        else if (e.key === 'i' || e.key === 'I') marker = 'I';
+        else if (e.key === 'u' || e.key === 'U') marker = 'U';
+        else if (e.key === 'l' || e.key === 'L') marker = 'L';
+        else if ((e.key === 'k' || e.key === 'K') && e.shiftKey) marker = 'KK';
+        else if (e.key === 'k' || e.key === 'K') marker = 'K';
+        if (!marker) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        wrapLiveEditDollarMarkup(live, marker);
+      },
+      true,
+    );
   }
 
   function wireLiveEdit(taskEl) {
@@ -1645,6 +2453,7 @@
       document.head.appendChild(st);
     }
     st.textContent =
+      ':root{--jm-exam-student-color:#1565c0;--jm-exam-student-color-dark:#0d47a1;--jm-exam-student-focus:rgba(21,101,192,.35)}' +
       '.exam-dollar-source{display:none!important}' +
       '.teacher-mode .task-content{display:flex;flex-direction:column}' +
       '.teacher-mode .exam-dollar-rendered{order:1}' +
@@ -1655,7 +2464,6 @@
       '.teacher-mode .task-content .solution{order:3}' +
       '.exam-dollar-rendered{margin-bottom:6px;font-family:Arial,sans-serif;font-size:14px;line-height:1.55}' +
       '.teacher-mode .task-content .exam-dollar-rendered{display:block!important;margin:0 0 8px;padding:8px 6px;border:1px dashed #ddd;border-radius:6px;background:#fafafa}' +
-      '.teacher-mode .task-content .exam-dollar-rendered::before{content:"Vorschau";display:block;font-size:10px;font-weight:700;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}' +
       '.exam-dollar-color-bar{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 6px}' +
       '.exam-dollar-color-swatch{width:20px;height:20px;border:1px solid rgba(0,0,0,.2);border-radius:4px;cursor:pointer;padding:0}' +
       '.exam-dollar-color-swatch:hover{transform:scale(1.08)}' +
@@ -1663,12 +2471,19 @@
       '.teacher-mode .exam-dollar-live-edit:focus{box-shadow:0 0 0 2px rgba(225,6,0,0.25)}' +
       '.exam-dollar-live-edit.exam-dollar-drag-over,.exam-dollar-compose-input.exam-dollar-drag-over{box-shadow:0 0 0 2px rgba(21,101,192,.45)}' +
       '.exam-dollar-rendered{line-height:1.55}' +
+      '.exam-dollar-soft-break{line-height:1.55}' +
+      '.exam-dollar-e-hint{display:none;font-family:Consolas,Monaco,monospace;font-size:9px;line-height:1.2;color:#757575;background:#f5f5f5;border:1px dashed #bdbdbd;border-radius:3px;padding:0 4px;margin:0 3px 0 0;vertical-align:baseline;white-space:nowrap;user-select:none}' +
+      '.teacher-mode .exam-dollar-e-hint{display:inline}' +
       '.exam-dollar-flow{line-height:1.55;margin:0 0 0.5em}' +
-      '.exam-dollar-flow-side{display:flex;flex-direction:row;align-items:flex-start;gap:12px;margin:0 0 0.5em}' +
-      '.exam-dollar-flow-side--img-right{flex-direction:row-reverse}' +
-      '.exam-dollar-float-col{flex:0 0 auto;max-width:min(46%,300px);min-width:72px}' +
-      '.exam-dollar-float-col .exam-dollar-img-wrap--flow{float:none!important;margin:0!important;max-width:100%!important}' +
-      '.exam-dollar-text-col{flex:1 1 0;min-width:0;line-height:1.55}' +
+      '.exam-dollar-flow-side--wrap{width:100%;margin:0 0 0.35em;line-height:1.55;overflow:hidden}' +
+      '.exam-dollar-flow-side--wrap .exam-dollar-side-text{min-width:0}' +
+      '.exam-dollar-flow-side--wrap .exam-dollar-img-wrap--flow-right{float:right;margin:0 0 8px 14px;max-width:min(46%,280px)}' +
+      '.exam-dollar-flow-side--wrap .exam-dollar-img-wrap--left.exam-dollar-img-wrap--flow{float:left;margin:0 14px 8px 0;max-width:min(46%,280px)}' +
+      '.exam-dollar-flow-side--wrap .exam-dollar-img-wrap--wrap-block{display:block;float:none;clear:both;margin:10px auto;text-align:center;max-width:100%}' +
+      '.exam-dollar-flow-side--wrap .exam-dollar-img-wrap--flow{max-width:min(46%,280px)}' +
+      '.aids-row--rules{flex-direction:column!important;align-items:stretch!important;gap:4px!important}' +
+      '.aids-key--rules{display:block;width:100%}' +
+      '.aids-val-rules{width:100%!important;flex:none!important}' +
       '.exam-dollar-flow::after{content:"";display:block;clear:both}' +
       '.exam-dollar-rendered::after{content:"";display:block;clear:both}' +
       '.exam-dollar-img-wrap{vertical-align:top}' +
@@ -1684,7 +2499,10 @@
       '.teacher-mode .exam-points-editable{cursor:text;border-radius:3px;padding:0 2px}' +
       '.teacher-mode .exam-points-editable:hover{background:rgba(225,6,0,.08)}' +
       '.teacher-mode .exam-points-editable:focus{outline:2px solid rgba(225,6,0,.35)}' +
-      'input.exam-dollar-gap{border:1px solid #ccc;background:#fff;color:#222;font-weight:normal}' +
+      'input.exam-dollar-gap{border:1px solid #ccc;background:#fff;color:var(--jm-exam-student-color);font-weight:600;margin:5px 0;caret-color:var(--jm-exam-student-color)}' +
+      'textarea.exam-dollar-area,.exam-paper .item input[type="text"],.exam-paper .item textarea{color:var(--jm-exam-student-color);font-weight:600;caret-color:var(--jm-exam-student-color)}' +
+      'input.exam-dollar-gap:focus,textarea.exam-dollar-area:focus,.exam-paper .item input[type="text"]:focus,.exam-paper .item textarea:focus{border-color:var(--jm-exam-student-color);outline:2px solid var(--jm-exam-student-focus);outline-offset:0}' +
+      '.exam-paper input[type="radio"]{accent-color:var(--jm-exam-student-color)}' +
       'body.show-solutions input.exam-dollar-gap[data-jm-solution-hint="1"]{color:#1b5e20!important;font-weight:700;background:#e8f5e9!important;border:1px solid #66bb6a!important}' +
       '.task-header{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}' +
       '.task-header .task-number{flex:1;min-width:0}' +
@@ -1697,17 +2515,45 @@
       '.exam-dollar-compose-body{padding:0 10px 10px}' +
       '.exam-dollar-compose-label{font-size:11px;font-weight:700;color:#e65100;margin-bottom:6px}' +
       '.exam-dollar-compose-input{width:100%;font-family:Consolas,Monaco,monospace;font-size:12px;padding:8px;border:1px solid #ffb74d;border-radius:6px;resize:vertical;box-sizing:border-box}' +
-      '.exam-dollar-choice{display:inline-flex;align-items:center;margin:0 6px 0 2px;vertical-align:middle;cursor:pointer}' +
+      '.exam-dollar-choice-list{list-style:none;margin:8px 0 10px;padding:0}' +
+      '.exam-dollar-choice-list-item{display:flex;align-items:flex-start;gap:8px;margin:0 0 8px;line-height:1.55}' +
+      '.exam-dollar-choice-list-item:last-child{margin-bottom:0}' +
+      '.exam-dollar-choice-text{flex:1;min-width:0}' +
+      '.aids-box{width:100%;max-width:none;box-sizing:border-box}' +
+      '.aids-general-rules-list{margin:0;padding:0 0 0 1.35em;list-style:disc outside}' +
+      '.aids-general-rules-list li{margin:0 0 5px;padding:0;line-height:1.45;display:list-item}' +
+      '.aids-general-rules-list li:last-child{margin-bottom:0}' +
+      '.exam-dollar-choice{display:inline-flex;align-items:center;margin:0 6px 0 2px;vertical-align:middle;cursor:pointer;flex-shrink:0}' +
       '.exam-dollar-choice-input{position:absolute;opacity:0;width:0;height:0}' +
       '.exam-dollar-choice-box{display:inline-block;width:16px;height:16px;border:2px solid #333;border-radius:3px;background:#fff;vertical-align:middle}' +
-      '.exam-dollar-choice-input:checked + .exam-dollar-choice-box{background:#E10600;border-color:#b71c1c;box-shadow:inset 0 0 0 2px #fff}' +
+      '.exam-dollar-choice-input:checked + .exam-dollar-choice-box{background:var(--jm-exam-student-color);border-color:var(--jm-exam-student-color-dark);box-shadow:inset 0 0 0 2px #fff}' +
       'body.show-solutions .exam-dollar-choice-correct .exam-dollar-choice-box{border-color:#2e7d32}' +
       'body.show-solutions .teacher-mode .exam-dollar-choice-correct .exam-dollar-choice-box{outline:2px solid #81c784}' +
       'body.show-solutions .exam-dollar-choice-input[data-correct="1"].exam-choice-solution-visible:checked + .exam-dollar-choice-box{background:#e8f5e9;border-color:#2e7d32;box-shadow:inset 0 0 0 2px #fff}' +
+      'body.show-solutions .exam-dollar-choice-box.exam-dollar-choice-box--solution-mark{background:#e8f5e9;border-color:#2e7d32;box-shadow:inset 0 0 0 2px #fff}' +
+      'body.show-solutions .exam-dollar-choice-box.exam-dollar-choice-box--solution-mark::after{content:"✓";display:block;font-size:13px;line-height:12px;font-weight:800;color:#2e7d32;text-align:center}' +
+      'body.show-solutions .solution--empty,body.show-solutions .solution[hidden],body.show-solutions .solution:empty{display:none!important}' +
       'body.show-solutions .exam-dollar-choice-neutral .exam-dollar-choice-box{border-color:#333}' +
-      '.exam-dollar-gap{display:inline-block;vertical-align:baseline;width:auto!important;min-width:3ch!important;max-width:100%;text-align:left;padding:2px 5px;box-sizing:content-box}' +
-      '.exam-dollar-area{width:100%;min-height:72px}' +
-      '.exam-dollar-hint{font-size:10px;color:#888;margin-top:4px}';
+      '.exam-dollar-gap{display:inline-block;vertical-align:baseline;width:auto!important;min-width:3ch!important;max-width:100%;text-align:left;padding:2px 5px;box-sizing:content-box;margin:5px 0}' +
+      '.exam-dollar-code{font-family:Consolas,Monaco,"Courier New",monospace;font-size:0.9em;white-space:pre-wrap;word-break:break-word}' +
+      '.exam-dollar-code--inline{background:none;border:none;padding:0;margin:0;color:inherit}' +
+      '.exam-dollar-code--box{background:#f4f4f4;border:1px solid #d8d8d8;border-radius:4px;padding:1px 6px;color:#1a1a1a}' +
+      '.exam-dollar-math-prose{font-size:inherit;color:inherit;font-weight:normal;white-space:normal}' +
+      '.exam-dollar-math-latex{display:inline;vertical-align:baseline;margin:0 1px}' +
+      '.exam-dollar-math-latex .katex{font-size:1.1em;color:inherit;font-weight:normal}' +
+      '.exam-dollar-math-fallback{font-family:inherit;font-style:normal;font-size:1.1em;color:inherit}' +
+      '.exam-dollar-biggap{margin:5px 0}' +
+      '.exam-dollar-area{width:100%;min-height:72px;margin:5px 0;box-sizing:border-box}' +
+      '.exam-dollar-hint{font-size:10px;color:#888;margin-top:4px}' +
+      '.exam-dollar-wf{width:100%;border-collapse:collapse;margin:8px 0 12px;font-size:14px}' +
+      '.exam-dollar-wf th,.exam-dollar-wf td{border:1px solid #ccc;padding:6px 8px;vertical-align:middle}' +
+      '.exam-dollar-wf thead th{background:#f5f5f5;font-weight:700;text-align:center}' +
+      '.exam-dollar-wf thead th.exam-dollar-wf-stmt{text-align:left;font-weight:700}' +
+      '.exam-dollar-wf td.exam-dollar-wf-stmt{text-align:left;font-weight:normal}' +
+      '.exam-dollar-wf-h{width:4.5em}' +
+      '.exam-dollar-wf-check{text-align:center}' +
+      '.exam-dollar-wf-check .exam-dollar-choice{margin:0 auto}' +
+      'body.show-solutions .exam-dollar-wf-row .exam-dollar-choice-correct .exam-dollar-choice-box{border-color:#2e7d32}';
   }
 
   function ensureComposeArea() {
@@ -1787,6 +2633,16 @@
   }
 
   function setupExamDollarAuthoring() {
+    installExamLiveScoreGuard();
+    if (typeof setupExamChrome === 'function') setupExamChrome();
+    if (typeof global.jmRenderAidsGeneralRulesList === 'function') {
+      global.jmRenderAidsGeneralRulesList();
+    }
+    var rulesForKeys = document.getElementById('aidsGeneralRules');
+    if (rulesForKeys && typeof global.jmWireExamDollarFormatKeys === 'function') {
+      global.jmWireExamDollarFormatKeys(rulesForKeys);
+    }
+    typesetExamMathInRoot(document.querySelector('.exam-paper'));
     if (localStorage.getItem('teacherId') === null) {
       document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
         var src = taskEl.querySelector('.exam-dollar-source');
@@ -1803,7 +2659,6 @@
       });
       return;
     }
-    if (typeof setupExamChrome === 'function') setupExamChrome();
     injectStyles();
     ensureComposeArea();
     bindExamPersistence();
@@ -1841,11 +2696,23 @@
       }
     }
     var fp = getExamFilePath();
-    if (fp) {
-      setSaveStatus('');
-      scheduleSave({ immediate: true });
-    } else setSaveStatus('Pfad unbekannt — Speichern nur in der App-Vorschau', true);
+    if (fp) setSaveStatus('');
+    else setSaveStatus('Pfad unbekannt — Speichern nur in der App-Vorschau', true);
   }
+
+  global.jmRenderExamDollarInline = function (text) {
+    var seq = 0;
+    return renderInline(String(text || ''), function () {
+      seq += 1;
+      return 'jmAidsInline' + seq;
+    });
+  };
+
+  global.jmTypesetExamMath = typesetExamMathInRoot;
+  global.jmWireExamDollarFormatKeys = wireLiveEditFormattingShortcuts;
+  global.jmInsertExamDollarToken = insertLiveEditToken;
+  global.jmNormalizeEmptyDollarWraps = normalizeEmptyDollarWraps;
+  global.jmWrapExamDollarMarkup = wrapLiveEditDollarMarkup;
 
   global.setupExamDollarAuthoring = setupExamDollarAuthoring;
 })(typeof window !== 'undefined' ? window : globalThis);

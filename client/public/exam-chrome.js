@@ -68,6 +68,13 @@
       .replace(/>/g, '&gt;');
   }
 
+  function encodeRulesDataAttr(text) {
+    return String(text || '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;');
+  }
+
   function plainAidsGeneralRulesFromEl(el) {
     if (!el) return '';
     if (el.dataset.jmRulesPlain) return el.dataset.jmRulesPlain;
@@ -75,7 +82,12 @@
     if (ul) {
       return Array.prototype.map
         .call(ul.querySelectorAll('li'), function (li) {
-          return '* ' + String(li.textContent || '').trim();
+          var src = li.getAttribute('data-jm-source');
+          var body = src != null && String(src).length ? src : String(li.textContent || '').trim();
+          if (li.classList.contains('aids-general-rules-list__no-marker')) {
+            return body;
+          }
+          return '* ' + body;
         })
         .filter(Boolean)
         .join('\n\n');
@@ -83,24 +95,67 @@
     return String(el.textContent || '');
   }
 
+  function expandAidsRulesPlainLines(plain) {
+    var lines = [];
+    String(plain || '')
+      .replace(/\r/g, '')
+      .replace(/\uFEFF/g, '')
+      .split(/\n+/)
+      .forEach(function (line) {
+        String(line || '')
+          .split(/(?=\*\s)/)
+          .forEach(function (part) {
+            var t = part.trim();
+            if (t) lines.push(t);
+          });
+      });
+    return lines;
+  }
+
+  function renderAidsRulesItemHtml(text) {
+    var t = String(text || '');
+    if (typeof global.jmRenderExamDollarInline === 'function') {
+      return global.jmRenderExamDollarInline(t);
+    }
+    return escapeHtmlText(t);
+  }
+
   function renderAidsGeneralRulesList(el) {
     if (!el || el.classList.contains('exam-aids-editing')) return;
-    var plain = String(plainAidsGeneralRulesFromEl(el) || '').trim();
-    el.dataset.jmRulesPlain = plain;
+    var plain = String(el.dataset.jmRulesPlain || plainAidsGeneralRulesFromEl(el) || '')
+      .replace(/\uFEFF/g, '')
+      .trim();
+    if (plain && !el.dataset.jmRulesPlain) {
+      el.dataset.jmRulesPlain = plain;
+    } else if (el.dataset.jmRulesPlain) {
+      plain = String(el.dataset.jmRulesPlain).trim();
+    }
+    if (typeof global.jmNormalizeEmptyDollarWraps === 'function') {
+      plain = global.jmNormalizeEmptyDollarWraps(plain);
+      if (plain) el.dataset.jmRulesPlain = plain;
+    }
     if (!plain) {
       el.innerHTML = '';
+      delete el.dataset.jmRulesPlain;
       return;
     }
     var items = [];
-    plain.split(/\n+/).forEach(function (line) {
+    expandAidsRulesPlainLines(plain).forEach(function (line) {
       var trimmed = String(line || '').trim();
       if (!trimmed) return;
-      var m = trimmed.match(/^\*\s*(.*)$/);
-      if (m) {
-        if (m[1] && m[1].trim()) items.push(m[1].trim());
+      var mStar = trimmed.match(/^\*(?:\s+)?([\s\S]*)$/);
+      if (mStar) {
+        var starText = String(mStar[1] || '').trim();
+        if (starText) items.push({ marker: '*', text: starText });
         return;
       }
-      items.push(trimmed);
+      var mDash = trimmed.match(/^-(?:\s+)?([\s\S]*)$/);
+      if (mDash) {
+        var dashText = String(mDash[1] || '').trim();
+        if (dashText) items.push({ marker: '-', text: dashText });
+        return;
+      }
+      items.push({ marker: '', text: trimmed });
     });
     if (!items.length) {
       el.textContent = plain;
@@ -109,8 +164,18 @@
     el.innerHTML =
       '<ul class="aids-general-rules-list">' +
       items
-        .map(function (t) {
-          return '<li>' + escapeHtmlText(t) + '</li>';
+        .map(function (item) {
+          var srcAttr = ' data-jm-source="' + encodeRulesDataAttr(item.text) + '"';
+          if (!item.marker) {
+            return (
+              '<li class="aids-general-rules-list__no-marker"' +
+              srcAttr +
+              '>' +
+              renderAidsRulesItemHtml(item.text) +
+              '</li>'
+            );
+          }
+          return '<li' + srcAttr + '>' + renderAidsRulesItemHtml(item.text) + '</li>';
         })
         .join('') +
       '</ul>';
@@ -119,7 +184,11 @@
   function getAidsGeneralRulesSaveText(el) {
     if (!el) return '';
     if (el.classList.contains('exam-aids-editing')) {
-      return String(el.textContent || '').trim();
+      var raw = String(el.textContent || '').trim();
+      if (typeof global.jmNormalizeEmptyDollarWraps === 'function') {
+        raw = global.jmNormalizeEmptyDollarWraps(raw);
+      }
+      return raw;
     }
     return String(el.dataset.jmRulesPlain || plainAidsGeneralRulesFromEl(el) || '').trim();
   }
@@ -174,7 +243,12 @@
   }
 
   function setupExamHeaderMetaEditing() {
+    var rulesEl0 = document.getElementById('aidsGeneralRules');
+    if (rulesEl0) renderAidsGeneralRulesList(rulesEl0);
     if (localStorage.getItem('teacherId') === null) return;
+    if (rulesEl0 && typeof global.jmWireExamDollarFormatKeys === 'function') {
+      global.jmWireExamDollarFormatKeys(rulesEl0);
+    }
     ['aidsTime', 'aidsTools', 'aidsGeneralRules'].forEach(function (id) {
       var el = document.getElementById(id);
       if (!el) return;
@@ -186,20 +260,36 @@
       el.addEventListener('focus', function () {
         el.classList.add('exam-aids-editing');
         if (id === 'aidsGeneralRules') {
-          el.textContent = plainAidsGeneralRulesFromEl(el).trim();
+          el.textContent = String(el.dataset.jmRulesPlain || plainAidsGeneralRulesFromEl(el)).trim();
         }
       });
       el.addEventListener('blur', function () {
         el.classList.remove('exam-aids-editing');
         if (id === 'aidsGeneralRules') {
-          el.dataset.jmRulesPlain = String(el.textContent || '').trim();
+          var nextPlain = String(el.textContent || '').trim();
+          if (typeof global.jmNormalizeEmptyDollarWraps === 'function') {
+            nextPlain = global.jmNormalizeEmptyDollarWraps(nextPlain);
+          }
+          el.dataset.jmRulesPlain = nextPlain;
           renderAidsGeneralRulesList(el);
+          if (typeof global.jmTypesetExamMath === 'function') {
+            global.jmTypesetExamMath(el);
+          }
         }
         if (id === 'aidsTime') syncTimerDisplayFromAids();
         updateAidsRulesRowVisibility();
         scheduleMetaSave();
       });
       el.addEventListener('keydown', function (e) {
+        if (id === 'aidsGeneralRules' && el.classList.contains('exam-aids-editing')) {
+          if (e.key === 'Enter' && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+            e.preventDefault();
+            if (typeof global.jmInsertExamDollarToken === 'function') {
+              global.jmInsertExamDollarToken(el, '$e$');
+            }
+            return;
+          }
+        }
         if (e.key === 'Enter' && id !== 'aidsGeneralRules') {
           e.preventDefault();
           el.blur();
@@ -244,13 +334,16 @@
       '.teacher-mode .aids-val:hover{background:rgba(225,6,0,.06)}' +
       '.teacher-mode .aids-val.exam-aids-editing,.teacher-mode .aids-val:focus{outline:2px solid rgba(225,6,0,.35);background:#fff8f8}' +
       '.aids-box{width:100%;max-width:none;box-sizing:border-box}' +
-      '.aids-row--rules{align-items:flex-start}' +
-      '.aids-val-rules{white-space:pre-wrap;display:block;min-height:1.4em;line-height:1.45;flex:1;min-width:0}' +
+      '.aids-row--rules{flex-direction:column;align-items:stretch;gap:4px}' +
+      '.aids-key--rules{display:block;width:100%}' +
+      '.aids-val-rules{white-space:pre-wrap;display:block;min-height:1.4em;line-height:1.45;width:100%;flex:none;min-width:0}' +
+      '.aids-val-rules:not(.exam-aids-editing){white-space:normal}' +
+      '.aids-val-rules .aids-general-rules-list{display:block}' +
       '.aids-val-rules.exam-aids-editing ul{display:none}' +
-      '.aids-general-rules-list{margin:0;padding:0;list-style:none}' +
-      '.aids-general-rules-list li{position:relative;margin:0 0 5px;padding-left:1.15em;line-height:1.45}' +
+      '.aids-general-rules-list{margin:0;padding:0 0 0 1.35em;list-style:disc outside}' +
+      '.aids-general-rules-list li{margin:0 0 5px;padding:0;line-height:1.45;display:list-item}' +
       '.aids-general-rules-list li:last-child{margin-bottom:0}' +
-      '.aids-general-rules-list li::before{content:"*";position:absolute;left:0;top:0;font-weight:700;color:#333}' +
+      '.aids-general-rules-list li.aids-general-rules-list__no-marker{list-style:none;margin-left:-1.35em;padding-left:0}' +
       '.teacher-mode #timer.exam-chrome-timer-editable{cursor:text}' +
       '.teacher-mode #timer.exam-chrome-timer-editable:focus{outline:2px solid rgba(225,6,0,.45);outline-offset:2px}';
   }
@@ -320,12 +413,18 @@
     injectChromeStyles();
     ensureExamToolbar();
     setupExamChromeTimerToggle();
-    var rulesEl = document.getElementById('aidsGeneralRules');
-    if (rulesEl) renderAidsGeneralRulesList(rulesEl);
+    if (typeof global.jmRenderAidsGeneralRulesList === 'function') {
+      global.jmRenderAidsGeneralRulesList();
+      setTimeout(global.jmRenderAidsGeneralRulesList, 0);
+    }
     setupExamHeaderMetaEditing();
     setupChromeTimerEditing();
     updateAidsRulesRowVisibility();
   }
 
   global.setupExamChrome = setupExamChrome;
+  global.jmRenderAidsGeneralRulesList = function () {
+    var el = document.getElementById('aidsGeneralRules');
+    if (el) renderAidsGeneralRulesList(el);
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

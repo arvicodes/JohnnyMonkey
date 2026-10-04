@@ -113,10 +113,12 @@ export function syncExamHeaderMetaInHtml(
     );
   }
   if (meta.aidsGeneralRules != null) {
-    const rules = escapeSpanText(meta.aidsGeneralRules.trim());
+    const plainRules = meta.aidsGeneralRules.trim();
+    const rulesHtml =
+      formatAidsGeneralRulesDisplayHtml(plainRules) || escapeSpanText(plainRules);
     out = out.replace(
       /(<span class="aids-val[^"]*" id="aidsGeneralRules"[^>]*>)[\s\S]*?(<\/span>)/i,
-      (_m, open, close) => `${open}${rules}${close}`,
+      (_m, open, close) => `${open}${rulesHtml}${close}`,
     );
   }
   return out;
@@ -135,6 +137,118 @@ export function patchExamAidsGeneralRulesMarkup(html: string): string {
   return html.replace(
     /(<span class="aids-val" id="aidsTools"[^>]*>[\s\S]*?<\/span>\s*\r?\n\s*<\/div>)/i,
     `$1\n${AIDS_GENERAL_RULES_ROW}`,
+  );
+}
+
+function escapeRulesHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Sternchen-/Strich-Zeilen in „Allgemeine Regeln“ als Liste (Auslieferung). */
+function expandAidsRulesPlainLines(plain: string): string[] {
+  const lines: string[] = [];
+  String(plain || '')
+    .replace(/\r/g, '')
+    .replace(/\uFEFF/g, '')
+    .split(/\n+/)
+    .forEach((line) => {
+      line.split(/(?=\*\s)/).forEach((part) => {
+        const t = part.trim();
+        if (t) lines.push(t);
+      });
+    });
+  return lines;
+}
+
+function escapeRulesAttr(text: string): string {
+  return escapeRulesHtml(text).replace(/"/g, '&quot;');
+}
+
+export function formatAidsGeneralRulesDisplayHtml(plain: string): string {
+  const items: { marker: string; text: string }[] = [];
+  expandAidsRulesPlainLines(plain).forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    const star = trimmed.match(/^\*(?:\s+)?([\s\S]*)$/);
+    if (star) {
+      const text = star[1]?.trim();
+      if (text) items.push({ marker: '*', text });
+      return;
+    }
+    const dash = trimmed.match(/^-(?:\s+)?([\s\S]*)$/);
+    if (dash) {
+      const text = dash[1]?.trim();
+      if (text) items.push({ marker: '-', text });
+      return;
+    }
+    items.push({ marker: '', text: trimmed });
+  });
+  if (!items.length) return '';
+  return (
+    '<ul class="aids-general-rules-list">' +
+    items
+      .map((item) => {
+        const src = ` data-jm-source="${escapeRulesAttr(item.text)}"`;
+        if (!item.marker) {
+          return `<li class="aids-general-rules-list__no-marker"${src}>${escapeRulesHtml(item.text)}</li>`;
+        }
+        return `<li${src}>${escapeRulesHtml(item.text)}</li>`;
+      })
+      .join('') +
+    '</ul>'
+  );
+}
+
+export function patchAidsGeneralRulesListDisplay(html: string): string {
+  if (!html.includes('id="aidsGeneralRules"')) return html;
+  return html.replace(
+    /(<span class="aids-val aids-val-rules" id="aidsGeneralRules"[^>]*>)([\s\S]*?)(<\/span>)/i,
+    (_m, open, content, close) => {
+      const plain = extractAidsGeneralRulesPlain(content);
+      if (!plain) return _m;
+      const list = formatAidsGeneralRulesDisplayHtml(plain);
+      if (!list) return _m;
+      return `${open}${list}${close}`;
+    },
+  );
+}
+
+function extractAidsGeneralRulesPlain(content: string): string {
+  const raw = String(content || '');
+  if (/<ul\b[^>]*aids-general-rules-list/i.test(raw)) {
+    const items: string[] = [];
+    raw.replace(/<li\b([^>]*)>([\s\S]*?)<\/li>/gi, (_m, attrs, body) => {
+      const srcM = String(attrs || '').match(/data-jm-source=["']([^"']*)["']/i);
+      let text = srcM ? srcM[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&amp;/g, '&') : '';
+      if (!text) {
+        text = String(body)
+          .replace(/<[^>]+>/g, '')
+          .trim();
+      }
+      const noMarker = /aids-general-rules-list__no-marker/i.test(String(attrs || ''));
+      if (text) items.push(noMarker ? text : `* ${text}`);
+      return '';
+    });
+    if (items.length) return items.join('\n\n');
+  }
+  return raw
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\uFEFF/g, '')
+    .trim();
+}
+
+/** Regeln-Zeile: Überschrift oben, Liste volle Breite darunter. */
+export function patchExamAidsRulesRowLayout(html: string): string {
+  if (!html.includes('aids-row--rules')) return html;
+  if (html.includes('aids-key--rules')) return html;
+  return html.replace(
+    /(<div class="aids-row aids-row--rules">\s*)<span class="aids-key">Allgemeine Regeln:<\/span>/i,
+    '$1<span class="aids-key aids-key--rules">Allgemeine Regeln:</span>',
   );
 }
 

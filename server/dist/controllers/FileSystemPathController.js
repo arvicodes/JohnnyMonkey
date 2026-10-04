@@ -47,7 +47,10 @@ const path_1 = __importDefault(require("path"));
 const mammoth_1 = __importDefault(require("mammoth"));
 const XLSX = __importStar(require("xlsx"));
 const libreoffice_convert_1 = require("libreoffice-convert");
+const examDollarAuthoringSave_1 = require("../lib/examDollarAuthoringSave");
 const examSubsectionShuffle_1 = require("../lib/examSubsectionShuffle");
+const examEditorDetection_1 = require("../lib/examEditorDetection");
+const directoryReadCache_1 = require("../utils/directoryReadCache");
 const examVersionPaths_1 = require("../lib/examVersionPaths");
 const examAutoPoints_1 = require("../utils/examAutoPoints");
 const prisma = new client_1.PrismaClient();
@@ -144,19 +147,24 @@ class FileSystemPathController {
     static async readDirectory(req, res) {
         try {
             const { path: filePath, recursive } = req.query;
-            console.log('=== READ DIRECTORY REQUEST ===');
-            console.log('Query params:', req.query);
-            console.log('File path from query:', filePath);
-            console.log('Recursive:', recursive);
             if (!filePath) {
                 return res.status(400).json({ error: 'Pfad ist erforderlich' });
             }
-            const directoryContent = await storageManager_1.StorageManager.readDirectory(filePath, recursive === 'true');
+            const isRecursive = recursive === 'true';
+            const cacheKey = (0, directoryReadCache_1.directoryReadCacheKey)(filePath, isRecursive);
+            const cached = (0, directoryReadCache_1.getDirectoryReadCache)(cacheKey);
+            if (cached) {
+                res.setHeader('X-JM-Dir-Cache', 'hit');
+                return res.json(cached);
+            }
+            const directoryContent = await storageManager_1.StorageManager.readDirectory(filePath, isRecursive);
             if (directoryContent.error) {
-                console.log('Directory read error:', directoryContent.error);
                 return res.status(404).json({ error: directoryContent.error });
             }
-            console.log('Directory read successfully');
+            if (!directoryContent.error) {
+                (0, directoryReadCache_1.setDirectoryReadCache)(cacheKey, directoryContent);
+            }
+            res.setHeader('X-JM-Dir-Cache', 'miss');
             res.json(directoryContent);
         }
         catch (error) {
@@ -216,6 +224,7 @@ class FileSystemPathController {
             catch (transformErr) {
                 console.warn('exam shuffle transform skipped:', transformErr);
             }
+            htmlOut = (0, examDollarAuthoringSave_1.injectExamFilePathForClient)(htmlOut, String(filePath));
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.send(htmlOut);
         }
@@ -1933,6 +1942,7 @@ class FileSystemPathController {
             templateContent = templateContent.replace(/const KA_KEY = ['"](.*?)['"]/, `const KA_KEY = '${kaKey}'\n        const EXAM_VERSION_LETTERS = ['A'];`);
             // Schreibe die neue Datei
             fs_1.default.writeFileSync(filePath, templateContent, 'utf-8');
+            (0, directoryReadCache_1.invalidateDirectoryReadCache)(folderPath);
             console.log('✅ Prüfungsdatei erstellt:', filePath);
             // Erstelle git-intern Pfad für die Antwort
             let gitInternPath;
@@ -2652,6 +2662,10 @@ KRITISCH WICHTIG:
                 if (taskHTML.includes('exam-task-grid')) {
                     continue;
                 }
+                if (taskHTML.includes('exam-dollar-live-edit') &&
+                    !taskHTML.includes('type="radio"')) {
+                    continue;
+                }
                 // Bestimme den Fragentyp
                 const isMultipleChoice = taskHTML.includes('type="radio"');
                 const questionType = isMultipleChoice ? 'multiple-choice' : 'text';
@@ -2712,22 +2726,8 @@ KRITISCH WICHTIG:
                     taskMeta
                 });
             }
-            const gridTaskNumbers = [];
-            const gridTaskRe = /<!-- Aufgabe (\d+)\s*(?::[^>]*)?\s*-->([\s\S]*?)(?=<!-- Aufgabe \d|<div class="submit-section">|<div class="footer">|$)/gi;
-            let gridMatch;
-            while ((gridMatch = gridTaskRe.exec(htmlContent)) !== null) {
-                const n = parseInt(gridMatch[1], 10);
-                const body = gridMatch[2];
-                const editorTask = body.includes('exam-task-grid') ||
-                    body.includes('exam-task-stack') ||
-                    body.includes('exam-task-flow') ||
-                    body.includes('data-exam-flow=') ||
-                    body.includes('data-exam-spec=');
-                if (editorTask && !Number.isNaN(n)) {
-                    gridTaskNumbers.push(n);
-                }
-            }
-            gridTaskNumbers.sort((a, b) => a - b);
+            const gridTaskNumbers = (0, examEditorDetection_1.resolveGridTaskNumbers)(htmlContent);
+            const usesModernExamEditor = gridTaskNumbers.length > 0 || (0, examEditorDetection_1.isStandardTemplateExamHtml)(htmlContent);
             const versionMeta = (0, examVersionPaths_1.parseExamVersionsMeta)(htmlContent);
             const fileName = path_1.default.basename(fullFilePath);
             const currentLetter = (0, examVersionPaths_1.versionLetterFromStem)((0, examVersionPaths_1.fileStemFromName)(fileName));
@@ -2737,6 +2737,7 @@ KRITISCH WICHTIG:
                 title: title,
                 questions: questions.sort((a, b) => a.taskNumber - b.taskNumber),
                 gridTaskNumbers,
+                usesModernExamEditor,
                 versionLetters: versionMeta.letters,
                 currentVersionLetter: currentLetter,
                 baseFilePath: baseGitPath.startsWith('git-intern/') ? baseGitPath : filePath,
@@ -2935,6 +2936,47 @@ ${optionsHTML}
         }
         const newBody = kept.map((line) => `            ${line}`).join(',\n');
         return html.replace(blockRe, `const correctAnswers = {\n${newBody}\n        };`);
+    }
+    /** Dollar-Autorentexte und optional Zeit/Hilfsmittel in die Prüfungs-HTML schreiben. */
+    static async saveExamDollarAuthoring(req, res) {
+        try {
+            const { filePath, tasks, aidsTime, aidsTools, aidsGeneralRules } = req.body;
+            const hasTasks = Array.isArray(tasks) && tasks.length > 0;
+            const hasMeta = aidsTime != null || aidsTools != null || aidsGeneralRules != null;
+            if (!filePath || (!hasTasks && !hasMeta)) {
+                return res.status(400).json({ error: 'filePath und tasks[] oder Kopfzeilen-Text erforderlich' });
+            }
+            const fullFilePath = FileSystemPathController.resolveExaminationHtmlPath(filePath);
+            if (!fs_1.default.existsSync(fullFilePath)) {
+                return res.status(404).json({ error: 'Datei nicht gefunden' });
+            }
+            let htmlContent = fs_1.default.readFileSync(fullFilePath, 'utf-8');
+            if (hasTasks) {
+                htmlContent = (0, examDollarAuthoringSave_1.syncExamDollarTasksInHtml)(htmlContent, tasks.map((t) => String(t !== null && t !== void 0 ? t : '')));
+            }
+            if (hasMeta) {
+                htmlContent = (0, examDollarAuthoringSave_1.patchExamAidsGeneralRulesMarkup)(htmlContent);
+                htmlContent = (0, examDollarAuthoringSave_1.patchExamAidsRulesRowLayout)(htmlContent);
+                htmlContent = (0, examDollarAuthoringSave_1.syncExamHeaderMetaInHtml)(htmlContent, {
+                    aidsTime: aidsTime != null ? String(aidsTime) : undefined,
+                    aidsTools: aidsTools != null ? String(aidsTools) : undefined,
+                    aidsGeneralRules: aidsGeneralRules != null ? String(aidsGeneralRules) : undefined,
+                });
+            }
+            fs_1.default.writeFileSync(fullFilePath, htmlContent, 'utf-8');
+            res.json({
+                success: true,
+                taskCount: hasTasks ? tasks.length : 0,
+                meta: hasMeta,
+            });
+        }
+        catch (error) {
+            console.error('❌ Dollar-Autoreninhalt speichern:', error);
+            res.status(500).json({
+                error: 'Fehler beim Speichern',
+                details: error instanceof Error ? error.message : String(error),
+            });
+        }
     }
     /** Raster-Aufgabe (2×2) in die Prüfungs-HTML einfügen oder ersetzen. */
     static async upsertExaminationGridTask(req, res) {

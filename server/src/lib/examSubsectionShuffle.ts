@@ -1,5 +1,9 @@
 import { injectExamTimerTeacherBridge } from './examTimerTeacherBridge';
-import { patchExamAidsGeneralRulesMarkup } from './examDollarAuthoringSave';
+import {
+  patchExamAidsGeneralRulesMarkup,
+  patchAidsGeneralRulesListDisplay,
+  patchExamAidsRulesRowLayout,
+} from './examDollarAuthoringSave';
 
 /**
  * Schüler: Teile innerhalb jeder Aufgabe (exam-subsection / Rasterzellen) pro SuS
@@ -127,14 +131,19 @@ const INIT_HOOK =
 /** SuS dürfen während der Bearbeitung keine Live-Punkte/Note im Footer sehen. */
 export const EXAM_HIDE_LIVE_SCORE_MARKER = 'data-jm-hide-live-exam-scores';
 
+const EXAM_HIDE_LIVE_SCORE_STYLE = `<style ${EXAM_HIDE_LIVE_SCORE_MARKER}-css="1">
+body:not(.teacher-mode) #pointsDisplay,
+body:not(.teacher-mode) .footer-note-line{display:none!important;visibility:hidden!important}
+</style>`;
+
 const EXAM_HIDE_LIVE_SCORE_SCRIPT = `<script ${EXAM_HIDE_LIVE_SCORE_MARKER}="1">
 (function(){
   function isTeacherExamView(){try{return localStorage.getItem('teacherId')!==null;}catch(e){return false;}}
   function hideScoreFooter(){
     var pd=document.getElementById('pointsDisplay');
     var nl=document.querySelector('.footer-note-line');
-    if(pd)pd.style.display='none';
-    if(nl)nl.style.display='none';
+    if(pd)pd.style.setProperty('display','none','important');
+    if(nl)nl.style.setProperty('display','none','important');
   }
   function patch(){
     if(isTeacherExamView())return;
@@ -148,6 +157,7 @@ const EXAM_HIDE_LIVE_SCORE_SCRIPT = `<script ${EXAM_HIDE_LIVE_SCORE_MARKER}="1">
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',patch);
   setTimeout(patch,0);
   setTimeout(patch,50);
+  setInterval(hideScoreFooter,1500);
 })();
 </script>`;
 
@@ -161,12 +171,17 @@ function injectBeforeLastBodyClose(html: string, snippet: string): string {
 
 function injectHideLiveScoreForStudents(html: string): string {
   if (html.includes(EXAM_HIDE_LIVE_SCORE_MARKER)) return html;
-  return injectBeforeLastBodyClose(html, EXAM_HIDE_LIVE_SCORE_SCRIPT);
+  return injectBeforeLastBodyClose(
+    html,
+    `${EXAM_HIDE_LIVE_SCORE_STYLE}\n${EXAM_HIDE_LIVE_SCORE_SCRIPT}`,
+  );
 }
 
 export const EXAM_DOLLAR_SCRIPT_MARKER = 'data-jm-exam-dollar-script';
 
-const EXAM_DOLLAR_BOOT_SNIPPET = `<script src="/exam-dollar-commands.js" ${EXAM_DOLLAR_SCRIPT_MARKER}="1"></script>
+const EXAM_DOLLAR_BOOT_SNIPPET = `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" ${EXAM_DOLLAR_SCRIPT_MARKER}-katex="css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js" ${EXAM_DOLLAR_SCRIPT_MARKER}-katex="js"></script>
+<script src="/exam-dollar-commands.js" ${EXAM_DOLLAR_SCRIPT_MARKER}="1"></script>
 <script ${EXAM_DOLLAR_SCRIPT_MARKER}-init="1">
 (function(){
   function boot(){
@@ -269,6 +284,8 @@ export function transformExamHtmlForDelivery(html: string, filePath?: string): s
 
   out = patchExamChromeMarkup(out);
   out = patchExamAidsGeneralRulesMarkup(out);
+  out = patchExamAidsRulesRowLayout(out);
+  out = patchAidsGeneralRulesListDisplay(out);
   out = patchExamPaperComposeMarkup(out);
   out = injectExamChromeRuntime(out);
   out = injectExamDollarAuthoring(out);

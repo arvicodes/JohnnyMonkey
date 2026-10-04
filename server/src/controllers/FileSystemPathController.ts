@@ -16,6 +16,7 @@ import { convert } from 'libreoffice-convert';
 import {
   injectExamFilePathForClient,
   patchExamAidsGeneralRulesMarkup,
+  patchExamAidsRulesRowLayout,
   syncExamDollarTasksInHtml,
   syncExamHeaderMetaInHtml,
 } from '../lib/examDollarAuthoringSave';
@@ -3542,6 +3543,7 @@ ${optionsHTML}
       }
       if (hasMeta) {
         htmlContent = patchExamAidsGeneralRulesMarkup(htmlContent);
+        htmlContent = patchExamAidsRulesRowLayout(htmlContent);
         htmlContent = syncExamHeaderMetaInHtml(htmlContent, {
           aidsTime: aidsTime != null ? String(aidsTime) : undefined,
           aidsTools: aidsTools != null ? String(aidsTools) : undefined,

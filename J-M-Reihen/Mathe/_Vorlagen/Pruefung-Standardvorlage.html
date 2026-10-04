@@ -222,28 +222,25 @@
 
         .aids-general-rules-list {
             margin: 0;
-            padding: 0;
-            list-style: none;
+            padding: 0 0 0 1.35em;
+            list-style: disc outside;
         }
 
         .aids-general-rules-list li {
-            position: relative;
             margin: 0 0 5px;
-            padding-left: 1.15em;
+            padding: 0;
             line-height: 1.45;
+            display: list-item;
         }
 
         .aids-general-rules-list li:last-child {
             margin-bottom: 0;
         }
 
-        .aids-general-rules-list li::before {
-            content: "*";
-            position: absolute;
-            left: 0;
-            top: 0;
-            font-weight: 700;
-            color: #333;
+        .aids-general-rules-list li.aids-general-rules-list__no-marker {
+            list-style: none;
+            margin-left: -1.35em;
+            padding-left: 0;
         }
 
         .aids-val {

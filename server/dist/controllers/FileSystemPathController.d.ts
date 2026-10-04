@@ -139,6 +139,8 @@ export declare class FileSystemPathController {
     private static sumExamTaskPoints;
     private static taskBlockEndLookahead;
     private static mergeCorrectAnswersInHtml;
+    /** Dollar-Autorentexte und optional Zeit/Hilfsmittel in die Prüfungs-HTML schreiben. */
+    static saveExamDollarAuthoring(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /** Raster-Aufgabe (2×2) in die Prüfungs-HTML einfügen oder ersetzen. */
     static upsertExaminationGridTask(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /**

@@ -80,6 +80,8 @@ router.get('/get-examination-questions', FileSystemPathController_1.FileSystemPa
 router.post('/update-single-question', FileSystemPathController_1.FileSystemPathController.updateSingleQuestion);
 // Raster-Aufgabe (2×2) speichern
 router.post('/upsert-examination-grid-task', FileSystemPathController_1.FileSystemPathController.upsertExaminationGridTask);
+// Dollar-Autoreninhalt (Standardvorlage) speichern
+router.post('/save-exam-dollar-authoring', FileSystemPathController_1.FileSystemPathController.saveExamDollarAuthoring);
 // Titel einer Prüfung aktualisieren
 router.post('/update-examination-title', FileSystemPathController_1.FileSystemPathController.updateExaminationTitle);
 router.get('/get-examination-versions', FileSystemPathController_1.FileSystemPathController.getExaminationVersions);
