@@ -7,7 +7,7 @@
  * $_$          kleine Lücke (inline)
  * $_a/b/c_$    Lücke mit mehreren gültigen Lösungen
  * $__$         großes Eingabefeld
- * $B Wort B$   fett · $I Wort I$ kursiv · $U Wort U$ unterstrichen
+ * $B Wort B$   fett · $I Wort I$ kursiv · $U Wort U$ unterstrichen (⌘/Ctrl+B, I, U im Textfeld)
  * $rot Wort rot$  Farbe (rot/gruen/blau/orange/lila) · $#ff0000$ Text $#ff0000$ Hex
  * $Bild name.png$  Bild (gleicher Ordner wie die Prüfung; Drag & Drop ins Textfeld)
  * $Musterlösung$    ab dieser Zeile: Text für die grüne Musterlösungsbox
@@ -798,12 +798,53 @@
     live.parentNode.insertBefore(bar, live);
   }
 
+  function wrapLiveEditDollarMarkup(live, marker) {
+    var sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return false;
+    var range = sel.getRangeAt(0);
+    if (!live.contains(range.commonAncestorContainer)) return false;
+    var selected = range.toString();
+    var inner = selected.length ? selected : ' ';
+    var wrapped = '$' + marker + ' ' + inner + ' ' + marker + '$';
+    range.deleteContents();
+    var node = document.createTextNode(wrapped);
+    range.insertNode(node);
+    if (!selected.length) {
+      range.setStart(node, '$' + marker + ' '.length);
+      range.setEnd(node, '$' + marker + ' '.length + 1);
+    } else {
+      range.setStartAfter(node);
+      range.collapse(true);
+    }
+    sel.removeAllRanges();
+    sel.addRange(range);
+    live.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  }
+
+  function wireLiveEditFormattingShortcuts(live) {
+    if (live.__jmFmtKeysWired) return;
+    live.__jmFmtKeysWired = true;
+    live.addEventListener('keydown', function (e) {
+      if (!e.metaKey && !e.ctrlKey) return;
+      if (e.altKey) return;
+      var marker = null;
+      if (e.key === 'b' || e.key === 'B') marker = 'B';
+      else if (e.key === 'i' || e.key === 'I') marker = 'I';
+      else if (e.key === 'u' || e.key === 'U') marker = 'U';
+      if (!marker) return;
+      e.preventDefault();
+      wrapLiveEditDollarMarkup(live, marker);
+    });
+  }
+
   function wireLiveEdit(taskEl) {
     var live = taskEl.querySelector('.exam-dollar-live-edit');
     var src = taskEl.querySelector('.exam-dollar-source');
     if (!live || !src || live.__jmLiveWired) return;
     live.__jmLiveWired = true;
     syncLiveEditFromSource(taskEl);
+    wireLiveEditFormattingShortcuts(live);
     var debounce;
     live.addEventListener('input', function () {
       live.dataset.jmTouched = '1';

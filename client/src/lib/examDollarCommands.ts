@@ -13,7 +13,10 @@ export const EXAM_DOLLAR_COMMANDS_HELP = [
     meaning: 'Lücke; jeder Teil zwischen / ist eine gültige Lösung (bei „Musterlösungen anzeigen“ grün in der Lücke)',
   },
   { syntax: '$__$', meaning: 'großes Eingabefeld' },
-  { syntax: '$B Wort B$', meaning: 'fett (analog $I … I$ kursiv, $U … U$ unterstrichen)' },
+  {
+    syntax: '$B Wort B$',
+    meaning: 'fett (⌘/Ctrl+B im Textfeld; analog $I … I$ mit ⌘/Ctrl+I, $U … U$ mit ⌘/Ctrl+U)',
+  },
   { syntax: '$rot Wort rot$', meaning: 'Textfarbe (rot, gruen, blau, orange, lila) oder $#ff0000$ Text $#ff0000$' },
   { syntax: '$Bild datei.png$', meaning: 'Bild aus dem Prüfungsordner (Drag & Drop ins Textfeld)' },
   { syntax: '$Musterlösung$', meaning: 'ab dieser Zeile: Inhalt für „Musterlösungen anzeigen“ (grüne Box)' },
