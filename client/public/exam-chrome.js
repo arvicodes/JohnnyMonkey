@@ -59,6 +59,55 @@
     metaSaveTimer = setTimeout(saveExamHeaderMeta, 500);
   }
 
+  function parseTimerEditMinutes(text) {
+    var t = String(text || '').trim();
+    var mmss = t.match(/^(\d{1,3})\s*:\s*(\d{1,2})$/);
+    if (mmss) return parseInt(mmss[1], 10);
+    return parseMinutesFromAids(t);
+  }
+
+  function setupChromeTimerEditing() {
+    if (localStorage.getItem('teacherId') === null) return;
+    var timer = document.getElementById('timer');
+    if (!timer || timer.__jmTeacherEdit) return;
+    timer.__jmTeacherEdit = true;
+    timer.setAttribute('contenteditable', 'true');
+    timer.setAttribute('spellcheck', 'false');
+    timer.setAttribute('title', 'Bearbeitungszeit ändern (z. B. 45:00 oder 45 Min)');
+    timer.classList.add('exam-chrome-timer-editable');
+
+    timer.addEventListener('focus', function () {
+      if (typeof global.__jmPauseExamTimerForEdit === 'function') {
+        global.__jmPauseExamTimerForEdit();
+      }
+      var aids = document.getElementById('aidsTime');
+      var mins = parseMinutesFromAids(aids ? aids.textContent : timer.textContent);
+      if (mins != null) {
+        timer.textContent = String(mins).padStart(2, '0') + ':00';
+      }
+    });
+
+    timer.addEventListener('blur', function () {
+      var mins = parseTimerEditMinutes(timer.textContent);
+      if (mins == null) return;
+      if (typeof global.__jmExamSetDurationFromMinutes === 'function') {
+        global.__jmExamSetDurationFromMinutes(mins);
+      } else {
+        timer.textContent = String(mins).padStart(2, '0') + ':00';
+        var aids = document.getElementById('aidsTime');
+        if (aids) aids.textContent = mins + ' Min';
+      }
+      scheduleMetaSave();
+    });
+
+    timer.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        timer.blur();
+      }
+    });
+  }
+
   function setupExamHeaderMetaEditing() {
     if (localStorage.getItem('teacherId') === null) return;
     ['aidsTime', 'aidsTools'].forEach(function (id) {
@@ -108,7 +157,9 @@
       '.afb-badge{display:none!important}' +
       '.teacher-mode .aids-val{cursor:text;border-radius:3px}' +
       '.teacher-mode .aids-val:hover{background:rgba(225,6,0,.06)}' +
-      '.teacher-mode .aids-val.exam-aids-editing,.teacher-mode .aids-val:focus{outline:2px solid rgba(225,6,0,.35);background:#fff8f8}';
+      '.teacher-mode .aids-val.exam-aids-editing,.teacher-mode .aids-val:focus{outline:2px solid rgba(225,6,0,.35);background:#fff8f8}' +
+      '.teacher-mode #timer.exam-chrome-timer-editable{cursor:text}' +
+      '.teacher-mode #timer.exam-chrome-timer-editable:focus{outline:2px solid rgba(225,6,0,.45);outline-offset:2px}';
   }
 
   function setupExamChromeTimerToggle() {
@@ -177,6 +228,7 @@
     ensureExamToolbar();
     setupExamChromeTimerToggle();
     setupExamHeaderMetaEditing();
+    setupChromeTimerEditing();
   }
 
   global.setupExamChrome = setupExamChrome;

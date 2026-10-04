@@ -1,3 +1,5 @@
+import { injectExamTimerTeacherBridge } from './examTimerTeacherBridge';
+
 /**
  * Schüler: Teile innerhalb jeder Aufgabe (exam-subsection / Rasterzellen) pro SuS
  * deterministisch mischen — Aufgaben 1/2/3 bleiben in fester Reihenfolge.
@@ -268,5 +270,6 @@ export function transformExamHtmlForDelivery(html: string, filePath?: string): s
   out = patchExamPaperComposeMarkup(out);
   out = injectExamChromeRuntime(out);
   out = injectExamDollarAuthoring(out);
+  out = injectExamTimerTeacherBridge(out);
   return injectHideLiveScoreForStudents(out);
 }

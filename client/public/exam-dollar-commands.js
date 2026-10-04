@@ -659,8 +659,35 @@
     });
   }
 
-  function insertColorWrap(taskEl, colorName) {
-    insertTextIntoLiveEdit(taskEl, '$' + colorName + ' Text ' + colorName + '$');
+  function getSelectionOffsetsInPlainText(el) {
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    var range = sel.getRangeAt(0);
+    if (!el.contains(range.commonAncestorContainer)) return null;
+    var text = range.toString();
+    if (!text || !text.trim()) return null;
+    var pre = range.cloneRange();
+    pre.selectNodeContents(el);
+    pre.setEnd(range.startContainer, range.startOffset);
+    var start = pre.toString().length;
+    return { start: start, end: start + text.length, text: text };
+  }
+
+  function wrapSelectionWithColor(taskEl, colorName) {
+    var live = taskEl.querySelector('.exam-dollar-live-edit');
+    var src = taskEl.querySelector('.exam-dollar-source');
+    if (!live || !src) return;
+    var offsets = getSelectionOffsetsInPlainText(live);
+    if (!offsets) return;
+    var full = live.innerText || '';
+    var inner = offsets.text.trim();
+    if (!inner) return;
+    var wrapped = '$' + colorName + ' ' + inner + ' ' + colorName + '$';
+    live.textContent = full.slice(0, offsets.start) + wrapped + full.slice(offsets.end);
+    live.dataset.jmTouched = '1';
+    syncSourceFromLiveEdit(taskEl);
+    applySourceToTask(taskEl, src.value);
+    scheduleSave();
   }
 
   function ensureColorBar(taskEl) {
@@ -675,9 +702,12 @@
       btn.className = 'exam-dollar-color-swatch';
       btn.title = c;
       btn.style.background = NAMED_COLORS[c] || '#666';
+      btn.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+      });
       btn.addEventListener('click', function (e) {
         e.preventDefault();
-        insertColorWrap(taskEl, c);
+        wrapSelectionWithColor(taskEl, c);
       });
       bar.appendChild(btn);
     });
