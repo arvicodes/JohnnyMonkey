@@ -2,8 +2,8 @@
  * Prüfungs-Autoren-Befehle: Text zwischen $…$
  * $Aufgabe 1$  neue Aufgabenüberschrift
  * $5 Punkte$   Punkte rechts in der Aufgabenzeile
- * $C$          Checkbox
- * $CC$         Checkbox (richtige Lösung)
+ * $C$          Checkbox (normale Aussage)
+ * $CC$         Checkbox — nur diese markiert die richtige Lösung
  * $_$          kleine Lücke (inline)
  * $_a/b/c_$    Lücke mit mehreren gültigen Lösungen
  * $__$         großes Eingabefeld
@@ -203,6 +203,13 @@
         return { end: start + 1 + close + 1, inner: rest.slice(0, close) };
       }
       return null;
+    }
+
+    if (/^CC\$/i.test(rest)) {
+      return { end: start + 4, inner: 'CC' };
+    }
+    if (/^C\$/i.test(rest)) {
+      return { end: start + 3, inner: 'C' };
     }
 
     var hexOpen = rest.match(/^#([0-9a-f]{3,8})(\s+|\$)/i);
@@ -506,6 +513,31 @@
     syncGapInputWidths();
   }
 
+  function applyCheckboxSolutionHints(show) {
+    if (localStorage.getItem('teacherId') === null) show = false;
+    document.querySelectorAll('.exam-dollar-choice-input').forEach(function (inp) {
+      var isCorrect = inp.getAttribute('data-correct') === '1';
+      if (show) {
+        if (!inp.dataset.jmChoiceSolutionShown) {
+          inp.dataset.jmChoiceWasChecked = inp.checked ? '1' : '0';
+        }
+        inp.checked = isCorrect;
+        inp.disabled = true;
+        if (isCorrect) inp.classList.add('exam-choice-solution-visible');
+        else inp.classList.remove('exam-choice-solution-visible');
+        inp.dataset.jmChoiceSolutionShown = '1';
+      } else {
+        inp.disabled = false;
+        inp.classList.remove('exam-choice-solution-visible');
+        if (inp.dataset.jmChoiceSolutionShown) {
+          inp.checked = inp.dataset.jmChoiceWasChecked === '1';
+        }
+        delete inp.dataset.jmChoiceSolutionShown;
+        delete inp.dataset.jmChoiceWasChecked;
+      }
+    });
+  }
+
   function isMusterloesungToggleOn() {
     var toggle = document.getElementById('solutionsToggle');
     return !!(toggle && toggle.checked);
@@ -515,6 +547,7 @@
     var on = isMusterloesungToggleOn();
     document.body.classList.toggle('show-solutions', on);
     applyGapSolutionHints(on);
+    applyCheckboxSolutionHints(on);
     syncGapInputWidths();
   }
 
@@ -1019,12 +1052,12 @@
         } else if (/^CC$/i.test(innerTrim)) {
           out +=
             '<label class="exam-dollar-choice exam-dollar-choice-correct">' +
-            '<input type="checkbox" class="exam-dollar-choice-input" data-correct="1">' +
+            '<input type="checkbox" class="exam-dollar-choice-input" data-correct="1" data-jm-choice-kind="correct">' +
             '<span class="exam-dollar-choice-box" aria-hidden="true"></span></label>';
         } else if (/^C$/i.test(innerTrim)) {
           out +=
-            '<label class="exam-dollar-choice">' +
-            '<input type="checkbox" class="exam-dollar-choice-input">' +
+            '<label class="exam-dollar-choice exam-dollar-choice-neutral">' +
+            '<input type="checkbox" class="exam-dollar-choice-input" data-jm-choice-kind="neutral">' +
             '<span class="exam-dollar-choice-box" aria-hidden="true"></span></label>';
         } else if (parsePunkte(innerTrim) || parseAufgabe(innerTrim)) {
           out += escapeHtml(s.slice(i, tok.end));
@@ -1609,6 +1642,8 @@
       '.exam-dollar-choice-input:checked + .exam-dollar-choice-box{background:#E10600;border-color:#b71c1c;box-shadow:inset 0 0 0 2px #fff}' +
       'body.show-solutions .exam-dollar-choice-correct .exam-dollar-choice-box{border-color:#2e7d32}' +
       'body.show-solutions .teacher-mode .exam-dollar-choice-correct .exam-dollar-choice-box{outline:2px solid #81c784}' +
+      'body.show-solutions .exam-dollar-choice-input[data-correct="1"].exam-choice-solution-visible:checked + .exam-dollar-choice-box{background:#e8f5e9;border-color:#2e7d32;box-shadow:inset 0 0 0 2px #fff}' +
+      'body.show-solutions .exam-dollar-choice-neutral .exam-dollar-choice-box{border-color:#333}' +
       '.exam-dollar-gap{display:inline-block;vertical-align:baseline;width:auto!important;min-width:3ch!important;max-width:100%;text-align:left;padding:2px 5px;box-sizing:content-box}' +
       '.exam-dollar-area{width:100%;min-height:72px}' +
       '.exam-dollar-hint{font-size:10px;color:#888;margin-top:4px}';

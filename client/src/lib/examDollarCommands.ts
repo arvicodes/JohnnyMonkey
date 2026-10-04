@@ -5,8 +5,12 @@
 export const EXAM_DOLLAR_COMMANDS_HELP = [
   { syntax: '$Aufgabe 1$', meaning: 'Überschrift „Aufgabe 1“ (eigene Zeile; neue Aufgabe über das orangefarbene Eingabefeld unten)' },
   { syntax: '$5 Punkte$', meaning: 'Punkte in der Aufgabenzeile (als Lehrer auf die Punktezahl klicken zum Ändern)' },
-  { syntax: '$C$', meaning: 'Checkbox zum Ankreuzen' },
-  { syntax: '$CC$', meaning: 'Checkbox der richtigen Lösung (grün umrandet für Lehrkräfte)' },
+  { syntax: '$C$', meaning: 'Checkbox für eine Aussage (nicht die Lösung markieren)' },
+  {
+    syntax: '$CC$',
+    meaning:
+      'Checkbox der richtigen Lösung (nur $CC$ ist „richtig“; bei Musterlösungen grün und angekreuzt)',
+  },
   { syntax: '$_$', meaning: 'kleine Lücke im Fließtext' },
   {
     syntax: '$_Lösung1/Lösung2/Lösung3_$',
