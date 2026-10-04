@@ -1,0 +1,12 @@
+/**
+ * Dokumentation der $…$-Autorenbefehle in Prüfungs-HTML (Lehrer-Vorschau).
+ * Laufzeit: `client/public/exam-dollar-commands.js` (wird beim Ausliefern eingebunden).
+ */
+export const EXAM_DOLLAR_COMMANDS_HELP = [
+  { syntax: '$Aufgabe 1$', meaning: 'Überschrift „Aufgabe 1“ (eigene Zeile; neue Aufgabe über das orangefarbene Eingabefeld unten)' },
+  { syntax: '$5 Punkte$', meaning: 'Punkteangabe rechts in der Aufgabenzeile' },
+  { syntax: '$C$', meaning: 'Checkbox zum Ankreuzen' },
+  { syntax: '$CC$', meaning: 'Checkbox der richtigen Lösung (grün umrandet für Lehrkräfte)' },
+  { syntax: '$_$', meaning: 'kleine Lücke im Fließtext' },
+  { syntax: '$__$', meaning: 'großes Eingabefeld' },
+] as const;

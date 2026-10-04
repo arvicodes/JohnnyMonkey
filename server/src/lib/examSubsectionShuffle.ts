@@ -156,6 +156,27 @@ function injectHideLiveScoreForStudents(html: string): string {
   return `${html}\n${EXAM_HIDE_LIVE_SCORE_SCRIPT}`;
 }
 
+export const EXAM_DOLLAR_SCRIPT_MARKER = 'data-jm-exam-dollar-script';
+
+const EXAM_DOLLAR_BOOT_SNIPPET = `<script src="/exam-dollar-commands.js" ${EXAM_DOLLAR_SCRIPT_MARKER}="1"></script>
+<script ${EXAM_DOLLAR_SCRIPT_MARKER}-init="1">
+(function(){
+  function boot(){
+    if (typeof setupExamDollarAuthoring === 'function') setupExamDollarAuthoring();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>`;
+
+function injectExamDollarAuthoring(html: string): string {
+  if (html.includes(EXAM_DOLLAR_SCRIPT_MARKER)) return html;
+  if (html.includes('</body>')) {
+    return html.replace('</body>', `${EXAM_DOLLAR_BOOT_SNIPPET}\n</body>`);
+  }
+  return `${html}\n${EXAM_DOLLAR_BOOT_SNIPPET}`;
+}
+
 export function transformExamHtmlForDelivery(html: string, filePath?: string): string {
   if (!isDeliverableExamHtml(html, filePath)) return html;
 
@@ -186,5 +207,6 @@ export function transformExamHtmlForDelivery(html: string, filePath?: string): s
     }
   }
 
+  out = injectExamDollarAuthoring(out);
   return injectHideLiveScoreForStudents(out);
 }

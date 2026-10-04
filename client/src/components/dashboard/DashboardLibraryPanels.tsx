@@ -25,6 +25,7 @@ import {
   type LibraryExamItem,
   type LibraryExerciseItem,
 } from '../../lib/dashboardMaterialLibrary';
+import { EXAM_DOLLAR_COMMANDS_HELP } from '../../lib/examDollarCommands';
 import {
   folderPathCovers,
   folderPathsEquivalent,
@@ -656,7 +657,23 @@ export const DashboardExamsPanel: React.FC<{
 
   const isExamVariantFile = (name: string) => /__[A-Z]\.html?$/i.test(name || '');
 
+  const dollarHint = EXAM_DOLLAR_COMMANDS_HELP.map((c) => c.syntax).join(' · ');
+
   return (
+    <>
+    <Typography
+      component="p"
+      sx={{
+        fontSize: '0.68rem',
+        color: 'text.secondary',
+        px: 1.4,
+        pt: 0.5,
+        pb: 0.25,
+        lineHeight: 1.45,
+      }}
+    >
+      Standard-Tab (orange +): $Befehle$ — {dollarHint}
+    </Typography>
     <LibraryShell
       colors={colors}
       title="Prüfungen"
@@ -739,6 +756,7 @@ export const DashboardExamsPanel: React.FC<{
         )}
       />
     </LibraryShell>
+    </>
   );
 };
 
