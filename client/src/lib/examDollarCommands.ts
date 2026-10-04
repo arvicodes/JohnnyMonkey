@@ -27,9 +27,9 @@ export const EXAM_DOLLAR_COMMANDS_HELP = [
       'Farbe auch um andere $…$-Befehle ($blau$ … $blau$ geht ebenfalls); Punkte: automatisch 1 pro Lücke, bei $C$/$CC$ je 0,5 (± bei Kreuzen)',
   },
   {
-    syntax: '$Bild datei.png$ $10%$ $t$ $r5b$',
+    syntax: '$Bild datei.png$ $10%$ $t$',
     meaning:
-      'Bild; $10%$ Originalbreite; $t$ Textumfluss (mit $rechts$/$links$); $r5b$ Rahmen 5 px blau (r/g/o/l/s oder rot, gruen, …)',
+      '$t$ = Textumfluss: Bild sitzt im Fließtext, Text läuft daneben und darunter (optional $rechts$/$links$); $r5b$ Rahmen',
   },
   { syntax: '$Musterlösung$', meaning: 'ab dieser Zeile: Inhalt für „Musterlösungen anzeigen“ (grüne Box)' },
 ] as const;

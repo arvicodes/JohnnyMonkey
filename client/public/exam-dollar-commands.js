@@ -9,7 +9,7 @@
  * $__$         großes Eingabefeld
  * $B Wort B$   fett · $I Wort I$ kursiv · $U Wort U$ unterstrichen (⌘/Ctrl+B, I, U im Textfeld)
  * $rot Wort rot$  Farbe (rot/gruen/blau/orange/lila) · $#ff0000$ Text $#ff0000$ Hex
- * $Bild name.png$ · $10%$ Originalbreite · $t$ Textumfluss · $r5b$ Rahmen 5px blau (r=rot,g=grün,…)
+ * $Bild name.png$ · $10%$ Originalbreite · $t$ Textumfluss (Bild im Fließtext) · $r5b$ Rahmen
  * $Musterlösung$    ab dieser Zeile: Text für die grüne Musterlösungsbox
  */
 (function (global) {
@@ -210,6 +210,9 @@
     }
     if (/^C\$/i.test(rest)) {
       return { end: start + 3, inner: 'C' };
+    }
+    if (/^t\$/i.test(rest)) {
+      return { end: start + 3, inner: 't' };
     }
 
     var hexOpen = rest.match(/^#([0-9a-f]{3,8})(\s+|\$)/i);
@@ -980,9 +983,10 @@
           var wrapCls = 'exam-dollar-img-wrap';
           if (imgOpts.wrap) {
             wrapCls += ' exam-dollar-img-wrap--wrap';
-            if (imgOpts.align === 'right') wrapCls += ' exam-dollar-img-wrap--right';
-            else if (imgOpts.align === 'center') wrapCls += ' exam-dollar-img-wrap--center';
-            else wrapCls += ' exam-dollar-img-wrap--left';
+            if (imgOpts.align === 'right') {
+              wrapCls += ' exam-dollar-img-wrap--right exam-dollar-img-wrap--flow exam-dollar-img-wrap--flow-right';
+            } else if (imgOpts.align === 'center') wrapCls += ' exam-dollar-img-wrap--center';
+            else wrapCls += ' exam-dollar-img-wrap--left exam-dollar-img-wrap--flow';
           } else {
             if (imgOpts.align === 'left') wrapCls += ' exam-dollar-img-wrap--left';
             else if (imgOpts.align === 'right') wrapCls += ' exam-dollar-img-wrap--right';
@@ -1612,13 +1616,17 @@
       '.teacher-mode .exam-dollar-live-edit{display:block;min-height:56px;padding:6px 4px;line-height:1.55;font-family:Arial,sans-serif;font-size:14px;color:#222;outline:none;border-radius:4px;white-space:pre-wrap;word-break:break-word}' +
       '.teacher-mode .exam-dollar-live-edit:focus{box-shadow:0 0 0 2px rgba(225,6,0,0.25)}' +
       '.exam-dollar-live-edit.exam-dollar-drag-over,.exam-dollar-compose-input.exam-dollar-drag-over{box-shadow:0 0 0 2px rgba(21,101,192,.45)}' +
-      '.exam-dollar-img-wrap{max-width:100%;vertical-align:top;line-height:0}' +
-      '.exam-dollar-img-wrap--left{float:left;margin:2px 14px 8px 0}' +
-      '.exam-dollar-img-wrap--right{float:right;margin:2px 0 8px 14px}' +
+      '.exam-dollar-rendered{line-height:1.55}' +
+      '.exam-dollar-rendered p{margin:0 0 0.35em}' +
+      '.exam-dollar-rendered::after{content:"";display:block;clear:both}' +
+      '.exam-dollar-img-wrap{max-width:100%;vertical-align:top}' +
+      '.exam-dollar-img-wrap--flow{float:left;margin:4px 14px 6px 0;line-height:normal}' +
+      '.exam-dollar-img-wrap--flow-right{float:right;margin:4px 0 6px 14px}' +
+      '.exam-dollar-img-wrap--left:not(.exam-dollar-img-wrap--flow){float:left;margin:2px 14px 8px 0}' +
+      '.exam-dollar-img-wrap--right:not(.exam-dollar-img-wrap--wrap){float:right;margin:2px 0 8px 14px}' +
       '.exam-dollar-img-wrap--wrap.exam-dollar-img-wrap--center{float:none;display:block;margin:10px auto;text-align:center}' +
-      '.exam-dollar-img-wrap--center{display:block;clear:both;margin:10px auto;text-align:center}' +
+      '.exam-dollar-img-wrap--center:not(.exam-dollar-img-wrap--wrap){display:block;clear:both;margin:10px auto;text-align:center}' +
       '.exam-dollar-img-wrap--center .exam-dollar-img{display:inline-block}' +
-      '.exam-dollar-rendered p::after{content:"";display:block;clear:both}' +
       '.exam-dollar-img{display:block;max-width:100%;height:auto;border-radius:4px}' +
       '.teacher-mode .exam-points-editable{cursor:text;border-radius:3px;padding:0 2px}' +
       '.teacher-mode .exam-points-editable:hover{background:rgba(225,6,0,.08)}' +
