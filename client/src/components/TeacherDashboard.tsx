@@ -11870,7 +11870,10 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
 
   
   // Funktion zum Ã–ffnen des Einzelfragen-Modals
-  const loadExamQuestionsForPath = async (path: string, options?: { openGridIfSaved?: boolean }) => {
+  const loadExamQuestionsForPath = async (
+    path: string,
+    options?: { openGridIfSaved?: boolean; openLegacyModalIfNoGrid?: boolean },
+  ): Promise<number> => {
     setLoadingQuestions(true);
     try {
       const response = await fetch(
@@ -11890,9 +11893,16 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
             : 0;
         const defaultTask = gridNums.length > 0 ? gridNums[0] : Math.max(textMax, 1);
         setExamGridEditTaskNumber(defaultTask);
-        if (options?.openGridIfSaved !== false && gridNums.length > 0) {
-          setExamGridBuilderOpen(true);
+        if (gridNums.length > 0) {
+          if (options?.openGridIfSaved !== false) {
+            setSingleQuestionModalOpen(false);
+            setExamGridBuilderOpen(true);
+          }
+        } else if (options?.openLegacyModalIfNoGrid !== false) {
+          setExamGridBuilderOpen(false);
+          setSingleQuestionModalOpen(true);
         }
+        return gridNums.length;
       } else {
         showSnackbar('Fehler beim Laden der Fragen', 'error');
       }
@@ -11902,20 +11912,24 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
     } finally {
       setLoadingQuestions(false);
     }
+    return 0;
   };
 
   const handleExamVersionActivePath = (path: string, _letter: string) => {
     setSingleQuestionFilePath(path);
-    void loadExamQuestionsForPath(path, { openGridIfSaved: false });
+    void loadExamQuestionsForPath(path, { openGridIfSaved: false, openLegacyModalIfNoGrid: false });
   };
 
   const handleEditSingleQuestion = async (item: any) => {
     setSingleQuestionFilePath(item.path);
     setExaminationQuestions([]);
     setEditingQuestion(null);
+    setSingleQuestionModalOpen(false);
     setExamGridBuilderOpen(false);
-    setSingleQuestionModalOpen(true);
-    await loadExamQuestionsForPath(item.path, { openGridIfSaved: true });
+    await loadExamQuestionsForPath(item.path, {
+      openGridIfSaved: true,
+      openLegacyModalIfNoGrid: true,
+    });
   };
   
   // Funktion zum Speichern einer Frage
