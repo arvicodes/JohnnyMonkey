@@ -179,7 +179,9 @@
             border-radius: 4px;
             padding: 7px 10px;
             background: #fafafa;
-            max-width: 420px;
+            width: 100%;
+            max-width: none;
+            box-sizing: border-box;
             text-align: left;
             font-size: 12px;
             line-height: 1.45;
@@ -214,6 +216,34 @@
             display: block;
             min-height: 1.4em;
             line-height: 1.45;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .aids-general-rules-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .aids-general-rules-list li {
+            position: relative;
+            margin: 0 0 5px;
+            padding-left: 1.15em;
+            line-height: 1.45;
+        }
+
+        .aids-general-rules-list li:last-child {
+            margin-bottom: 0;
+        }
+
+        .aids-general-rules-list li::before {
+            content: "*";
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-weight: 700;
+            color: #333;
         }
 
         .aids-val {

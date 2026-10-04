@@ -48,7 +48,7 @@
         filePath: filePath,
         aidsTime: aidsTimeEl ? aidsTimeEl.textContent.trim() : undefined,
         aidsTools: aidsToolsEl ? aidsToolsEl.textContent.trim() : undefined,
-        aidsGeneralRules: aidsRulesEl ? aidsRulesEl.textContent.trim() : undefined,
+        aidsGeneralRules: aidsRulesEl ? getAidsGeneralRulesSaveText(aidsRulesEl) : undefined,
       }),
       keepalive: true,
     }).catch(function () {
@@ -59,6 +59,69 @@
   function scheduleMetaSave() {
     clearTimeout(metaSaveTimer);
     metaSaveTimer = setTimeout(saveExamHeaderMeta, 500);
+  }
+
+  function escapeHtmlText(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function plainAidsGeneralRulesFromEl(el) {
+    if (!el) return '';
+    if (el.dataset.jmRulesPlain) return el.dataset.jmRulesPlain;
+    var ul = el.querySelector('ul.aids-general-rules-list');
+    if (ul) {
+      return Array.prototype.map
+        .call(ul.querySelectorAll('li'), function (li) {
+          return '* ' + String(li.textContent || '').trim();
+        })
+        .filter(Boolean)
+        .join('\n\n');
+    }
+    return String(el.textContent || '');
+  }
+
+  function renderAidsGeneralRulesList(el) {
+    if (!el || el.classList.contains('exam-aids-editing')) return;
+    var plain = String(plainAidsGeneralRulesFromEl(el) || '').trim();
+    el.dataset.jmRulesPlain = plain;
+    if (!plain) {
+      el.innerHTML = '';
+      return;
+    }
+    var items = [];
+    plain.split(/\n+/).forEach(function (line) {
+      var trimmed = String(line || '').trim();
+      if (!trimmed) return;
+      var m = trimmed.match(/^\*\s*(.*)$/);
+      if (m) {
+        if (m[1] && m[1].trim()) items.push(m[1].trim());
+        return;
+      }
+      items.push(trimmed);
+    });
+    if (!items.length) {
+      el.textContent = plain;
+      return;
+    }
+    el.innerHTML =
+      '<ul class="aids-general-rules-list">' +
+      items
+        .map(function (t) {
+          return '<li>' + escapeHtmlText(t) + '</li>';
+        })
+        .join('') +
+      '</ul>';
+  }
+
+  function getAidsGeneralRulesSaveText(el) {
+    if (!el) return '';
+    if (el.classList.contains('exam-aids-editing')) {
+      return String(el.textContent || '').trim();
+    }
+    return String(el.dataset.jmRulesPlain || plainAidsGeneralRulesFromEl(el) || '').trim();
   }
 
   function parseTimerEditMinutes(text) {
@@ -122,9 +185,16 @@
       el.__jmMetaWired = true;
       el.addEventListener('focus', function () {
         el.classList.add('exam-aids-editing');
+        if (id === 'aidsGeneralRules') {
+          el.textContent = plainAidsGeneralRulesFromEl(el).trim();
+        }
       });
       el.addEventListener('blur', function () {
         el.classList.remove('exam-aids-editing');
+        if (id === 'aidsGeneralRules') {
+          el.dataset.jmRulesPlain = String(el.textContent || '').trim();
+          renderAidsGeneralRulesList(el);
+        }
         if (id === 'aidsTime') syncTimerDisplayFromAids();
         updateAidsRulesRowVisibility();
         scheduleMetaSave();
@@ -173,8 +243,14 @@
       '.teacher-mode .aids-val{cursor:text;border-radius:3px}' +
       '.teacher-mode .aids-val:hover{background:rgba(225,6,0,.06)}' +
       '.teacher-mode .aids-val.exam-aids-editing,.teacher-mode .aids-val:focus{outline:2px solid rgba(225,6,0,.35);background:#fff8f8}' +
+      '.aids-box{width:100%;max-width:none;box-sizing:border-box}' +
       '.aids-row--rules{align-items:flex-start}' +
-      '.aids-val-rules{white-space:pre-wrap;display:block;min-height:1.4em;line-height:1.45}' +
+      '.aids-val-rules{white-space:pre-wrap;display:block;min-height:1.4em;line-height:1.45;flex:1;min-width:0}' +
+      '.aids-val-rules.exam-aids-editing ul{display:none}' +
+      '.aids-general-rules-list{margin:0;padding:0;list-style:none}' +
+      '.aids-general-rules-list li{position:relative;margin:0 0 5px;padding-left:1.15em;line-height:1.45}' +
+      '.aids-general-rules-list li:last-child{margin-bottom:0}' +
+      '.aids-general-rules-list li::before{content:"*";position:absolute;left:0;top:0;font-weight:700;color:#333}' +
       '.teacher-mode #timer.exam-chrome-timer-editable{cursor:text}' +
       '.teacher-mode #timer.exam-chrome-timer-editable:focus{outline:2px solid rgba(225,6,0,.45);outline-offset:2px}';
   }
@@ -244,6 +320,8 @@
     injectChromeStyles();
     ensureExamToolbar();
     setupExamChromeTimerToggle();
+    var rulesEl = document.getElementById('aidsGeneralRules');
+    if (rulesEl) renderAidsGeneralRulesList(rulesEl);
     setupExamHeaderMetaEditing();
     setupChromeTimerEditing();
     updateAidsRulesRowVisibility();
