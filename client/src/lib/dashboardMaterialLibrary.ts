@@ -3,6 +3,8 @@
  * Materialien unter Arbeits-Reihen und zugeordneten Ordnern finden.
  */
 
+import { filterOutNestedAssignedFolderPaths } from './folderAssignmentOrder';
+import { fetchFsDirectory, fsDirectoryChildren, runPool, type FsTreeNode } from './fsTreeCache';
 import { isLessonCorrectionFileName } from './openLessonFolderFile';
 import {
   DECK_FILENAME,
@@ -13,7 +15,6 @@ import {
 import {
   resolveInteractiveExercise,
 } from './presentationInteractiveExercise';
-import { parseReadApiChildren } from './wochenaufgabenFolder';
 
 export type LibraryExamItem = {
   name: string;
@@ -35,6 +36,9 @@ export type LibraryExerciseItem = {
   stufe: string;
   reihe: string;
 };
+
+const DECK_JSON_CACHE_TTL_MS = 120_000;
+const deckJsonCache = new Map<string, { expires: number; data: unknown }>();
 
 function normalizeFsPath(path: string): string {
   return (path || '').replace(/\\/g, '/').replace(/\/+$/, '').trim();
@@ -74,12 +78,7 @@ export function libraryPathHierarchy(path: string): {
   return { subject, stufe, reihe, lessonLabel };
 }
 
-type FsNode = {
-  name?: string;
-  path?: string;
-  type?: string;
-  children?: FsNode[];
-};
+type FsNode = FsTreeNode;
 
 function flattenFiles(nodes: FsNode[], out: Array<{ name: string; path: string }> = []): Array<{ name: string; path: string }> {
   for (const n of nodes || []) {
@@ -94,63 +93,33 @@ function flattenFiles(nodes: FsNode[], out: Array<{ name: string; path: string }
   return out;
 }
 
-async function fetchWithTimeout(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-  timeoutMs = 45_000,
-): Promise<Response> {
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(input, { ...init, signal: controller.signal });
-  } finally {
-    window.clearTimeout(timer);
-  }
-}
-
 async function readTree(folderPath: string): Promise<FsNode[]> {
-  const folder = normalizeFsPath(folderPath);
-  if (!folder) return [];
-  try {
-    const res = await fetchWithTimeout(
-      `/api/file-system-paths/read?path=${encodeURIComponent(folder)}&recursive=true&t=${Date.now()}`,
-      {
-        cache: 'no-cache',
-        headers: { 'x-login-code': localStorage.getItem('loginCode') || '' },
-      },
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-  // API liefert { path, root: { children: [...] } } — nicht ein Array.
-  const fromHelper = parseReadApiChildren(data) as FsNode[];
-  if (fromHelper.length) return fromHelper;
-  if (Array.isArray(data)) return data as FsNode[];
-  if (Array.isArray(data?.children)) return data.children as FsNode[];
-  if (Array.isArray(data?.root?.children)) return data.root.children as FsNode[];
-  if (data?.root && Array.isArray(data.root)) return data.root as FsNode[];
-  return [];
-  } catch {
-    return [];
-  }
+  const data = await fetchFsDirectory(folderPath, true);
+  return fsDirectoryChildren(data);
 }
 
 async function readJsonFile<T>(filePath: string): Promise<T | null> {
+  const key = normalizeFsPath(filePath);
+  const hit = deckJsonCache.get(key);
+  if (hit && hit.expires > Date.now()) return hit.data as T;
   try {
-    const res = await fetchWithTimeout(
-      `/api/file-system-paths/load-whiteboard?filePath=${encodeURIComponent(filePath)}&t=${Date.now()}`,
+    const res = await fetch(
+      `/api/file-system-paths/load-whiteboard?filePath=${encodeURIComponent(key)}`,
       {
-        cache: 'no-cache',
+        cache: 'default',
         headers: { 'x-login-code': localStorage.getItem('loginCode') || '' },
       },
     );
     if (!res.ok) return null;
-    return (await res.json()) as T;
+    const data = (await res.json()) as T;
+    deckJsonCache.set(key, { data, expires: Date.now() + DECK_JSON_CACHE_TTL_MS });
+    return data;
   } catch {
     return null;
   }
 }
 
-function collectDeckPaths(_rootPaths: string[], filesByRoot: Array<{ name: string; path: string }>[]): string[] {
+function collectDeckPaths(filesByRoot: Array<{ name: string; path: string }>[]): string[] {
   const deckPaths: string[] = [];
   for (const files of filesByRoot) {
     for (const f of files) {
@@ -160,8 +129,15 @@ function collectDeckPaths(_rootPaths: string[], filesByRoot: Array<{ name: strin
   return [...new Set(deckPaths.map(normalizeFsPath))];
 }
 
+function scanRoots(rootPaths: string[]): string[] {
+  const normalized = [...new Set(rootPaths.map(normalizeFsPath).filter(Boolean))];
+  return filterOutNestedAssignedFolderPaths(normalized);
+}
+
+const DECK_SCAN_CONCURRENCY = 5;
+
 export async function scanLibraryExams(rootPaths: string[]): Promise<LibraryExamItem[]> {
-  const roots = [...new Set(rootPaths.map(normalizeFsPath).filter(Boolean))];
+  const roots = scanRoots(rootPaths);
   const byKey = new Map<string, LibraryExamItem>();
 
   const addExam = (name: string, path: string, lessonFolder?: string) => {
@@ -193,22 +169,19 @@ export async function scanLibraryExams(rootPaths: string[]): Promise<LibraryExam
     }
   }
 
-  // Prüfungen, die an Folien hängen (slideExam), auch ohne Dateibaum-Treffer
-  const deckPaths = collectDeckPaths(roots, filesByRoot);
-  await Promise.all(
-    deckPaths.map(async (deckPath) => {
-      const lessonPath = parentDir(deckPath);
-      const deck = await readJsonFile<{
-        slides?: Array<{ slideExam?: unknown }>;
-      }>(deckPath);
-      if (!deck?.slides?.length) return;
-      for (const slide of deck.slides) {
-        const exam = sanitizeSlideExam(slide.slideExam as Parameters<typeof sanitizeSlideExam>[0]);
-        if (!exam) continue;
-        addExam(exam.name, exam.path, lessonPath);
-      }
-    }),
-  );
+  const deckPaths = collectDeckPaths(filesByRoot);
+  await runPool(deckPaths, DECK_SCAN_CONCURRENCY, async (deckPath) => {
+    const lessonPath = parentDir(deckPath);
+    const deck = await readJsonFile<{
+      slides?: Array<{ slideExam?: unknown }>;
+    }>(deckPath);
+    if (!deck?.slides?.length) return;
+    for (const slide of deck.slides) {
+      const exam = sanitizeSlideExam(slide.slideExam as Parameters<typeof sanitizeSlideExam>[0]);
+      if (!exam) continue;
+      addExam(exam.name, exam.path, lessonPath);
+    }
+  });
 
   return [...byKey.values()].sort(
     (a, b) =>
@@ -220,47 +193,44 @@ export async function scanLibraryExams(rootPaths: string[]): Promise<LibraryExam
 export async function scanLibraryInteractiveExercises(
   rootPaths: string[],
 ): Promise<LibraryExerciseItem[]> {
-  const roots = [...new Set(rootPaths.map(normalizeFsPath).filter(Boolean))];
+  const roots = scanRoots(rootPaths);
   const out: LibraryExerciseItem[] = [];
   const trees = await Promise.all(roots.map((root) => readTree(root)));
   const filesByRoot = trees.map((t) => flattenFiles(t));
-  const uniqueDecks = collectDeckPaths(roots, filesByRoot);
+  const uniqueDecks = collectDeckPaths(filesByRoot);
 
-  await Promise.all(
-    uniqueDecks.map(async (deckPath) => {
-      const lessonPath = parentDir(deckPath);
-      const deck = await readJsonFile<{
-        slides?: Array<{
-          id?: string;
-          title?: string;
-          order?: number;
-          slideInteractiveExercise?: unknown;
-        }>;
-      }>(deckPath);
-      if (!deck?.slides?.length) return;
-      const slides = [...deck.slides].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      slides.forEach((slide, idx) => {
-        const exercise = resolveInteractiveExercise(
-          slide.slideInteractiveExercise as Parameters<typeof resolveInteractiveExercise>[0],
-        );
-        if (!exercise) return;
-        const title = exercise.title?.trim() || slide.title?.trim() || `Übung Folie ${idx + 1}`;
-        const h = libraryPathHierarchy(lessonPath);
-        out.push({
-          title,
-          lessonPath,
-          lessonLabel: h.lessonLabel,
-          slideId: String(slide.id || ''),
-          slideIndex: idx + 1,
-          subject: h.subject,
-          stufe: h.stufe,
-          reihe: h.reihe,
-        });
+  await runPool(uniqueDecks, DECK_SCAN_CONCURRENCY, async (deckPath) => {
+    const lessonPath = parentDir(deckPath);
+    const deck = await readJsonFile<{
+      slides?: Array<{
+        id?: string;
+        title?: string;
+        order?: number;
+        slideInteractiveExercise?: unknown;
+      }>;
+    }>(deckPath);
+    if (!deck?.slides?.length) return;
+    const slides = [...deck.slides].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    slides.forEach((slide, idx) => {
+      const exercise = resolveInteractiveExercise(
+        slide.slideInteractiveExercise as Parameters<typeof resolveInteractiveExercise>[0],
+      );
+      if (!exercise) return;
+      const title = exercise.title?.trim() || slide.title?.trim() || `Übung Folie ${idx + 1}`;
+      const h = libraryPathHierarchy(lessonPath);
+      out.push({
+        title,
+        lessonPath,
+        lessonLabel: h.lessonLabel,
+        slideId: String(slide.id || ''),
+        slideIndex: idx + 1,
+        subject: h.subject,
+        stufe: h.stufe,
+        reihe: h.reihe,
       });
-    }),
-  );
+    });
+  });
 
-  // Deduplizieren (gleiches Deck ggf. doppelt geraten)
   const seen = new Set<string>();
   const deduped = out.filter((item) => {
     const key = `${canonicalLibraryPath(item.lessonPath)}:${item.slideId || item.slideIndex}`;

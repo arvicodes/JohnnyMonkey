@@ -62,7 +62,9 @@ export class StorageManager {
    */
   static async readDirectory(dirPath: string, recursive: boolean = false): Promise<any> {
     const normalized = this.normalizeDirRequestPath(dirPath);
-    console.log('StorageManager.readDirectory called with:', dirPath, '→', normalized, 'recursive:', recursive);
+    if (process.env.JM_VERBOSE_FS === '1') {
+      console.log('StorageManager.readDirectory called with:', dirPath, '→', normalized, 'recursive:', recursive);
+    }
 
     // Check if this is a git-intern path (exact match or starts with git-intern/)
     if (normalized === 'git-intern' || normalized.startsWith('git-intern/')) {

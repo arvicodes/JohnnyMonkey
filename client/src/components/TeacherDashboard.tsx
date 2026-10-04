@@ -8481,16 +8481,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
         [`${groupId}:${folderPath}`]: true
       }));
 
-      // Cache-Busting Parameter hinzuf√ºgen
-      const timestamp = Date.now();
-      const response = await fetch(`/api/file-system-paths/read?path=${encodeURIComponent(folderPath)}&recursive=true&t=${timestamp}`, {
-        cache: 'no-cache',
-        headers: {
-          'Cache-Control': 'no-cache'
-        }
-      });
-      if (response.ok) {
-        const content = await response.json();
+      const { fetchFsDirectory } = await import('../lib/fsTreeCache');
+      const content = await fetchFsDirectory(folderPath, true);
+      if (content) {
         let items: any[] = [];
         if (content.root) {
           items = content.root.children || [];
@@ -12075,6 +12068,9 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
         }
         setExaminationCreateResultMode('questionEditor');
         setExamsPanelRefreshKey((k) => k + 1);
+        void import('../lib/fsTreeCache').then(({ invalidateFsDirectoryCache }) => {
+          invalidateFsDirectoryCache(examinationFolderPath);
+        });
 
         // Ordnerinhalte aktualisieren (Lerngruppen + Arbeits-Reihen)
         Object.keys(assignedFolders).forEach((groupId) => {
@@ -14055,7 +14051,7 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
         if (n) paths.add(n);
       }
     }
-    return [...paths];
+    return filterOutNestedAssignedFolderPaths([...paths]);
   }, [workingReihenPaths, assignedFolders]);
 
   const resolveGroupIdForReihe = useCallback(

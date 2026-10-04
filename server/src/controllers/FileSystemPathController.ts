@@ -15,6 +15,12 @@ import * as XLSX from 'xlsx';
 import { convert } from 'libreoffice-convert';
 import { transformExamHtmlForDelivery } from '../lib/examSubsectionShuffle';
 import {
+  directoryReadCacheKey,
+  getDirectoryReadCache,
+  invalidateDirectoryReadCache,
+  setDirectoryReadCache,
+} from '../utils/directoryReadCache';
+import {
   applyVersionsToExamHtml,
   baseStemFromStem,
   buildExamVersionInfo,
@@ -160,23 +166,28 @@ export class FileSystemPathController {
     try {
       const { path: filePath, recursive } = req.query;
 
-      console.log('=== READ DIRECTORY REQUEST ===');
-      console.log('Query params:', req.query);
-      console.log('File path from query:', filePath);
-      console.log('Recursive:', recursive);
-
       if (!filePath) {
         return res.status(400).json({ error: 'Pfad ist erforderlich' });
       }
 
-      const directoryContent = await StorageManager.readDirectory(filePath as string, recursive === 'true');
+      const isRecursive = recursive === 'true';
+      const cacheKey = directoryReadCacheKey(filePath as string, isRecursive);
+      const cached = getDirectoryReadCache(cacheKey);
+      if (cached) {
+        res.setHeader('X-JM-Dir-Cache', 'hit');
+        return res.json(cached);
+      }
+
+      const directoryContent = await StorageManager.readDirectory(filePath as string, isRecursive);
 
       if (directoryContent.error) {
-        console.log('Directory read error:', directoryContent.error);
         return res.status(404).json({ error: directoryContent.error });
       }
 
-      console.log('Directory read successfully');
+      if (!directoryContent.error) {
+        setDirectoryReadCache(cacheKey, directoryContent);
+      }
+      res.setHeader('X-JM-Dir-Cache', 'miss');
       res.json(directoryContent);
 
     } catch (error) {
@@ -2183,6 +2194,8 @@ export class FileSystemPathController {
 
       // Schreibe die neue Datei
       fs.writeFileSync(filePath, templateContent, 'utf-8');
+
+      invalidateDirectoryReadCache(folderPath as string);
 
       console.log('✅ Prüfungsdatei erstellt:', filePath);
 

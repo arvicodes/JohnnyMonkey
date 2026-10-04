@@ -633,6 +633,11 @@ export const DashboardExamsPanel: React.FC<{
   const [loading, setLoading] = useState(false);
   const meta = useMemo(() => ({ groups, assignedFolders }), [groups, assignedFolders]);
 
+  const rootsKey = useMemo(
+    () => [...rootPaths].map((p) => p.replace(/\\/g, '/').replace(/\/+$/, '').trim()).sort().join('|'),
+    [rootPaths],
+  );
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -642,7 +647,7 @@ export const DashboardExamsPanel: React.FC<{
     } finally {
       setLoading(false);
     }
-  }, [rootPaths]);
+  }, [rootsKey, rootPaths]);
 
   useEffect(() => {
     void load();
@@ -772,6 +777,11 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
   const [loading, setLoading] = useState(false);
   const meta = useMemo(() => ({ groups, assignedFolders }), [groups, assignedFolders]);
 
+  const rootsKey = useMemo(
+    () => [...rootPaths].map((p) => p.replace(/\\/g, '/').replace(/\/+$/, '').trim()).sort().join('|'),
+    [rootPaths],
+  );
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -781,7 +791,7 @@ export const DashboardInteractiveExercisesPanel: React.FC<{
     } finally {
       setLoading(false);
     }
-  }, [rootPaths]);
+  }, [rootsKey, rootPaths]);
 
   useEffect(() => {
     void load();
