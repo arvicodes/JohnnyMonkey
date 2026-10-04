@@ -11,6 +11,16 @@ function getApiBaseUrl(): string {
   return '';
 }
 
+/** Basis-URL für Browser-Navigation (z. B. Prüfung in neuem Tab), unabhängig vom Dev-Proxy. */
+export function getApiBaseUrlForNavigation(): string {
+  const configured = getApiBaseUrl();
+  if (configured) return configured;
+  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
+    return 'http://127.0.0.1:3003';
+  }
+  return '';
+}
+
 export const apiCall = async (url: string, options: RequestInit = {}) => {
   const loginCode = localStorage.getItem('loginCode');
   if (!loginCode) {

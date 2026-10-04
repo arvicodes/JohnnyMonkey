@@ -65,7 +65,9 @@
   }
 
   function collectTaskSourcesForSave() {
-    syncAllLiveToSource();
+    document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
+      syncSourceFromLiveEdit(taskEl);
+    });
     var out = [];
     document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
       var src = taskEl.querySelector('.exam-dollar-source');
@@ -460,8 +462,14 @@
     var live = taskEl.querySelector('.exam-dollar-live-edit');
     var src = taskEl.querySelector('.exam-dollar-source');
     if (!live || !src) return;
-    var meta = parseTaskSource(src.value);
-    var liveParts = parseLiveEditText(live.innerText || '');
+    var liveRaw = String(live.innerText || '').replace(/\r/g, '');
+    var liveTrim = liveRaw.trim();
+    var metaBefore = parseTaskSource(src.value);
+    if (!liveTrim && String(metaBefore.body || '').trim() && live.dataset.jmTouched !== '1') {
+      return;
+    }
+    var meta = metaBefore;
+    var liveParts = parseLiveEditText(liveRaw);
     src.value = composeTaskSource(
       meta.aufgabeLabel,
       meta.pointsVal,
@@ -618,6 +626,11 @@
     applyGapSolutionHints(on);
     applyCheckboxSolutionHints(on);
     syncGapInputWidths();
+    try {
+      syncLiveExamScoreFooter();
+    } catch (scoreErr) {
+      /* Prüfungs-Skript noch nicht vollständig (z. B. correctAnswers) */
+    }
   }
 
   function wireSolutionsInGapsToggle() {
@@ -1322,11 +1335,39 @@
     return { achieved: achieved, total: total };
   }
 
+  function shouldHideLiveExamScores() {
+    return !document.body.classList.contains('show-solutions');
+  }
+
+  function showLiveExamScoreFooter() {
+    var pd = document.getElementById('pointsDisplay');
+    var nl = document.querySelector('.footer-note-line');
+    if (pd) {
+      pd.style.removeProperty('display');
+      pd.style.removeProperty('visibility');
+    }
+    if (nl) {
+      nl.style.removeProperty('display');
+      nl.style.removeProperty('visibility');
+    }
+  }
+
   function hideLiveExamScoreFooter() {
     var pd = document.getElementById('pointsDisplay');
     var nl = document.querySelector('.footer-note-line');
     if (pd) pd.style.setProperty('display', 'none', 'important');
     if (nl) nl.style.setProperty('display', 'none', 'important');
+  }
+
+  function syncLiveExamScoreFooter() {
+    if (shouldHideLiveExamScores()) {
+      hideLiveExamScoreFooter();
+      return;
+    }
+    showLiveExamScoreFooter();
+    if (typeof global.__jmExamLiveScoreUpdateCore === 'function') {
+      global.__jmExamLiveScoreUpdateCore();
+    }
   }
 
   function injectStudentLiveScoreGuardStyles() {
@@ -1335,8 +1376,8 @@
     var st = document.createElement('style');
     st.setAttribute(marker, '1');
     st.textContent =
-      'body:not(.teacher-mode) #pointsDisplay,' +
-      'body:not(.teacher-mode) .footer-note-line{display:none!important;visibility:hidden!important}';
+      'body:not(.show-solutions) #pointsDisplay,' +
+      'body:not(.show-solutions) .footer-note-line{display:none!important;visibility:hidden!important}';
     document.head.appendChild(st);
   }
 
@@ -1346,26 +1387,17 @@
     injectStudentLiveScoreGuardStyles();
     var previous =
       typeof global.updatePointsDisplay === 'function' ? global.updatePointsDisplay : null;
-    global.updatePointsDisplay = function jmGuardedUpdatePointsDisplay() {
-      if (localStorage.getItem('teacherId') === null) {
-        hideLiveExamScoreFooter();
-        return;
-      }
-      if (previous && !previous.__jmHideLiveScores) {
-        return previous.apply(this, arguments);
-      }
-    };
-    if (localStorage.getItem('teacherId') === null) {
-      hideLiveExamScoreFooter();
+    if (previous && !previous.__jmHideLiveScores) {
+      global.__jmExamLiveScoreUpdateCore = previous;
     }
+    global.updatePointsDisplay = function jmGuardedUpdatePointsDisplay() {
+      syncLiveExamScoreFooter();
+    };
+    syncLiveExamScoreFooter();
   }
 
   function maybeUpdateLivePointsDisplay() {
-    if (localStorage.getItem('teacherId') === null) {
-      hideLiveExamScoreFooter();
-      return;
-    }
-    if (typeof global.updatePointsDisplay === 'function') global.updatePointsDisplay();
+    syncLiveExamScoreFooter();
   }
 
   function wireExamDollarScoring() {
@@ -2632,8 +2664,72 @@
     updateComposePlaceholder();
   }
 
+  function showTaskRenderFallback(taskEl, sourceText) {
+    var rendered = taskEl.querySelector('.exam-dollar-rendered');
+    if (!rendered || String(rendered.innerHTML || '').trim()) return;
+    rendered.innerHTML =
+      '<div class="exam-dollar-render-fallback" style="white-space:pre-wrap;font-family:Arial,sans-serif;font-size:14px;line-height:1.55">' +
+      escapeHtml(String(sourceText || '')) +
+      '</div>';
+  }
+
+  function bootstrapExamTasksFromSource(options) {
+    var opts = options || {};
+    var isTeacher = !!opts.teacher;
+    document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
+      var src = taskEl.querySelector('.exam-dollar-source');
+      if (!src) return;
+      var raw = String(src.value || '');
+      if (!raw.trim()) return;
+      try {
+        if (isTeacher) {
+          var cleaned = stripDefaultBoilerplateSource(raw);
+          var metaClean = parseTaskSource(cleaned);
+          var metaRaw = parseTaskSource(raw);
+          var useText =
+            String(metaClean.body || '').trim() || !String(metaRaw.body || '').trim()
+              ? cleaned
+              : raw;
+          var meta = parseTaskSource(useText);
+          src.value = composeTaskSource(
+            meta.aufgabeLabel,
+            meta.pointsVal,
+            meta.body,
+            meta.solution,
+          );
+          syncLiveEditFromSource(taskEl);
+        }
+        applySourceToTask(taskEl, src.value);
+      } catch (bootstrapErr) {
+        console.error('exam-dollar task bootstrap failed', bootstrapErr);
+        showTaskRenderFallback(taskEl, raw);
+      }
+      var renderedCheck = taskEl.querySelector('.exam-dollar-rendered');
+      if (!renderedCheck || !String(renderedCheck.innerHTML || '').trim()) {
+        showTaskRenderFallback(taskEl, raw);
+      }
+      if (!isTeacher) {
+        var rend = taskEl.querySelector('.exam-dollar-rendered');
+        if (rend && String(rend.innerHTML || '').trim() && src.parentNode) {
+          src.parentNode.removeChild(src);
+        }
+      }
+    });
+  }
+
+  function scheduleExamTaskBootstrap(isTeacher) {
+    bootstrapExamTasksFromSource({ teacher: isTeacher });
+    setTimeout(function () {
+      bootstrapExamTasksFromSource({ teacher: isTeacher });
+    }, 0);
+    setTimeout(function () {
+      bootstrapExamTasksFromSource({ teacher: isTeacher });
+    }, 300);
+  }
+
   function setupExamDollarAuthoring() {
     installExamLiveScoreGuard();
+    injectStyles();
     if (typeof setupExamChrome === 'function') setupExamChrome();
     if (typeof global.jmRenderAidsGeneralRulesList === 'function') {
       global.jmRenderAidsGeneralRulesList();
@@ -2643,25 +2739,19 @@
       global.jmWireExamDollarFormatKeys(rulesForKeys);
     }
     typesetExamMathInRoot(document.querySelector('.exam-paper'));
-    if (localStorage.getItem('teacherId') === null) {
-      document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
-        var src = taskEl.querySelector('.exam-dollar-source');
-        if (src && src.value) applySourceToTask(taskEl, src.value);
-      });
-      document.querySelectorAll('.exam-dollar-source').forEach(function (el) {
-        el.parentNode && el.parentNode.removeChild(el);
-      });
+    var isTeacher = localStorage.getItem('teacherId') !== null;
+    if (!isTeacher) {
       document.querySelectorAll('.exam-dollar-compose').forEach(function (el) {
         el.parentNode && el.parentNode.removeChild(el);
       });
       document.querySelectorAll('.exam-dollar-live-edit').forEach(function (el) {
         el.parentNode && el.parentNode.removeChild(el);
       });
+      scheduleExamTaskBootstrap(false);
+      wireSolutionsInGapsToggle();
       return;
     }
-    injectStyles();
     ensureComposeArea();
-    bindExamPersistence();
     document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
       ensureTaskStructure(taskEl);
       ensureDeleteButton(taskEl);
@@ -2671,20 +2761,8 @@
       ensureColorBar(taskEl);
       var liveEl = taskEl.querySelector('.exam-dollar-live-edit');
       if (liveEl) wireImageDrop(liveEl, taskEl);
-      var src = taskEl.querySelector('.exam-dollar-source');
-      if (src) {
-        var cleaned = stripDefaultBoilerplateSource(src.value);
-        var meta = parseTaskSource(cleaned);
-        src.value = composeTaskSource(
-          meta.aufgabeLabel,
-          meta.pointsVal,
-          meta.body,
-          meta.solution,
-        );
-        syncLiveEditFromSource(taskEl);
-        applySourceToTask(taskEl, src.value);
-      }
     });
+    scheduleExamTaskBootstrap(true);
     renumberExamTasks();
     wireSolutionsInGapsToggle();
     wireExamDollarScoring();
@@ -2695,6 +2773,7 @@
         /* ignore */
       }
     }
+    bindExamPersistence();
     var fp = getExamFilePath();
     if (fp) setSaveStatus('');
     else setSaveStatus('Pfad unbekannt — Speichern nur in der App-Vorschau', true);
@@ -2714,5 +2793,6 @@
   global.jmNormalizeEmptyDollarWraps = normalizeEmptyDollarWraps;
   global.jmWrapExamDollarMarkup = wrapLiveEditDollarMarkup;
 
+  global.jmBootstrapExamTasksFromSource = bootstrapExamTasksFromSource;
   global.setupExamDollarAuthoring = setupExamDollarAuthoring;
 })(typeof window !== 'undefined' ? window : globalThis);

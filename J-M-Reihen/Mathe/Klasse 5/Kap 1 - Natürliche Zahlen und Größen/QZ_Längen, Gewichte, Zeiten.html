@@ -1400,6 +1400,7 @@
         
         
         
+        
         </div>
         <div class="exam-toolbar teacher-only">
             <div class="btn-trio" role="group" aria-label="Export">
@@ -1509,6 +1510,12 @@ $Bild IMG_3884 2.png 4% r t r10g$
 
         
     
+
+
+
+
+
+
 
 
 
@@ -2816,6 +2823,12 @@ $C$ Sieben Wochen sind mehr als $L 50 Tage L$.
 
 
 
+
+
+
+
+
+
 <!-- Aufgabe 3 -->
     <div class="task">
         <div class="task-header">
@@ -2836,6 +2849,12 @@ Es bekommt die Anweisung $KK renne dreihundertdreißig Meter KK$ und legt dabei 
             <div class="solution"></div>
         </div>
     </div>
+
+
+
+
+
+
 
 
 
@@ -3328,17 +3347,6 @@ Es bekommt die Anweisung $KK renne dreihundertdreißig Meter KK$ und legt dabei 
             openBtn.addEventListener('click', open);
             if (closeBtn) closeBtn.addEventListener('click', close);
             modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
-        })();
-
-        (function setupSolutionsToggle() {
-            const toggle = document.getElementById('solutionsToggle');
-            if (!toggle) return;
-            const apply = () => {
-                document.body.classList.toggle('show-solutions', toggle.checked);
-            };
-            toggle.checked = false;
-            apply();
-            toggle.addEventListener('change', apply);
         })();
 
         
@@ -4037,9 +4045,9 @@ Es bekommt die Anweisung $KK renne dreihundertdreißig Meter KK$ und legt dabei 
             if (noteLine) noteLine.style.display = display;
         }
 
-        // Funktion zur Aktualisierung der Anzeige (nur Lehrer — SuS nie während der Bearbeitung)
+        // Punkte/Note im Footer nur bei eingeschalteter Musterlösung
         function updatePointsDisplay() {
-            if (!isTeacher) {
+            if (!document.body.classList.contains('show-solutions')) {
                 setScoreFooterVisible(false);
                 return;
             }
@@ -4067,6 +4075,18 @@ Es bekommt die Anweisung $KK renne dreihundertdreißig Meter KK$ und legt dabei 
                 noteNumber.textContent = '___';
             }
         }
+
+        (function setupSolutionsToggle() {
+            const toggle = document.getElementById('solutionsToggle');
+            if (!toggle) return;
+            const apply = () => {
+                document.body.classList.toggle('show-solutions', toggle.checked);
+                if (typeof updatePointsDisplay === 'function') updatePointsDisplay();
+            };
+            toggle.checked = false;
+            apply();
+            toggle.addEventListener('change', apply);
+        })();
 
         // Event-Listener für alle Eingabefelder (NUR im Lehrer-Modus)
         function attachInputListeners() {
@@ -4245,12 +4265,7 @@ Es bekommt die Anweisung $KK renne dreihundertdreißig Meter KK$ und legt dabei 
         setupExamSubsectionShuffleForStudent();
         attachInputListeners();
         setupExamSortDrag();
-        // Punkteanzeige nur im Lehrer-Modus aktualisieren
-        if (isTeacher) {
-            updatePointsDisplay();
-        } else {
-            setScoreFooterVisible(false);
-        }
+        setScoreFooterVisible(false);
         
         // Bilder werden jetzt direkt über URLs geladen - keine Aktualisierung mehr nötig
 

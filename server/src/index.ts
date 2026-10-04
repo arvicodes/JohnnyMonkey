@@ -232,6 +232,9 @@ app.use('/api/be-a-hero/workouts', beAHeroWorkoutsRoutes);
 
 // Material static files
 app.use('/material', express.static(path.join(__dirname, '../../material')));
+// Prüfungs-HTML (read-html auf :3003) lädt /exam-dollar-commands.js etc. vom gleichen Host — in Dev gibt es kein client-build.
+const clientPublicPath = path.join(__dirname, '../../client/public');
+app.use(express.static(clientPublicPath, { index: false }));
 // Avatar images ( /api/avatars works through CRA proxy; /uploads/avatars kept for legacy URLs )
 const avatarStaticDir = path.join(__dirname, '../uploads/avatars');
 app.use('/api/avatars', express.static(avatarStaticDir));

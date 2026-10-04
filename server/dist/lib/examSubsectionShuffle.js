@@ -127,34 +127,53 @@ exports.EXAM_SUBSECTION_SHUFFLE_FUNCTION = `
         }
 `.trim();
 const INIT_HOOK = 'setupExamSubsectionShuffleForStudent();\n        attachInputListeners();';
-/** SuS dürfen während der Bearbeitung keine Live-Punkte/Note im Footer sehen. */
+/** Live-Punkte/Note im Footer nur bei eingeschalteter Musterlösung. */
 exports.EXAM_HIDE_LIVE_SCORE_MARKER = 'data-jm-hide-live-exam-scores';
 const EXAM_HIDE_LIVE_SCORE_STYLE = `<style ${exports.EXAM_HIDE_LIVE_SCORE_MARKER}-css="1">
-body:not(.teacher-mode) #pointsDisplay,
-body:not(.teacher-mode) .footer-note-line{display:none!important;visibility:hidden!important}
+body:not(.show-solutions) #pointsDisplay,
+body:not(.show-solutions) .footer-note-line{display:none!important;visibility:hidden!important}
 </style>`;
 const EXAM_HIDE_LIVE_SCORE_SCRIPT = `<script ${exports.EXAM_HIDE_LIVE_SCORE_MARKER}="1">
 (function(){
-  function isTeacherExamView(){try{return localStorage.getItem('teacherId')!==null;}catch(e){return false;}}
+  function isMusterloesungOn(){try{return document.body.classList.contains('show-solutions');}catch(e){return false;}}
+  function shouldHideLiveScores(){return !isMusterloesungOn();}
   function hideScoreFooter(){
     var pd=document.getElementById('pointsDisplay');
     var nl=document.querySelector('.footer-note-line');
     if(pd)pd.style.setProperty('display','none','important');
     if(nl)nl.style.setProperty('display','none','important');
   }
-  function patch(){
-    if(isTeacherExamView())return;
+  function showScoreFooter(){
+    var pd=document.getElementById('pointsDisplay');
+    var nl=document.querySelector('.footer-note-line');
+    if(pd){pd.style.removeProperty('display');pd.style.removeProperty('visibility');}
+    if(nl){nl.style.removeProperty('display');nl.style.removeProperty('visibility');}
+  }
+  var scoreUpdateCore=typeof updatePointsDisplay==='function'?updatePointsDisplay:null;
+  function applyLiveScorePolicy(){
+    if(!shouldHideLiveScores()){
+      showScoreFooter();
+      if(scoreUpdateCore&&!scoreUpdateCore.__jmHideLiveScores)scoreUpdateCore();
+      else if(typeof window.__jmExamLiveScoreUpdateCore==='function')window.__jmExamLiveScoreUpdateCore();
+      return;
+    }
     hideScoreFooter();
-    if(typeof updatePointsDisplay!=='function')return;
-    if(updatePointsDisplay.__jmHideLiveScores)return;
-    updatePointsDisplay=function(){hideScoreFooter();};
+  }
+  function patch(){
+    applyLiveScorePolicy();
+    updatePointsDisplay=function(){applyLiveScorePolicy();};
     updatePointsDisplay.__jmHideLiveScores=true;
+    var toggle=document.getElementById('solutionsToggle');
+    if(toggle&&!toggle.__jmScorePolicyWired){
+      toggle.__jmScorePolicyWired=true;
+      toggle.addEventListener('change',applyLiveScorePolicy);
+    }
   }
   patch();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',patch);
   setTimeout(patch,0);
   setTimeout(patch,50);
-  setInterval(hideScoreFooter,1500);
+  setInterval(applyLiveScorePolicy,1500);
 })();
 </script>`;
 /** Nur das dokument-eigene </body> — nicht Vorkommen in JS-Strings (z. B. generatePrintVersion). */

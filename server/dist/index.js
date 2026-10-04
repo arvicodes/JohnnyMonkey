@@ -216,6 +216,9 @@ app.use('/api/story-sites', storySites_1.default);
 app.use('/api/be-a-hero/workouts', beAHeroWorkouts_1.default);
 // Material static files
 app.use('/material', express_1.default.static(path_1.default.join(__dirname, '../../material')));
+// Prüfungs-HTML (read-html auf :3003) lädt /exam-dollar-commands.js etc. vom gleichen Host — in Dev gibt es kein client-build.
+const clientPublicPath = path_1.default.join(__dirname, '../../client/public');
+app.use(express_1.default.static(clientPublicPath, { index: false }));
 // Avatar images ( /api/avatars works through CRA proxy; /uploads/avatars kept for legacy URLs )
 const avatarStaticDir = path_1.default.join(__dirname, '../uploads/avatars');
 app.use('/api/avatars', express_1.default.static(avatarStaticDir));

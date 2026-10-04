@@ -3,6 +3,7 @@
  * Materialien unter Arbeits-Reihen und zugeordneten Ordnern finden.
  */
 
+import { getApiBaseUrlForNavigation } from './api';
 import { filterOutNestedAssignedFolderPaths } from './folderAssignmentOrder';
 import { fetchFsDirectory, fsDirectoryChildren, runPool, type FsTreeNode } from './fsTreeCache';
 import { isLessonCorrectionFileName } from './openLessonFolderFile';
@@ -247,7 +248,9 @@ export async function scanLibraryInteractiveExercises(
 }
 
 export function examOpenUrl(filePath: string): string {
-  return `/api/file-system-paths/read-html?filePath=${encodeURIComponent(filePath)}`;
+  const rel = `/api/file-system-paths/read-html?filePath=${encodeURIComponent(filePath)}`;
+  const base = getApiBaseUrlForNavigation();
+  return base ? `${base}${rel}` : rel;
 }
 
 export function exerciseEditorUrl(lessonPath: string, slideId?: string, groupId?: string): string {
