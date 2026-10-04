@@ -560,7 +560,6 @@
         '<div class="task-header">' +
         '<div class="task-number">Aufgabe</div>' +
         '<div class="task-meta teacher-only">' +
-        '<span class="afb-badge afb-1">AFB I</span>' +
         '<div class="points">… Punkte</div></div></div>' +
         '<div class="task-content">' +
         '<div class="exam-dollar-rendered"></div>' +

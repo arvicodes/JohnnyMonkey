@@ -16,6 +16,7 @@ import { convert } from 'libreoffice-convert';
 import {
   injectExamFilePathForClient,
   syncExamDollarTasksInHtml,
+  syncExamHeaderMetaInHtml,
 } from '../lib/examDollarAuthoringSave';
 import { transformExamHtmlForDelivery } from '../lib/examSubsectionShuffle';
 import {
@@ -3509,12 +3510,19 @@ ${optionsHTML}
     return html.replace(blockRe, `const correctAnswers = {\n${newBody}\n        };`);
   }
 
-  /** Dollar-Autorentexte aller Aufgaben in die Prüfungs-HTML schreiben. */
+  /** Dollar-Autorentexte und optional Zeit/Hilfsmittel in die Prüfungs-HTML schreiben. */
   static async saveExamDollarAuthoring(req: Request, res: Response) {
     try {
-      const { filePath, tasks } = req.body as { filePath?: string; tasks?: string[] };
-      if (!filePath || !Array.isArray(tasks) || tasks.length === 0) {
-        return res.status(400).json({ error: 'filePath und tasks[] sind erforderlich' });
+      const { filePath, tasks, aidsTime, aidsTools } = req.body as {
+        filePath?: string;
+        tasks?: string[];
+        aidsTime?: string;
+        aidsTools?: string;
+      };
+      const hasTasks = Array.isArray(tasks) && tasks.length > 0;
+      const hasMeta = aidsTime != null || aidsTools != null;
+      if (!filePath || (!hasTasks && !hasMeta)) {
+        return res.status(400).json({ error: 'filePath und tasks[] oder Zeit/Hilfsmittel erforderlich' });
       }
 
       const fullFilePath = FileSystemPathController.resolveExaminationHtmlPath(filePath);
@@ -3523,13 +3531,25 @@ ${optionsHTML}
       }
 
       let htmlContent = fs.readFileSync(fullFilePath, 'utf-8');
-      htmlContent = syncExamDollarTasksInHtml(
-        htmlContent,
-        tasks.map((t) => String(t ?? '')),
-      );
+      if (hasTasks) {
+        htmlContent = syncExamDollarTasksInHtml(
+          htmlContent,
+          tasks!.map((t) => String(t ?? '')),
+        );
+      }
+      if (hasMeta) {
+        htmlContent = syncExamHeaderMetaInHtml(htmlContent, {
+          aidsTime: aidsTime != null ? String(aidsTime) : undefined,
+          aidsTools: aidsTools != null ? String(aidsTools) : undefined,
+        });
+      }
       fs.writeFileSync(fullFilePath, htmlContent, 'utf-8');
 
-      res.json({ success: true, taskCount: tasks.length });
+      res.json({
+        success: true,
+        taskCount: hasTasks ? tasks!.length : 0,
+        meta: hasMeta,
+      });
     } catch (error) {
       console.error('❌ Dollar-Autoreninhalt speichern:', error);
       res.status(500).json({

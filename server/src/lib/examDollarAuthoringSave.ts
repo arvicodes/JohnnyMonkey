@@ -32,7 +32,6 @@ export function buildDollarTaskBlock(taskNumber: number, source: string): string
         <div class="task-header">
             <div class="task-number">Aufgabe ${taskNumber} <span style="font-size: 11px; color: #666; font-weight: normal;">(… Punkte)</span></div>
             <div class="task-meta teacher-only">
-                <span class="afb-badge afb-1">AFB I</span>
                 <div class="points">… Punkte</div>
             </div>
         </div>
@@ -64,6 +63,56 @@ function findTaskSectionBounds(html: string): { start: number; end: number } | n
   const footerIdx = html.search(/<div class="footer"/i);
   const end = endIdx >= 0 ? endIdx : footerIdx >= 0 ? footerIdx : html.length;
   return { start: first, end };
+}
+
+function escapeSpanText(text: string): string {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+export function parseMinutesFromAidsLabel(text: string): number | null {
+  const m = String(text || '').match(/(\d+)/);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  if (!Number.isFinite(n) || n <= 0 || n > 599) return null;
+  return n;
+}
+
+/** Zeit / Hilfsmittel in der Prüfungs-HTML (inkl. Timer-Startwert). */
+export function syncExamHeaderMetaInHtml(
+  html: string,
+  meta: { aidsTime?: string; aidsTools?: string },
+): string {
+  let out = html;
+  if (meta.aidsTime != null) {
+    const t = escapeSpanText(meta.aidsTime.trim());
+    out = out.replace(
+      /(<span class="aids-val" id="aidsTime"[^>]*>)[^<]*(<\/span>)/i,
+      `$1${t}$2`,
+    );
+    const mins = parseMinutesFromAidsLabel(meta.aidsTime);
+    if (mins != null) {
+      const timerLabel = `${mins}:00`;
+      out = out.replace(
+        /(<div class="timer-container" id="timer">)\s*[\s\S]*?(\s*<\/div>)/i,
+        `$1\n            ${timerLabel}\n        $2`,
+      );
+      out = out.replace(
+        /let timeLeft = \d+ \* 60;[^\n]*/i,
+        `let timeLeft = ${mins} * 60; // ${mins} Minuten in Sekunden`,
+      );
+    }
+  }
+  if (meta.aidsTools != null) {
+    const tools = escapeSpanText(meta.aidsTools.trim());
+    out = out.replace(
+      /(<span class="aids-val" id="aidsTools"[^>]*>)[^<]*(<\/span>)/i,
+      `$1${tools}$2`,
+    );
+  }
+  return out;
 }
 
 export function syncExamDollarTasksInHtml(html: string, sources: string[]): string {
