@@ -1357,9 +1357,36 @@
     });
   }
 
+  function normalizeTaskSourceTextareas(taskEl) {
+    var content = taskEl.querySelector('.task-content');
+    if (!content) return;
+    var areas = content.querySelectorAll('textarea.exam-dollar-source');
+    if (!areas.length) return;
+    var best = '';
+    var i;
+    for (i = 0; i < areas.length; i++) {
+      var v = String(areas[i].value || '');
+      if (v.indexOf('<textarea') >= 0) {
+        v = v.replace(/<textarea[\s\S]*?<\/textarea>/gi, '').trim();
+      }
+      if (v.length > best.length) best = v;
+    }
+    var keep = areas[0];
+    for (i = 1; i < areas.length; i++) {
+      if (areas[i].parentNode) areas[i].parentNode.removeChild(areas[i]);
+    }
+    keep.value = best;
+    keep.classList.remove('teacher-only');
+    keep.removeAttribute('rows');
+    keep.setAttribute('hidden', 'hidden');
+    keep.setAttribute('aria-hidden', 'true');
+    keep.removeAttribute('spellcheck');
+  }
+
   function ensureTaskStructure(taskEl) {
     var content = taskEl.querySelector('.task-content');
     if (!content) return;
+    normalizeTaskSourceTextareas(taskEl);
     if (!content.querySelector('.exam-dollar-rendered')) {
       var rendered = document.createElement('div');
       rendered.className = 'exam-dollar-rendered';

@@ -12,7 +12,7 @@ function setTaskSourceInBlock(block: string, source: string): string {
   if (/class=["'][^"']*exam-dollar-source/i.test(block)) {
     return block.replace(
       /(<textarea\b[^>]*\bclass=["'][^"']*exam-dollar-source[^"']*["'][^>]*>)([\s\S]*?)(<\/textarea>)/i,
-      `$1${safe}$3`,
+      (_match, open, _old, close) => `${open}${safe}${close}`,
     );
   }
   const inject =
