@@ -15,6 +15,7 @@ import * as XLSX from 'xlsx';
 import { convert } from 'libreoffice-convert';
 import {
   injectExamFilePathForClient,
+  patchExamAidsGeneralRulesMarkup,
   syncExamDollarTasksInHtml,
   syncExamHeaderMetaInHtml,
 } from '../lib/examDollarAuthoringSave';
@@ -3513,16 +3514,18 @@ ${optionsHTML}
   /** Dollar-Autorentexte und optional Zeit/Hilfsmittel in die Prüfungs-HTML schreiben. */
   static async saveExamDollarAuthoring(req: Request, res: Response) {
     try {
-      const { filePath, tasks, aidsTime, aidsTools } = req.body as {
+      const { filePath, tasks, aidsTime, aidsTools, aidsGeneralRules } = req.body as {
         filePath?: string;
         tasks?: string[];
         aidsTime?: string;
         aidsTools?: string;
+        aidsGeneralRules?: string;
       };
       const hasTasks = Array.isArray(tasks) && tasks.length > 0;
-      const hasMeta = aidsTime != null || aidsTools != null;
+      const hasMeta =
+        aidsTime != null || aidsTools != null || aidsGeneralRules != null;
       if (!filePath || (!hasTasks && !hasMeta)) {
-        return res.status(400).json({ error: 'filePath und tasks[] oder Zeit/Hilfsmittel erforderlich' });
+        return res.status(400).json({ error: 'filePath und tasks[] oder Kopfzeilen-Text erforderlich' });
       }
 
       const fullFilePath = FileSystemPathController.resolveExaminationHtmlPath(filePath);
@@ -3538,9 +3541,12 @@ ${optionsHTML}
         );
       }
       if (hasMeta) {
+        htmlContent = patchExamAidsGeneralRulesMarkup(htmlContent);
         htmlContent = syncExamHeaderMetaInHtml(htmlContent, {
           aidsTime: aidsTime != null ? String(aidsTime) : undefined,
           aidsTools: aidsTools != null ? String(aidsTools) : undefined,
+          aidsGeneralRules:
+            aidsGeneralRules != null ? String(aidsGeneralRules) : undefined,
         });
       }
       fs.writeFileSync(fullFilePath, htmlContent, 'utf-8');

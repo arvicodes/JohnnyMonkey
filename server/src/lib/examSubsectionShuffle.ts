@@ -1,4 +1,5 @@
 import { injectExamTimerTeacherBridge } from './examTimerTeacherBridge';
+import { patchExamAidsGeneralRulesMarkup } from './examDollarAuthoringSave';
 
 /**
  * Schüler: Teile innerhalb jeder Aufgabe (exam-subsection / Rasterzellen) pro SuS
@@ -267,6 +268,7 @@ export function transformExamHtmlForDelivery(html: string, filePath?: string): s
   }
 
   out = patchExamChromeMarkup(out);
+  out = patchExamAidsGeneralRulesMarkup(out);
   out = patchExamPaperComposeMarkup(out);
   out = injectExamChromeRuntime(out);
   out = injectExamDollarAuthoring(out);

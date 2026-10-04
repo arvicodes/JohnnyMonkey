@@ -83,14 +83,14 @@ export function parseMinutesFromAidsLabel(text: string): number | null {
 /** Zeit / Hilfsmittel in der Prüfungs-HTML (inkl. Timer-Startwert). */
 export function syncExamHeaderMetaInHtml(
   html: string,
-  meta: { aidsTime?: string; aidsTools?: string },
+  meta: { aidsTime?: string; aidsTools?: string; aidsGeneralRules?: string },
 ): string {
   let out = html;
   if (meta.aidsTime != null) {
     const t = escapeSpanText(meta.aidsTime.trim());
     out = out.replace(
       /(<span class="aids-val" id="aidsTime"[^>]*>)[^<]*(<\/span>)/i,
-      `$1${t}$2`,
+      (_m, open, close) => `${open}${t}${close}`,
     );
     const mins = parseMinutesFromAidsLabel(meta.aidsTime);
     if (mins != null) {
@@ -109,10 +109,33 @@ export function syncExamHeaderMetaInHtml(
     const tools = escapeSpanText(meta.aidsTools.trim());
     out = out.replace(
       /(<span class="aids-val" id="aidsTools"[^>]*>)[^<]*(<\/span>)/i,
-      `$1${tools}$2`,
+      (_m, open, close) => `${open}${tools}${close}`,
+    );
+  }
+  if (meta.aidsGeneralRules != null) {
+    const rules = escapeSpanText(meta.aidsGeneralRules.trim());
+    out = out.replace(
+      /(<span class="aids-val[^"]*" id="aidsGeneralRules"[^>]*>)[\s\S]*?(<\/span>)/i,
+      (_m, open, close) => `${open}${rules}${close}`,
     );
   }
   return out;
+}
+
+const AIDS_GENERAL_RULES_ROW = `            <div class="aids-row aids-row--rules">
+                <span class="aids-key">Allgemeine Regeln:</span>
+                <span class="aids-val aids-val-rules" id="aidsGeneralRules" contenteditable="false" title="Lehrer: Klicken zum Bearbeiten"></span>
+            </div>
+`;
+
+/** „Allgemeine Regeln“ unter Hilfsmittel (ältere Prüfungs-HTML). */
+export function patchExamAidsGeneralRulesMarkup(html: string): string {
+  if (!/class=["'][^"']*aids-box/i.test(html)) return html;
+  if (html.includes('id="aidsGeneralRules"')) return html;
+  return html.replace(
+    /(<span class="aids-val" id="aidsTools"[^>]*>[\s\S]*?<\/span>\s*\r?\n\s*<\/div>)/i,
+    `$1\n${AIDS_GENERAL_RULES_ROW}`,
+  );
 }
 
 export function syncExamDollarTasksInHtml(html: string, sources: string[]): string {

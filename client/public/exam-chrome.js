@@ -40,6 +40,7 @@
     if (!filePath) return;
     var aidsTimeEl = document.getElementById('aidsTime');
     var aidsToolsEl = document.getElementById('aidsTools');
+    var aidsRulesEl = document.getElementById('aidsGeneralRules');
     fetch('/api/file-system-paths/save-exam-dollar-authoring', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -47,6 +48,7 @@
         filePath: filePath,
         aidsTime: aidsTimeEl ? aidsTimeEl.textContent.trim() : undefined,
         aidsTools: aidsToolsEl ? aidsToolsEl.textContent.trim() : undefined,
+        aidsGeneralRules: aidsRulesEl ? aidsRulesEl.textContent.trim() : undefined,
       }),
       keepalive: true,
     }).catch(function () {
@@ -110,7 +112,7 @@
 
   function setupExamHeaderMetaEditing() {
     if (localStorage.getItem('teacherId') === null) return;
-    ['aidsTime', 'aidsTools'].forEach(function (id) {
+    ['aidsTime', 'aidsTools', 'aidsGeneralRules'].forEach(function (id) {
       var el = document.getElementById(id);
       if (!el) return;
       el.setAttribute('contenteditable', 'true');
@@ -124,20 +126,33 @@
       el.addEventListener('blur', function () {
         el.classList.remove('exam-aids-editing');
         if (id === 'aidsTime') syncTimerDisplayFromAids();
+        updateAidsRulesRowVisibility();
         scheduleMetaSave();
       });
       el.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && id !== 'aidsGeneralRules') {
           e.preventDefault();
           el.blur();
         }
       });
       el.addEventListener('input', function () {
         if (id === 'aidsTime') syncTimerDisplayFromAids();
+        updateAidsRulesRowVisibility();
         scheduleMetaSave();
       });
     });
     syncTimerDisplayFromAids();
+    updateAidsRulesRowVisibility();
+  }
+
+  function updateAidsRulesRowVisibility() {
+    var el = document.getElementById('aidsGeneralRules');
+    var row = el ? el.closest('.aids-row--rules') : null;
+    if (!row || !el) return;
+    var isTeacher = localStorage.getItem('teacherId') !== null;
+    var empty = !String(el.textContent || '').trim();
+    if (!isTeacher && empty) row.style.display = 'none';
+    else row.style.display = '';
   }
 
   function injectChromeStyles() {
@@ -158,6 +173,8 @@
       '.teacher-mode .aids-val{cursor:text;border-radius:3px}' +
       '.teacher-mode .aids-val:hover{background:rgba(225,6,0,.06)}' +
       '.teacher-mode .aids-val.exam-aids-editing,.teacher-mode .aids-val:focus{outline:2px solid rgba(225,6,0,.35);background:#fff8f8}' +
+      '.aids-row--rules{align-items:flex-start}' +
+      '.aids-val-rules{white-space:pre-wrap;display:block;min-height:1.4em;line-height:1.45}' +
       '.teacher-mode #timer.exam-chrome-timer-editable{cursor:text}' +
       '.teacher-mode #timer.exam-chrome-timer-editable:focus{outline:2px solid rgba(225,6,0,.45);outline-offset:2px}';
   }
@@ -229,6 +246,7 @@
     setupExamChromeTimerToggle();
     setupExamHeaderMetaEditing();
     setupChromeTimerEditing();
+    updateAidsRulesRowVisibility();
   }
 
   global.setupExamChrome = setupExamChrome;

@@ -205,6 +205,17 @@
             flex-shrink: 0;
         }
 
+        .aids-row--rules {
+            align-items: flex-start;
+        }
+
+        .aids-val-rules {
+            white-space: pre-wrap;
+            display: block;
+            min-height: 1.4em;
+            line-height: 1.45;
+        }
+
         .aids-val {
             outline: none;
             min-width: 4em;
@@ -1391,6 +1402,10 @@
                 <span class="aids-key">Erlaubte Hilfsmittel:</span>
                 <span class="aids-val" id="aidsTools" contenteditable="false" title="Lehrer: Klicken zum Bearbeiten">keine</span>
             </div>
+            <div class="aids-row aids-row--rules">
+                <span class="aids-key">Allgemeine Regeln:</span>
+                <span class="aids-val aids-val-rules" id="aidsGeneralRules" contenteditable="false" title="Lehrer: Klicken zum Bearbeiten"></span>
+            </div>
         </div>
         <div class="header-name">
             <label>Name:</label>
@@ -1465,7 +1480,7 @@ $5 Punkte$
 
         if (isTeacher) {
             document.body.classList.add('teacher-mode');
-            ['aidsTime', 'aidsTools'].forEach((id) => {
+            ['aidsTime', 'aidsTools', 'aidsGeneralRules'].forEach((id) => {
                 const el = document.getElementById(id);
                 if (el) el.setAttribute('contenteditable', 'true');
             });
