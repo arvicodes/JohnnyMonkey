@@ -341,11 +341,11 @@
   }
 
   function parseGapToken(inner) {
-    if (inner === '_') return { answers: [] };
     if (inner === '__') return null;
-    var wrapped = inner.match(/^_(.+)_$/);
+    if (inner === '_') return { answers: [] };
+    var wrapped = inner.match(/^_(.*)_$/);
     if (!wrapped) return null;
-    var body = wrapped[1];
+    var body = String(wrapped[1] || '').trim();
     if (!body) return { answers: [] };
     if (body.indexOf('/') >= 0) {
       return {
@@ -358,6 +358,88 @@
       };
     }
     return { answers: [body] };
+  }
+
+  function parsePointsFromLabel(text) {
+    var m = String(text || '').replace(',', '.').match(/(\d+(?:\.\d+)?)/);
+    return m ? m[1] : null;
+  }
+
+  function applyGapSolutionHints(show) {
+    if (localStorage.getItem('teacherId') === null) show = false;
+    document.querySelectorAll('input.exam-dollar-gap[data-jm-accepted]').forEach(function (inp) {
+      var accepted = inp.getAttribute('data-jm-accepted');
+      if (!accepted) return;
+      if (show) {
+        if (!inp.dataset.jmSolutionShown) {
+          inp.dataset.jmUserValue = inp.value || '';
+        }
+        inp.value = accepted.split('|').join(' / ');
+        inp.readOnly = true;
+        inp.classList.add('exam-gap-solution-visible');
+        inp.dataset.jmSolutionShown = '1';
+      } else {
+        inp.readOnly = false;
+        inp.classList.remove('exam-gap-solution-visible');
+        if (inp.dataset.jmSolutionShown) {
+          inp.value = inp.dataset.jmUserValue || '';
+        }
+        delete inp.dataset.jmSolutionShown;
+        delete inp.dataset.jmUserValue;
+      }
+    });
+  }
+
+  function refreshGapSolutionDisplay() {
+    var toggle = document.getElementById('solutionsToggle');
+    applyGapSolutionHints(!!(toggle && toggle.checked));
+  }
+
+  function wireSolutionsInGapsToggle() {
+    var toggle = document.getElementById('solutionsToggle');
+    if (!toggle || toggle.__jmGapSolutionsWired) return;
+    toggle.__jmGapSolutionsWired = true;
+    toggle.addEventListener('change', refreshGapSolutionDisplay);
+    refreshGapSolutionDisplay();
+  }
+
+  function commitTaskPoints(taskEl, rawLabel) {
+    var val = parsePointsFromLabel(rawLabel);
+    if (!val) return;
+    var src = taskEl.querySelector('.exam-dollar-source');
+    if (!src) return;
+    var meta = parseTaskSource(src.value);
+    meta.pointsVal = val;
+    src.value = composeTaskSource(meta.aufgabeLabel, meta.pointsVal, meta.body, meta.solution);
+    applySourceToTask(taskEl, src.value);
+    scheduleSave();
+  }
+
+  function wireTaskPointsEditing(taskEl) {
+    if (localStorage.getItem('teacherId') === null) return;
+    var pointsEl = taskEl.querySelector('.task-meta .points');
+    var titlePts = taskEl.querySelector('.task-number span');
+
+    function bindPointsEl(el) {
+      if (!el || el.__jmPointsWired) return;
+      el.__jmPointsWired = true;
+      el.setAttribute('contenteditable', 'true');
+      el.setAttribute('spellcheck', 'false');
+      el.setAttribute('title', 'Punkte: Klicken zum Ändern');
+      el.classList.add('exam-points-editable');
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          el.blur();
+        }
+      });
+      el.addEventListener('blur', function () {
+        commitTaskPoints(taskEl, el.textContent);
+      });
+    }
+
+    bindPointsEl(pointsEl);
+    bindPointsEl(titlePts);
   }
 
   function parseColorSpan(inner) {
@@ -520,6 +602,7 @@
         /* ignore */
       }
     }
+    refreshGapSolutionDisplay();
   }
 
   function nextTaskNumber() {
@@ -574,6 +657,7 @@
     }
     paper.insertBefore(taskEl, insertBefore);
     ensureDeleteButton(taskEl);
+    wireTaskPointsEditing(taskEl);
     wireTaskSource(taskEl);
     wireLiveEdit(taskEl);
     if (src) {
@@ -885,6 +969,10 @@
       '.teacher-mode .exam-dollar-live-edit:focus{box-shadow:0 0 0 2px rgba(225,6,0,0.25)}' +
       '.exam-dollar-live-edit.exam-dollar-drag-over,.exam-dollar-compose-input.exam-dollar-drag-over{box-shadow:0 0 0 2px rgba(21,101,192,.45)}' +
       '.exam-dollar-img{display:block;max-width:100%;height:auto;margin:8px 0;border-radius:4px}' +
+      '.teacher-mode .exam-points-editable{cursor:text;border-radius:3px;padding:0 2px}' +
+      '.teacher-mode .exam-points-editable:hover{background:rgba(225,6,0,.08)}' +
+      '.teacher-mode .exam-points-editable:focus{outline:2px solid rgba(225,6,0,.35)}' +
+      'body.show-solutions input.exam-dollar-gap.exam-gap-solution-visible{color:#1b5e20!important;font-weight:700;background:#e8f5e9!important;border:1px solid #66bb6a!important}' +
       '.task-header{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}' +
       '.task-header .task-number{flex:1;min-width:0}' +
       '.exam-task-delete{flex-shrink:0;width:24px;height:24px;border:1px solid #d0d0d0;border-radius:5px;background:#fff;color:#c62828;font-size:18px;line-height:1;cursor:pointer;padding:0;margin-top:2px}' +
@@ -985,6 +1073,7 @@
     document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
       ensureTaskStructure(taskEl);
       ensureDeleteButton(taskEl);
+      wireTaskPointsEditing(taskEl);
       wireTaskSource(taskEl);
       wireLiveEdit(taskEl);
       ensureColorBar(taskEl);
@@ -1005,6 +1094,7 @@
       }
     });
     renumberExamTasks();
+    wireSolutionsInGapsToggle();
     var fp = getExamFilePath();
     if (fp) {
       setSaveStatus('');
