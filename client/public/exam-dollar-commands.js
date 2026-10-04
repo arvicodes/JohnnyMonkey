@@ -17,6 +17,7 @@
  * $Bild name.png$ · $10%$ Originalbreite · $t$ Textumfluss · $r5b$ Rahmen
  * · kompakt: $Bild name.png 10% r t r5b$ (alles in einem $…$)
  * Aussage … $wf$   Wahr/Falsch-Tabelle (|$wwf$| = Wahr richtig, |$wff$| = Falsch richtig)
+ * $a1$ / $a2$ …    Formulierungsvariante zur Aussage direkt darüber (Buttons „Alternative 1“ …)
  * $Musterlösung$    ab dieser Zeile: Text für die grüne Musterlösungsbox
  */
 (function (global) {
@@ -1587,6 +1588,53 @@
     return false;
   }
 
+  function parseAltMarkerLine(line) {
+    var t = String(line || '').trim();
+    var m = t.match(/^\$a(\d+)\$(?:\s+([\s\S]*))?$/i);
+    if (!m) return null;
+    var num = parseInt(m[1], 10);
+    if (!num || num < 1) return null;
+    return { num: num, inline: String(m[2] || '').trim() };
+  }
+
+  function renderAltGroupHtml(baseHtml, alts, idGen) {
+    if (!alts || !alts.length) return baseHtml || '';
+    var gid = idGen();
+    var sorted = alts.slice().sort(function (a, b) {
+      return a.num - b.num;
+    });
+    var out =
+      '<div class="exam-dollar-alt-group" data-jm-alt-group="' +
+      escapeHtml(gid) +
+      '" data-jm-alt-active="0">';
+    out += '<div class="exam-dollar-alt-views">';
+    out +=
+      '<div class="exam-dollar-alt-view" data-jm-alt-view="0">' + (baseHtml || '') + '</div>';
+    sorted.forEach(function (alt) {
+      out +=
+        '<div class="exam-dollar-alt-view exam-dollar-alt-view--hidden" data-jm-alt-view="' +
+        alt.num +
+        '">' +
+        (alt.html || '') +
+        '</div>';
+    });
+    out += '</div>';
+    out +=
+      '<div class="exam-dollar-alt-toolbar teacher-only" role="tablist" aria-label="Formulierungsvarianten">';
+    sorted.forEach(function (alt) {
+      out +=
+        '<button type="button" class="exam-dollar-alt-btn" role="tab" aria-selected="false" data-jm-alt-group="' +
+        escapeHtml(gid) +
+        '" data-jm-alt-index="' +
+        alt.num +
+        '">Alternative ' +
+        alt.num +
+        '</button>';
+    });
+    out += '</div></div>';
+    return out;
+  }
+
   function renderFlowTextAndImages(textLines, flowImgLines, idGen) {
     if (!textLines.length && !flowImgLines.length) return '';
     if (flowImgLines.length && textLines.length) {
@@ -1644,8 +1692,50 @@
       return null;
     }
 
+    function collectAltVariants(fromIndex) {
+      var alts = [];
+      var j = fromIndex;
+      while (j < lines.length) {
+        var altM = parseAltMarkerLine(lines[j]);
+        if (!altM) break;
+        j += 1;
+        var altTextLines = [];
+        var altFlowImgs = [];
+        if (altM.inline) altTextLines.push(altM.inline);
+        while (j < lines.length) {
+          var ln = lines[j];
+          if (!String(ln).trim()) {
+            j += 1;
+            break;
+          }
+          if (parseAltMarkerLine(ln) || parseChoiceLine(ln) || parseWfLine(ln)) break;
+          if (isFlowImageOnlyLine(ln)) {
+            altFlowImgs.push(ln);
+          } else {
+            altTextLines.push(ln);
+          }
+          j += 1;
+        }
+        alts.push({
+          num: altM.num,
+          html: renderFlowTextAndImages(altTextLines, altFlowImgs, idGen),
+        });
+      }
+      return { alts: alts, nextIndex: j };
+    }
+
     for (i = 0; i < lines.length; i++) {
       var line = lines[i];
+      if (parseAltMarkerLine(line)) {
+        flushWf();
+        flushChoice();
+        flushFlow();
+        var baseHtml = parts.length ? parts.pop() : '';
+        var collected = collectAltVariants(i);
+        parts.push(renderAltGroupHtml(baseHtml, collected.alts, idGen));
+        i = collected.nextIndex;
+        continue;
+      }
       if (!String(line).trim()) {
         flushWf();
         flushChoice();
@@ -1694,6 +1784,51 @@
     flushChoice();
     flushFlow();
     return parts.join('');
+  }
+
+  function setExamAltGroupActive(groupEl, index) {
+    if (!groupEl) return;
+    var idx = String(index == null ? '0' : index);
+    groupEl.setAttribute('data-jm-alt-active', idx);
+    groupEl.querySelectorAll('.exam-dollar-alt-view').forEach(function (view) {
+      var v = view.getAttribute('data-jm-alt-view');
+      var on = v === idx;
+      view.classList.toggle('exam-dollar-alt-view--hidden', !on);
+    });
+    groupEl.querySelectorAll('.exam-dollar-alt-btn').forEach(function (btn) {
+      var on = btn.getAttribute('data-jm-alt-index') === idx;
+      btn.classList.toggle('exam-dollar-alt-btn--active', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  }
+
+  function wireExamAltGroups(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    scope.querySelectorAll('.exam-dollar-alt-group').forEach(function (groupEl) {
+      if (groupEl.__jmAltWired) return;
+      groupEl.__jmAltWired = true;
+      var active = groupEl.getAttribute('data-jm-alt-active') || '0';
+      setExamAltGroupActive(groupEl, active);
+      groupEl.querySelectorAll('.exam-dollar-alt-btn').forEach(function (btn) {
+        if (btn.__jmAltBtnWired) return;
+        btn.__jmAltBtnWired = true;
+        btn.addEventListener('click', function (e) {
+          e.preventDefault();
+          var gid = btn.getAttribute('data-jm-alt-group');
+          var idx = btn.getAttribute('data-jm-alt-index');
+          var group = gid
+            ? scope.querySelector('.exam-dollar-alt-group[data-jm-alt-group="' + gid + '"]')
+            : groupEl;
+          if (!group) return;
+          var cur = group.getAttribute('data-jm-alt-active') || '0';
+          if (cur === idx) {
+            setExamAltGroupActive(group, '0');
+          } else {
+            setExamAltGroupActive(group, idx);
+          }
+        });
+      });
+    });
   }
 
   function wireWfExclusiveCheckboxes(taskEl) {
@@ -1848,6 +1983,8 @@
             attr +
             sizeAttr +
             ' autocomplete="off">';
+        } else if (/^a\d+$/i.test(innerTrim)) {
+          /* Block-Marker $a1$ — nur eigene Zeile in renderBlockToHtml */
         } else if (/^wwf$/i.test(innerTrim) || /^wff$/i.test(innerTrim) || /^wf$/i.test(innerTrim)) {
           /* Zeilenende in Wahr/Falsch-Tabelle */
         } else if (/^CC$/i.test(innerTrim)) {
@@ -1997,6 +2134,7 @@
     wireGapAutoWidth(taskEl);
     syncGapInputWidths(taskEl);
     wireWfExclusiveCheckboxes(taskEl);
+    wireExamAltGroups(taskEl);
     refreshGapSolutionDisplay();
   }
 
@@ -2585,7 +2723,13 @@
       '.exam-dollar-wf-h{width:4.5em}' +
       '.exam-dollar-wf-check{text-align:center}' +
       '.exam-dollar-wf-check .exam-dollar-choice{margin:0 auto}' +
-      'body.show-solutions .exam-dollar-wf-row .exam-dollar-choice-correct .exam-dollar-choice-box{border-color:#2e7d32}';
+      'body.show-solutions .exam-dollar-wf-row .exam-dollar-choice-correct .exam-dollar-choice-box{border-color:#2e7d32}' +
+      '.exam-dollar-alt-group{margin:8px 0 10px}' +
+      '.exam-dollar-alt-view--hidden{display:none!important}' +
+      '.exam-dollar-alt-toolbar{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;justify-content:flex-start}' +
+      '.exam-dollar-alt-btn{font-size:11px;line-height:1.2;padding:4px 10px;border:1px solid #bdbdbd;border-radius:5px;background:#fff;color:#333;cursor:pointer;font-family:Arial,sans-serif}' +
+      '.exam-dollar-alt-btn:hover{border-color:#E10600;color:#E10600}' +
+      '.exam-dollar-alt-btn--active{border-color:#E10600;color:#E10600;font-weight:700;background:#fff5f5}';
   }
 
   function ensureComposeArea() {

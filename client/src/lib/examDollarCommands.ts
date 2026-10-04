@@ -50,5 +50,10 @@ export const EXAM_DOLLAR_COMMANDS_HELP = [
     meaning:
       'Wahr/Falsch-Tabelle (3 Spalten): Aussage | Wahr | Falsch mit Checkboxen; $wwf$ = Wahr ist richtig, $wff$ = Falsch ist richtig (je 0,5 Punkte)',
   },
+  {
+    syntax: '$a1$ / $a2$ …',
+    meaning:
+      'Formulierungsvariante zur Aussage direkt darüber (eigene Zeile; optional Text in derselben Zeile). In der Lehrer-Vorschau erscheinen darunter Buttons „Alternative 1“ usw.; Klick zeigt die Variante (nochmal klicken = zurück zur Hauptfassung).',
+  },
   { syntax: '$Musterlösung$', meaning: 'ab dieser Zeile: Inhalt für „Musterlösungen anzeigen“ (grüne Box)' },
 ] as const;
