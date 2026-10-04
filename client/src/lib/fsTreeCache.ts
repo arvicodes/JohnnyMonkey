@@ -87,7 +87,8 @@ export function fsDirectoryChildren(data: unknown): FsTreeNode[] {
     items?: FsTreeNode[];
   };
   if (Array.isArray(row.children)) return row.children;
-  if (Array.isArray(row.root?.children)) return row.root.children;
+  const rootChildren = row.root?.children;
+  if (Array.isArray(rootChildren)) return rootChildren;
   if (Array.isArray(row.items)) return row.items;
   if (Array.isArray(row.root)) return row.root as FsTreeNode[];
   return [];

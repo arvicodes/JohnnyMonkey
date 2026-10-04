@@ -8481,18 +8481,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
         [`${groupId}:${folderPath}`]: true
       }));
 
-      const { fetchFsDirectory } = await import('../lib/fsTreeCache');
+      const { fetchFsDirectory, fsDirectoryChildren } = await import('../lib/fsTreeCache');
       const content = await fetchFsDirectory(folderPath, true);
       if (content) {
-        let items: any[] = [];
-        if (content.root) {
-          items = content.root.children || [];
-        } else if (content.root.children) {
-          items = content.root.children;
-        } else if (content.items) {
-          items = content.items;
-        }
-        
+        const items = fsDirectoryChildren(content);
         setAssignedFolderContents(prev => ({
           ...prev,
           [`${groupId}:${folderPath}`]: items
