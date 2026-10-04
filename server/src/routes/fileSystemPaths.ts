@@ -112,6 +112,9 @@ router.post('/update-single-question', FileSystemPathController.updateSingleQues
 // Raster-Aufgabe (2×2) speichern
 router.post('/upsert-examination-grid-task', FileSystemPathController.upsertExaminationGridTask);
 
+// Dollar-Autoreninhalt (Standardvorlage) speichern
+router.post('/save-exam-dollar-authoring', FileSystemPathController.saveExamDollarAuthoring);
+
 // Titel einer Prüfung aktualisieren
 router.post('/update-examination-title', FileSystemPathController.updateExaminationTitle);
 

@@ -13,6 +13,122 @@
   'use strict';
 
   var MARKER = 'data-jm-exam-dollar';
+  var saveTimer = null;
+  var saveInFlight = false;
+
+  function getExamFilePath() {
+    if (global.__jmExamFilePath) return global.__jmExamFilePath;
+    try {
+      return new URLSearchParams(location.search).get('filePath') || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function isDefaultBoilerplateSource(text) {
+    var t = String(text || '');
+    return (
+      t.indexOf('Hier die Aufgaben eintragen') >= 0 ||
+      t.indexOf('<strong>Hier</strong>') >= 0 ||
+      (t.indexOf('Checkbox $C$') >= 0 && t.indexOf('richtige Lösung') >= 0)
+    );
+  }
+
+  function stripDefaultBoilerplateSource(text) {
+    if (!isDefaultBoilerplateSource(text)) return text;
+    var lines = String(text || '').split(/\r?\n/);
+    var kept = [];
+    var i;
+    for (i = 0; i < lines.length; i++) {
+      var tr = lines[i].trim();
+      if (/^\$Aufgabe\s+/i.test(tr)) kept.push(lines[i]);
+      else if (/^\$\d/.test(tr) && /Punkte\s*\$/i.test(tr)) kept.push(lines[i]);
+    }
+    if (!kept.length) return '$Aufgabe 1$\n$5 Punkte$\n';
+    return kept.join('\n') + '\n';
+  }
+
+  function syncAllLiveToSource() {
+    document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
+      var live = taskEl.querySelector('.exam-dollar-live-edit');
+      var src = taskEl.querySelector('.exam-dollar-source');
+      if (live && src) src.value = live.innerText || '';
+    });
+  }
+
+  function collectTaskSourcesForSave() {
+    syncAllLiveToSource();
+    var out = [];
+    document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
+      var src = taskEl.querySelector('.exam-dollar-source');
+      out.push(src ? src.value : '');
+    });
+    return out;
+  }
+
+  function setSaveStatus(msg, isError) {
+    var el = document.getElementById('examDollarSaveStatus');
+    if (!el) {
+      var chrome = document.querySelector('.exam-chrome');
+      if (!chrome) return;
+      el = document.createElement('div');
+      el.id = 'examDollarSaveStatus';
+      el.className = 'teacher-only';
+      el.style.cssText =
+        'font-size:9px;line-height:1.2;color:#666;text-align:center;min-height:14px;padding:0 2px';
+      var toolbar = document.querySelector('.exam-toolbar');
+      if (toolbar && toolbar.nextSibling) chrome.insertBefore(el, toolbar.nextSibling);
+      else chrome.appendChild(el);
+    }
+    el.textContent = msg || '';
+    el.style.color = isError ? '#c62828' : '#666';
+  }
+
+  function saveExamDollarAuthoring(opts) {
+    if (localStorage.getItem('teacherId') === null) return Promise.resolve();
+    var filePath = getExamFilePath();
+    if (!filePath) return Promise.resolve();
+    var tasks = collectTaskSourcesForSave();
+    if (!tasks.length) return Promise.resolve();
+    if (saveInFlight && !(opts && opts.force)) return Promise.resolve();
+    saveInFlight = true;
+    return fetch('/api/file-system-paths/save-exam-dollar-authoring', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath: filePath, tasks: tasks }),
+      keepalive: !!(opts && opts.keepalive),
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error('save failed');
+        setSaveStatus('Gespeichert');
+        return r.json();
+      })
+      .catch(function () {
+        setSaveStatus('Speichern fehlgeschlagen', true);
+      })
+      .finally(function () {
+        saveInFlight = false;
+      });
+  }
+
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    setSaveStatus('Speichern…');
+    saveTimer = setTimeout(function () {
+      saveExamDollarAuthoring();
+    }, 1200);
+  }
+
+  function bindExamPersistence() {
+    if (global.__jmExamDollarPersistenceBound) return;
+    global.__jmExamDollarPersistenceBound = true;
+    window.addEventListener('pagehide', function () {
+      saveExamDollarAuthoring({ keepalive: true, force: true });
+    });
+    window.addEventListener('beforeunload', function () {
+      syncAllLiveToSource();
+    });
+  }
 
   function escapeHtml(s) {
     return String(s || '')
@@ -244,11 +360,13 @@
       clearTimeout(debounce);
       debounce = setTimeout(function () {
         applySourceToTask(taskEl, src.value);
+        scheduleSave();
       }, 60);
     });
     live.addEventListener('blur', function () {
       src.value = live.innerText || '';
       applySourceToTask(taskEl, src.value);
+      scheduleSave();
     });
   }
 
@@ -339,6 +457,7 @@
     }
     textarea.value = '';
     updateComposePlaceholder();
+    scheduleSave();
   }
 
   function updateComposePlaceholder() {
@@ -381,7 +500,6 @@
       '.teacher-mode .task-content .exam-dollar-rendered{display:none!important}' +
       '.teacher-mode .exam-dollar-live-edit{display:block;min-height:72px;padding:4px 2px;line-height:1.55;font-family:Consolas,Monaco,monospace;font-size:13px;color:#222;outline:none;border-radius:4px;white-space:pre-wrap;word-break:break-word}' +
       '.teacher-mode .exam-dollar-live-edit:focus{box-shadow:0 0 0 2px rgba(225,6,0,0.25)}' +
-      '.teacher-mode .exam-dollar-live-edit:empty::before{content:attr(data-placeholder);color:#999;font-style:italic}' +
       '#examPaperComposeMount{margin:20px 0 8px}' +
       '.exam-dollar-compose{margin:0;padding:10px;border:1px dashed #ef6c00;border-radius:8px;background:#fff8f0}' +
       '.exam-dollar-compose-label{font-size:11px;font-weight:700;color:#e65100;margin-bottom:6px}' +
@@ -450,13 +568,28 @@
     if (typeof setupExamChrome === 'function') setupExamChrome();
     injectStyles();
     ensureComposeArea();
+    bindExamPersistence();
     document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
       ensureTaskStructure(taskEl);
       wireTaskSource(taskEl);
       wireLiveEdit(taskEl);
       var src = taskEl.querySelector('.exam-dollar-source');
-      if (src) applySourceToTask(taskEl, src.value);
+      if (src) {
+        var cleaned = stripDefaultBoilerplateSource(src.value);
+        if (cleaned !== src.value) {
+          src.value = cleaned;
+          var live = taskEl.querySelector('.exam-dollar-live-edit');
+          if (live) {
+            live.textContent = cleaned;
+            live.dataset.jmTouched = '1';
+          }
+        }
+        applySourceToTask(taskEl, src.value);
+      }
     });
+    var fp = getExamFilePath();
+    if (fp) setSaveStatus('');
+    else setSaveStatus('Pfad unbekannt — Speichern nur in der App-Vorschau', true);
   }
 
   global.setupExamDollarAuthoring = setupExamDollarAuthoring;

@@ -13,6 +13,10 @@ import path from 'path';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import { convert } from 'libreoffice-convert';
+import {
+  injectExamFilePathForClient,
+  syncExamDollarTasksInHtml,
+} from '../lib/examDollarAuthoringSave';
 import { transformExamHtmlForDelivery } from '../lib/examSubsectionShuffle';
 import {
   isStandardTemplateExamHtml,
@@ -264,6 +268,7 @@ export class FileSystemPathController {
       } catch (transformErr) {
         console.warn('exam shuffle transform skipped:', transformErr);
       }
+      htmlOut = injectExamFilePathForClient(htmlOut, String(filePath));
 
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.send(htmlOut);
@@ -3502,6 +3507,36 @@ ${optionsHTML}
     }
     const newBody = kept.map((line) => `            ${line}`).join(',\n');
     return html.replace(blockRe, `const correctAnswers = {\n${newBody}\n        };`);
+  }
+
+  /** Dollar-Autorentexte aller Aufgaben in die Prüfungs-HTML schreiben. */
+  static async saveExamDollarAuthoring(req: Request, res: Response) {
+    try {
+      const { filePath, tasks } = req.body as { filePath?: string; tasks?: string[] };
+      if (!filePath || !Array.isArray(tasks) || tasks.length === 0) {
+        return res.status(400).json({ error: 'filePath und tasks[] sind erforderlich' });
+      }
+
+      const fullFilePath = FileSystemPathController.resolveExaminationHtmlPath(filePath);
+      if (!fs.existsSync(fullFilePath)) {
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      }
+
+      let htmlContent = fs.readFileSync(fullFilePath, 'utf-8');
+      htmlContent = syncExamDollarTasksInHtml(
+        htmlContent,
+        tasks.map((t) => String(t ?? '')),
+      );
+      fs.writeFileSync(fullFilePath, htmlContent, 'utf-8');
+
+      res.json({ success: true, taskCount: tasks.length });
+    } catch (error) {
+      console.error('❌ Dollar-Autoreninhalt speichern:', error);
+      res.status(500).json({
+        error: 'Fehler beim Speichern',
+        details: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   /** Raster-Aufgabe (2×2) in die Prüfungs-HTML einfügen oder ersetzen. */
