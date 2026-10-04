@@ -23,8 +23,9 @@ export const EXAM_DOLLAR_COMMANDS_HELP = [
       'Farbe auch um andere $…$-Befehle ($blau$ … $blau$ geht ebenfalls); Punkte: automatisch 1 pro Lücke, bei $C$/$CC$ je 0,5 (± bei Kreuzen)',
   },
   {
-    syntax: '$Bild datei.png$ $10%$',
-    meaning: 'Bild aus dem Prüfungsordner; $10%$ direkt dahinter = Breite in % (Drag & Drop ins Textfeld)',
+    syntax: '$Bild datei.png$ $10%$ $r$',
+    meaning:
+      'Bild aus dem Ordner; $10%$ = 10 % der Originalbreite; $l$/$links$ links, $r$/$rechts$ rechts, $m$/$mitte$ mittig (am Bild, Reihenfolge egal)',
   },
   { syntax: '$Musterlösung$', meaning: 'ab dieser Zeile: Inhalt für „Musterlösungen anzeigen“ (grüne Box)' },
 ] as const;

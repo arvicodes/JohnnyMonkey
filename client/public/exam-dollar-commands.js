@@ -9,7 +9,7 @@
  * $__$         großes Eingabefeld
  * $B Wort B$   fett · $I Wort I$ kursiv · $U Wort U$ unterstrichen (⌘/Ctrl+B, I, U im Textfeld)
  * $rot Wort rot$  Farbe (rot/gruen/blau/orange/lila) · $#ff0000$ Text $#ff0000$ Hex
- * $Bild name.png$  Bild · direkt danach $10%$ = Breite in % der Zeile
+ * $Bild name.png$  Bild · $10%$ = 10 % der Originalbreite · $l$/$r$/$m$ = links/rechts/mittig
  * $Musterlösung$    ab dieser Zeile: Text für die grüne Musterlösungsbox
  */
 (function (global) {
@@ -571,19 +571,76 @@
     if (!m) return null;
     var n = parseFloat(m[1].replace(',', '.'));
     if (isNaN(n) || n <= 0) return null;
-    return Math.min(100, n);
+    return n;
   }
 
-  function tryParsePercentSizeAfter(text, endIndex) {
-    var j = endIndex;
+  function parseImageAlignToken(innerTrim) {
+    var t = String(innerTrim || '').trim().toLowerCase();
+    if (/^(r|rechts|right)$/.test(t)) return 'right';
+    if (/^(l|links|left)$/.test(t)) return 'left';
+    if (/^(m|mitte|center|zentriert|c|z)$/.test(t)) return 'center';
+    return null;
+  }
+
+  function tryConsumeImageSuffixToken(text, fromIndex) {
+    var j = fromIndex;
     var sp = text.slice(j).match(/^\s+/);
     if (sp) j += sp[0].length;
-    if (text[j] !== '$') return { end: endIndex, pct: null };
+    if (text[j] !== '$') return null;
     var pt = consumeDollarToken(text, j);
-    if (!pt) return { end: endIndex, pct: null };
-    var pct = parsePercentToken(String(pt.inner).trim());
-    if (pct == null) return { end: endIndex, pct: null };
-    return { end: pt.end, pct: pct };
+    if (!pt) return null;
+    var inner = String(pt.inner).trim();
+    var pct = parsePercentToken(inner);
+    if (pct != null) return { end: pt.end, pct: pct, align: null };
+    var align = parseImageAlignToken(inner);
+    if (align) return { end: pt.end, pct: null, align: align };
+    return null;
+  }
+
+  function tryParseImageOptionsAfter(text, endIndex) {
+    var j = endIndex;
+    var pct = null;
+    var align = null;
+    var guard = 0;
+    while (guard < 4) {
+      guard += 1;
+      var opt = tryConsumeImageSuffixToken(text, j);
+      if (!opt) break;
+      if (opt.pct != null && pct == null) {
+        pct = opt.pct;
+        j = opt.end;
+        continue;
+      }
+      if (opt.align && align == null) {
+        align = opt.align;
+        j = opt.end;
+        continue;
+      }
+      break;
+    }
+    return { end: j, pct: pct, align: align };
+  }
+
+  function applyExamImageNaturalSizing(root) {
+    var list;
+    if (root && root.querySelectorAll) {
+      list = root.querySelectorAll('img.exam-dollar-img[data-jm-width-pct]');
+    } else {
+      list = document.querySelectorAll('img.exam-dollar-img[data-jm-width-pct]');
+    }
+    list.forEach(function (img) {
+      var pct = parseFloat(img.getAttribute('data-jm-width-pct'));
+      if (isNaN(pct) || pct <= 0) return;
+      function apply() {
+        if (!img.naturalWidth) return;
+        var w = Math.max(1, Math.round(img.naturalWidth * (pct / 100)));
+        img.style.width = w + 'px';
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+      }
+      if (img.complete) apply();
+      else img.addEventListener('load', apply);
+    });
   }
 
   function bindCollapsibleDetails(details, storageKey, defaultOpen) {
@@ -846,27 +903,32 @@
           renderInline(colorM.text, idGen) +
           '</span>';
       } else if (bildM) {
-        var imgEnd = tok.end;
-        var pctAfter = tryParsePercentSizeAfter(s, imgEnd);
-        if (pctAfter.pct != null) imgEnd = pctAfter.end;
+        var imgOpts = tryParseImageOptionsAfter(s, tok.end);
+        var imgEnd = imgOpts.end;
         var imgUrl = resolveExamImageUrl(bildM[1]);
         if (imgUrl) {
-          var imgStyle =
-            pctAfter.pct != null
-              ? 'width:' + pctAfter.pct + '%;max-width:100%;height:auto'
-              : 'max-width:100%;height:auto';
+          var wrapCls = 'exam-dollar-img-wrap';
+          if (imgOpts.align === 'left') wrapCls += ' exam-dollar-img-wrap--left';
+          else if (imgOpts.align === 'right') wrapCls += ' exam-dollar-img-wrap--right';
+          else if (imgOpts.align === 'center') wrapCls += ' exam-dollar-img-wrap--center';
+          var pctAttr =
+            imgOpts.pct != null
+              ? ' data-jm-width-pct="' + escapeHtml(String(imgOpts.pct)) + '"'
+              : '';
           out +=
-            '<img class="exam-dollar-img" src="' +
+            '<span class="' +
+            wrapCls +
+            '"><img class="exam-dollar-img" src="' +
             escapeHtml(imgUrl) +
-            '" alt="" loading="lazy" style="' +
-            imgStyle +
-            '">';
+            '" alt="" loading="lazy"' +
+            pctAttr +
+            ' style="max-width:100%;height:auto"></span>';
         } else {
           out += escapeHtml(s.slice(i, imgEnd));
         }
         i = imgEnd;
         continue;
-      } else if (parsePercentToken(innerTrim)) {
+      } else if (parsePercentToken(innerTrim) || parseImageAlignToken(innerTrim)) {
         i = tok.end;
         continue;
       } else if (innerTrim === '__') {
@@ -995,6 +1057,7 @@
     var html = renderBlockToHtml(parsed.body, idGen);
     if (!html) html = '<p class="exam-dollar-empty-hint"></p>';
     rendered.innerHTML = html;
+    applyExamImageNaturalSizing(rendered);
 
     var content = taskEl.querySelector('.task-content');
     var solEl = taskEl.querySelector('.solution');
@@ -1007,6 +1070,7 @@
       var solHtml = renderBlockToHtml(parsed.solution, idGen);
       if (solHtml) {
         solEl.innerHTML = '<h4>Musterlösung:</h4>' + solHtml;
+        applyExamImageNaturalSizing(solEl);
       } else {
         solEl.innerHTML = '';
       }
@@ -1432,7 +1496,13 @@
       '.teacher-mode .exam-dollar-live-edit{display:block;min-height:56px;padding:6px 4px;line-height:1.55;font-family:Arial,sans-serif;font-size:14px;color:#222;outline:none;border-radius:4px;white-space:pre-wrap;word-break:break-word}' +
       '.teacher-mode .exam-dollar-live-edit:focus{box-shadow:0 0 0 2px rgba(225,6,0,0.25)}' +
       '.exam-dollar-live-edit.exam-dollar-drag-over,.exam-dollar-compose-input.exam-dollar-drag-over{box-shadow:0 0 0 2px rgba(21,101,192,.45)}' +
-      '.exam-dollar-img{display:block;max-width:100%;height:auto;margin:8px 0;border-radius:4px}' +
+      '.exam-dollar-img-wrap{max-width:100%;vertical-align:top;line-height:0}' +
+      '.exam-dollar-img-wrap--left{float:left;margin:2px 14px 8px 0}' +
+      '.exam-dollar-img-wrap--right{float:right;margin:2px 0 8px 14px}' +
+      '.exam-dollar-img-wrap--center{display:block;clear:both;margin:10px auto;text-align:center}' +
+      '.exam-dollar-img-wrap--center .exam-dollar-img{display:inline-block}' +
+      '.exam-dollar-rendered p::after{content:"";display:block;clear:both}' +
+      '.exam-dollar-img{display:block;max-width:100%;height:auto;border-radius:4px}' +
       '.teacher-mode .exam-points-editable{cursor:text;border-radius:3px;padding:0 2px}' +
       '.teacher-mode .exam-points-editable:hover{background:rgba(225,6,0,.08)}' +
       '.teacher-mode .exam-points-editable:focus{outline:2px solid rgba(225,6,0,.35)}' +
