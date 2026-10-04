@@ -605,33 +605,14 @@ export default function ExamGridTaskBuilderDialog({
           ) : null}
           {activeFilePath ? (
             <Box sx={{ mb: 1, width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
-              <Box sx={{ minWidth: 0, width: '100%' }}>
-                <ExamVersionTabsBar
-                  compact
-                  filePath={versionMetaPath}
-                  activeVariantPath={activeFilePath}
-                  disabled={loading || saving || sessionResetBusy}
-                  onActiveFilePathChange={handleVersionPathChange}
-                  onVersionMetaChange={handleVersionMetaChange}
-                />
-              </Box>
-              <Box
-                sx={{
-                  mt: 0.75,
-                  width: '100%',
-                  maxWidth: '100%',
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  boxSizing: 'border-box',
-                  pr: '20%',
-                }}
-              >
-                <ExamSessionResetTrio
-                  disabled={loading || saving || sessionResetBusy}
-                  onRestartTimer={() => void handleRestartTimerForAll()}
-                  onFullReset={() => setFullResetOpen(true)}
-                />
-              </Box>
+              <ExamVersionTabsBar
+                compact
+                filePath={versionMetaPath}
+                activeVariantPath={activeFilePath}
+                disabled={loading || saving || sessionResetBusy}
+                onActiveFilePathChange={handleVersionPathChange}
+                onVersionMetaChange={handleVersionMetaChange}
+              />
             </Box>
           ) : null}
 
@@ -643,98 +624,143 @@ export default function ExamGridTaskBuilderDialog({
             examLabel={activeFilePath?.split('/').pop() || filePath.split('/').pop()}
           />
 
-          {specs.length > 0 ? (
-            <Box
-              role="tablist"
-              aria-label="Aufgaben"
-              sx={{
-                display: 'inline-flex',
-                flexDirection: 'row',
-                flexWrap: 'nowrap',
-                alignItems: 'center',
-                gap: '3px',
-                mb: 1,
-                py: 0.25,
-              }}
-            >
-              {specs.map((s, i) => {
-                const pal = TASK_TAB_PALETTE[i % TASK_TAB_PALETTE.length];
-                const active = activeTaskTab === i;
-                return (
-                  <Tooltip key={`tab-${s.taskNumber}-${i}`} title={`Aufgabe ${s.taskNumber}`}>
-                    <Box
-                      component="button"
-                      type="button"
-                      role="tab"
-                      aria-selected={active}
-                      aria-label={`Aufgabe ${s.taskNumber}`}
-                      onClick={() => setActiveTaskTab(i)}
-                      sx={{
-                        flex: '0 0 auto',
-                        width: 20,
-                        minWidth: 20,
-                        height: 20,
-                        p: 0,
-                        m: 0,
-                        border: `1.5px solid ${active ? pal.on : pal.border}`,
-                        borderRadius: '3px',
-                        bgcolor: active ? pal.on : pal.bg,
-                        color: active ? '#fff' : pal.fg,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.62rem',
-                        fontWeight: 800,
-                        lineHeight: 1,
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                        boxShadow: active ? `0 0 0 1px ${pal.on}40` : 'none',
-                        '&:hover': {
-                          bgcolor: active ? pal.on : pal.bg,
-                          filter: active ? 'brightness(1.05)' : 'brightness(0.97)',
-                        },
-                      }}
-                    >
-                      {s.taskNumber}
-                    </Box>
-                  </Tooltip>
-                );
-              })}
-            </Box>
-          ) : null}
+          {(() => {
+            const editorMain = (
+              <>
+                {specs.length > 0 ? (
+                  <Box
+                    role="tablist"
+                    aria-label="Aufgaben"
+                    sx={{
+                      display: 'inline-flex',
+                      flexDirection: 'row',
+                      flexWrap: 'nowrap',
+                      alignItems: 'center',
+                      gap: '3px',
+                      mb: 1,
+                      py: 0.25,
+                    }}
+                  >
+                    {specs.map((s, i) => {
+                      const pal = TASK_TAB_PALETTE[i % TASK_TAB_PALETTE.length];
+                      const active = activeTaskTab === i;
+                      return (
+                        <Tooltip key={`tab-${s.taskNumber}-${i}`} title={`Aufgabe ${s.taskNumber}`}>
+                          <Box
+                            component="button"
+                            type="button"
+                            role="tab"
+                            aria-selected={active}
+                            aria-label={`Aufgabe ${s.taskNumber}`}
+                            onClick={() => setActiveTaskTab(i)}
+                            sx={{
+                              flex: '0 0 auto',
+                              width: 20,
+                              minWidth: 20,
+                              height: 20,
+                              p: 0,
+                              m: 0,
+                              border: `1.5px solid ${active ? pal.on : pal.border}`,
+                              borderRadius: '3px',
+                              bgcolor: active ? pal.on : pal.bg,
+                              color: active ? '#fff' : pal.fg,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.62rem',
+                              fontWeight: 800,
+                              lineHeight: 1,
+                              cursor: 'pointer',
+                              fontFamily: 'inherit',
+                              boxShadow: active ? `0 0 0 1px ${pal.on}40` : 'none',
+                              '&:hover': {
+                                bgcolor: active ? pal.on : pal.bg,
+                                filter: active ? 'brightness(1.05)' : 'brightness(0.97)',
+                              },
+                            }}
+                          >
+                            {s.taskNumber}
+                          </Box>
+                        </Tooltip>
+                      );
+                    })}
+                  </Box>
+                ) : null}
 
-          {specs[activeTaskTab] ? (
-            <Box key={`task-${specs[activeTaskTab].taskNumber}-${activeTaskTab}`} sx={TASK_OUTER_SX}>
-              <GridTaskEditorPanel
-                spec={specs[activeTaskTab]}
-                onChange={(next) =>
-                  setSpecs((prev) => prev.map((s, i) => (i === activeTaskTab ? next : s)))
-                }
-                previewExpanded={Boolean(previewOpenByTask[activeTaskTab])}
-                onTogglePreview={() =>
-                  setPreviewOpenByTask((prev) => ({
-                    ...prev,
-                    [activeTaskTab]: !prev[activeTaskTab],
-                  }))
-                }
-                examVersionLetters={examVersionLetters}
-                activeVersionLetter={activeVersionLetter}
-                onDuplicateSubToVariant={handleDuplicateSubToVariant}
-                onMoveSubToVariant={handleMoveSubToVariant}
-              />
-            </Box>
-          ) : null}
+                {specs[activeTaskTab] ? (
+                  <Box key={`task-${specs[activeTaskTab].taskNumber}-${activeTaskTab}`} sx={TASK_OUTER_SX}>
+                    <GridTaskEditorPanel
+                      spec={specs[activeTaskTab]}
+                      onChange={(next) =>
+                        setSpecs((prev) => prev.map((s, i) => (i === activeTaskTab ? next : s)))
+                      }
+                      previewExpanded={Boolean(previewOpenByTask[activeTaskTab])}
+                      onTogglePreview={() =>
+                        setPreviewOpenByTask((prev) => ({
+                          ...prev,
+                          [activeTaskTab]: !prev[activeTaskTab],
+                        }))
+                      }
+                      examVersionLetters={examVersionLetters}
+                      activeVersionLetter={activeVersionLetter}
+                      onDuplicateSubToVariant={handleDuplicateSubToVariant}
+                      onMoveSubToVariant={handleMoveSubToVariant}
+                    />
+                  </Box>
+                ) : null}
 
-          <Button
-            startIcon={<PostAddIcon />}
-            variant="outlined"
-            color="secondary"
-            disabled={saving || !activeFilePath}
-            onClick={addAufgabe}
-            sx={{ mb: 1 }}
-          >
-            Aufgabe hinzufügen
-          </Button>
+                <Button
+                  startIcon={<PostAddIcon />}
+                  variant="outlined"
+                  color="secondary"
+                  disabled={saving || !activeFilePath}
+                  onClick={addAufgabe}
+                  sx={{ mb: 1 }}
+                >
+                  Aufgabe hinzufügen
+                </Button>
+              </>
+            );
+
+            if (!activeFilePath) {
+              return editorMain;
+            }
+
+            return (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: '148px minmax(0, 1fr)',
+                  gap: '10px',
+                  alignItems: 'start',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <Box
+                  sx={{
+                    position: 'sticky',
+                    top: 8,
+                    alignSelf: 'start',
+                  }}
+                >
+                  <ExamSessionResetTrio
+                    disabled={loading || saving || sessionResetBusy}
+                    onOpenPreview={() =>
+                      window.open(
+                        `/api/file-system-paths/read-html?filePath=${encodeURIComponent(activeFilePath)}`,
+                        '_blank',
+                        'noopener,noreferrer',
+                      )
+                    }
+                    onRestartTimer={() => void handleRestartTimerForAll()}
+                    onFullReset={() => setFullResetOpen(true)}
+                  />
+                </Box>
+                <Box sx={{ minWidth: 0 }}>{editorMain}</Box>
+              </Box>
+            );
+          })()}
         </Box>
       </DialogContent>
       <DialogActions sx={{ flexShrink: 0 }}>

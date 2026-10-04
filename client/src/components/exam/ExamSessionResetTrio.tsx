@@ -1,82 +1,108 @@
 import React from 'react';
-import { Box, Button, ButtonGroup } from '@mui/material';
-import { alpha } from '@mui/material/styles';
+import { Box, Button } from '@mui/material';
 
 type Props = {
   disabled?: boolean;
   onRestartTimer: () => void;
   onFullReset: () => void;
+  onOpenPreview?: () => void;
 };
 
-const TIMER_COLOR = '#00695c';
-const FULL_RESET_COLOR = '#c62828';
+/** Gleiche Optik wie `.exam-chrome` in Pruefung-Standardvorlage (linke Leiste). */
+const CHROME_WIDTH = 148;
 
-const groupedBtn = {
-  height: 28,
-  px: 0.95,
-  py: 0.25,
-  fontSize: 'calc(0.56rem + 3px)',
-  fontWeight: 700,
-  textTransform: 'none' as const,
-  lineHeight: 1.15,
-  whiteSpace: 'nowrap' as const,
-  flex: '0 0 auto',
+const chromeBtn = {
+  width: '100%',
+  maxWidth: CHROME_WIDTH,
   boxSizing: 'border-box' as const,
+  border: 'none',
+  borderRadius: '7px',
+  fontWeight: 700,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  textTransform: 'none' as const,
+  lineHeight: 1.25,
+  '&:disabled': {
+    opacity: 0.55,
+    cursor: 'not-allowed',
+  },
 };
 
 export default function ExamSessionResetTrio({
   disabled,
   onRestartTimer,
   onFullReset,
+  onOpenPreview,
 }: Props) {
   return (
     <Box
       role="group"
       aria-label="Prüfung zurücksetzen"
-      sx={{ flexShrink: 1, minWidth: 0, maxWidth: '100%' }}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        gap: '8px',
+        width: '100%',
+        maxWidth: CHROME_WIDTH,
+        flexShrink: 0,
+      }}
     >
-      <ButtonGroup
+      {onOpenPreview ? (
+        <Button
+          type="button"
+          disabled={disabled}
+          onClick={onOpenPreview}
+          sx={{
+            ...chromeBtn,
+            bgcolor: '#1a1a1a',
+            color: '#fff',
+            fontSize: '11px',
+            py: 0.85,
+            px: 1,
+            '&:hover': { bgcolor: '#333' },
+          }}
+        >
+          Vorschau (Tab)
+        </Button>
+      ) : null}
+      <Button
+        type="button"
         disabled={disabled}
-        size="small"
-        variant="outlined"
+        onClick={onFullReset}
         sx={{
-          maxWidth: '100%',
-          boxSizing: 'border-box',
-          '& .MuiButtonGroup-grouped': groupedBtn,
-          '& .MuiButtonGroup-grouped:not(:last-of-type)': {
-            borderRightColor: 'rgba(0,0,0,0.12)',
-          },
+          ...chromeBtn,
+          bgcolor: '#E10600',
+          color: '#fff',
+          fontSize: '11px',
+          py: 0.9,
+          px: 1,
+          '&:hover': { bgcolor: '#B00500' },
         }}
       >
-        <Button
-          onClick={onFullReset}
-          sx={{
-            color: FULL_RESET_COLOR,
-            borderColor: `${FULL_RESET_COLOR} !important`,
-            bgcolor: alpha(FULL_RESET_COLOR, 0.08),
-            '&:hover': {
-              bgcolor: alpha(FULL_RESET_COLOR, 0.16),
-              borderColor: `${FULL_RESET_COLOR} !important`,
-            },
-          }}
-        >
-          Alles zurücksetzen
-        </Button>
-        <Button
-          onClick={onRestartTimer}
-          sx={{
-            color: TIMER_COLOR,
-            borderColor: `${TIMER_COLOR} !important`,
-            bgcolor: alpha(TIMER_COLOR, 0.08),
-            '&:hover': {
-              bgcolor: alpha(TIMER_COLOR, 0.16),
-              borderColor: `${TIMER_COLOR} !important`,
-            },
-          }}
-        >
-          Zeit neu starten
-        </Button>
-      </ButtonGroup>
+        Alles zurücksetzen
+      </Button>
+      <Button
+        type="button"
+        disabled={disabled}
+        onClick={onRestartTimer}
+        sx={{
+          ...chromeBtn,
+          bgcolor: '#81c784',
+          color: '#fff',
+          fontSize: '15px',
+          fontWeight: 700,
+          py: 1.75,
+          px: 1,
+          borderRadius: '8px',
+          whiteSpace: 'normal',
+          '&:hover': { bgcolor: '#66bb6a' },
+        }}
+      >
+        Zeit neu
+        <br />
+        starten
+      </Button>
     </Box>
   );
 }
