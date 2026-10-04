@@ -179,6 +179,54 @@ function injectExamDollarAuthoring(html: string): string {
   return injectBeforeLastBodyClose(html, EXAM_DOLLAR_BOOT_SNIPPET);
 }
 
+export const EXAM_CHROME_SCRIPT_MARKER = 'data-jm-exam-chrome-script';
+
+const EXAM_CHROME_CLOCK_BTN =
+  '<button type="button" class="exam-chrome-clock-btn teacher-only" id="examTimerToggle" aria-expanded="false" title="Bearbeitungszeit ein- oder ausblenden">🕐</button>';
+
+const EXAM_CHROME_COMPOSE_MOUNT =
+  '<div id="examChromeComposeMount" class="teacher-only" aria-label="Neue Aufgabe"></div>';
+
+/** Statisches Markup der Standardvorlage, falls ältere Prüfungen es noch nicht im HTML haben. */
+export function patchExamChromeMarkup(html: string): string {
+  if (!/class=["'][^"']*exam-chrome/i.test(html)) return html;
+
+  let out = html;
+  if (!out.includes('id="examTimerToggle"')) {
+    out = out.replace(
+      /(<aside\b[^>]*\bclass=["'][^"']*exam-chrome[^"']*["'][^>]*>)/i,
+      `$1\n        ${EXAM_CHROME_CLOCK_BTN}`,
+    );
+  }
+  if (!out.includes('id="examChromeComposeMount"')) {
+    if (/<div class="submit-section"/i.test(out)) {
+      out = out.replace(
+        /(\s*)(<div class="submit-section")/i,
+        `$1${EXAM_CHROME_COMPOSE_MOUNT}\n$1$2`,
+      );
+    } else {
+      out = out.replace(/(\s*)(<\/aside>)/i, `$1${EXAM_CHROME_COMPOSE_MOUNT}\n$1$2`);
+    }
+  }
+  return out;
+}
+
+const EXAM_CHROME_BOOT_SNIPPET = `<script src="/exam-chrome.js" ${EXAM_CHROME_SCRIPT_MARKER}="1"></script>
+<script ${EXAM_CHROME_SCRIPT_MARKER}-init="1">
+(function(){
+  function boot(){
+    if (typeof setupExamChrome === 'function') setupExamChrome();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>`;
+
+function injectExamChromeRuntime(html: string): string {
+  if (html.includes(EXAM_CHROME_SCRIPT_MARKER)) return html;
+  return injectBeforeLastBodyClose(html, EXAM_CHROME_BOOT_SNIPPET);
+}
+
 export function transformExamHtmlForDelivery(html: string, filePath?: string): string {
   if (!isDeliverableExamHtml(html, filePath)) return html;
 
@@ -205,6 +253,8 @@ export function transformExamHtmlForDelivery(html: string, filePath?: string): s
     }
   }
 
+  out = patchExamChromeMarkup(out);
+  out = injectExamChromeRuntime(out);
   out = injectExamDollarAuthoring(out);
   return injectHideLiveScoreForStudents(out);
 }

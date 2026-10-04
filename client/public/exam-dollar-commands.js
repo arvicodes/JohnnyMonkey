@@ -294,41 +294,6 @@
     textarea.value = '';
   }
 
-  function ensureChromeComposeMount() {
-    if (document.getElementById('examChromeComposeMount')) return;
-    var chrome = document.querySelector('.exam-chrome');
-    var toolbar = document.querySelector('.exam-toolbar');
-    if (!chrome) return;
-    var mount = document.createElement('div');
-    mount.id = 'examChromeComposeMount';
-    mount.className = 'teacher-only';
-    mount.setAttribute('aria-label', 'Neue Aufgabe');
-    if (toolbar && toolbar.nextSibling) chrome.insertBefore(mount, toolbar.nextSibling);
-    else chrome.appendChild(mount);
-  }
-
-  function setupExamChromeTimerToggle() {
-    var chrome = document.querySelector('.exam-chrome');
-    if (!chrome) return;
-    var btn = document.getElementById('examTimerToggle');
-    if (!btn) {
-      btn = document.createElement('button');
-      btn.type = 'button';
-      btn.id = 'examTimerToggle';
-      btn.className = 'exam-chrome-clock-btn teacher-only';
-      btn.title = 'Bearbeitungszeit ein- oder ausblenden';
-      btn.textContent = '🕐';
-      chrome.insertBefore(btn, chrome.firstChild);
-    }
-    chrome.classList.add('exam-timer-collapsed');
-    btn.setAttribute('aria-expanded', 'false');
-    btn.addEventListener('click', function () {
-      chrome.classList.toggle('exam-timer-collapsed');
-      var visible = !chrome.classList.contains('exam-timer-collapsed');
-      btn.setAttribute('aria-expanded', visible ? 'true' : 'false');
-    });
-  }
-
   function injectStyles() {
     if (document.querySelector('style[' + MARKER + ']')) return;
     var st = document.createElement('style');
@@ -350,12 +315,7 @@
       '.teacher-mode .exam-dollar-choice-correct .exam-dollar-choice-box{outline:2px solid #81c784}' +
       '.exam-dollar-gap{display:inline-block;vertical-align:baseline}' +
       '.exam-dollar-area{width:100%;min-height:72px}' +
-      '.exam-dollar-hint{font-size:10px;color:#888;margin-top:4px}' +
-      '.exam-chrome{display:flex;flex-direction:column;align-items:stretch;gap:8px;max-width:152px}' +
-      '.exam-chrome-clock-btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:36px;padding:6px;border:2px solid #E10600;border-radius:8px;background:#fff;font-size:22px;cursor:pointer;box-sizing:border-box}' +
-      '.exam-chrome.exam-timer-collapsed .timer-container{display:none}' +
-      '.teacher-mode .exam-chrome .submit-section{display:none!important}' +
-      '#examChromeComposeMount{width:100%}';
+      '.exam-dollar-hint{font-size:10px;color:#888;margin-top:4px}';
     document.head.appendChild(st);
   }
 
@@ -398,9 +358,8 @@
       });
       return;
     }
+    if (typeof setupExamChrome === 'function') setupExamChrome();
     injectStyles();
-    ensureChromeComposeMount();
-    setupExamChromeTimerToggle();
     ensureComposeArea();
     document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
       ensureTaskStructure(taskEl);
