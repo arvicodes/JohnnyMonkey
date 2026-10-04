@@ -140,8 +140,7 @@
   function createTaskFromTemplate(aufgabeLabel) {
     var paper = document.querySelector('.exam-paper');
     var footer = paper ? paper.querySelector('.footer') : null;
-    var compose = paper ? paper.querySelector('.exam-dollar-compose') : null;
-    var insertBefore = compose || footer;
+    var insertBefore = footer;
     if (!paper || !insertBefore) return null;
     var proto = paper.querySelector('.task');
     var taskEl;
@@ -161,7 +160,8 @@
         '<div class="points">… Punkte</div></div></div>' +
         '<div class="task-content">' +
         '<div class="exam-dollar-rendered"></div>' +
-        '<textarea class="exam-dollar-source teacher-only" spellcheck="false" rows="4"></textarea>' +
+        '<div class="exam-dollar-live-edit teacher-only" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true"></div>' +
+        '<textarea class="exam-dollar-source" hidden aria-hidden="true"></textarea>' +
         '</div>';
     }
     var src = taskEl.querySelector('.exam-dollar-source');
@@ -171,8 +171,39 @@
     }
     paper.insertBefore(taskEl, insertBefore);
     wireTaskSource(taskEl);
+    wireLiveEdit(taskEl);
     if (src) applySourceToTask(taskEl, src.value);
     return taskEl;
+  }
+
+  function syncLiveEditFromSource(taskEl) {
+    var src = taskEl.querySelector('.exam-dollar-source');
+    var live = taskEl.querySelector('.exam-dollar-live-edit');
+    if (!src || !live) return;
+    if (!live.dataset.jmTouched && src.value) {
+      live.textContent = src.value;
+    }
+  }
+
+  function wireLiveEdit(taskEl) {
+    var live = taskEl.querySelector('.exam-dollar-live-edit');
+    var src = taskEl.querySelector('.exam-dollar-source');
+    if (!live || !src || live.__jmLiveWired) return;
+    live.__jmLiveWired = true;
+    syncLiveEditFromSource(taskEl);
+    var debounce;
+    live.addEventListener('input', function () {
+      live.dataset.jmTouched = '1';
+      src.value = live.innerText || '';
+      clearTimeout(debounce);
+      debounce = setTimeout(function () {
+        applySourceToTask(taskEl, src.value);
+      }, 60);
+    });
+    live.addEventListener('blur', function () {
+      src.value = live.innerText || '';
+      applySourceToTask(taskEl, src.value);
+    });
   }
 
   function wireTaskSource(taskEl) {
@@ -206,11 +237,29 @@
       }
       content.insertBefore(rendered, content.firstChild);
     }
+    if (!content.querySelector('.exam-dollar-live-edit')) {
+      var live = document.createElement('div');
+      live.className = 'exam-dollar-live-edit teacher-only';
+      live.setAttribute('contenteditable', 'true');
+      live.setAttribute('spellcheck', 'true');
+      live.setAttribute('role', 'textbox');
+      live.setAttribute('aria-multiline', 'true');
+      live.setAttribute(
+        'data-placeholder',
+        'Hier schreiben — $Aufgabe 1$, $5 Punkte$, $_$, $C$ …',
+      );
+      var rendered = content.querySelector('.exam-dollar-rendered');
+      if (rendered && rendered.nextSibling) {
+        content.insertBefore(live, rendered.nextSibling);
+      } else {
+        content.appendChild(live);
+      }
+    }
     if (!content.querySelector('.exam-dollar-source')) {
       var ta = document.createElement('textarea');
-      ta.className = 'exam-dollar-source teacher-only';
-      ta.setAttribute('spellcheck', 'false');
-      ta.setAttribute('rows', '4');
+      ta.className = 'exam-dollar-source';
+      ta.setAttribute('hidden', 'hidden');
+      ta.setAttribute('aria-hidden', 'true');
       ta.value = renderedPlainFromTask(content);
       content.appendChild(ta);
     }
@@ -236,9 +285,48 @@
     if (src) {
       var rest = raw.split(/\r?\n/).slice(1).join('\n').trim();
       if (rest) src.value = '$Aufgabe ' + a + '$\n' + rest;
+      else src.value = '$Aufgabe ' + a + '$\n$5 Punkte$\n';
+      syncLiveEditFromSource(task);
       applySourceToTask(task, src.value);
+      var live = task.querySelector('.exam-dollar-live-edit');
+      if (live) live.focus();
     }
     textarea.value = '';
+  }
+
+  function ensureChromeComposeMount() {
+    if (document.getElementById('examChromeComposeMount')) return;
+    var chrome = document.querySelector('.exam-chrome');
+    var toolbar = document.querySelector('.exam-toolbar');
+    if (!chrome) return;
+    var mount = document.createElement('div');
+    mount.id = 'examChromeComposeMount';
+    mount.className = 'teacher-only';
+    mount.setAttribute('aria-label', 'Neue Aufgabe');
+    if (toolbar && toolbar.nextSibling) chrome.insertBefore(mount, toolbar.nextSibling);
+    else chrome.appendChild(mount);
+  }
+
+  function setupExamChromeTimerToggle() {
+    var chrome = document.querySelector('.exam-chrome');
+    if (!chrome) return;
+    var btn = document.getElementById('examTimerToggle');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'examTimerToggle';
+      btn.className = 'exam-chrome-clock-btn teacher-only';
+      btn.title = 'Bearbeitungszeit ein- oder ausblenden';
+      btn.textContent = '🕐';
+      chrome.insertBefore(btn, chrome.firstChild);
+    }
+    chrome.classList.add('exam-timer-collapsed');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.addEventListener('click', function () {
+      chrome.classList.toggle('exam-timer-collapsed');
+      var visible = !chrome.classList.contains('exam-timer-collapsed');
+      btn.setAttribute('aria-expanded', visible ? 'true' : 'false');
+    });
   }
 
   function injectStyles() {
@@ -246,10 +334,12 @@
     var st = document.createElement('style');
     st.setAttribute(MARKER, '1');
     st.textContent =
-      '.exam-dollar-source{width:100%;margin-top:10px;font-family:Consolas,Monaco,monospace;font-size:12px;line-height:1.45;padding:8px 10px;border:1px dashed #c62828;border-radius:6px;background:#fff8f8;resize:vertical;box-sizing:border-box}' +
-      '.teacher-mode .exam-dollar-source{display:block}' +
-      '.exam-dollar-rendered{margin-bottom:4px}' +
-      '.exam-dollar-compose{margin:16px 0;padding:10px;border:1px dashed #ef6c00;border-radius:8px;background:#fff8f0}' +
+      '.exam-dollar-source{display:none!important}' +
+      '.exam-dollar-rendered{margin-bottom:6px}' +
+      '.teacher-mode .exam-dollar-live-edit{display:block;min-height:72px;padding:4px 2px;font-size:14px;line-height:1.55;font-family:Arial,sans-serif;color:#222;outline:none;border-radius:4px;white-space:pre-wrap;word-break:break-word}' +
+      '.teacher-mode .exam-dollar-live-edit:focus{box-shadow:0 0 0 2px rgba(225,6,0,0.25)}' +
+      '.teacher-mode .exam-dollar-live-edit:empty::before{content:attr(data-placeholder);color:#999;font-style:italic}' +
+      '.exam-dollar-compose{margin:0;padding:10px;border:1px dashed #ef6c00;border-radius:8px;background:#fff8f0}' +
       '.exam-dollar-compose-label{font-size:11px;font-weight:700;color:#e65100;margin-bottom:6px}' +
       '.exam-dollar-compose-input{width:100%;font-family:Consolas,Monaco,monospace;font-size:12px;padding:8px;border:1px solid #ffb74d;border-radius:6px;resize:vertical;box-sizing:border-box}' +
       '.exam-dollar-choice{display:inline-flex;align-items:center;margin:0 6px 0 2px;vertical-align:middle;cursor:pointer}' +
@@ -260,22 +350,29 @@
       '.teacher-mode .exam-dollar-choice-correct .exam-dollar-choice-box{outline:2px solid #81c784}' +
       '.exam-dollar-gap{display:inline-block;vertical-align:baseline}' +
       '.exam-dollar-area{width:100%;min-height:72px}' +
-      '.exam-dollar-hint{font-size:10px;color:#888;margin-top:4px}';
+      '.exam-dollar-hint{font-size:10px;color:#888;margin-top:4px}' +
+      '.exam-chrome{display:flex;flex-direction:column;align-items:stretch;gap:8px;max-width:152px}' +
+      '.exam-chrome-clock-btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:36px;padding:6px;border:2px solid #E10600;border-radius:8px;background:#fff;font-size:22px;cursor:pointer;box-sizing:border-box}' +
+      '.exam-chrome.exam-timer-collapsed .timer-container{display:none}' +
+      '.teacher-mode .exam-chrome .submit-section{display:none!important}' +
+      '#examChromeComposeMount{width:100%}';
     document.head.appendChild(st);
   }
 
   function ensureComposeArea() {
-    var paper = document.querySelector('.exam-paper');
-    if (!paper || paper.querySelector('.exam-dollar-compose')) return;
+    if (document.querySelector('.exam-dollar-compose')) return;
+    var mount = document.getElementById('examChromeComposeMount');
     var wrap = document.createElement('div');
     wrap.className = 'exam-dollar-compose teacher-only';
     wrap.innerHTML =
-      '<div class="exam-dollar-compose-label">$Befehle$ — z. B. $Aufgabe 2$ · $5 Punkte$ · $C$ · $CC$ · $_$ · $__$</div>' +
+      '<div class="exam-dollar-compose-label">+ Aufgabe</div>' +
       '<textarea class="exam-dollar-compose-input" rows="2" placeholder="$Aufgabe 2$"></textarea>' +
-      '<div class="exam-dollar-hint">Neue Zeile mit $Aufgabe …$ legt eine Aufgabe an. Im Aufgabentext erscheint die Vorschau sofort darüber.</div>';
-    var footer = paper.querySelector('.footer');
-    if (footer) paper.insertBefore(wrap, footer);
-    else paper.appendChild(wrap);
+      '<div class="exam-dollar-hint">Strg+Eingabe oder Tab verlassen</div>';
+    if (mount) mount.appendChild(wrap);
+    else {
+      var chrome = document.querySelector('.exam-chrome');
+      if (chrome) chrome.appendChild(wrap);
+    }
     var ta = wrap.querySelector('.exam-dollar-compose-input');
     ta.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -296,13 +393,19 @@
       document.querySelectorAll('.exam-dollar-compose').forEach(function (el) {
         el.parentNode && el.parentNode.removeChild(el);
       });
+      document.querySelectorAll('.exam-dollar-live-edit').forEach(function (el) {
+        el.parentNode && el.parentNode.removeChild(el);
+      });
       return;
     }
     injectStyles();
+    ensureChromeComposeMount();
+    setupExamChromeTimerToggle();
     ensureComposeArea();
     document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
       ensureTaskStructure(taskEl);
       wireTaskSource(taskEl);
+      wireLiveEdit(taskEl);
       var src = taskEl.querySelector('.exam-dollar-source');
       if (src) applySourceToTask(taskEl, src.value);
     });
