@@ -131,6 +131,7 @@ import {
 } from './dashboard/DashboardLibraryPanels';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumber';
 import {
+  examOpenUrl,
   exerciseEditorUrl,
   exercisePresentUrl,
 } from '../lib/dashboardMaterialLibrary';
@@ -6777,6 +6778,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ userId, userRole = 
   // Mitarbeitsbewertung States
   const [participationModalOpen, setParticipationModalOpen] = useState(false);
   const [createExaminationModalOpen, setCreateExaminationModalOpen] = useState(false);
+  const [examinationCreateResultMode, setExaminationCreateResultMode] = useState<
+    'questionEditor' | 'standardPreviewTab'
+  >('questionEditor');
   const [createLessonModalOpen, setCreateLessonModalOpen] = useState(false);
   const [createExerciseModalOpen, setCreateExerciseModalOpen] = useState(false);
   const [examinationType, setExaminationType] = useState<'KA' | 'KU' | 'HU' | 'QZ' | ''>('QZ');
@@ -12020,6 +12024,19 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
   };
   
 
+  const openCreateExaminationModal = (
+    mode: 'questionEditor' | 'standardPreviewTab',
+    folderPath?: string,
+  ) => {
+    setExaminationCreateResultMode(mode);
+    setFolderPickerMode('exam');
+    if (folderPath !== undefined) {
+      setExaminationFolderPath(folderPath);
+    }
+    void fetchAvailableFolders();
+    setCreateExaminationModalOpen(true);
+  };
+
   // Funktion zum Erstellen einer Prüfung
   const handleCreateExamination = async () => {
     if (!examinationType || !examinationFileName || !examinationFolderPath) {
@@ -12047,11 +12064,17 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         showSnackbar(`Prüfung "${data.fileName}" erfolgreich erstellt!`, 'success');
         setCreateExaminationModalOpen(false);
 
-        // Fragen-Editor öffnen
         const editPath = data.absolutePath || data.filePath;
-        if (editPath) {
+        if (editPath && examinationCreateResultMode === 'standardPreviewTab') {
+          const opened = window.open(examOpenUrl(editPath), '_blank', 'noopener,noreferrer');
+          if (!opened) {
+            showSnackbar('Tab konnte nicht geöffnet werden — Popup-Blocker prüfen.', 'warning');
+          }
+        } else if (editPath) {
           await handleEditSingleQuestion({ path: editPath, name: data.fileName });
         }
+        setExaminationCreateResultMode('questionEditor');
+        setExamsPanelRefreshKey((k) => k + 1);
 
         // Ordnerinhalte aktualisieren (Lerngruppen + Arbeits-Reihen)
         Object.keys(assignedFolders).forEach((groupId) => {
@@ -18053,13 +18076,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               onEditExam={(item) => void handleEditSingleQuestion({ path: item.path, name: item.name })}
               onDeleteExam={(item) => handleExamDeleteDialogOpen({ path: item.path, name: item.name })}
               onCreateExam={(folderPath) => {
-                setFolderPickerMode('exam');
                 setExaminationType('QZ');
                 setExaminationFileName('');
                 setExamDurationMinutes(15);
-                setExaminationFolderPath(folderPath || '');
-                void fetchAvailableFolders();
-                setCreateExaminationModalOpen(true);
+                openCreateExaminationModal('questionEditor', folderPath || '');
+              }}
+              onCreateExamStandardTab={(folderPath) => {
+                setExaminationType('QZ');
+                setExaminationFileName('');
+                setExamDurationMinutes(15);
+                openCreateExaminationModal('standardPreviewTab', folderPath || '');
               }}
             />
             </Box>
@@ -30240,6 +30266,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         open={createExaminationModalOpen}
         onClose={() => {
           setCreateExaminationModalOpen(false);
+          setExaminationCreateResultMode('questionEditor');
           setExaminationType('QZ');
           setExaminationFileName('');
           setExamDurationMinutes(5);
@@ -30275,7 +30302,9 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <AssignmentIcon sx={{ color: '#c62828', fontSize: 30 }} />
             <Typography variant="h6" sx={{ fontSize: '1.2rem', fontWeight: 600, color: '#c62828' }}>
-              Prüfung erstellen
+              {examinationCreateResultMode === 'standardPreviewTab'
+                ? 'Prüfung erstellen (Standarddesign)'
+                : 'Prüfung erstellen'}
             </Typography>
           </Box>
         </DialogTitle>

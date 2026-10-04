@@ -187,9 +187,13 @@ function LibraryShell({
   children,
   onReload,
   onCreateNew,
+  onCreateNewAlt,
   createLabel = 'Neu',
+  createAltLabel = 'Variante 2',
   createColor = BTN_EDIT,
   createHover = BTN_EDIT_HOVER,
+  createAltColor = BTN_EDIT,
+  createAltHover = BTN_EDIT_HOVER,
 }: {
   colors: Colors;
   title: string;
@@ -201,10 +205,15 @@ function LibraryShell({
   children: React.ReactNode;
   onReload: () => void;
   onCreateNew?: () => void;
+  onCreateNewAlt?: () => void;
   createLabel?: string;
+  createAltLabel?: string;
   createColor?: string;
   createHover?: string;
+  createAltColor?: string;
+  createAltHover?: string;
 }) {
+  const createBtnCount = (onCreateNew ? 1 : 0) + (onCreateNewAlt ? 1 : 0);
   return (
     <Box sx={{ p: 1.4, position: 'relative' }}>
       <Box
@@ -236,6 +245,24 @@ function LibraryShell({
             </IconButton>
           </Tooltip>
         ) : null}
+        {onCreateNewAlt ? (
+          <Tooltip title={createAltLabel}>
+            <IconButton
+              size="small"
+              aria-label={createAltLabel}
+              onClick={onCreateNewAlt}
+              sx={{
+                color: '#fff',
+                bgcolor: createAltColor,
+                width: 28,
+                height: 28,
+                '&:hover': { bgcolor: createAltHover },
+              }}
+            >
+              <AddIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+        ) : null}
         <Tooltip title="Aktualisieren">
           <span>
             <IconButton
@@ -258,7 +285,15 @@ function LibraryShell({
         </Tooltip>
       </Box>
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.45, mb: 1.1, pr: onCreateNew ? 7.5 : 4.5 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.45,
+          mb: 1.1,
+          pr: createBtnCount > 1 ? 10.5 : createBtnCount === 1 ? 7.5 : 4.5,
+        }}
+      >
         <Box sx={{ color: titleColor || colors.primary, display: 'flex' }}>{icon}</Box>
         <Typography sx={{ fontSize: '0.8rem', fontWeight: 650, color: titleColor || colors.primary }}>
           {title}
@@ -274,29 +309,58 @@ function LibraryShell({
           <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', fontStyle: 'italic', mb: onCreateNew ? 1 : 0 }}>
             {emptyHint}
           </Typography>
-          {onCreateNew ? (
-            <Box
-              component="button"
-              onClick={onCreateNew}
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 0.4,
-                border: `1px solid ${createColor}66`,
-                bgcolor: `${createColor}14`,
-                color: createColor,
-                borderRadius: 1.2,
-                px: 1,
-                py: 0.45,
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                '&:hover': { bgcolor: `${createColor}24` },
-              }}
-            >
-              <AddIcon sx={{ fontSize: 15 }} />
-              {createLabel}
+          {(onCreateNew || onCreateNewAlt) ? (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.6 }}>
+              {onCreateNew ? (
+                <Box
+                  component="button"
+                  onClick={onCreateNew}
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 0.4,
+                    border: `1px solid ${createColor}66`,
+                    bgcolor: `${createColor}14`,
+                    color: createColor,
+                    borderRadius: 1.2,
+                    px: 1,
+                    py: 0.45,
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    '&:hover': { bgcolor: `${createColor}24` },
+                  }}
+                >
+                  <AddIcon sx={{ fontSize: 15 }} />
+                  {createLabel}
+                </Box>
+              ) : null}
+              {onCreateNewAlt ? (
+                <Box
+                  component="button"
+                  onClick={onCreateNewAlt}
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 0.4,
+                    border: `1px solid ${createAltColor}66`,
+                    bgcolor: `${createAltColor}14`,
+                    color: createAltColor,
+                    borderRadius: 1.2,
+                    px: 1,
+                    py: 0.45,
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    '&:hover': { bgcolor: `${createAltColor}24` },
+                  }}
+                >
+                  <AddIcon sx={{ fontSize: 15 }} />
+                  {createAltLabel}
+                </Box>
+              ) : null}
             </Box>
           ) : null}
         </Box>
@@ -546,6 +610,8 @@ export const DashboardExamsPanel: React.FC<{
   onCorrectExam?: (item: LibraryExamItem) => void;
   onDeleteExam?: (item: LibraryExamItem) => void;
   onCreateExam?: (folderPath?: string) => void;
+  /** Variante 2: nach Erstellen Standard-Prüfungsvorschau (Chrome links) in neuem Tab. */
+  onCreateExamStandardTab?: (folderPath?: string) => void;
   groups?: GroupLite[];
   assignedFolders?: Record<string, string[]>;
   /** Nach Löschen im Dashboard erhöhen, damit die Liste neu lädt. */
@@ -557,6 +623,7 @@ export const DashboardExamsPanel: React.FC<{
   onCorrectExam,
   onDeleteExam,
   onCreateExam,
+  onCreateExamStandardTab,
   groups = [],
   assignedFolders = {},
   refreshKey = 0,
@@ -600,9 +667,13 @@ export const DashboardExamsPanel: React.FC<{
       emptyHint={emptyHint}
       onReload={() => void load()}
       onCreateNew={onCreateExam ? () => onCreateExam() : undefined}
+      onCreateNewAlt={onCreateExamStandardTab ? () => onCreateExamStandardTab() : undefined}
       createLabel="Neue Prüfung"
+      createAltLabel="Neue Prüfung (Standarddesign, neuer Tab)"
       createColor={COLOR_PRUEFUNG}
       createHover={COLOR_PRUEFUNG_HOVER}
+      createAltColor={BTN_EDIT}
+      createAltHover={BTN_EDIT_HOVER}
     >
       <StufeReiheSections
         buckets={buckets}

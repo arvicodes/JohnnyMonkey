@@ -1,7 +1,7 @@
 {
   "version": 1,
   "lessonPath": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen",
-  "updatedAt": "2026-09-12T07:25:37.903Z",
+  "updatedAt": "2026-10-01T12:47:10.880Z",
   "bySlideId": {
     "slide-1789032573560-ow2dm": {
       "updatedAt": "2026-09-10T19:40:45.466Z",
@@ -33513,6 +33513,115 @@
             "name": "Profilball.png"
           }
         ]
+      },
+      "strokes": []
+    },
+    "slide-1788957659569-e5npe": {
+      "updatedAt": "2026-10-01T12:46:26.999Z",
+      "slide": {
+        "id": "slide-1788957659569-e5npe",
+        "order": 30,
+        "speakerNotes": "",
+        "layout": "two-column",
+        "subtitle": "",
+        "bodyLeft": "Findet heraus, wer die Rolle der künstlichen Intelligenz (KI) spielt! Wählt dazu aus den Fragen rechts diejenigen aus, mit denen ihr meint, die KI erkennen zu können. Welche Fragen haben sich als geeignet herausgestellt, um die KI zu erkennen?\nWelche Fragen waren eher nicht geeignet? Woran liegt das? Erarbeitet eine Strategie, um eine KI durch gezieltes Fragen zu erkennen.",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#2E7D32",
+        "title": "KI enttarnen - Rollenspiel",
+        "body": "Findet heraus, wer die Rolle der künstlichen Intelligenz (KI) spielt! Wählt dazu aus den\nfolgenden Fragen diejenigen aus, mit denen ihr meint, die KI erkennen zu können. Was\nvermutet ihr, nachdem ihr die jeweilige Antwort erhalten habt: Stammt sie von einem\nMenschen oder von einer KI?",
+        "sourceLessonName": "01.05 Turing Test",
+        "sourceLessonPath": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen",
+        "titleHtml": "<p>KI enttarnen - Rollenspiel</p>",
+        "bodyHtml": "<div title=\"Page 155\">\n\t\t\t\n\t\t\t\t\n\t\t\t\t\t<ol><li>\n\t\t\t\t\t\t\t<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\" style=\"font-size: 26px !important; color: rgb(26, 26, 46) !important; font-family: Aptos, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif !important;\"><span style=\"font-weight: bold;\">Findet</span> heraus, wer die Rolle der künstlichen Intelligenz (KI) spielt!&nbsp;</span>Wählt dazu aus den\nfolgenden Fragen diejenigen aus, mit denen ihr meint, die KI erkennen zu können. Was\nvermutet ihr, nachdem ihr die jeweilige Antwort erhalten habt: Stammt sie von einem\nMenschen oder von einer KI?&nbsp;</p></li></ol></div>",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "<div title=\"Page 155\">\n\t\t\t\n\t\t\t\t\n\t\t\t\t\t<ol><li><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\">\n\t\t\t\t\t\t\t<p><span data-pres-font=\"&quot;Aptos&quot;, &quot;Segoe UI&quot;, Calibri, Arial, sans-serif\" data-pres-fs=\"26\" data-pres-color=\"#1a1a2e\"><span style=\"font-weight: bold;\">Findet</span> heraus, wer die Rolle der künstlichen Intelligenz (KI) spielt! <span style=\"font-weight: bold;\">Wählt</span> dazu aus den Fragen rechts diejenigen aus, mit denen ihr meint, die KI erkennen zu können.&nbsp;</span></p></span></li><li><p><span style=\"font-style: italic;\">Welche Fragen haben sich als geeignet herausgestellt, um die KI zu erkennen?\nWelche Fragen waren eher nicht geeignet? Woran liegt das?</span> <span style=\"font-weight: bold;\">Erarbeitet</span> eine Strategie, um eine KI durch gezieltes Fragen zu erkennen.&nbsp;</p></li></ol></div>",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p data-pres-notes-typehost=\"1\"><br></p>",
+        "preparationNotes": "",
+        "preparationHtml": "<p><br></p>",
+        "materialNotes": "",
+        "materialHtml": "<p><br></p>",
+        "elements": [],
+        "transition": "fade",
+        "revealEnabled": true,
+        "zoneRevealSteps": {}
+      },
+      "strokes": []
+    },
+    "slide-1784099551722-qfeh9": {
+      "updatedAt": "2026-10-01T12:47:10.479Z",
+      "slide": {
+        "layout": "blank",
+        "title": "Start",
+        "body": "",
+        "speakerNotes": "",
+        "preparationNotes": "",
+        "materialNotes": "",
+        "subtitle": "",
+        "bodyLeft": "",
+        "bodyRight": "",
+        "imagePath": "",
+        "imageCaption": "",
+        "bodyStyle": "plain",
+        "titleAlign": "left",
+        "accentColor": "#2E7D32",
+        "titleHtml": "",
+        "bodyHtml": "",
+        "subtitleHtml": "",
+        "bodyLeftHtml": "",
+        "bodyRightHtml": "",
+        "imageCaptionHtml": "",
+        "speakerNotesHtml": "<p><br></p>",
+        "preparationHtml": "<p><br></p>",
+        "materialHtml": "<p><br></p>",
+        "elements": [
+          {
+            "id": "el-1784099551722-0-x4x",
+            "type": "image",
+            "x": 39.43064856150794,
+            "y": 2.6909722222222223,
+            "w": 58.632114955357146,
+            "h": 57.11554783950617,
+            "src": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/Vorstellung 4.png",
+            "zIndex": 1,
+            "revealStep": 0,
+            "stackLayer": "background",
+            "imageFit": "cover",
+            "imageObjectPosition": "50% 50%"
+          },
+          {
+            "id": "el-1788958438929",
+            "type": "image",
+            "x": 37.295618138762535,
+            "y": 0.8632551126189663,
+            "w": 61.50684065684621,
+            "h": 98.5174504027407,
+            "src": "/app/J-M-Reihen/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen/bild-1788958438880-k68xgq.png",
+            "zIndex": 4,
+            "imageFit": "contain",
+            "stackLayer": "foreground",
+            "imageSourceRect": {
+              "x": 37.295618138762535,
+              "y": 0.8632551126189663,
+              "w": 61.35861791310183,
+              "h": 98.28003734998997
+            },
+            "revealStep": 1,
+            "animationSet": true
+          }
+        ],
+        "transition": "fade",
+        "revealEnabled": true,
+        "zoneRevealSteps": {},
+        "id": "slide-1784099551722-qfeh9",
+        "order": 17,
+        "sourceLessonName": "01.02 Orga",
+        "sourceLessonPath": "git-intern/Informatik/MSS Grundthemen/11-04 KI/01 Basiswissen"
       },
       "strokes": []
     }
