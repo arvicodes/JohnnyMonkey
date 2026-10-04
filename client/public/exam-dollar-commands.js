@@ -9,7 +9,7 @@
  * $__$         großes Eingabefeld
  * $B Wort B$   fett · $I Wort I$ kursiv · $U Wort U$ unterstrichen (⌘/Ctrl+B, I, U im Textfeld)
  * $rot Wort rot$  Farbe (rot/gruen/blau/orange/lila) · $#ff0000$ Text $#ff0000$ Hex
- * $Bild name.png$  Bild (gleicher Ordner wie die Prüfung; Drag & Drop ins Textfeld)
+ * $Bild name.png$  Bild · direkt danach $10%$ = Breite in % der Zeile
  * $Musterlösung$    ab dieser Zeile: Text für die grüne Musterlösungsbox
  */
 (function (global) {
@@ -566,6 +566,68 @@
     bindPointsEl(titlePts);
   }
 
+  function parsePercentToken(innerTrim) {
+    var m = String(innerTrim || '').match(/^(\d+(?:[.,]\d+)?)\s*%$/);
+    if (!m) return null;
+    var n = parseFloat(m[1].replace(',', '.'));
+    if (isNaN(n) || n <= 0) return null;
+    return Math.min(100, n);
+  }
+
+  function tryParsePercentSizeAfter(text, endIndex) {
+    var j = endIndex;
+    var sp = text.slice(j).match(/^\s+/);
+    if (sp) j += sp[0].length;
+    if (text[j] !== '$') return { end: endIndex, pct: null };
+    var pt = consumeDollarToken(text, j);
+    if (!pt) return { end: endIndex, pct: null };
+    var pct = parsePercentToken(String(pt.inner).trim());
+    if (pct == null) return { end: endIndex, pct: null };
+    return { end: pt.end, pct: pct };
+  }
+
+  function bindCollapsibleDetails(details, storageKey, defaultOpen) {
+    if (!details || details.__jmDetailsBound) return;
+    details.__jmDetailsBound = true;
+    var stored = localStorage.getItem(storageKey);
+    if (stored === '1') details.open = true;
+    else if (stored === '0') details.open = false;
+    else details.open = !!defaultOpen;
+    details.addEventListener('toggle', function () {
+      localStorage.setItem(storageKey, details.open ? '1' : '0');
+    });
+  }
+
+  function ensureTaskAuthorPanel(taskEl) {
+    var content = taskEl.querySelector('.task-content');
+    if (!content) return;
+    var panel = content.querySelector('.exam-dollar-task-author');
+    if (!panel) {
+      panel = document.createElement('details');
+      panel.className = 'exam-dollar-task-author teacher-only';
+      var summary = document.createElement('summary');
+      summary.className = 'exam-dollar-task-author-summary';
+      summary.textContent = 'Erstellen';
+      var inner = document.createElement('div');
+      inner.className = 'exam-dollar-task-author-inner';
+      panel.appendChild(summary);
+      panel.appendChild(inner);
+      var rendered = content.querySelector('.exam-dollar-rendered');
+      if (rendered && rendered.nextSibling) {
+        content.insertBefore(panel, rendered.nextSibling);
+      } else {
+        content.appendChild(panel);
+      }
+    }
+    var inner = panel.querySelector('.exam-dollar-task-author-inner');
+    if (!inner) return;
+    var bar = content.querySelector('.exam-dollar-color-bar');
+    var live = content.querySelector('.exam-dollar-live-edit');
+    if (bar && bar.parentNode !== inner) inner.appendChild(bar);
+    if (live && live.parentNode !== inner) inner.appendChild(live);
+    bindCollapsibleDetails(panel, 'jmExamTaskAuthorOpen', false);
+  }
+
   function parseColorSpan(inner) {
     var hexM = inner.match(/^#([0-9a-f]{3,8})\s+([\s\S]+)\s+#([0-9a-f]{3,8})$/i);
     if (hexM && hexM[1].toLowerCase() === hexM[3].toLowerCase()) {
@@ -784,15 +846,29 @@
           renderInline(colorM.text, idGen) +
           '</span>';
       } else if (bildM) {
+        var imgEnd = tok.end;
+        var pctAfter = tryParsePercentSizeAfter(s, imgEnd);
+        if (pctAfter.pct != null) imgEnd = pctAfter.end;
         var imgUrl = resolveExamImageUrl(bildM[1]);
         if (imgUrl) {
+          var imgStyle =
+            pctAfter.pct != null
+              ? 'width:' + pctAfter.pct + '%;max-width:100%;height:auto'
+              : 'max-width:100%;height:auto';
           out +=
             '<img class="exam-dollar-img" src="' +
             escapeHtml(imgUrl) +
-            '" alt="" loading="lazy">';
+            '" alt="" loading="lazy" style="' +
+            imgStyle +
+            '">';
         } else {
-          out += escapeHtml(s.slice(i, tok.end));
+          out += escapeHtml(s.slice(i, imgEnd));
         }
+        i = imgEnd;
+        continue;
+      } else if (parsePercentToken(innerTrim)) {
+        i = tok.end;
+        continue;
       } else if (innerTrim === '__') {
         out +=
           '<div class="item input-group full-width exam-dollar-biggap">' +
@@ -1204,6 +1280,7 @@
       scheduleSave({ immediate: true });
     });
     ensureColorBar(taskEl);
+    ensureTaskAuthorPanel(taskEl);
     wireImageDrop(live, taskEl);
   }
 
@@ -1264,6 +1341,7 @@
       ta.value = renderedPlainFromTask(content);
       content.appendChild(ta);
     }
+    ensureTaskAuthorPanel(taskEl);
   }
 
   function renderedPlainFromTask(content) {
@@ -1340,9 +1418,11 @@
       '.exam-dollar-source{display:none!important}' +
       '.teacher-mode .task-content{display:flex;flex-direction:column}' +
       '.teacher-mode .exam-dollar-rendered{order:1}' +
-      '.teacher-mode .exam-dollar-color-bar{order:2}' +
-      '.teacher-mode .exam-dollar-live-edit{order:3}' +
-      '.teacher-mode .task-content .solution{order:4}' +
+      '.teacher-mode .exam-dollar-task-author{order:2;margin:0 0 8px;border:1px dashed #e0e0e0;border-radius:6px;background:#fff}' +
+      '.teacher-mode .exam-dollar-task-author-summary{cursor:pointer;font-size:11px;font-weight:700;color:#555;padding:6px 8px;list-style:none}' +
+      '.teacher-mode .exam-dollar-task-author-summary::-webkit-details-marker{display:none}' +
+      '.teacher-mode .exam-dollar-task-author-inner{padding:0 8px 8px}' +
+      '.teacher-mode .task-content .solution{order:3}' +
       '.exam-dollar-rendered{margin-bottom:6px;font-family:Arial,sans-serif;font-size:14px;line-height:1.55}' +
       '.teacher-mode .task-content .exam-dollar-rendered{display:block!important;margin:0 0 8px;padding:8px 6px;border:1px dashed #ddd;border-radius:6px;background:#fafafa}' +
       '.teacher-mode .task-content .exam-dollar-rendered::before{content:"Vorschau";display:block;font-size:10px;font-weight:700;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}' +
@@ -1363,7 +1443,10 @@
       '.exam-task-delete{flex-shrink:0;width:24px;height:24px;border:1px solid #d0d0d0;border-radius:5px;background:#fff;color:#c62828;font-size:18px;line-height:1;cursor:pointer;padding:0;margin-top:2px}' +
       '.exam-task-delete:hover{background:#ffebee;border-color:#e57373}' +
       '#examPaperComposeMount{margin:20px 0 8px}' +
-      '.exam-dollar-compose{margin:0;padding:10px;border:1px dashed #ef6c00;border-radius:8px;background:#fff8f0}' +
+      '.exam-dollar-compose{margin:0;border:1px dashed #ef6c00;border-radius:8px;background:#fff8f0}' +
+      '.exam-dollar-compose-summary{cursor:pointer;font-size:11px;font-weight:700;color:#e65100;padding:8px 10px;list-style:none}' +
+      '.exam-dollar-compose-summary::-webkit-details-marker{display:none}' +
+      '.exam-dollar-compose-body{padding:0 10px 10px}' +
       '.exam-dollar-compose-label{font-size:11px;font-weight:700;color:#e65100;margin-bottom:6px}' +
       '.exam-dollar-compose-input{width:100%;font-family:Consolas,Monaco,monospace;font-size:12px;padding:8px;border:1px solid #ffb74d;border-radius:6px;resize:vertical;box-sizing:border-box}' +
       '.exam-dollar-choice{display:inline-flex;align-items:center;margin:0 6px 0 2px;vertical-align:middle;cursor:pointer}' +
@@ -1381,19 +1464,38 @@
     var mount = ensurePaperComposeMount();
     var wrap = document.querySelector('.exam-dollar-compose');
     if (!wrap) {
-      wrap = document.createElement('div');
+      wrap = document.createElement('details');
       wrap.className = 'exam-dollar-compose teacher-only';
       wrap.innerHTML =
-        '<div class="exam-dollar-compose-label">+ Aufgabe</div>' +
+        '<summary class="exam-dollar-compose-summary">+ Aufgabe erstellen</summary>' +
+        '<div class="exam-dollar-compose-body">' +
         '<textarea class="exam-dollar-compose-input" rows="2"></textarea>' +
-        '<div class="exam-dollar-hint">Strg+Eingabe oder Tab verlassen</div>';
+        '<div class="exam-dollar-hint">Strg+Eingabe oder Tab verlassen · Bild: $Bild datei.png$ $50%$</div>' +
+        '</div>';
       if (mount) mount.appendChild(wrap);
       else {
         var paper = document.querySelector('.exam-paper');
         if (paper) paper.appendChild(wrap);
       }
+    } else if (wrap.tagName !== 'DETAILS') {
+      var oldTa = wrap.querySelector('.exam-dollar-compose-input');
+      var oldVal = oldTa ? oldTa.value : '';
+      var parent = wrap.parentNode;
+      var next = document.createElement('details');
+      next.className = 'exam-dollar-compose teacher-only';
+      next.innerHTML =
+        '<summary class="exam-dollar-compose-summary">+ Aufgabe erstellen</summary>' +
+        '<div class="exam-dollar-compose-body">' +
+        '<textarea class="exam-dollar-compose-input" rows="2"></textarea>' +
+        '<div class="exam-dollar-hint">Strg+Eingabe oder Tab verlassen · Bild: $Bild datei.png$ $50%$</div>' +
+        '</div>';
+      if (parent) parent.replaceChild(next, wrap);
+      wrap = next;
+      var nta = wrap.querySelector('.exam-dollar-compose-input');
+      if (nta && oldVal) nta.value = oldVal;
     }
     var ta = wrap.querySelector('.exam-dollar-compose-input');
+    bindCollapsibleDetails(wrap, 'jmExamComposeOpen', false);
     if (ta && !ta.__jmComposeBound) {
       ta.__jmComposeBound = true;
       ta.addEventListener('keydown', function (e) {
