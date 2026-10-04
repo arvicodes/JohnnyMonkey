@@ -148,12 +148,17 @@ const EXAM_HIDE_LIVE_SCORE_SCRIPT = `<script ${EXAM_HIDE_LIVE_SCORE_MARKER}="1">
 })();
 </script>`;
 
+/** Nur das dokument-eigene </body> — nicht Vorkommen in JS-Strings (z. B. generatePrintVersion). */
+function injectBeforeLastBodyClose(html: string, snippet: string): string {
+  const token = '</body>';
+  const idx = html.lastIndexOf(token);
+  if (idx === -1) return `${html}\n${snippet}`;
+  return `${html.slice(0, idx)}${snippet}\n${html.slice(idx)}`;
+}
+
 function injectHideLiveScoreForStudents(html: string): string {
   if (html.includes(EXAM_HIDE_LIVE_SCORE_MARKER)) return html;
-  if (html.includes('</body>')) {
-    return html.replace('</body>', `${EXAM_HIDE_LIVE_SCORE_SCRIPT}\n</body>`);
-  }
-  return `${html}\n${EXAM_HIDE_LIVE_SCORE_SCRIPT}`;
+  return injectBeforeLastBodyClose(html, EXAM_HIDE_LIVE_SCORE_SCRIPT);
 }
 
 export const EXAM_DOLLAR_SCRIPT_MARKER = 'data-jm-exam-dollar-script';
@@ -171,10 +176,7 @@ const EXAM_DOLLAR_BOOT_SNIPPET = `<script src="/exam-dollar-commands.js" ${EXAM_
 
 function injectExamDollarAuthoring(html: string): string {
   if (html.includes(EXAM_DOLLAR_SCRIPT_MARKER)) return html;
-  if (html.includes('</body>')) {
-    return html.replace('</body>', `${EXAM_DOLLAR_BOOT_SNIPPET}\n</body>`);
-  }
-  return `${html}\n${EXAM_DOLLAR_BOOT_SNIPPET}`;
+  return injectBeforeLastBodyClose(html, EXAM_DOLLAR_BOOT_SNIPPET);
 }
 
 export function transformExamHtmlForDelivery(html: string, filePath?: string): string {
@@ -199,11 +201,7 @@ export function transformExamHtmlForDelivery(html: string, filePath?: string): s
       }
     } else {
       const snippet = `<script ${EXAM_SUBSECTION_SHUFFLE_MARKER}="1">\n(function(){\n${EXAM_SUBSECTION_SHUFFLE_FUNCTION}\nif (document.readyState === 'loading') {\n  document.addEventListener('DOMContentLoaded', setupExamSubsectionShuffleForStudent);\n} else {\n  setupExamSubsectionShuffleForStudent();\n}\n})();\n</script>`;
-      if (out.includes('</body>')) {
-        out = out.replace('</body>', `${snippet}\n</body>`);
-      } else {
-        out = `${out}\n${snippet}`;
-      }
+      out = injectBeforeLastBodyClose(out, snippet);
     }
   }
 
