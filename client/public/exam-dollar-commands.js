@@ -489,10 +489,12 @@
         inp.value = accepted.split('|').join(' / ');
         inp.readOnly = true;
         inp.classList.add('exam-gap-solution-visible');
+        inp.setAttribute('data-jm-solution-hint', '1');
         inp.dataset.jmSolutionShown = '1';
       } else {
         inp.readOnly = false;
         inp.classList.remove('exam-gap-solution-visible');
+        inp.removeAttribute('data-jm-solution-hint');
         if (inp.dataset.jmSolutionShown) {
           inp.value = inp.dataset.jmUserValue || '';
         }
@@ -503,9 +505,15 @@
     syncGapInputWidths();
   }
 
-  function refreshGapSolutionDisplay() {
+  function isMusterloesungToggleOn() {
     var toggle = document.getElementById('solutionsToggle');
-    applyGapSolutionHints(!!(toggle && toggle.checked));
+    return !!(toggle && toggle.checked);
+  }
+
+  function refreshGapSolutionDisplay() {
+    var on = isMusterloesungToggleOn();
+    document.body.classList.toggle('show-solutions', on);
+    applyGapSolutionHints(on);
     syncGapInputWidths();
   }
 
@@ -1196,7 +1204,8 @@
       '.teacher-mode .exam-points-editable{cursor:text;border-radius:3px;padding:0 2px}' +
       '.teacher-mode .exam-points-editable:hover{background:rgba(225,6,0,.08)}' +
       '.teacher-mode .exam-points-editable:focus{outline:2px solid rgba(225,6,0,.35)}' +
-      'body.show-solutions input.exam-dollar-gap.exam-gap-solution-visible{color:#1b5e20!important;font-weight:700;background:#e8f5e9!important;border:1px solid #66bb6a!important}' +
+      'input.exam-dollar-gap{border:1px solid #ccc;background:#fff;color:#222;font-weight:normal}' +
+      'body.show-solutions input.exam-dollar-gap[data-jm-solution-hint="1"]{color:#1b5e20!important;font-weight:700;background:#e8f5e9!important;border:1px solid #66bb6a!important}' +
       '.task-header{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}' +
       '.task-header .task-number{flex:1;min-width:0}' +
       '.exam-task-delete{flex-shrink:0;width:24px;height:24px;border:1px solid #d0d0d0;border-radius:5px;background:#fff;color:#c62828;font-size:18px;line-height:1;cursor:pointer;padding:0;margin-top:2px}' +
@@ -1209,8 +1218,8 @@
       '.exam-dollar-choice-input{position:absolute;opacity:0;width:0;height:0}' +
       '.exam-dollar-choice-box{display:inline-block;width:16px;height:16px;border:2px solid #333;border-radius:3px;background:#fff;vertical-align:middle}' +
       '.exam-dollar-choice-input:checked + .exam-dollar-choice-box{background:#E10600;border-color:#b71c1c;box-shadow:inset 0 0 0 2px #fff}' +
-      '.exam-dollar-choice-correct .exam-dollar-choice-box{border-color:#2e7d32}' +
-      '.teacher-mode .exam-dollar-choice-correct .exam-dollar-choice-box{outline:2px solid #81c784}' +
+      'body.show-solutions .exam-dollar-choice-correct .exam-dollar-choice-box{border-color:#2e7d32}' +
+      'body.show-solutions .teacher-mode .exam-dollar-choice-correct .exam-dollar-choice-box{outline:2px solid #81c784}' +
       '.exam-dollar-gap{display:inline-block;vertical-align:baseline;width:auto!important;min-width:3ch!important;max-width:100%;text-align:left;padding:2px 5px;box-sizing:content-box}' +
       '.exam-dollar-area{width:100%;min-height:72px}' +
       '.exam-dollar-hint{font-size:10px;color:#888;margin-top:4px}';
