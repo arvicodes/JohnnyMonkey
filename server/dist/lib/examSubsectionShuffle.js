@@ -4,7 +4,7 @@
  * deterministisch mischen — Aufgaben 1/2/3 bleiben in fester Reihenfolge.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EXAM_HIDE_LIVE_SCORE_MARKER = exports.EXAM_SUBSECTION_SHUFFLE_FUNCTION = exports.EXAM_SUBSECTION_SHUFFLE_MARKER = void 0;
+exports.EXAM_DOLLAR_SCRIPT_MARKER = exports.EXAM_HIDE_LIVE_SCORE_MARKER = exports.EXAM_SUBSECTION_SHUFFLE_FUNCTION = exports.EXAM_SUBSECTION_SHUFFLE_MARKER = void 0;
 exports.isDeliverableExamHtml = isDeliverableExamHtml;
 exports.transformExamHtmlForDelivery = transformExamHtmlForDelivery;
 exports.EXAM_SUBSECTION_SHUFFLE_MARKER = 'data-jm-exam-subsection-shuffle';
@@ -156,6 +156,25 @@ function injectHideLiveScoreForStudents(html) {
     }
     return `${html}\n${EXAM_HIDE_LIVE_SCORE_SCRIPT}`;
 }
+exports.EXAM_DOLLAR_SCRIPT_MARKER = 'data-jm-exam-dollar-script';
+const EXAM_DOLLAR_BOOT_SNIPPET = `<script src="/exam-dollar-commands.js" ${exports.EXAM_DOLLAR_SCRIPT_MARKER}="1"></script>
+<script ${exports.EXAM_DOLLAR_SCRIPT_MARKER}-init="1">
+(function(){
+  function boot(){
+    if (typeof setupExamDollarAuthoring === 'function') setupExamDollarAuthoring();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>`;
+function injectExamDollarAuthoring(html) {
+    if (html.includes(exports.EXAM_DOLLAR_SCRIPT_MARKER))
+        return html;
+    if (html.includes('</body>')) {
+        return html.replace('</body>', `${EXAM_DOLLAR_BOOT_SNIPPET}\n</body>`);
+    }
+    return `${html}\n${EXAM_DOLLAR_BOOT_SNIPPET}`;
+}
 function transformExamHtmlForDelivery(html, filePath) {
     if (!isDeliverableExamHtml(html, filePath))
         return html;
@@ -185,6 +204,7 @@ function transformExamHtmlForDelivery(html, filePath) {
             }
         }
     }
+    out = injectExamDollarAuthoring(out);
     return injectHideLiveScoreForStudents(out);
 }
 //# sourceMappingURL=examSubsectionShuffle.js.map

@@ -244,7 +244,11 @@ export class FileSystemPathController {
       }
 
       let htmlOut = fileContent.toString('utf-8');
-      htmlOut = transformExamHtmlForDelivery(htmlOut, String(filePath));
+      try {
+        htmlOut = transformExamHtmlForDelivery(htmlOut, String(filePath));
+      } catch (transformErr) {
+        console.warn('exam shuffle transform skipped:', transformErr);
+      }
 
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.send(htmlOut);

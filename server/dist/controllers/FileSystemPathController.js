@@ -210,7 +210,12 @@ class FileSystemPathController {
                 return res.status(404).json({ error: 'File not found' });
             }
             let htmlOut = fileContent.toString('utf-8');
-            htmlOut = (0, examSubsectionShuffle_1.transformExamHtmlForDelivery)(htmlOut, String(filePath));
+            try {
+                htmlOut = (0, examSubsectionShuffle_1.transformExamHtmlForDelivery)(htmlOut, String(filePath));
+            }
+            catch (transformErr) {
+                console.warn('exam shuffle transform skipped:', transformErr);
+            }
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.send(htmlOut);
         }

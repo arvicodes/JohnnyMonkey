@@ -94,18 +94,33 @@ function flattenFiles(nodes: FsNode[], out: Array<{ name: string; path: string }
   return out;
 }
 
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  timeoutMs = 45_000,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
 async function readTree(folderPath: string): Promise<FsNode[]> {
   const folder = normalizeFsPath(folderPath);
   if (!folder) return [];
-  const res = await fetch(
-    `/api/file-system-paths/read?path=${encodeURIComponent(folder)}&recursive=true&t=${Date.now()}`,
-    {
-      cache: 'no-cache',
-      headers: { 'x-login-code': localStorage.getItem('loginCode') || '' },
-    },
-  );
-  if (!res.ok) return [];
-  const data = await res.json();
+  try {
+    const res = await fetchWithTimeout(
+      `/api/file-system-paths/read?path=${encodeURIComponent(folder)}&recursive=true&t=${Date.now()}`,
+      {
+        cache: 'no-cache',
+        headers: { 'x-login-code': localStorage.getItem('loginCode') || '' },
+      },
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
   // API liefert { path, root: { children: [...] } } — nicht ein Array.
   const fromHelper = parseReadApiChildren(data) as FsNode[];
   if (fromHelper.length) return fromHelper;
@@ -114,11 +129,14 @@ async function readTree(folderPath: string): Promise<FsNode[]> {
   if (Array.isArray(data?.root?.children)) return data.root.children as FsNode[];
   if (data?.root && Array.isArray(data.root)) return data.root as FsNode[];
   return [];
+  } catch {
+    return [];
+  }
 }
 
 async function readJsonFile<T>(filePath: string): Promise<T | null> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `/api/file-system-paths/load-whiteboard?filePath=${encodeURIComponent(filePath)}&t=${Date.now()}`,
       {
         cache: 'no-cache',
@@ -132,18 +150,12 @@ async function readJsonFile<T>(filePath: string): Promise<T | null> {
   }
 }
 
-function collectDeckPaths(rootPaths: string[], filesByRoot: Array<{ name: string; path: string }>[]): string[] {
+function collectDeckPaths(_rootPaths: string[], filesByRoot: Array<{ name: string; path: string }>[]): string[] {
   const deckPaths: string[] = [];
   for (const files of filesByRoot) {
     for (const f of files) {
       if (f.name === DECK_FILENAME) deckPaths.push(f.path);
     }
-  }
-  // Falls Ordner selbst eine Stunde/Kap ist und Deck direkt liegt — bereits in flatten.
-  // Zusätzlich: bekannte Deck-Pfade unter Roots annehmen.
-  for (const root of rootPaths) {
-    const guess = `${normalizeFsPath(root)}/${DECK_FILENAME}`;
-    deckPaths.push(guess);
   }
   return [...new Set(deckPaths.map(normalizeFsPath))];
 }

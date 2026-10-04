@@ -358,22 +358,29 @@ export default function ExamGridTaskBuilderDialog({
   React.useEffect(() => {
     if (!open) {
       loadedKeyRef.current = '';
+      loadGenerationRef.current += 1;
+      setLoading(false);
       return;
     }
 
     const loadKey = `${activeFilePath}|${initialTaskNumber}`;
-    if (loadedKeyRef.current === loadKey) return;
+    if (loadedKeyRef.current === loadKey) {
+      setLoading(false);
+      return;
+    }
 
     const cached = specsDraftByPathRef.current[activeFilePath];
     if (cached?.length) {
       loadedKeyRef.current = loadKey;
       setSpecs(cached);
       setPreviewOpenByTask({});
+      setLoading(false);
       return;
     }
 
     if (!activeFilePath) {
       setSpecs([createBlankExamGridTask(initialTaskNumber)]);
+      setLoading(false);
       return;
     }
 
