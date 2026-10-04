@@ -8,5 +8,7 @@ export const EXAM_DOLLAR_COMMANDS_HELP = [
   { syntax: '$C$', meaning: 'Checkbox zum Ankreuzen' },
   { syntax: '$CC$', meaning: 'Checkbox der richtigen Lösung (grün umrandet für Lehrkräfte)' },
   { syntax: '$_$', meaning: 'kleine Lücke im Fließtext' },
+  { syntax: '$_Lösung1/Lösung2/Lösung3_$', meaning: 'Lücke; alle Teile zwischen / sind gültige Lösungen' },
   { syntax: '$__$', meaning: 'großes Eingabefeld' },
+  { syntax: '$B Wort B$', meaning: 'fett (analog $I … I$ kursiv, $U … U$ unterstrichen)' },
 ] as const;

@@ -1410,11 +1410,10 @@
         </div>
         <div class="task-content">
             <div class="exam-dollar-rendered" aria-live="polite"></div>
-            <div class="exam-dollar-live-edit teacher-only" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" data-placeholder="Hier schreiben — $Aufgabe 1$, $5 Punkte$, $_$, $C$ …"></div>
+            <div class="exam-dollar-live-edit teacher-only" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" data-placeholder="$Aufgabe 1$, $5 Punkte$, $_$, $_Lösung1/Lösung2_$, $B fett B$, $C$ …"></div>
             <textarea class="exam-dollar-source" hidden aria-hidden="true">$Aufgabe 1$
 $5 Punkte$
-Hier die Aufgaben eintragen. Lücken mit $_$ oder groß mit $__$.
-Checkbox $C$ und richtige Lösung $CC$.</textarea>
+</textarea>
             <div class="solution">
                 <h4>Musterlösung:</h4>
                 <p>a) …</p>
@@ -2146,9 +2145,14 @@ Checkbox $C$ und richtige Lösung $CC$.</textarea>
         }
 
         function isCorrect(id, value) {
-            const accepted = correctAnswers[id] || [];
+            const inputEl = document.getElementById(id);
+            const gapAccepted = inputEl && inputEl.getAttribute('data-jm-accepted');
             const n = normalizeAnswer(value);
             if (!n) return false;
+            if (gapAccepted) {
+                return gapAccepted.split('|').some(a => normalizeAnswer(a) === n);
+            }
+            const accepted = correctAnswers[id] || [];
             if (accepted.some(a => normalizeAnswer(a) === n)) return true;
             if (id === 'a3a') return n === '>' || n.includes('>') || n.includes('groesser');
             if (id === 'a3b') return n === '<' || n.includes('<') || n.includes('kleiner');

@@ -5,7 +5,9 @@
  * $C$          Checkbox
  * $CC$         Checkbox (richtige Lösung)
  * $_$          kleine Lücke (inline)
+ * $_a/b/c_$    Lücke mit mehreren gültigen Lösungen
  * $__$         großes Eingabefeld
+ * $B Wort B$   fett · $I Wort I$ kursiv · $U Wort U$ unterstrichen
  */
 (function (global) {
   'use strict';
@@ -32,6 +34,35 @@
     return m ? m[1].replace(',', '.') : null;
   }
 
+  function encodeAcceptedAttr(answers) {
+    return answers
+      .map(function (a) {
+        return String(a || '').replace(/\|/g, '').trim();
+      })
+      .filter(Boolean)
+      .join('|');
+  }
+
+  function parseGapToken(inner) {
+    if (inner === '_') return { answers: [] };
+    if (inner === '__') return null;
+    var wrapped = inner.match(/^_(.+)_$/);
+    if (!wrapped) return null;
+    var body = wrapped[1];
+    if (!body) return { answers: [] };
+    if (body.indexOf('/') >= 0) {
+      return {
+        answers: body
+          .split('/')
+          .map(function (s) {
+            return s.trim();
+          })
+          .filter(Boolean),
+      };
+    }
+    return { answers: [body] };
+  }
+
   function renderInline(text, idGen) {
     var re = /\$([^$]+)\$/g;
     var out = '';
@@ -40,31 +71,50 @@
     while ((m = re.exec(text)) !== null) {
       out += escapeHtml(text.slice(last, m.index));
       var inner = m[1].trim();
-      if (inner === '__') {
+      var boldM = inner.match(/^B\s+([\s\S]+?)\s+B$/i);
+      var italicM = inner.match(/^I\s+([\s\S]+?)\s+I$/i);
+      var underM = inner.match(/^U\s+([\s\S]+?)\s+U$/i);
+      if (boldM) {
+        out += '<strong>' + renderInline(boldM[1], idGen) + '</strong>';
+      } else if (italicM) {
+        out += '<em>' + renderInline(italicM[1], idGen) + '</em>';
+      } else if (underM) {
+        out += '<u>' + renderInline(underM[1], idGen) + '</u>';
+      } else if (inner === '__') {
         out +=
           '<div class="item input-group full-width exam-dollar-biggap">' +
           '<textarea class="exam-dollar-area" rows="4" id="' +
           idGen() +
           '"></textarea></div>';
-      } else if (inner === '_') {
-        out +=
-          '<input type="text" class="exam-dollar-gap blank-tiny" id="' +
-          idGen() +
-          '" autocomplete="off">';
-      } else if (/^CC$/i.test(inner)) {
-        out +=
-          '<label class="exam-dollar-choice exam-dollar-choice-correct">' +
-          '<input type="checkbox" class="exam-dollar-choice-input" data-correct="1">' +
-          '<span class="exam-dollar-choice-box" aria-hidden="true"></span></label>';
-      } else if (/^C$/i.test(inner)) {
-        out +=
-          '<label class="exam-dollar-choice">' +
-          '<input type="checkbox" class="exam-dollar-choice-input">' +
-          '<span class="exam-dollar-choice-box" aria-hidden="true"></span></label>';
-      } else if (parsePunkte(inner) || parseAufgabe(inner)) {
-        out += escapeHtml(m[0]);
       } else {
-        out += escapeHtml(m[0]);
+        var gap = parseGapToken(inner);
+        if (gap) {
+          var id = idGen();
+          var accepted = encodeAcceptedAttr(gap.answers);
+          var attr = accepted
+            ? ' data-jm-accepted="' + escapeHtml(accepted) + '"'
+            : '';
+          out +=
+            '<input type="text" class="exam-dollar-gap blank-tiny" id="' +
+            id +
+            '"' +
+            attr +
+            ' autocomplete="off">';
+        } else if (/^CC$/i.test(inner)) {
+          out +=
+            '<label class="exam-dollar-choice exam-dollar-choice-correct">' +
+            '<input type="checkbox" class="exam-dollar-choice-input" data-correct="1">' +
+            '<span class="exam-dollar-choice-box" aria-hidden="true"></span></label>';
+        } else if (/^C$/i.test(inner)) {
+          out +=
+            '<label class="exam-dollar-choice">' +
+            '<input type="checkbox" class="exam-dollar-choice-input">' +
+            '<span class="exam-dollar-choice-box" aria-hidden="true"></span></label>';
+        } else if (parsePunkte(inner) || parseAufgabe(inner)) {
+          out += escapeHtml(m[0]);
+        } else {
+          out += escapeHtml(m[0]);
+        }
       }
       last = re.lastIndex;
     }
@@ -114,12 +164,7 @@
     }
     var html = '';
     for (i = 0; i < bodyLines.length; i++) {
-      var line = bodyLines[i];
-      if (!/\$[^$]+\$/.test(line) && /<[a-z][\s\S]*>/i.test(line)) {
-        html += '<p>' + line + '</p>';
-      } else {
-        html += '<p>' + renderInline(line, idGen) + '</p>';
-      }
+      html += '<p>' + renderInline(bodyLines[i], idGen) + '</p>';
     }
     if (!html) html = '<p class="exam-dollar-empty-hint"></p>';
     rendered.innerHTML = html;
@@ -247,7 +292,7 @@
       live.setAttribute('aria-multiline', 'true');
       live.setAttribute(
         'data-placeholder',
-        'Hier schreiben — $Aufgabe 1$, $5 Punkte$, $_$, $C$ …',
+        '$Aufgabe 1$, $5 Punkte$, $_$, $_a/b/c_$, $B fett B$, $C$ …',
       );
       var rendered = content.querySelector('.exam-dollar-rendered');
       if (rendered && rendered.nextSibling) {
@@ -333,7 +378,8 @@
     st.textContent =
       '.exam-dollar-source{display:none!important}' +
       '.exam-dollar-rendered{margin-bottom:6px}' +
-      '.teacher-mode .exam-dollar-live-edit{display:block;min-height:72px;padding:4px 2px;font-size:14px;line-height:1.55;font-family:Arial,sans-serif;color:#222;outline:none;border-radius:4px;white-space:pre-wrap;word-break:break-word}' +
+      '.teacher-mode .task-content .exam-dollar-rendered{display:none!important}' +
+      '.teacher-mode .exam-dollar-live-edit{display:block;min-height:72px;padding:4px 2px;line-height:1.55;font-family:Consolas,Monaco,monospace;font-size:13px;color:#222;outline:none;border-radius:4px;white-space:pre-wrap;word-break:break-word}' +
       '.teacher-mode .exam-dollar-live-edit:focus{box-shadow:0 0 0 2px rgba(225,6,0,0.25)}' +
       '.teacher-mode .exam-dollar-live-edit:empty::before{content:attr(data-placeholder);color:#999;font-style:italic}' +
       '#examPaperComposeMount{margin:20px 0 8px}' +
@@ -386,6 +432,10 @@
 
   function setupExamDollarAuthoring() {
     if (localStorage.getItem('teacherId') === null) {
+      document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
+        var src = taskEl.querySelector('.exam-dollar-source');
+        if (src && src.value) applySourceToTask(taskEl, src.value);
+      });
       document.querySelectorAll('.exam-dollar-source').forEach(function (el) {
         el.parentNode && el.parentNode.removeChild(el);
       });
