@@ -6,6 +6,17 @@ export const EXAM_LIBRARY_WHITE_BG_VERSION = 2;
 
 const LEGACY_STORAGE_KEY = 'jm-exam-library-icons-v1';
 
+export type ExamLibraryIconTemplate = {
+  savedAt: string;
+  icons: Record<string, string>;
+  byExamType: Partial<Record<'KA' | 'KU' | 'HU' | 'QZ', string>>;
+};
+
+export type ExamLibraryIconsLoadResult = {
+  icons: Record<string, string>;
+  template: ExamLibraryIconTemplate | null;
+};
+
 function canonicalExamIconKey(filePath: string): string {
   let p = (filePath || '').replace(/\\/g, '/').replace(/\/+$/, '').trim();
   if (p.startsWith('git-intern/')) {
@@ -62,16 +73,19 @@ function authHeaders(): HeadersInit {
 }
 
 /** Icons vom Server (Lehrkraft). */
-export async function fetchExamLibraryIconsFromServer(): Promise<Record<string, string>> {
+export async function fetchExamLibraryIconsFromServer(): Promise<ExamLibraryIconsLoadResult> {
   try {
     const res = await fetch('/api/file-system-paths/exam-library-icons', {
       headers: { 'x-login-code': localStorage.getItem('loginCode') || '' },
       credentials: 'include',
     });
-    if (!res.ok) return loadLegacyLocalIconsMap();
+    if (!res.ok) {
+      return { icons: loadLegacyLocalIconsMap(), template: null };
+    }
     const data = (await res.json()) as {
       icons?: Record<string, string>;
       whiteBgVersion?: number;
+      iconTemplate?: ExamLibraryIconTemplate | null;
     };
     const serverIcons = data.icons && typeof data.icons === 'object' ? data.icons : {};
     let merged = await syncLegacyIconsToServer(serverIcons);
@@ -79,10 +93,35 @@ export async function fetchExamLibraryIconsFromServer(): Promise<Record<string, 
     if (whiteBgVersion < EXAM_LIBRARY_WHITE_BG_VERSION) {
       merged = await migrateExamLibraryImageIconsWhiteBackground(merged);
     }
-    return merged;
+    const template =
+      data.iconTemplate && typeof data.iconTemplate === 'object' ? data.iconTemplate : null;
+    return { icons: merged, template };
   } catch {
-    return loadLegacyLocalIconsMap();
+    return { icons: loadLegacyLocalIconsMap(), template: null };
   }
+}
+
+export async function saveExamLibraryIconTemplateToServer(): Promise<{
+  icons: Record<string, string>;
+  iconTemplate: ExamLibraryIconTemplate;
+}> {
+  const res = await fetch('/api/file-system-paths/exam-library-icons/save-template', {
+    method: 'POST',
+    headers: authHeaders(),
+    credentials: 'include',
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    icons?: Record<string, string>;
+    iconTemplate?: ExamLibraryIconTemplate;
+  };
+  if (!res.ok || !data.iconTemplate) {
+    throw new Error(data.error || 'Icon-Vorlage konnte nicht gespeichert werden');
+  }
+  return {
+    icons: data.icons && typeof data.icons === 'object' ? data.icons : {},
+    iconTemplate: data.iconTemplate,
+  };
 }
 
 async function migrateExamLibraryImageIconsWhiteBackground(
@@ -189,11 +228,19 @@ export function getExamLibraryIcon(
   filePath: string,
   fileName: string,
   map?: Record<string, string>,
+  template?: ExamLibraryIconTemplate | null,
 ): string {
   const key = canonicalExamIconKey(filePath);
   const icons = map ?? {};
   const custom = icons[key];
   if (custom && custom.trim()) return custom.trim();
+  const fromPath = template?.icons?.[key];
+  if (fromPath && fromPath.trim()) return fromPath.trim();
+  const t = examTypeFromFileName(fileName);
+  if (t) {
+    const fromType = template?.byExamType?.[t];
+    if (fromType && fromType.trim()) return fromType.trim();
+  }
   return defaultExamLibraryIcon(fileName);
 }
 

@@ -25,6 +25,7 @@ import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AddIcon from '@mui/icons-material/Add';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
 import {
   examOpenUrl,
   exerciseEditorUrl,
@@ -44,9 +45,11 @@ import {
   fetchExamLibraryIconsFromServer,
   getExamLibraryIcon,
   saveExamLibraryIconToServer,
+  saveExamLibraryIconTemplateToServer,
   uploadExamLibraryIconImageToServer,
   examLibraryIconImageSrc,
   isExamLibraryImageIcon,
+  type ExamLibraryIconTemplate,
 } from '../../lib/examLibraryIcons';
 import EmojiSelector from '../EmojiSelector';
 import {
@@ -219,6 +222,8 @@ function LibraryShell({
   onReload,
   onCreateNew,
   onCreateNewAlt,
+  onSaveIconTemplate,
+  iconTemplateSaving,
   createLabel = 'Neu',
   createAltLabel = 'Variante 2',
   createColor = BTN_EDIT,
@@ -237,6 +242,8 @@ function LibraryShell({
   onReload: () => void;
   onCreateNew?: () => void;
   onCreateNewAlt?: () => void;
+  onSaveIconTemplate?: () => void;
+  iconTemplateSaving?: boolean;
   createLabel?: string;
   createAltLabel?: string;
   createColor?: string;
@@ -292,6 +299,31 @@ function LibraryShell({
             >
               <AddIcon sx={{ fontSize: 18 }} />
             </IconButton>
+          </Tooltip>
+        ) : null}
+        {onSaveIconTemplate ? (
+          <Tooltip title="Aktuelle Prüfungs-Icons als Vorlage speichern">
+            <span>
+              <IconButton
+                size="small"
+                aria-label="Icon-Vorlage speichern"
+                onClick={onSaveIconTemplate}
+                disabled={Boolean(iconTemplateSaving)}
+                sx={{
+                  color: '#fff',
+                  bgcolor: '#6a1b9a',
+                  width: 28,
+                  height: 28,
+                  '&:hover': { bgcolor: '#4a148c' },
+                }}
+              >
+                {iconTemplateSaving ? (
+                  <CircularProgress size={14} sx={{ color: '#fff' }} />
+                ) : (
+                  <BookmarkIcon sx={{ fontSize: 16 }} />
+                )}
+              </IconButton>
+            </span>
           </Tooltip>
         ) : null}
         <Tooltip title="Aktualisieren">
@@ -716,10 +748,14 @@ export const DashboardExamsPanel: React.FC<{
   const [typeChoice, setTypeChoice] = useState<ExamLibraryType>('QZ');
   const [typeSaving, setTypeSaving] = useState(false);
   const [iconMap, setIconMap] = useState<Record<string, string>>({});
+  const [iconTemplate, setIconTemplate] = useState<ExamLibraryIconTemplate | null>(null);
+  const [iconTemplateSaving, setIconTemplateSaving] = useState(false);
   const [iconPickerItem, setIconPickerItem] = useState<LibraryExamItem | null>(null);
 
   const loadExamIcons = useCallback(async () => {
-    setIconMap(await fetchExamLibraryIconsFromServer());
+    const loaded = await fetchExamLibraryIconsFromServer();
+    setIconMap(loaded.icons);
+    setIconTemplate(loaded.template);
   }, []);
 
   useEffect(() => {
@@ -760,6 +796,28 @@ export const DashboardExamsPanel: React.FC<{
   const openTypeDialog = (item: LibraryExamItem) => {
     setTypeDialogItem(item);
     setTypeChoice(examTypeFromFileName(item.name) || 'QZ');
+  };
+
+  const saveIconTemplate = () => {
+    setIconTemplateSaving(true);
+    void (async () => {
+      try {
+        const { icons, iconTemplate: tpl } = await saveExamLibraryIconTemplateToServer();
+        setIconMap(icons);
+        setIconTemplate(tpl);
+        const n = Object.keys(tpl.icons).length;
+        onNotify?.(
+          n
+            ? `Icon-Vorlage gespeichert (${n} Zuordnung${n === 1 ? '' : 'en'})`
+            : 'Icon-Vorlage gespeichert',
+          'success',
+        );
+      } catch (e) {
+        onNotify?.(e instanceof Error ? e.message : 'Vorlage konnte nicht gespeichert werden', 'error');
+      } finally {
+        setIconTemplateSaving(false);
+      }
+    })();
   };
 
   const submitTypeChange = async () => {
@@ -814,6 +872,8 @@ export const DashboardExamsPanel: React.FC<{
       createHover={COLOR_PRUEFUNG_HOVER}
       createAltColor={BTN_EDIT}
       createAltHover={BTN_EDIT_HOVER}
+      onSaveIconTemplate={saveIconTemplate}
+      iconTemplateSaving={iconTemplateSaving}
     >
       <StufeReiheSections
         buckets={buckets}
@@ -833,7 +893,7 @@ export const DashboardExamsPanel: React.FC<{
             accent={rowStyle.accent}
             accentWidth={rowStyle.accentWidth}
             rowBg={rowStyle.rowBg}
-            icon={getExamLibraryIcon(item.path, item.name, iconMap)}
+            icon={getExamLibraryIcon(item.path, item.name, iconMap, iconTemplate)}
             onIconClick={() => setIconPickerItem(item)}
             actions={
               <>
@@ -934,7 +994,7 @@ export const DashboardExamsPanel: React.FC<{
       title="Icon für diese Prüfung"
       currentEmoji={
         iconPickerItem
-          ? getExamLibraryIcon(iconPickerItem.path, iconPickerItem.name, iconMap)
+          ? getExamLibraryIcon(iconPickerItem.path, iconPickerItem.name, iconMap, iconTemplate)
           : '📄'
       }
       onSelect={(emoji) => {

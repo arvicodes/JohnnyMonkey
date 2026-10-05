@@ -112,6 +112,7 @@ router.post(
   FileSystemPathController.overwriteExamLibraryIconAsset,
 );
 router.post('/exam-library-icons/white-bg-done', FileSystemPathController.markExamLibraryWhiteBgDone);
+router.post('/exam-library-icons/save-template', FileSystemPathController.saveExamLibraryIconTemplate);
 
 // Stunde erstellen (Ordner + Standardmaterialien)
 router.post('/create-lesson-folder', FileSystemPathController.createLessonFolder);

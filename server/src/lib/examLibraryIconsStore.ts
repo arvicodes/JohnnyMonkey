@@ -33,36 +33,79 @@ export function readTeacherExamLibraryWhiteBgVersion(teacherFolderKey: string): 
   return readTeacherExamLibraryIconsDocument(teacherFolderKey).whiteBgVersion;
 }
 
+export type TeacherExamLibraryIconTemplate = {
+  savedAt: string;
+  icons: Record<string, string>;
+  byExamType: Record<string, string>;
+};
+
+function examTypeFromBasename(fileName: string): string {
+  const n = String(fileName || '').trim();
+  if (/^KA_/i.test(n)) return 'KA';
+  if (/^KU_/i.test(n)) return 'KU';
+  if (/^HU_/i.test(n) || /^HÜ_/i.test(n)) return 'HU';
+  if (/^QZ_/i.test(n)) return 'QZ';
+  return '';
+}
+
 function readTeacherExamLibraryIconsDocument(teacherFolderKey: string): {
   icons: Record<string, string>;
   whiteBgVersion: number;
+  iconTemplate: TeacherExamLibraryIconTemplate | null;
 } {
   const fp = iconsFileAbsolute(teacherFolderKey);
-  if (!fs.existsSync(fp)) return { icons: {}, whiteBgVersion: 0 };
+  if (!fs.existsSync(fp)) return { icons: {}, whiteBgVersion: 0, iconTemplate: null };
   try {
     const parsed = JSON.parse(fs.readFileSync(fp, 'utf8')) as {
       icons?: unknown;
       whiteBgVersion?: unknown;
+      iconTemplate?: unknown;
     };
     const whiteBgVersion =
       typeof parsed.whiteBgVersion === 'number' && Number.isFinite(parsed.whiteBgVersion)
         ? parsed.whiteBgVersion
         : 0;
-    if (!parsed.icons || typeof parsed.icons !== 'object') return { icons: {}, whiteBgVersion };
+    let iconTemplate: TeacherExamLibraryIconTemplate | null = null;
+    if (parsed.iconTemplate && typeof parsed.iconTemplate === 'object') {
+      const t = parsed.iconTemplate as TeacherExamLibraryIconTemplate;
+      if (t.icons && typeof t.icons === 'object' && typeof t.savedAt === 'string') {
+        iconTemplate = {
+          savedAt: t.savedAt,
+          icons: Object.fromEntries(
+            Object.entries(t.icons).filter(([, v]) => typeof v === 'string' && v.trim()),
+          ) as Record<string, string>,
+          byExamType:
+            t.byExamType && typeof t.byExamType === 'object'
+              ? (Object.fromEntries(
+                  Object.entries(t.byExamType).filter(([, v]) => typeof v === 'string' && v.trim()),
+                ) as Record<string, string>)
+              : {},
+        };
+      }
+    }
+    if (!parsed.icons || typeof parsed.icons !== 'object') {
+      return { icons: {}, whiteBgVersion, iconTemplate };
+    }
     const out: Record<string, string> = {};
     for (const [k, v] of Object.entries(parsed.icons as Record<string, unknown>)) {
       if (typeof v === 'string' && v.trim()) out[k] = v.trim();
     }
-    return { icons: out, whiteBgVersion };
+    return { icons: out, whiteBgVersion, iconTemplate };
   } catch {
-    return { icons: {}, whiteBgVersion: 0 };
+    return { icons: {}, whiteBgVersion: 0, iconTemplate: null };
   }
+}
+
+export function readTeacherExamLibraryIconTemplate(
+  teacherFolderKey: string,
+): TeacherExamLibraryIconTemplate | null {
+  return readTeacherExamLibraryIconsDocument(teacherFolderKey).iconTemplate;
 }
 
 function writeTeacherExamLibraryIcons(
   teacherFolderKey: string,
   icons: Record<string, string>,
-  whiteBgVersion?: number,
+  opts?: { whiteBgVersion?: number; iconTemplate?: TeacherExamLibraryIconTemplate | null },
 ): void {
   const fp = iconsFileAbsolute(teacherFolderKey);
   fs.mkdirSync(path.dirname(fp), { recursive: true });
@@ -70,9 +113,60 @@ function writeTeacherExamLibraryIcons(
   const payload: Record<string, unknown> = {
     icons,
     updatedAt: new Date().toISOString(),
-    whiteBgVersion: whiteBgVersion ?? prev.whiteBgVersion,
+    whiteBgVersion: opts?.whiteBgVersion ?? prev.whiteBgVersion,
   };
+  const template =
+    opts && 'iconTemplate' in opts ? opts.iconTemplate : prev.iconTemplate;
+  if (template) payload.iconTemplate = template;
   fs.writeFileSync(fp, JSON.stringify(payload, null, 2), 'utf8');
+}
+
+function cloneIconValueToVorlage(
+  teacherFolderKey: string,
+  examKey: string,
+  iconValue: string,
+): string {
+  const trimmed = iconValue.trim();
+  if (!trimmed.startsWith(EXAM_LIBRARY_ICON_IMAGE_PREFIX)) return trimmed;
+  const assetGitPath = trimmed.slice(EXAM_LIBRARY_ICON_IMAGE_PREFIX.length);
+  const { abs: srcAbs } = assertTeacherExamLibraryAssetPath(teacherFolderKey, assetGitPath);
+  const ext = path.extname(srcAbs).toLowerCase() || '.png';
+  const safeStem =
+    examKey
+      .replace(/[^a-z0-9äöüß]+/gi, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 96) || 'icon';
+  const rel = path
+    .join('_Meta', 'Pruefungs-Icons', '_vorlage', teacherFolderKey, `${safeStem}${ext}`)
+    .replace(/\\/g, '/');
+  const destAbs = StorageManager.resolveGitInternRelativePath(rel);
+  fs.mkdirSync(path.dirname(destAbs), { recursive: true });
+  fs.copyFileSync(srcAbs, destAbs);
+  return `${EXAM_LIBRARY_ICON_IMAGE_PREFIX}git-intern/${rel}`;
+}
+
+/** Aktuelle Icon-Zuordnungen als Vorlage (eigene Kopien unter _vorlage/). */
+export function saveTeacherExamLibraryIconTemplate(teacherFolderKey: string): {
+  icons: Record<string, string>;
+  iconTemplate: TeacherExamLibraryIconTemplate;
+} {
+  const doc = readTeacherExamLibraryIconsDocument(teacherFolderKey);
+  const templateIcons: Record<string, string> = {};
+  const byExamType: Record<string, string> = {};
+  for (const [examKey, iconVal] of Object.entries(doc.icons)) {
+    const templVal = cloneIconValueToVorlage(teacherFolderKey, examKey, iconVal);
+    templateIcons[examKey] = templVal;
+    const base = examKey.split('/').pop() || examKey;
+    const t = examTypeFromBasename(base);
+    if (t) byExamType[t] = templVal;
+  }
+  const iconTemplate: TeacherExamLibraryIconTemplate = {
+    savedAt: new Date().toISOString(),
+    icons: templateIcons,
+    byExamType,
+  };
+  writeTeacherExamLibraryIcons(teacherFolderKey, doc.icons, { iconTemplate });
+  return { icons: doc.icons, iconTemplate };
 }
 
 export function setTeacherExamLibraryWhiteBgVersion(
@@ -80,7 +174,7 @@ export function setTeacherExamLibraryWhiteBgVersion(
   version: number,
 ): Record<string, string> {
   const doc = readTeacherExamLibraryIconsDocument(teacherFolderKey);
-  writeTeacherExamLibraryIcons(teacherFolderKey, doc.icons, version);
+  writeTeacherExamLibraryIcons(teacherFolderKey, doc.icons, { whiteBgVersion: version });
   return doc.icons;
 }
 

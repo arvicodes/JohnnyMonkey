@@ -1,12 +1,28 @@
 {
   "icons": {
     "mathe/klasse 5/kap 1 - natürliche zahlen und größen/qz_längen, gewichte, zeiten.html": "img:git-intern/_Meta/Pruefungs-Icons/_assets/Frau-Christ_01ed6e10-397/exam-icon-1791171992655-lwktk1ri.png",
-    "mathe/klasse 5/kap 1 - natürliche zahlen und größen/hu_binaer-und-roemische-zahlen.html": "img:git-intern/_Meta/Pruefungs-Icons/_assets/Frau-Christ_01ed6e10-397/exam-icon-1791172003307-2i83jqnr.png",
-    "mathe/klasse 5/kap 1 - natürliche zahlen und größen/ka_klassenarbeit 1: natürliche zahlen__b.html": "img:git-intern/_Meta/Pruefungs-Icons/_assets/Frau-Christ_01ed6e10-397/exam-icon-1791172018461-lxkqgk16.png",
-    "mathe/klasse 5/kap 1 - natürliche zahlen und größen/ka_klassenarbeit 1: natürliche zahlen.html": "img:git-intern/_Meta/Pruefungs-Icons/_assets/Frau-Christ_01ed6e10-397/exam-icon-1791172030668-zn92epsp.png",
-    "informatik/mss grundthemen/11-04 ki/hu_ki mss 13.html": "img:git-intern/_Meta/Pruefungs-Icons/_assets/Frau-Christ_01ed6e10-397/exam-icon-1791172039064-ybzrlyqx.png",
-    "informatik/mss grundthemen/11-04 ki/hu_ki mss 11.html": "img:git-intern/_Meta/Pruefungs-Icons/_assets/Frau-Christ_01ed6e10-397/exam-icon-1791172050146-by6p30if.png"
+    "mathe/klasse 5/kap 1 - natürliche zahlen und größen/hu_binaer-und-roemische-zahlen.html": "img:git-intern/_Meta/Pruefungs-Icons/_assets/Frau-Christ_01ed6e10-397/exam-icon-1791172530072-4p13r5hv.png",
+    "mathe/klasse 5/kap 1 - natürliche zahlen und größen/ka_klassenarbeit 1: natürliche zahlen__b.html": "img:git-intern/_Meta/Pruefungs-Icons/_assets/Frau-Christ_01ed6e10-397/exam-icon-1791172570168-9hosjp3n.png",
+    "mathe/klasse 5/kap 1 - natürliche zahlen und größen/ka_klassenarbeit 1: natürliche zahlen.html": "img:git-intern/_Meta/Pruefungs-Icons/_assets/Frau-Christ_01ed6e10-397/exam-icon-1791172578501-j0lsw9b4.png",
+    "informatik/mss grundthemen/11-04 ki/hu_ki mss 13.html": "img:git-intern/_Meta/Pruefungs-Icons/_assets/Frau-Christ_01ed6e10-397/exam-icon-1791172662472-qbavp9ml.png",
+    "informatik/mss grundthemen/11-04 ki/hu_ki mss 11.html": "img:git-intern/_Meta/Pruefungs-Icons/_assets/Frau-Christ_01ed6e10-397/exam-icon-1791172670362-8fvxjgpw.png"
   },
-  "updatedAt": "2026-10-05T03:53:39.542Z",
-  "whiteBgVersion": 2
+  "updatedAt": "2026-10-05T03:59:37.325Z",
+  "whiteBgVersion": 2,
+  "iconTemplate": {
+    "savedAt": "2026-10-05T03:59:37.322Z",
+    "icons": {
+      "mathe/klasse 5/kap 1 - natürliche zahlen und größen/qz_längen, gewichte, zeiten.html": "img:git-intern/_Meta/Pruefungs-Icons/_vorlage/Frau-Christ_01ed6e10-397/mathe_klasse_5_kap_1_natürliche_zahlen_und_größen_qz_längen_gewichte_zeiten_html.png",
+      "mathe/klasse 5/kap 1 - natürliche zahlen und größen/hu_binaer-und-roemische-zahlen.html": "img:git-intern/_Meta/Pruefungs-Icons/_vorlage/Frau-Christ_01ed6e10-397/mathe_klasse_5_kap_1_natürliche_zahlen_und_größen_hu_binaer_und_roemische_zahlen_html.png",
+      "mathe/klasse 5/kap 1 - natürliche zahlen und größen/ka_klassenarbeit 1: natürliche zahlen__b.html": "img:git-intern/_Meta/Pruefungs-Icons/_vorlage/Frau-Christ_01ed6e10-397/mathe_klasse_5_kap_1_natürliche_zahlen_und_größen_ka_klassenarbeit_1_natürliche_zahlen_b_html.png",
+      "mathe/klasse 5/kap 1 - natürliche zahlen und größen/ka_klassenarbeit 1: natürliche zahlen.html": "img:git-intern/_Meta/Pruefungs-Icons/_vorlage/Frau-Christ_01ed6e10-397/mathe_klasse_5_kap_1_natürliche_zahlen_und_größen_ka_klassenarbeit_1_natürliche_zahlen_html.png",
+      "informatik/mss grundthemen/11-04 ki/hu_ki mss 13.html": "img:git-intern/_Meta/Pruefungs-Icons/_vorlage/Frau-Christ_01ed6e10-397/informatik_mss_grundthemen_11_04_ki_hu_ki_mss_13_html.png",
+      "informatik/mss grundthemen/11-04 ki/hu_ki mss 11.html": "img:git-intern/_Meta/Pruefungs-Icons/_vorlage/Frau-Christ_01ed6e10-397/informatik_mss_grundthemen_11_04_ki_hu_ki_mss_11_html.png"
+    },
+    "byExamType": {
+      "QZ": "img:git-intern/_Meta/Pruefungs-Icons/_vorlage/Frau-Christ_01ed6e10-397/mathe_klasse_5_kap_1_natürliche_zahlen_und_größen_qz_längen_gewichte_zeiten_html.png",
+      "HU": "img:git-intern/_Meta/Pruefungs-Icons/_vorlage/Frau-Christ_01ed6e10-397/informatik_mss_grundthemen_11_04_ki_hu_ki_mss_11_html.png",
+      "KA": "img:git-intern/_Meta/Pruefungs-Icons/_vorlage/Frau-Christ_01ed6e10-397/mathe_klasse_5_kap_1_natürliche_zahlen_und_größen_ka_klassenarbeit_1_natürliche_zahlen_html.png"
+    }
+  }
 }

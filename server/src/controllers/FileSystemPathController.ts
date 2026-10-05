@@ -55,8 +55,10 @@ import {
   migrateTeacherExamLibraryIconKey,
   overwriteTeacherExamLibraryIconAsset,
   readTeacherExamLibraryIcons,
+  readTeacherExamLibraryIconTemplate,
   readTeacherExamLibraryWhiteBgVersion,
   saveTeacherExamLibraryIconFromUpload,
+  saveTeacherExamLibraryIconTemplate,
   setTeacherExamLibraryIcon,
   setTeacherExamLibraryWhiteBgVersion,
 } from '../lib/examLibraryIconsStore';
@@ -4115,6 +4117,7 @@ ${aiContent.optionsHTML}
       res.json({
         icons: readTeacherExamLibraryIcons(key),
         whiteBgVersion: readTeacherExamLibraryWhiteBgVersion(key),
+        iconTemplate: readTeacherExamLibraryIconTemplate(key),
       });
     } catch (error) {
       console.error('getExamLibraryIcons:', error);
@@ -4222,6 +4225,21 @@ ${aiContent.optionsHTML}
     } catch (error) {
       console.error('markExamLibraryWhiteBgDone:', error);
       res.status(500).json({ error: 'Konnte nicht gespeichert werden' });
+    }
+  }
+
+  static async saveExamLibraryIconTemplate(req: Request, res: Response) {
+    try {
+      const user = await FileSystemPathController.requireTeacherUser(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Lehrer-Login erforderlich' });
+      }
+      const key = scratchPadUserFolderKey(user.id, user.name);
+      const { icons, iconTemplate } = saveTeacherExamLibraryIconTemplate(key);
+      res.json({ success: true, icons, iconTemplate });
+    } catch (error) {
+      console.error('saveExamLibraryIconTemplate:', error);
+      res.status(500).json({ error: 'Icon-Vorlage konnte nicht gespeichert werden' });
     }
   }
 }
