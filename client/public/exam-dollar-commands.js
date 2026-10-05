@@ -1174,15 +1174,6 @@
     return parseDollarAAltContent(s);
   }
 
-  function wrapExamInlineMathMark(html) {
-    return (
-      '<span class="exam-dollar-math-mark">' +
-      '<span class="exam-dollar-l-inline-mark teacher-only" title="Inline-Formel ($L … L$)">L</span>' +
-      html +
-      '</span>'
-    );
-  }
-
   function renderMathHtmlCore(latex) {
     var t = String(latex || '').replace(/^\s+|\s+$/g, '');
     if (!t) return '';
@@ -1190,19 +1181,18 @@
       ? simpleMathContentToLatex(t)
       : preserveSpacesInUserLatex(t);
     var html = examKatexInline(toRender);
-    var inner;
     if (html) {
-      inner =
-        '<span class="exam-dollar-math-latex exam-dollar-math-katex">' + html + '</span>';
-    } else {
-      inner =
-        '<span class="exam-dollar-math-latex" data-latex="' +
-        escapeHtml(toRender) +
-        '"><span class="exam-dollar-math-fallback">' +
-        escapeHtml(toRender) +
-        '</span></span>';
+      return (
+        '<span class="exam-dollar-math-latex exam-dollar-math-katex">' + html + '</span>'
+      );
     }
-    return wrapExamInlineMathMark(inner);
+    return (
+      '<span class="exam-dollar-math-latex" data-latex="' +
+      escapeHtml(toRender) +
+      '"><span class="exam-dollar-math-fallback">' +
+      escapeHtml(toRender) +
+      '</span></span>'
+    );
   }
 
   function renderMathHtml(latex, idGen) {
@@ -2915,14 +2905,10 @@
       '.exam-dollar-code--inline{background:none;border:none;padding:0;margin:0;color:inherit}' +
       '.exam-dollar-code--box{background:#f4f4f4;border:1px solid #d8d8d8;border-radius:4px;padding:1px 6px;color:#1a1a1a}' +
       '.exam-dollar-math-prose{font-size:inherit;color:inherit;font-weight:normal;white-space:normal}' +
-      '.exam-dollar-math-mark{display:inline;white-space:normal}' +
-      '.exam-dollar-math-latex{display:inline-block;vertical-align:baseline;margin:0 3px;padding:2px 7px;border-radius:5px;background:rgba(21,101,192,.1);border:1.5px solid rgba(21,101,192,.45);line-height:1.35}' +
-      '.exam-dollar-math-latex .katex{font-size:1.32em;color:var(--jm-exam-student-color,#1565c0);font-weight:700}' +
-      '.exam-dollar-math-fallback{font-family:Arial,sans-serif;font-style:normal;font-size:1.25em;color:var(--jm-exam-student-color,#1565c0);font-weight:700}' +
-      '.exam-dollar-l-inline-mark{display:none;font-size:9px;font-weight:800;line-height:1.2;color:#fff;background:#1565c0;border-radius:3px;padding:1px 5px;margin:0 5px 0 0;vertical-align:middle;font-family:Arial,sans-serif;letter-spacing:.02em;box-shadow:0 0 0 1px rgba(13,71,161,.35)}' +
-      '.teacher-mode .exam-dollar-l-inline-mark{display:inline-block}' +
-      '.teacher-mode .exam-dollar-math-latex{background:#e3f2fd;border:2px solid #1565c0;padding:3px 9px;box-shadow:0 1px 4px rgba(13,71,161,.22)}' +
-      '.teacher-mode .exam-dollar-math-alt-group .exam-dollar-math-mark{outline:2px dashed #e65100;outline-offset:3px;border-radius:6px;padding:1px 2px;background:rgba(255,243,224,.45)}' +
+      '.exam-dollar-math-latex{display:inline;vertical-align:baseline;margin:0 1px}' +
+      '.exam-dollar-math-latex .katex{font-size:1.1em;color:inherit;font-weight:normal}' +
+      '.exam-dollar-math-fallback{font-family:inherit;font-style:normal;font-size:1.1em;color:inherit}' +
+      '.teacher-mode .exam-dollar-alt-group{outline:2px dashed #e65100;outline-offset:3px;border-radius:6px;padding:1px 2px;background:rgba(255,243,224,.45)}' +
       '.exam-dollar-biggap{margin:5px 0}' +
       '.exam-dollar-area{width:100%;min-height:72px;margin:5px 0;box-sizing:border-box}' +
       '.exam-dollar-hint{font-size:10px;color:#888;margin-top:4px}' +
