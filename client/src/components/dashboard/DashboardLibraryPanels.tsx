@@ -456,7 +456,6 @@ function MaterialRow({
         border: '2px solid',
         borderColor: rowBorder,
         minHeight: 30,
-        boxShadow: `inset ${accentWidth + 2}px 0 0 0 ${accent}`,
         '&:hover': { filter: 'brightness(0.97)' },
       }}
     >
@@ -468,7 +467,6 @@ function MaterialRow({
           bgcolor: accent,
           flexShrink: 0,
           minHeight: 16,
-          boxShadow: `0 0 0 1px ${accent}`,
         }}
       />
       <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -763,12 +761,17 @@ export const DashboardExamsPanel: React.FC<{
         itemAccent={COLOR_PRUEFUNG}
         onCreateInFolder={onCreateExam}
         createAccent={COLOR_PRUEFUNG}
-        renderItem={(item) => (
+        renderItem={(item) => {
+          const rowStyle = examMaterialRowStyle(item.name);
+          return (
           <MaterialRow
             key={item.path}
             title={item.name}
             subtitle={item.lessonLabel !== item.reihe ? item.lessonLabel : undefined}
-            accent={examAccentColorForFileName(item.name)}
+            accent={rowStyle.accent}
+            accentWidth={rowStyle.accentWidth}
+            rowBg={rowStyle.rowBg}
+            rowBorder={rowStyle.rowBorder}
             actions={
               <>
                 {onCorrectExam ? (
@@ -826,7 +829,8 @@ export const DashboardExamsPanel: React.FC<{
               </>
             }
           />
-        )}
+          );
+        }}
       />
     </LibraryShell>
     <Dialog open={Boolean(typeDialogItem)} onClose={() => !typeSaving && setTypeDialogItem(null)} maxWidth="xs" fullWidth>
