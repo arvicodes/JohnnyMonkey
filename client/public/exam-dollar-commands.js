@@ -1932,7 +1932,7 @@
     }
     mount.hidden = false;
     var cur = getExamGlobalAltIndex();
-    var html = '';
+    var html = '<div class="exam-alt-variant-duo" role="group" aria-label="Formulierungsvarianten">';
     nums.forEach(function (n) {
       html +=
         '<button type="button" class="exam-alt-variant-btn' +
@@ -1941,10 +1941,11 @@
         n +
         '" aria-pressed="' +
         (cur === String(n) ? 'true' : 'false') +
-        '">Alternative ' +
+        '">A' +
         n +
         '</button>';
     });
+    html += '</div>';
     mount.innerHTML = html;
   }
 
@@ -2860,11 +2861,13 @@
       'body.show-solutions .exam-dollar-wf-row .exam-dollar-choice-correct .exam-dollar-choice-box{border-color:#2e7d32}' +
       '.exam-dollar-alt-group{margin:8px 0 10px}' +
       '.exam-dollar-alt-view--hidden{display:none!important}' +
-      '.exam-alt-variant-toolbar{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-start;align-items:center;width:100%;margin:2px 0 0;padding:0}' +
+      '.exam-alt-variant-toolbar{display:flex;flex-wrap:wrap;justify-content:flex-start;align-items:stretch;width:100%;margin:2px 0 0;padding:0}' +
       '.exam-alt-variant-toolbar[hidden]{display:none!important}' +
-      '.exam-alt-variant-btn{font-size:11px;line-height:1.2;padding:4px 10px;border:1px solid #bdbdbd;border-radius:5px;background:#fff;color:#333;cursor:pointer;font-family:Arial,sans-serif;text-align:left}' +
-      '.exam-alt-variant-btn:hover{border-color:#E10600;color:#E10600}' +
-      '.exam-alt-variant-btn--active{border-color:#E10600;color:#E10600;font-weight:700;background:#fff5f5}';
+      '.exam-alt-variant-duo{display:inline-flex;width:100%;border:1px solid #bdbdbd;border-radius:7px;overflow:hidden;background:#fff;box-sizing:border-box}' +
+      '.exam-alt-variant-duo .exam-alt-variant-btn{flex:1;min-width:0;margin:0;border:none;border-radius:0;border-right:1px solid #bdbdbd;padding:6px 8px;font-size:11px;line-height:1.2;background:#fff;color:#333;cursor:pointer;font-family:Arial,sans-serif;text-align:center;white-space:nowrap}' +
+      '.exam-alt-variant-duo .exam-alt-variant-btn:last-child{border-right:none}' +
+      '.exam-alt-variant-duo .exam-alt-variant-btn:hover{color:#E10600;background:#fff8f8}' +
+      '.exam-alt-variant-duo .exam-alt-variant-btn--active{color:#E10600;font-weight:700;background:#fff5f5;box-shadow:inset 0 0 0 1px #E10600}';
   }
 
   function ensureComposeArea() {
