@@ -645,7 +645,7 @@ export const DashboardExamsPanel: React.FC<{
   assignedFolders?: Record<string, string[]>;
   /** Nach Löschen im Dashboard erhöhen, damit die Liste neu lädt. */
   refreshKey?: number;
-  onNotify?: (message: string, severity?: 'success' | 'error') => void;
+  onNotify?: (message: string, severity?: 'success' | 'error' | 'warning') => void;
 }> = ({
   rootPaths,
   colors,

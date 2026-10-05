@@ -18104,7 +18104,7 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
               }}
               onEditExam={(item) => void handleEditSingleQuestion({ path: item.path, name: item.name })}
               onDeleteExam={(item) => handleExamDeleteDialogOpen({ path: item.path, name: item.name })}
-              onNotify={(message, severity) => showSnackbar(message, severity || 'info')}
+              onNotify={(message, severity) => showSnackbar(message, severity ?? 'success')}
               onCreateExam={(folderPath) => {
                 setExaminationType('QZ');
                 setExaminationFileName('');
