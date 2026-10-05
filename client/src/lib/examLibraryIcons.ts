@@ -97,11 +97,10 @@ async function migrateExamLibraryImageIconsWhiteBackground(
   for (const [examKey, iconVal] of entries) {
     try {
       const url = examLibraryIconImageSrc(iconVal, 768);
-      const { file, removedRatio } = await removeNearWhiteBackgroundFromUrl(url, 'exam-icon', {
+      const { file } = await removeNearWhiteBackgroundFromUrl(url, 'exam-icon', {
         maxEdge: 768,
         tolerance: 48,
       });
-      if (removedRatio < 0.002) continue;
       const assetPath = iconVal.slice(EXAM_LIBRARY_ICON_IMAGE_PREFIX.length);
       current = await overwriteExamLibraryIconAssetOnServer(examKey, assetPath, file);
     } catch {

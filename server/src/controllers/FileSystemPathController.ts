@@ -53,9 +53,12 @@ import { findUserByLoginCode } from '../utils/loginCodeCrypto';
 import { scratchPadUserFolderKey } from '../utils/teacherScratchPadStore';
 import {
   migrateTeacherExamLibraryIconKey,
+  overwriteTeacherExamLibraryIconAsset,
   readTeacherExamLibraryIcons,
+  readTeacherExamLibraryWhiteBgVersion,
   saveTeacherExamLibraryIconFromUpload,
   setTeacherExamLibraryIcon,
+  setTeacherExamLibraryWhiteBgVersion,
 } from '../lib/examLibraryIconsStore';
 
 const prisma = new PrismaClient();
@@ -4109,7 +4112,10 @@ ${aiContent.optionsHTML}
         return res.status(401).json({ error: 'Lehrer-Login erforderlich' });
       }
       const key = scratchPadUserFolderKey(user.id, user.name);
-      res.json({ icons: readTeacherExamLibraryIcons(key) });
+      res.json({
+        icons: readTeacherExamLibraryIcons(key),
+        whiteBgVersion: readTeacherExamLibraryWhiteBgVersion(key),
+      });
     } catch (error) {
       console.error('getExamLibraryIcons:', error);
       res.status(500).json({ error: 'Icons konnten nicht geladen werden' });
@@ -4165,6 +4171,57 @@ ${aiContent.optionsHTML}
     } catch (error) {
       console.error('uploadExamLibraryIconImage:', error);
       res.status(500).json({ error: 'Bild-Icon konnte nicht gespeichert werden' });
+    }
+  }
+
+  static async overwriteExamLibraryIconAsset(req: Request, res: Response) {
+    try {
+      const user = await FileSystemPathController.requireTeacherUser(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Lehrer-Login erforderlich' });
+      }
+      const examIconKey =
+        typeof req.body?.examIconKey === 'string' ? req.body.examIconKey.trim().toLowerCase() : '';
+      const assetPath = typeof req.body?.assetPath === 'string' ? req.body.assetPath.trim() : '';
+      if (!examIconKey || !assetPath) {
+        return res.status(400).json({ error: 'examIconKey und assetPath sind erforderlich' });
+      }
+      const file = req.file;
+      if (!file?.buffer?.length) {
+        return res.status(400).json({ error: 'Bilddatei fehlt' });
+      }
+      const key = scratchPadUserFolderKey(user.id, user.name);
+      const { icons } = await overwriteTeacherExamLibraryIconAsset(
+        key,
+        examIconKey,
+        assetPath,
+        file.buffer,
+      );
+      res.json({ success: true, icons });
+    } catch (error) {
+      console.error('overwriteExamLibraryIconAsset:', error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Icon-Datei konnte nicht ersetzt werden',
+      });
+    }
+  }
+
+  static async markExamLibraryWhiteBgDone(req: Request, res: Response) {
+    try {
+      const user = await FileSystemPathController.requireTeacherUser(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Lehrer-Login erforderlich' });
+      }
+      const version = Number((req.body as { version?: unknown })?.version);
+      const key = scratchPadUserFolderKey(user.id, user.name);
+      const icons = setTeacherExamLibraryWhiteBgVersion(
+        key,
+        Number.isFinite(version) ? version : 1,
+      );
+      res.json({ success: true, icons, whiteBgVersion: version });
+    } catch (error) {
+      console.error('markExamLibraryWhiteBgDone:', error);
+      res.status(500).json({ error: 'Konnte nicht gespeichert werden' });
     }
   }
 }

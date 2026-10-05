@@ -106,6 +106,12 @@ router.post(
   examIconUpload.single('image'),
   FileSystemPathController.uploadExamLibraryIconImage,
 );
+router.post(
+  '/exam-library-icons/overwrite-asset',
+  examIconUpload.single('image'),
+  FileSystemPathController.overwriteExamLibraryIconAsset,
+);
+router.post('/exam-library-icons/white-bg-done', FileSystemPathController.markExamLibraryWhiteBgDone);
 
 // Stunde erstellen (Ordner + Standardmaterialien)
 router.post('/create-lesson-folder', FileSystemPathController.createLessonFolder);

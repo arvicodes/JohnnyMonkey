@@ -119,7 +119,7 @@ export async function overwriteTeacherExamLibraryIconAsset(
   );
   fs.writeFileSync(tmpIn, uploadBuffer);
   try {
-    const { buffer, mimeType } = await readImageFileForServe(tmpIn, 256);
+    const { buffer } = await readImageFileForServe(tmpIn, 256);
     const dir = path.dirname(oldAbs);
     const base = path.basename(oldAbs, path.extname(oldAbs));
     const newAbs = path.join(dir, `${base}.png`);
