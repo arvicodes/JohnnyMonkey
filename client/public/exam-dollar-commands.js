@@ -504,7 +504,9 @@
     var liveRaw = liveEditPlainTextFromEl(live);
     var liveTrim = liveRaw.trim();
     var metaBefore = parseTaskSource(src.value);
-    if (!liveTrim && String(metaBefore.body || '').trim() && live.dataset.jmTouched !== '1') {
+    if (!liveTrim && String(metaBefore.body || '').trim()) {
+      syncLiveEditFromSource(taskEl);
+      delete live.dataset.jmTouched;
       return;
     }
     var meta = metaBefore;
