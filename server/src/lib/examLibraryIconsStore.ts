@@ -1,6 +1,10 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
+import { readImageFileForServe } from '../utils/imageToJpeg';
 import { StorageManager } from '../utils/storageManager';
+
+export const EXAM_LIBRARY_ICON_IMAGE_PREFIX = 'img:';
 
 /** Gleicher Schlüssel wie im Client (git-intern ↔ J-M-Reihen). */
 export function canonicalExamLibraryIconKey(filePath: string): string {
@@ -60,6 +64,41 @@ export function setTeacherExamLibraryIcon(
   }
   writeTeacherExamLibraryIcons(teacherFolderKey, map);
   return map;
+}
+
+/** Bild hochladen, skaliert (max. 256 px), unter _Meta/…/_assets/<Lehrer>/ speichern. */
+export async function saveTeacherExamLibraryIconFromUpload(
+  teacherFolderKey: string,
+  examFilePath: string,
+  uploadBuffer: Buffer,
+  originalName: string,
+): Promise<{ icons: Record<string, string>; iconValue: string }> {
+  const extIn = path.extname(originalName || '').toLowerCase() || '.png';
+  const tmpIn = path.join(
+    os.tmpdir(),
+    `exam-lib-icon-${Date.now()}-${Math.random().toString(36).slice(2)}${extIn}`,
+  );
+  fs.writeFileSync(tmpIn, uploadBuffer);
+  try {
+    const { buffer, mimeType } = await readImageFileForServe(tmpIn, 256);
+    const extOut = mimeType === 'image/png' ? '.png' : '.jpg';
+    const fileName = `exam-icon-${Date.now()}-${Math.random().toString(36).slice(2, 10)}${extOut}`;
+    const rel = path
+      .join('_Meta', 'Pruefungs-Icons', '_assets', teacherFolderKey, fileName)
+      .replace(/\\/g, '/');
+    const abs = StorageManager.resolveGitInternRelativePath(rel);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, buffer);
+    const iconValue = `${EXAM_LIBRARY_ICON_IMAGE_PREFIX}git-intern/${rel}`;
+    const icons = setTeacherExamLibraryIcon(teacherFolderKey, examFilePath, iconValue);
+    return { icons, iconValue };
+  } finally {
+    try {
+      if (fs.existsSync(tmpIn)) fs.unlinkSync(tmpIn);
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 export function migrateTeacherExamLibraryIconKey(

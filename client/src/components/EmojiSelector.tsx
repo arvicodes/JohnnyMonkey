@@ -15,7 +15,12 @@ import {
   InputAdornment,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import ImageIcon from '@mui/icons-material/Image';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
+import {
+  examLibraryIconImageSrc,
+  isExamLibraryImageIcon,
+} from '../lib/examLibraryIcons';
 
 interface EmojiSelectorProps {
   open: boolean;
@@ -23,6 +28,9 @@ interface EmojiSelectorProps {
   onSelect: (emoji: string) => void;
   currentEmoji?: string;
   title?: string;
+  /** Eigenes Bild hochladen (z. B. Prüfungs-Icons). */
+  allowImageUpload?: boolean;
+  onUploadImage?: (file: File) => Promise<string>;
 }
 
 type EmojiCategory = {
@@ -125,11 +133,19 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
   onSelect,
   currentEmoji = '🧙‍♂️',
   title = '🎭 Wähle dein Avatar-Emoji',
+  allowImageUpload = false,
+  onUploadImage,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) setSearchQuery('');
+    if (!open) {
+      setSearchQuery('');
+      setImageUploadError(null);
+      setImageUploading(false);
+    }
   }, [open]);
 
   const filteredCategories = useMemo(() => {
@@ -165,6 +181,25 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
     onClose();
   };
 
+  const handleImageFile = (file: File | undefined) => {
+    if (!file || !onUploadImage) return;
+    setImageUploadError(null);
+    setImageUploading(true);
+    void (async () => {
+      try {
+        const iconValue = await onUploadImage(file);
+        onSelect(iconValue);
+        onClose();
+      } catch (e) {
+        setImageUploadError(e instanceof Error ? e.message : 'Upload fehlgeschlagen');
+      } finally {
+        setImageUploading(false);
+      }
+    })();
+  };
+
+  const currentIsImage = isExamLibraryImageIcon(currentEmoji);
+
   return (
     <Dialog
       open={open}
@@ -197,6 +232,64 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
       </DialogTitle>
 
       <DialogContent sx={{ p: 2, maxHeight: '60vh', overflowY: 'auto' }}>
+        {allowImageUpload && onUploadImage ? (
+          <Box
+            sx={{
+              mb: 2,
+              p: 1.5,
+              borderRadius: 1,
+              bgcolor: '#fff',
+              border: '1px dashed #90caf9',
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: 1.5,
+            }}
+          >
+            {currentIsImage ? (
+              <Box
+                component="img"
+                src={examLibraryIconImageSrc(currentEmoji, 64)}
+                alt=""
+                sx={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 1 }}
+              />
+            ) : (
+              <ImageIcon color="primary" />
+            )}
+            <Box sx={{ flex: 1, minWidth: 140 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                Eigenes Bild
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                PNG, JPG, WebP … (wird verkleinert gespeichert)
+              </Typography>
+            </Box>
+            <Button
+              component="label"
+              variant="contained"
+              size="small"
+              disabled={imageUploading}
+              sx={{ flexShrink: 0 }}
+            >
+              {imageUploading ? 'Lade hoch …' : 'Bild wählen …'}
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  handleImageFile(f);
+                }}
+              />
+            </Button>
+            {imageUploadError ? (
+              <Typography variant="caption" color="error" sx={{ width: '100%' }}>
+                {imageUploadError}
+              </Typography>
+            ) : null}
+          </Box>
+        ) : null}
         <TextField
           fullWidth
           size="small"
@@ -240,8 +333,12 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
                     sx={{
                       cursor: 'pointer',
                       transition: 'all 0.2s ease-in-out',
-                      transform: emoji === currentEmoji ? 'scale(1.05)' : 'scale(1)',
-                      border: emoji === currentEmoji ? '2px solid #1976d2' : '1px solid transparent',
+                      transform:
+                        !currentIsImage && emoji === currentEmoji ? 'scale(1.05)' : 'scale(1)',
+                      border:
+                        !currentIsImage && emoji === currentEmoji
+                          ? '2px solid #1976d2'
+                          : '1px solid transparent',
                       minHeight: '60px',
                       '&:hover': {
                         transform: 'scale(1.1)',
@@ -254,14 +351,15 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
                     <CardContent sx={{
                       p: 1,
                       textAlign: 'center',
-                      background: emoji === currentEmoji
+                      background:
+                        !currentIsImage && emoji === currentEmoji
                         ? 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)'
                         : 'white'
                     }}>
                       <Typography variant="h5" sx={{ fontSize: '2rem' }}>
                         {emoji}
                       </Typography>
-                      {emoji === currentEmoji && (
+                      {!currentIsImage && emoji === currentEmoji && (
                         <Chip
                           label="Aktuell"
                           size="small"

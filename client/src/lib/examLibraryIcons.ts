@@ -1,5 +1,7 @@
 import { examTypeFromFileName } from './examLibraryUi';
 
+export const EXAM_LIBRARY_ICON_IMAGE_PREFIX = 'img:';
+
 const LEGACY_STORAGE_KEY = 'jm-exam-library-icons-v1';
 
 function canonicalExamIconKey(filePath: string): string {
@@ -31,6 +33,21 @@ export function defaultExamLibraryIcon(fileName: string): string {
     default:
       return '📄';
   }
+}
+
+export function isExamLibraryImageIcon(value: string | undefined | null): boolean {
+  return Boolean(value && value.startsWith(EXAM_LIBRARY_ICON_IMAGE_PREFIX));
+}
+
+/** URL für read-image (kleine Vorschaubilder in der Bibliothek). */
+export function examLibraryIconImageSrc(iconValue: string, maxEdge = 128): string {
+  const pathPart = iconValue.slice(EXAM_LIBRARY_ICON_IMAGE_PREFIX.length).replace(/^\/+/, '');
+  const fp = pathPart.startsWith('git-intern/')
+    ? pathPart
+    : pathPart.startsWith('J-M-Reihen/')
+      ? `git-intern/${pathPart.slice('J-M-Reihen/'.length)}`
+      : `git-intern/${pathPart}`;
+  return `/api/file-system-paths/read-image?filePath=${encodeURIComponent(fp)}&max=${maxEdge}`;
 }
 
 function authHeaders(): HeadersInit {
@@ -128,6 +145,40 @@ export async function saveExamLibraryIconToServer(
     /* ignore */
   }
   return icons;
+}
+
+export async function uploadExamLibraryIconImageToServer(
+  filePath: string,
+  imageFile: File,
+): Promise<{ icons: Record<string, string>; icon: string }> {
+  const fd = new FormData();
+  fd.append('filePath', filePath);
+  fd.append('image', imageFile);
+  const res = await fetch('/api/file-system-paths/exam-library-icons/upload', {
+    method: 'POST',
+    headers: { 'x-login-code': localStorage.getItem('loginCode') || '' },
+    credentials: 'include',
+    body: fd,
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    icons?: Record<string, string>;
+    icon?: string;
+  };
+  if (!res.ok) {
+    throw new Error(data.error || 'Bild-Icon konnte nicht gespeichert werden');
+  }
+  const icons = data.icons && typeof data.icons === 'object' ? data.icons : {};
+  try {
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+  const icon =
+    typeof data.icon === 'string' && data.icon.trim()
+      ? data.icon.trim()
+      : getExamLibraryIcon(filePath, imageFile.name, icons);
+  return { icons, icon };
 }
 
 /** @deprecated Nur noch für Tests — Server ist Quelle der Wahrheit. */

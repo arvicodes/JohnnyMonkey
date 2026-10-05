@@ -54,6 +54,7 @@ import { scratchPadUserFolderKey } from '../utils/teacherScratchPadStore';
 import {
   migrateTeacherExamLibraryIconKey,
   readTeacherExamLibraryIcons,
+  saveTeacherExamLibraryIconFromUpload,
   setTeacherExamLibraryIcon,
 } from '../lib/examLibraryIconsStore';
 
@@ -4131,6 +4132,39 @@ ${aiContent.optionsHTML}
     } catch (error) {
       console.error('saveExamLibraryIcon:', error);
       res.status(500).json({ error: 'Icon konnte nicht gespeichert werden' });
+    }
+  }
+
+  static async uploadExamLibraryIconImage(req: Request, res: Response) {
+    try {
+      const user = await FileSystemPathController.requireTeacherUser(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Lehrer-Login erforderlich' });
+      }
+      const filePath = typeof req.body?.filePath === 'string' ? req.body.filePath : '';
+      if (!filePath.trim()) {
+        return res.status(400).json({ error: 'filePath ist erforderlich' });
+      }
+      const file = req.file;
+      if (!file?.buffer?.length) {
+        return res.status(400).json({ error: 'Bilddatei fehlt' });
+      }
+      const mime = (file.mimetype || '').toLowerCase();
+      if (!mime.startsWith('image/')) {
+        return res.status(400).json({ error: 'Nur Bilddateien erlaubt' });
+      }
+      const originalName = decodeMulterFilename(file.originalname) || 'icon.png';
+      const key = scratchPadUserFolderKey(user.id, user.name);
+      const { icons, iconValue } = await saveTeacherExamLibraryIconFromUpload(
+        key,
+        filePath,
+        file.buffer,
+        originalName,
+      );
+      res.json({ success: true, icons, icon: iconValue });
+    } catch (error) {
+      console.error('uploadExamLibraryIconImage:', error);
+      res.status(500).json({ error: 'Bild-Icon konnte nicht gespeichert werden' });
     }
   }
 }

@@ -44,6 +44,9 @@ import {
   fetchExamLibraryIconsFromServer,
   getExamLibraryIcon,
   saveExamLibraryIconToServer,
+  uploadExamLibraryIconImageToServer,
+  examLibraryIconImageSrc,
+  isExamLibraryImageIcon,
 } from '../../lib/examLibraryIcons';
 import EmojiSelector from '../EmojiSelector';
 import {
@@ -504,7 +507,16 @@ function MaterialRow({
             }}
             aria-label="Prüfungs-Icon ändern"
           >
-            {icon}
+            {isExamLibraryImageIcon(icon) ? (
+              <Box
+                component="img"
+                src={examLibraryIconImageSrc(icon, 96)}
+                alt=""
+                sx={{ width: 22, height: 22, objectFit: 'contain', display: 'block' }}
+              />
+            ) : (
+              icon
+            )}
           </Box>
         </Tooltip>
       ) : null}
@@ -927,6 +939,10 @@ export const DashboardExamsPanel: React.FC<{
       }
       onSelect={(emoji) => {
         if (!iconPickerItem) return;
+        if (isExamLibraryImageIcon(emoji)) {
+          setIconPickerItem(null);
+          return;
+        }
         void (async () => {
           try {
             const icons = await saveExamLibraryIconToServer(iconPickerItem.path, emoji);
@@ -938,6 +954,14 @@ export const DashboardExamsPanel: React.FC<{
             setIconPickerItem(null);
           }
         })();
+      }}
+      allowImageUpload
+      onUploadImage={async (file) => {
+        if (!iconPickerItem) throw new Error('Keine Prüfung ausgewählt');
+        const { icons, icon } = await uploadExamLibraryIconImageToServer(iconPickerItem.path, file);
+        setIconMap(icons);
+        onNotify?.('Bild-Icon gespeichert', 'success');
+        return icon;
       }}
     />
     </>

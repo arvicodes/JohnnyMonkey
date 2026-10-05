@@ -12,6 +12,11 @@ const upload = multer({
   }
 });
 
+const examIconUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+});
+
 // Alle Pfade abrufen (für die Ordner-Zuordnung)
 router.get('/', FileSystemPathController.getAllPaths);
 
@@ -96,6 +101,11 @@ router.post('/delete-examination', FileSystemPathController.deleteExamination);
 router.post('/change-examination-type', FileSystemPathController.changeExaminationType);
 router.get('/exam-library-icons', FileSystemPathController.getExamLibraryIcons);
 router.post('/exam-library-icons', FileSystemPathController.saveExamLibraryIcon);
+router.post(
+  '/exam-library-icons/upload',
+  examIconUpload.single('image'),
+  FileSystemPathController.uploadExamLibraryIconImage,
+);
 
 // Stunde erstellen (Ordner + Standardmaterialien)
 router.post('/create-lesson-folder', FileSystemPathController.createLessonFolder);
