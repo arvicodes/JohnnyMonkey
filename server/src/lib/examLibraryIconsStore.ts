@@ -5,7 +5,7 @@ import { readImageFileForServe } from '../utils/imageToJpeg';
 import { StorageManager } from '../utils/storageManager';
 
 export const EXAM_LIBRARY_ICON_IMAGE_PREFIX = 'img:';
-export const EXAM_LIBRARY_WHITE_BG_VERSION = 1;
+export const EXAM_LIBRARY_WHITE_BG_VERSION = 2;
 
 /** Gleicher Schlüssel wie im Client (git-intern ↔ J-M-Reihen). */
 export function canonicalExamLibraryIconKey(filePath: string): string {

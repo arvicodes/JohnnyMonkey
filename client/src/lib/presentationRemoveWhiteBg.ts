@@ -43,10 +43,174 @@ function loadImage(url: string): Promise<HTMLImageElement> {
     img.decoding = 'async';
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error('Bild konnte nicht geladen werden'));
-    // Cache-Bust, falls dieselbe URL kurz zuvor ohne Alpha kam
+    // Query an blob:/data:-URLs hängen bricht das Laden in vielen Browsern.
+    if (url.startsWith('blob:') || url.startsWith('data:')) {
+      img.src = url;
+      return;
+    }
     const sep = url.includes('?') ? '&' : '?';
     img.src = `${url}${sep}_bg=${Date.now()}`;
   });
+}
+
+async function loadImageSourceFromUrl(imageUrl: string): Promise<{
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+  cleanup?: () => void;
+}> {
+  const processed = processSourceUrl(imageUrl);
+  if (processed.startsWith('blob:') || processed.startsWith('data:')) {
+    const img = await loadImage(processed);
+    return {
+      source: img,
+      width: img.naturalWidth || img.width,
+      height: img.naturalHeight || img.height,
+    };
+  }
+  if (processed.startsWith('/') || processed.startsWith('http://') || processed.startsWith('https://')) {
+    const res = await fetch(processed, { credentials: 'include' });
+    if (!res.ok) {
+      throw new Error(`Bild konnte nicht geladen werden (${res.status})`);
+    }
+    const blob = await res.blob();
+    if (typeof createImageBitmap === 'function') {
+      const bitmap = await createImageBitmap(blob);
+      return {
+        source: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        cleanup: () => bitmap.close?.(),
+      };
+    }
+    const blobUrl = URL.createObjectURL(blob);
+    try {
+      const img = await loadImage(blobUrl);
+      return {
+        source: img,
+        width: img.naturalWidth || img.width,
+        height: img.naturalHeight || img.height,
+      };
+    } finally {
+      URL.revokeObjectURL(blobUrl);
+    }
+  }
+  const img = await loadImage(processed);
+  return {
+    source: img,
+    width: img.naturalWidth || img.width,
+    height: img.naturalHeight || img.height,
+  };
+}
+
+async function removeNearWhiteBackgroundFromSource(
+  source: CanvasImageSource,
+  srcWidth: number,
+  srcHeight: number,
+  fileBaseName: string,
+  options: RemoveWhiteBgOptions,
+): Promise<RemoveWhiteBgResult> {
+  const tolerance = options.tolerance ?? 48;
+  const maxEdge = options.maxEdge ?? 3200;
+
+  let w = srcWidth;
+  let h = srcHeight;
+  if (!w || !h) throw new Error('Ungültige Bildgröße');
+
+  const scale = Math.min(1, maxEdge / Math.max(w, h));
+  w = Math.max(1, Math.round(w * scale));
+  h = Math.max(1, Math.round(h * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('Canvas nicht verfügbar');
+  ctx.clearRect(0, 0, w, h);
+  ctx.drawImage(source, 0, 0, w, h);
+
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const data = imageData.data;
+  const n = w * h;
+  const visited = new Uint8Array(n);
+  const queue = new Int32Array(n);
+  let qh = 0;
+  let qt = 0;
+  const seeds = sampleBgSeeds(data, w, h);
+
+  const enqueue = (x: number, y: number) => {
+    const i = y * w + x;
+    if (visited[i]) return;
+    const o = i * 4;
+    if (data[o + 3] < 8) {
+      visited[i] = 1;
+      return;
+    }
+    if (!matchesBg(data[o], data[o + 1], data[o + 2], seeds, tolerance)) return;
+    visited[i] = 1;
+    queue[qt++] = i;
+  };
+
+  for (let x = 0; x < w; x++) {
+    enqueue(x, 0);
+    enqueue(x, h - 1);
+  }
+  for (let y = 0; y < h; y++) {
+    enqueue(0, y);
+    enqueue(w - 1, y);
+  }
+
+  let removed = 0;
+  while (qh < qt) {
+    const i = queue[qh++];
+    const x = i % w;
+    const y = (i / w) | 0;
+    const o = i * 4;
+    data[o + 3] = 0;
+    removed += 1;
+    if (x > 0) enqueue(x - 1, y);
+    if (x + 1 < w) enqueue(x + 1, y);
+    if (y > 0) enqueue(x, y - 1);
+    if (y + 1 < h) enqueue(x, y + 1);
+  }
+
+  if (removed / n < 0.01) {
+    for (let i = 0; i < n; i++) {
+      const o = i * 4;
+      if (data[o + 3] === 0) continue;
+      if (isNearWhite(data[o], data[o + 1], data[o + 2], tolerance + 8)) {
+        data[o + 3] = 0;
+        removed += 1;
+      }
+    }
+  }
+
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      const o = i * 4;
+      if (data[o + 3] === 0) continue;
+      if (!matchesBg(data[o], data[o + 1], data[o + 2], seeds, tolerance + 16)) continue;
+      let neighClear = false;
+      for (const [dx, dy] of [
+        [-1, 0],
+        [1, 0],
+        [0, -1],
+        [0, 1],
+      ] as const) {
+        if (data[((y + dy) * w + (x + dx)) * 4 + 3] === 0) {
+          neighClear = true;
+          break;
+        }
+      }
+      if (neighClear) data[o + 3] = Math.min(data[o + 3], 70);
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  const safe = fileBaseName.replace(/[^\w.\-äöüÄÖÜß]+/gi, '_').replace(/\.[^.]+$/, '') || 'bild';
+  const file = await canvasToPngFile(canvas, `${safe}-ohne-hg-${Date.now()}.png`);
+  return { file, removedRatio: removed / n };
 }
 
 function canvasToPngFile(canvas: HTMLCanvasElement, name: string): Promise<File> {
@@ -103,10 +267,25 @@ export async function removeNearWhiteBackgroundFromFile(
   file: File,
   options: RemoveWhiteBgOptions = {},
 ): Promise<RemoveWhiteBgResult> {
+  const base = file.name.replace(/\.[^.]+$/, '') || 'bild';
+  if (typeof createImageBitmap === 'function') {
+    const bitmap = await createImageBitmap(file);
+    try {
+      return await removeNearWhiteBackgroundFromSource(bitmap, bitmap.width, bitmap.height, base, options);
+    } finally {
+      bitmap.close?.();
+    }
+  }
   const url = URL.createObjectURL(file);
   try {
-    const base = file.name.replace(/\.[^.]+$/, '') || 'bild';
-    return await removeNearWhiteBackgroundFromUrl(url, base, options);
+    const img = await loadImage(url);
+    return await removeNearWhiteBackgroundFromSource(
+      img,
+      img.naturalWidth || img.width,
+      img.naturalHeight || img.height,
+      base,
+      options,
+    );
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -121,108 +300,16 @@ export async function removeNearWhiteBackgroundFromUrl(
   fileBaseName = 'bild',
   options: RemoveWhiteBgOptions = {},
 ): Promise<RemoveWhiteBgResult> {
-  const tolerance = options.tolerance ?? 48;
-  const maxEdge = options.maxEdge ?? 3200;
-
-  const img = await loadImage(processSourceUrl(imageUrl));
-  let w = img.naturalWidth || img.width;
-  let h = img.naturalHeight || img.height;
-  if (!w || !h) throw new Error('Ungültige Bildgröße');
-
-  const scale = Math.min(1, maxEdge / Math.max(w, h));
-  w = Math.max(1, Math.round(w * scale));
-  h = Math.max(1, Math.round(h * scale));
-
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) throw new Error('Canvas nicht verfügbar');
-  ctx.clearRect(0, 0, w, h);
-  ctx.drawImage(img, 0, 0, w, h);
-
-  const imageData = ctx.getImageData(0, 0, w, h);
-  const data = imageData.data;
-  const n = w * h;
-  const visited = new Uint8Array(n);
-  const queue = new Int32Array(n);
-  let qh = 0;
-  let qt = 0;
-  const seeds = sampleBgSeeds(data, w, h);
-
-  const enqueue = (x: number, y: number) => {
-    const i = y * w + x;
-    if (visited[i]) return;
-    const o = i * 4;
-    if (data[o + 3] < 8) {
-      visited[i] = 1;
-      return;
-    }
-    if (!matchesBg(data[o], data[o + 1], data[o + 2], seeds, tolerance)) return;
-    visited[i] = 1;
-    queue[qt++] = i;
-  };
-
-  for (let x = 0; x < w; x++) {
-    enqueue(x, 0);
-    enqueue(x, h - 1);
+  const loaded = await loadImageSourceFromUrl(imageUrl);
+  try {
+    return await removeNearWhiteBackgroundFromSource(
+      loaded.source,
+      loaded.width,
+      loaded.height,
+      fileBaseName,
+      options,
+    );
+  } finally {
+    loaded.cleanup?.();
   }
-  for (let y = 0; y < h; y++) {
-    enqueue(0, y);
-    enqueue(w - 1, y);
-  }
-
-  let removed = 0;
-  while (qh < qt) {
-    const i = queue[qh++];
-    const x = i % w;
-    const y = (i / w) | 0;
-    const o = i * 4;
-    data[o + 3] = 0;
-    removed += 1;
-    if (x > 0) enqueue(x - 1, y);
-    if (x + 1 < w) enqueue(x + 1, y);
-    if (y > 0) enqueue(x, y - 1);
-    if (y + 1 < h) enqueue(x, y + 1);
-  }
-
-  // Fallback: kaum etwas am Rand → alle Fast-Weiß-Pixel transparent
-  if (removed / n < 0.01) {
-    for (let i = 0; i < n; i++) {
-      const o = i * 4;
-      if (data[o + 3] === 0) continue;
-      if (isNearWhite(data[o], data[o + 1], data[o + 2], tolerance + 8)) {
-        data[o + 3] = 0;
-        removed += 1;
-      }
-    }
-  }
-
-  // Kantenglättung
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const i = y * w + x;
-      const o = i * 4;
-      if (data[o + 3] === 0) continue;
-      if (!matchesBg(data[o], data[o + 1], data[o + 2], seeds, tolerance + 16)) continue;
-      let neighClear = false;
-      for (const [dx, dy] of [
-        [-1, 0],
-        [1, 0],
-        [0, -1],
-        [0, 1],
-      ] as const) {
-        if (data[((y + dy) * w + (x + dx)) * 4 + 3] === 0) {
-          neighClear = true;
-          break;
-        }
-      }
-      if (neighClear) data[o + 3] = Math.min(data[o + 3], 70);
-    }
-  }
-
-  ctx.putImageData(imageData, 0, 0);
-  const safe = fileBaseName.replace(/[^\w.\-äöüÄÖÜß]+/gi, '_').replace(/\.[^.]+$/, '') || 'bild';
-  const file = await canvasToPngFile(canvas, `${safe}-ohne-hg-${Date.now()}.png`);
-  return { file, removedRatio: removed / n };
 }

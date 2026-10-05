@@ -2,7 +2,7 @@ import { examTypeFromFileName } from './examLibraryUi';
 import { removeNearWhiteBackgroundFromFile, removeNearWhiteBackgroundFromUrl } from './presentationRemoveWhiteBg';
 
 export const EXAM_LIBRARY_ICON_IMAGE_PREFIX = 'img:';
-export const EXAM_LIBRARY_WHITE_BG_VERSION = 1;
+export const EXAM_LIBRARY_WHITE_BG_VERSION = 2;
 
 const LEGACY_STORAGE_KEY = 'jm-exam-library-icons-v1';
 
@@ -227,13 +227,15 @@ export async function uploadExamLibraryIconImageToServer(
   filePath: string,
   imageFile: File,
 ): Promise<{ icons: Record<string, string>; icon: string }> {
-  const { file: stripped } = await removeNearWhiteBackgroundFromFile(imageFile, {
-    maxEdge: 768,
-    tolerance: 48,
-  });
+  let uploadFile = imageFile;
+  try {
+    uploadFile = (await removeNearWhiteBackgroundFromFile(imageFile, { maxEdge: 768, tolerance: 48 })).file;
+  } catch {
+    /* Weißentfernung optional — Original hochladen */
+  }
   const fd = new FormData();
   fd.append('filePath', filePath);
-  fd.append('image', stripped);
+  fd.append('image', uploadFile);
   const res = await fetch('/api/file-system-paths/exam-library-icons/upload', {
     method: 'POST',
     headers: { 'x-login-code': localStorage.getItem('loginCode') || '' },
