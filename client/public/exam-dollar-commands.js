@@ -2780,7 +2780,7 @@
       hi.style.height = 'auto';
       live.style.height = 'auto';
       var contentH = hi.offsetHeight;
-      if (contentH < 1) contentH = Math.ceil(12 * 1.32);
+      if (contentH < 1) contentH = Math.ceil(14 * 1.32);
       var padY = 4;
       wrap.style.height = contentH + padY + 'px';
       live.style.height = contentH + 'px';
@@ -3298,7 +3298,7 @@
       '.exam-dollar-color-swatch:hover{transform:scale(1.08)}' +
       '.teacher-mode .exam-dollar-live-edit-wrap{position:relative;display:block;width:100%;min-height:0;margin:0;padding:2px 4px;border-radius:3px;background:#e3f2fd;border:1px solid #bbdefb;overflow:hidden;box-sizing:border-box}' +
       '.teacher-mode .exam-dollar-live-edit-wrap:focus-within{box-shadow:0 0 0 2px rgba(225,6,0,0.25);border-color:#90caf9}' +
-      '.teacher-mode .exam-dollar-live-edit-highlight,.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{display:block;min-height:0!important;padding:0;margin:0;line-height:1.32;font-family:Arial,sans-serif;font-size:12px;outline:none;border-radius:0;white-space:pre-wrap;word-break:break-word;box-sizing:border-box;border:none}' +
+      '.teacher-mode .exam-dollar-live-edit-highlight,.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{display:block;min-height:0!important;padding:0;margin:0;line-height:1.32;font-family:Arial,sans-serif;font-size:14px;outline:none;border-radius:0;white-space:pre-wrap;word-break:break-word;box-sizing:border-box;border:none}' +
       '.teacher-mode .exam-dollar-live-edit-highlight{position:relative;z-index:0;pointer-events:none;color:#222;width:100%;background:transparent;overflow:visible}' +
       '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{position:absolute!important;top:2px;left:4px;right:4px;bottom:auto!important;z-index:1;width:auto;min-height:0!important;max-height:none;overflow:auto;resize:none;background:transparent;color:transparent;-webkit-text-fill-color:transparent;caret-color:#222}' +
       '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit::selection{background:rgba(21,101,192,.22);-webkit-text-fill-color:transparent}' +
