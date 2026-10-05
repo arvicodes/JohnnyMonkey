@@ -24,6 +24,13 @@ interface EmojiSelectorProps {
 
 const emojiCategories = [
   {
+    name: 'Schule & Prüfung',
+    emojis: [
+      '📝', '✏️', '📋', '📊', '🧮', '🔬', '🧪', '💻', '🤖', '⚡', '❓', '📘', '📗', '📙',
+      '🎯', '🏫', '✅', '⭐', '🧠', '📐', '📈', '🎓', '🦉', '🔢', '🌍', '🎨', '🎵', '⚽',
+    ],
+  },
+  {
     name: 'Menschen',
     emojis: [
       '👨‍🎓', '👩‍🎓', '👨‍🏫', '👩‍🏫', '👨‍💻', '👩‍💻',

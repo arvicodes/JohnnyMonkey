@@ -41,6 +41,12 @@ import {
   type ExamLibraryType,
 } from '../../lib/examLibraryUi';
 import {
+  getExamLibraryIcon,
+  loadExamLibraryIconsMap,
+  setExamLibraryIcon,
+} from '../../lib/examLibraryIcons';
+import EmojiSelector from '../EmojiSelector';
+import {
   folderPathCovers,
   folderPathsEquivalent,
   toPortableWorkingReihePath,
@@ -431,12 +437,18 @@ function MaterialRow({
   subtitle,
   accent,
   accentWidth = 3,
+  rowBg = '#FFFFFF',
+  icon,
+  onIconClick,
   actions,
 }: {
   title: string;
   subtitle?: string;
   accent: string;
   accentWidth?: number;
+  rowBg?: string;
+  icon?: string;
+  onIconClick?: () => void;
   actions: React.ReactNode;
 }) {
   return (
@@ -448,10 +460,10 @@ function MaterialRow({
         px: 0.75,
         py: 0.45,
         borderRadius: 1.1,
-        bgcolor: '#FFFFFF',
+        bgcolor: rowBg,
         border: '1px solid #e0e0e0',
         minHeight: 30,
-        '&:hover': { bgcolor: '#fafbfc' },
+        '&:hover': { bgcolor: rowBg, filter: 'brightness(0.98)' },
       }}
     >
       <Box
@@ -464,6 +476,38 @@ function MaterialRow({
           minHeight: 16,
         }}
       />
+      {icon ? (
+        <Tooltip title="Icon ändern">
+          <Box
+            component="button"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onIconClick?.();
+            }}
+            sx={{
+              flexShrink: 0,
+              border: 'none',
+              bgcolor: 'transparent',
+              cursor: onIconClick ? 'pointer' : 'default',
+              p: 0,
+              m: 0,
+              lineHeight: 1,
+              fontSize: '1.05rem',
+              width: 26,
+              height: 26,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 1,
+              '&:hover': onIconClick ? { bgcolor: 'rgba(0,0,0,0.05)' } : undefined,
+            }}
+            aria-label="Prüfungs-Icon ändern"
+          >
+            {icon}
+          </Box>
+        </Tooltip>
+      ) : null}
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography
           sx={{
@@ -659,6 +703,12 @@ export const DashboardExamsPanel: React.FC<{
   const [typeDialogItem, setTypeDialogItem] = useState<LibraryExamItem | null>(null);
   const [typeChoice, setTypeChoice] = useState<ExamLibraryType>('QZ');
   const [typeSaving, setTypeSaving] = useState(false);
+  const [iconMap, setIconMap] = useState<Record<string, string>>(() => loadExamLibraryIconsMap());
+  const [iconPickerItem, setIconPickerItem] = useState<LibraryExamItem | null>(null);
+
+  useEffect(() => {
+    setIconMap(loadExamLibraryIconsMap());
+  }, [refreshKey]);
   const meta = useMemo(() => ({ groups, assignedFolders }), [groups, assignedFolders]);
 
   const rootsKey = useMemo(
@@ -765,6 +815,9 @@ export const DashboardExamsPanel: React.FC<{
             subtitle={item.lessonLabel !== item.reihe ? item.lessonLabel : undefined}
             accent={rowStyle.accent}
             accentWidth={rowStyle.accentWidth}
+            rowBg={rowStyle.rowBg}
+            icon={getExamLibraryIcon(item.path, item.name, iconMap)}
+            onIconClick={() => setIconPickerItem(item)}
             actions={
               <>
                 {onCorrectExam ? (
@@ -858,6 +911,22 @@ export const DashboardExamsPanel: React.FC<{
         </Button>
       </DialogActions>
     </Dialog>
+    <EmojiSelector
+      open={Boolean(iconPickerItem)}
+      onClose={() => setIconPickerItem(null)}
+      title="Icon für diese Prüfung"
+      currentEmoji={
+        iconPickerItem
+          ? getExamLibraryIcon(iconPickerItem.path, iconPickerItem.name, iconMap)
+          : '📄'
+      }
+      onSelect={(emoji) => {
+        if (!iconPickerItem) return;
+        setExamLibraryIcon(iconPickerItem.path, emoji);
+        setIconMap(loadExamLibraryIconsMap());
+        setIconPickerItem(null);
+      }}
+    />
     </>
   );
 };

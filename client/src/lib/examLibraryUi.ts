@@ -9,24 +9,25 @@ export function examTypeFromFileName(fileName: string): ExamLibraryType {
   return '';
 }
 
-/** Typ-Streifen links (Breite + Farbe). Zeile bleibt neutral weiß. */
+/** Typ-Streifen links + dezenter Hintergrund. */
 export type ExamMaterialRowStyle = {
   accent: string;
   accentWidth: number;
+  rowBg: string;
 };
 
 export function examMaterialRowStyle(fileName: string): ExamMaterialRowStyle {
   switch (examTypeFromFileName(fileName)) {
     case 'KA':
-      return { accent: '#c62828', accentWidth: 6 };
+      return { accent: '#c62828', accentWidth: 6, rowBg: 'rgba(198, 40, 40, 0.07)' };
     case 'HU':
-      return { accent: '#ef6c00', accentWidth: 3 };
+      return { accent: '#ef6c00', accentWidth: 3, rowBg: 'rgba(239, 108, 0, 0.06)' };
     case 'QZ':
-      return { accent: '#f9a825', accentWidth: 2 };
+      return { accent: '#f9a825', accentWidth: 2, rowBg: 'rgba(249, 168, 37, 0.08)' };
     case 'KU':
-      return { accent: '#5e35b1', accentWidth: 5 };
+      return { accent: '#5e35b1', accentWidth: 5, rowBg: 'rgba(94, 53, 177, 0.06)' };
     default:
-      return { accent: '#90a4ae', accentWidth: 3 };
+      return { accent: '#90a4ae', accentWidth: 3, rowBg: '#ffffff' };
   }
 }
 
