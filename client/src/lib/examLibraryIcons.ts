@@ -1,6 +1,8 @@
 import { examTypeFromFileName } from './examLibraryUi';
+import { removeNearWhiteBackgroundFromFile, removeNearWhiteBackgroundFromUrl } from './presentationRemoveWhiteBg';
 
 export const EXAM_LIBRARY_ICON_IMAGE_PREFIX = 'img:';
+export const EXAM_LIBRARY_WHITE_BG_VERSION = 1;
 
 const LEGACY_STORAGE_KEY = 'jm-exam-library-icons-v1';
 
@@ -40,14 +42,16 @@ export function isExamLibraryImageIcon(value: string | undefined | null): boolea
 }
 
 /** URL für read-image (kleine Vorschaubilder in der Bibliothek). */
-export function examLibraryIconImageSrc(iconValue: string, maxEdge = 128): string {
+export function examLibraryIconImageSrc(iconValue: string, maxEdge?: number): string {
   const pathPart = iconValue.slice(EXAM_LIBRARY_ICON_IMAGE_PREFIX.length).replace(/^\/+/, '');
   const fp = pathPart.startsWith('git-intern/')
     ? pathPart
     : pathPart.startsWith('J-M-Reihen/')
       ? `git-intern/${pathPart.slice('J-M-Reihen/'.length)}`
       : `git-intern/${pathPart}`;
-  return `/api/file-system-paths/read-image?filePath=${encodeURIComponent(fp)}&max=${maxEdge}`;
+  const maxPart =
+    maxEdge != null && Number.isFinite(maxEdge) && maxEdge > 0 ? `&max=${maxEdge}` : '';
+  return `/api/file-system-paths/read-image?filePath=${encodeURIComponent(fp)}${maxPart}`;
 }
 
 function authHeaders(): HeadersInit {
@@ -65,12 +69,85 @@ export async function fetchExamLibraryIconsFromServer(): Promise<Record<string, 
       credentials: 'include',
     });
     if (!res.ok) return loadLegacyLocalIconsMap();
-    const data = (await res.json()) as { icons?: Record<string, string> };
+    const data = (await res.json()) as {
+      icons?: Record<string, string>;
+      whiteBgVersion?: number;
+    };
     const serverIcons = data.icons && typeof data.icons === 'object' ? data.icons : {};
-    return syncLegacyIconsToServer(serverIcons);
+    let merged = await syncLegacyIconsToServer(serverIcons);
+    const whiteBgVersion = typeof data.whiteBgVersion === 'number' ? data.whiteBgVersion : 0;
+    if (whiteBgVersion < EXAM_LIBRARY_WHITE_BG_VERSION) {
+      merged = await migrateExamLibraryImageIconsWhiteBackground(merged);
+    }
+    return merged;
   } catch {
     return loadLegacyLocalIconsMap();
   }
+}
+
+async function migrateExamLibraryImageIconsWhiteBackground(
+  icons: Record<string, string>,
+): Promise<Record<string, string>> {
+  const entries = Object.entries(icons).filter(([, v]) => isExamLibraryImageIcon(v));
+  if (!entries.length) {
+    await markExamLibraryWhiteBgProcessedOnServer();
+    return icons;
+  }
+  let current = { ...icons };
+  for (const [examKey, iconVal] of entries) {
+    try {
+      const url = examLibraryIconImageSrc(iconVal, 768);
+      const { file, removedRatio } = await removeNearWhiteBackgroundFromUrl(url, 'exam-icon', {
+        maxEdge: 768,
+        tolerance: 48,
+      });
+      if (removedRatio < 0.002) continue;
+      const assetPath = iconVal.slice(EXAM_LIBRARY_ICON_IMAGE_PREFIX.length);
+      current = await overwriteExamLibraryIconAssetOnServer(examKey, assetPath, file);
+    } catch {
+      /* Einzelnes Icon überspringen */
+    }
+  }
+  await markExamLibraryWhiteBgProcessedOnServer();
+  return current;
+}
+
+async function markExamLibraryWhiteBgProcessedOnServer(): Promise<void> {
+  try {
+    await fetch('/api/file-system-paths/exam-library-icons/white-bg-done', {
+      method: 'POST',
+      headers: authHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({ version: EXAM_LIBRARY_WHITE_BG_VERSION }),
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
+async function overwriteExamLibraryIconAssetOnServer(
+  examIconKey: string,
+  assetGitPath: string,
+  pngFile: File,
+): Promise<Record<string, string>> {
+  const fd = new FormData();
+  fd.append('examIconKey', examIconKey);
+  fd.append('assetPath', assetGitPath);
+  fd.append('image', pngFile);
+  const res = await fetch('/api/file-system-paths/exam-library-icons/overwrite-asset', {
+    method: 'POST',
+    headers: { 'x-login-code': localStorage.getItem('loginCode') || '' },
+    credentials: 'include',
+    body: fd,
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    icons?: Record<string, string>;
+  };
+  if (!res.ok) {
+    throw new Error(data.error || 'Icon-Datei konnte nicht aktualisiert werden');
+  }
+  return data.icons && typeof data.icons === 'object' ? data.icons : {};
 }
 
 function loadLegacyLocalIconsMap(): Record<string, string> {
@@ -151,9 +228,13 @@ export async function uploadExamLibraryIconImageToServer(
   filePath: string,
   imageFile: File,
 ): Promise<{ icons: Record<string, string>; icon: string }> {
+  const { file: stripped } = await removeNearWhiteBackgroundFromFile(imageFile, {
+    maxEdge: 768,
+    tolerance: 48,
+  });
   const fd = new FormData();
   fd.append('filePath', filePath);
-  fd.append('image', imageFile);
+  fd.append('image', stripped);
   const res = await fetch('/api/file-system-paths/exam-library-icons/upload', {
     method: 'POST',
     headers: { 'x-login-code': localStorage.getItem('loginCode') || '' },

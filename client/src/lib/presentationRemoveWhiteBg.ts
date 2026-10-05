@@ -99,6 +99,19 @@ function matchesBg(r: number, g: number, b: number, seeds: Rgb[], tolerance: num
   return false;
 }
 
+export async function removeNearWhiteBackgroundFromFile(
+  file: File,
+  options: RemoveWhiteBgOptions = {},
+): Promise<RemoveWhiteBgResult> {
+  const url = URL.createObjectURL(file);
+  try {
+    const base = file.name.replace(/\.[^.]+$/, '') || 'bild';
+    return await removeNearWhiteBackgroundFromUrl(url, base, options);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 /**
  * Entfernt vom Bildrand aus zusammenhängende Hintergrundpixel (hell/weiß).
  * Falls kaum etwas am Rand hängt: globaler Pass für Fast-Weiß.
