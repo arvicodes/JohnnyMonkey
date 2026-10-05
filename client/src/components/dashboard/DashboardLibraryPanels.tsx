@@ -36,7 +36,7 @@ import {
 } from '../../lib/dashboardMaterialLibrary';
 import {
   EXAM_TYPE_LABELS,
-  examAccentColorForFileName,
+  examMaterialRowStyle,
   examTypeFromFileName,
   type ExamLibraryType,
 } from '../../lib/examLibraryUi';
@@ -430,11 +430,17 @@ function MaterialRow({
   title,
   subtitle,
   accent,
+  accentWidth = 3,
+  rowBg = '#FFFFFF',
+  rowBorder = '#e0e0e0',
   actions,
 }: {
   title: string;
   subtitle?: string;
   accent: string;
+  accentWidth?: number;
+  rowBg?: string;
+  rowBorder?: string;
   actions: React.ReactNode;
 }) {
   return (
@@ -446,20 +452,23 @@ function MaterialRow({
         px: 0.75,
         py: 0.45,
         borderRadius: 1.1,
-        bgcolor: '#FFFFFF',
-        border: '1px solid #e0e0e0',
+        bgcolor: rowBg,
+        border: '2px solid',
+        borderColor: rowBorder,
         minHeight: 30,
-        '&:hover': { bgcolor: '#fafbfc', borderColor: '#e0e0e0' },
+        boxShadow: `inset ${accentWidth + 2}px 0 0 0 ${accent}`,
+        '&:hover': { filter: 'brightness(0.97)' },
       }}
     >
       <Box
         sx={{
-          width: 3,
+          width: accentWidth,
           alignSelf: 'stretch',
-          borderRadius: 1,
+          borderRadius: 0.5,
           bgcolor: accent,
           flexShrink: 0,
           minHeight: 16,
+          boxShadow: `0 0 0 1px ${accent}`,
         }}
       />
       <Box sx={{ flex: 1, minWidth: 0 }}>

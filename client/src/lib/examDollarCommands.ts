@@ -53,7 +53,7 @@ export const EXAM_DOLLAR_COMMANDS_HELP = [
   {
     syntax: '$a1$ / $a2$ …',
     meaning:
-      'Formulierungsvariante zur Aussage direkt darüber (eigene Zeile; optional Text in derselben Zeile). In der Lehrer-Vorschau erscheinen darunter Buttons „Alternative 1“ usw.; Klick zeigt die Variante (nochmal klicken = zurück zur Hauptfassung).',
+      'Formulierungsvariante zur Aussage direkt darüber (eigene Zeile $a1$ …). Buttons „Alternative 1“ usw. stehen links unter „Musterlösungen anzeigen“; Klick ersetzt überall die Hauptfassung durch die Variante (nochmal klicken = Hauptfassung).',
   },
   { syntax: '$Musterlösung$', meaning: 'ab dieser Zeile: Inhalt für „Musterlösungen anzeigen“ (grüne Box)' },
 ] as const;

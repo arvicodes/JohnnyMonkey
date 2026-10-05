@@ -1618,19 +1618,6 @@
         (alt.html || '') +
         '</div>';
     });
-    out += '</div>';
-    out +=
-      '<div class="exam-dollar-alt-toolbar teacher-only" role="tablist" aria-label="Formulierungsvarianten">';
-    sorted.forEach(function (alt) {
-      out +=
-        '<button type="button" class="exam-dollar-alt-btn" role="tab" aria-selected="false" data-jm-alt-group="' +
-        escapeHtml(gid) +
-        '" data-jm-alt-index="' +
-        alt.num +
-        '">Alternative ' +
-        alt.num +
-        '</button>';
-    });
     out += '</div></div>';
     return out;
   }
@@ -1786,6 +1773,12 @@
     return parts.join('');
   }
 
+  function getExamGlobalAltIndex() {
+    var v = document.body.getAttribute('data-jm-exam-alt-variant');
+    if (v == null || v === '') return '0';
+    return String(v);
+  }
+
   function setExamAltGroupActive(groupEl, index) {
     if (!groupEl) return;
     var idx = String(index == null ? '0' : index);
@@ -1795,40 +1788,121 @@
       var on = v === idx;
       view.classList.toggle('exam-dollar-alt-view--hidden', !on);
     });
-    groupEl.querySelectorAll('.exam-dollar-alt-btn').forEach(function (btn) {
-      var on = btn.getAttribute('data-jm-alt-index') === idx;
-      btn.classList.toggle('exam-dollar-alt-btn--active', on);
-      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+  }
+
+  function setExamGlobalAltIndex(index) {
+    var idx = String(index == null ? 0 : index);
+    if (idx !== '0' && !/^\d+$/.test(idx)) idx = '0';
+    document.body.setAttribute('data-jm-exam-alt-variant', idx);
+    global.__jmExamGlobalAltIndex = idx;
+    document.querySelectorAll('.exam-dollar-alt-group').forEach(function (groupEl) {
+      var use = idx;
+      if (use !== '0' && !groupEl.querySelector('.exam-dollar-alt-view[data-jm-alt-view="' + use + '"]')) {
+        use = '0';
+      }
+      setExamAltGroupActive(groupEl, use);
+    });
+    refreshExamAltVariantToolbarActiveState();
+  }
+
+  function collectExamAltVariantNumbers() {
+    var nums = {};
+    document.querySelectorAll('.exam-paper .exam-dollar-alt-view[data-jm-alt-view]').forEach(function (view) {
+      var id = view.getAttribute('data-jm-alt-view');
+      if (id && id !== '0') nums[id] = true;
+    });
+    return Object.keys(nums)
+      .map(function (n) {
+        return parseInt(n, 10);
+      })
+      .filter(function (n) {
+        return n > 0;
+      })
+      .sort(function (a, b) {
+        return a - b;
+      });
+  }
+
+  function ensureExamAltVariantToolbarMount() {
+    var toolbar = document.querySelector('.exam-toolbar');
+    if (!toolbar) return null;
+    var mount = document.getElementById('examAltVariantToolbar');
+    if (!mount) {
+      mount = document.createElement('div');
+      mount.id = 'examAltVariantToolbar';
+      mount.className = 'exam-alt-variant-toolbar teacher-only';
+      mount.setAttribute('aria-label', 'Formulierungsvarianten');
+      var solutions = toolbar.querySelector('label.solutions-toggle');
+      if (solutions) solutions.insertAdjacentElement('afterend', mount);
+      else toolbar.appendChild(mount);
+      mount.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest('.exam-alt-variant-btn') : null;
+        if (!btn || !mount.contains(btn)) return;
+        e.preventDefault();
+        var pick = btn.getAttribute('data-jm-global-alt');
+        if (!pick) return;
+        var cur = getExamGlobalAltIndex();
+        if (cur === pick) setExamGlobalAltIndex(0);
+        else setExamGlobalAltIndex(pick);
+      });
+    }
+    return mount;
+  }
+
+  function refreshExamAltVariantToolbarActiveState() {
+    var mount = document.getElementById('examAltVariantToolbar');
+    if (!mount) return;
+    var cur = getExamGlobalAltIndex();
+    mount.querySelectorAll('.exam-alt-variant-btn').forEach(function (btn) {
+      var on = btn.getAttribute('data-jm-global-alt') === cur;
+      btn.classList.toggle('exam-alt-variant-btn--active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  function refreshExamAltVariantToolbar() {
+    var mount = ensureExamAltVariantToolbarMount();
+    if (!mount) return;
+    var nums = collectExamAltVariantNumbers();
+    if (!nums.length) {
+      mount.innerHTML = '';
+      mount.hidden = true;
+      setExamGlobalAltIndex(0);
+      return;
+    }
+    mount.hidden = false;
+    var cur = getExamGlobalAltIndex();
+    var html = '';
+    nums.forEach(function (n) {
+      html +=
+        '<button type="button" class="exam-alt-variant-btn' +
+        (cur === String(n) ? ' exam-alt-variant-btn--active' : '') +
+        '" data-jm-global-alt="' +
+        n +
+        '" aria-pressed="' +
+        (cur === String(n) ? 'true' : 'false') +
+        '">Alternative ' +
+        n +
+        '</button>';
+    });
+    mount.innerHTML = html;
+  }
+
+  function syncExamAltGroupsToGlobal(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    var idx = getExamGlobalAltIndex();
+    scope.querySelectorAll('.exam-dollar-alt-group').forEach(function (groupEl) {
+      var use = idx;
+      if (use !== '0' && !groupEl.querySelector('.exam-dollar-alt-view[data-jm-alt-view="' + use + '"]')) {
+        use = '0';
+      }
+      setExamAltGroupActive(groupEl, use);
     });
   }
 
   function wireExamAltGroups(root) {
-    var scope = root && root.querySelectorAll ? root : document;
-    scope.querySelectorAll('.exam-dollar-alt-group').forEach(function (groupEl) {
-      if (groupEl.__jmAltWired) return;
-      groupEl.__jmAltWired = true;
-      var active = groupEl.getAttribute('data-jm-alt-active') || '0';
-      setExamAltGroupActive(groupEl, active);
-      groupEl.querySelectorAll('.exam-dollar-alt-btn').forEach(function (btn) {
-        if (btn.__jmAltBtnWired) return;
-        btn.__jmAltBtnWired = true;
-        btn.addEventListener('click', function (e) {
-          e.preventDefault();
-          var gid = btn.getAttribute('data-jm-alt-group');
-          var idx = btn.getAttribute('data-jm-alt-index');
-          var group = gid
-            ? scope.querySelector('.exam-dollar-alt-group[data-jm-alt-group="' + gid + '"]')
-            : groupEl;
-          if (!group) return;
-          var cur = group.getAttribute('data-jm-alt-active') || '0';
-          if (cur === idx) {
-            setExamAltGroupActive(group, '0');
-          } else {
-            setExamAltGroupActive(group, idx);
-          }
-        });
-      });
-    });
+    syncExamAltGroupsToGlobal(root);
+    refreshExamAltVariantToolbar();
   }
 
   function wireWfExclusiveCheckboxes(taskEl) {
@@ -2726,10 +2800,11 @@
       'body.show-solutions .exam-dollar-wf-row .exam-dollar-choice-correct .exam-dollar-choice-box{border-color:#2e7d32}' +
       '.exam-dollar-alt-group{margin:8px 0 10px}' +
       '.exam-dollar-alt-view--hidden{display:none!important}' +
-      '.exam-dollar-alt-toolbar{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;justify-content:flex-start}' +
-      '.exam-dollar-alt-btn{font-size:11px;line-height:1.2;padding:4px 10px;border:1px solid #bdbdbd;border-radius:5px;background:#fff;color:#333;cursor:pointer;font-family:Arial,sans-serif}' +
-      '.exam-dollar-alt-btn:hover{border-color:#E10600;color:#E10600}' +
-      '.exam-dollar-alt-btn--active{border-color:#E10600;color:#E10600;font-weight:700;background:#fff5f5}';
+      '.exam-alt-variant-toolbar{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-start;align-items:center;width:100%;margin:2px 0 0;padding:0}' +
+      '.exam-alt-variant-toolbar[hidden]{display:none!important}' +
+      '.exam-alt-variant-btn{font-size:11px;line-height:1.2;padding:4px 10px;border:1px solid #bdbdbd;border-radius:5px;background:#fff;color:#333;cursor:pointer;font-family:Arial,sans-serif;text-align:left}' +
+      '.exam-alt-variant-btn:hover{border-color:#E10600;color:#E10600}' +
+      '.exam-alt-variant-btn--active{border-color:#E10600;color:#E10600;font-weight:700;background:#fff5f5}';
   }
 
   function ensureComposeArea() {
@@ -2859,6 +2934,8 @@
         }
       }
     });
+    refreshExamAltVariantToolbar();
+    syncExamAltGroupsToGlobal(document.querySelector('.exam-paper'));
   }
 
   function scheduleExamTaskBootstrap(isTeacher) {

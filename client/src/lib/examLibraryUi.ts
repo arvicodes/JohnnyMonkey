@@ -9,20 +9,58 @@ export function examTypeFromFileName(fileName: string): ExamLibraryType {
   return '';
 }
 
-/** KA rot, HÜ orange, QZ gelb, KU violett. */
-export function examAccentColorForFileName(fileName: string): string {
+/** Zeilen-Stil im Prüfungs-Dashboard (Streifenbreite + kräftige Farbe). */
+export type ExamMaterialRowStyle = {
+  accent: string;
+  /** Vertikaler Typ-Streifen links (px). */
+  accentWidth: number;
+  rowBg: string;
+  rowBorder: string;
+};
+
+export function examMaterialRowStyle(fileName: string): ExamMaterialRowStyle {
   switch (examTypeFromFileName(fileName)) {
     case 'KA':
-      return '#c62828';
+      return {
+        accent: '#b71c1c',
+        accentWidth: 8,
+        rowBg: '#ffcdd2',
+        rowBorder: '#e53935',
+      };
     case 'HU':
-      return '#ef6c00';
+      return {
+        accent: '#e65100',
+        accentWidth: 4,
+        rowBg: '#ffe0b2',
+        rowBorder: '#fb8c00',
+      };
     case 'QZ':
-      return '#f9a825';
+      return {
+        accent: '#f9a825',
+        accentWidth: 2,
+        rowBg: '#fff9c4',
+        rowBorder: '#fdd835',
+      };
     case 'KU':
-      return '#5e35b1';
+      return {
+        accent: '#4527a0',
+        accentWidth: 6,
+        rowBg: '#d1c4e9',
+        rowBorder: '#7e57c2',
+      };
     default:
-      return '#c62828';
+      return {
+        accent: '#b71c1c',
+        accentWidth: 5,
+        rowBg: '#ffffff',
+        rowBorder: '#e0e0e0',
+      };
   }
+}
+
+/** Nur Streifenfarbe (Legacy). */
+export function examAccentColorForFileName(fileName: string): string {
+  return examMaterialRowStyle(fileName).accent;
 }
 
 export const EXAM_TYPE_LABELS: Record<Exclude<ExamLibraryType, ''>, string> = {
