@@ -1325,9 +1325,15 @@
     return String(m[1] || 'wf').toLowerCase();
   }
 
+  function normalizeWfLineSuffix(suffix) {
+    return String(suffix || '')
+      .replace(/^\s+/, '')
+      .replace(/\s+\$\s*$/, '');
+  }
+
   /** Zeilenende: $wff$ oder $wff $$wwf $$$wff (wie $L … $$ … $$$ …) */
   function parseWfLineModeVariants(suffix) {
-    var rest = String(suffix || '').replace(/^\s+/, '');
+    var rest = normalizeWfLineSuffix(suffix);
     if (!rest || rest.charAt(0) !== '$') return null;
     var firstAlt = findNextDollarAltMarkerIndex(rest);
     if (firstAlt < 0) {
@@ -1369,24 +1375,28 @@
   function parseWfLine(line) {
     var t = String(line || '').trim();
     if (!t) return null;
+    var suffixAt = findWfModeSuffixStart(t);
+    if (suffixAt >= 0) {
+      var stmt = t.slice(0, suffixAt).trim();
+      if (stmt) {
+        var variants = parseWfLineModeVariants(t.slice(suffixAt));
+        if (variants) {
+          return {
+            stmt: stmt,
+            mode: variants.base,
+            alts: Object.keys(variants.alts).length ? variants.alts : null,
+          };
+        }
+      }
+    }
+    if (/\$\$/.test(t)) return null;
     var simple = t.match(/^([\s\S]+?)\s+\$(wwf|wff|wf)\s*\$/i);
     if (simple) {
       var stmtSimple = String(simple[1] || '').trim();
       if (!stmtSimple) return null;
       return { stmt: stmtSimple, mode: String(simple[2] || 'wf').toLowerCase(), alts: null };
     }
-    var suffixAt = findWfModeSuffixStart(t);
-    if (suffixAt < 0) return null;
-    var stmt = t.slice(0, suffixAt).trim();
-    var suffix = t.slice(suffixAt);
-    if (!stmt) return null;
-    var variants = parseWfLineModeVariants(suffix);
-    if (!variants) return null;
-    return {
-      stmt: stmt,
-      mode: variants.base,
-      alts: Object.keys(variants.alts).length ? variants.alts : null,
-    };
+    return null;
   }
 
   function countWfRowsInBody(body) {
@@ -1480,8 +1490,10 @@
     var achieved = 0;
     var total = 0;
     taskEl.querySelectorAll('.exam-dollar-wf-row').forEach(function (tr) {
-      var w = tr.querySelector('.exam-dollar-wf-input[data-jm-wf-col="w"]');
-      var f = tr.querySelector('.exam-dollar-wf-input[data-jm-wf-col="f"]');
+      var visibleView = tr.querySelector('.exam-dollar-alt-view:not(.exam-dollar-alt-view--hidden)');
+      var scope = visibleView || tr;
+      var w = scope.querySelector('.exam-dollar-wf-input[data-jm-wf-col="w"]');
+      var f = scope.querySelector('.exam-dollar-wf-input[data-jm-wf-col="f"]');
       if (!w || !f) return;
       var wSol = w.getAttribute('data-correct') === '1';
       var fSol = f.getAttribute('data-correct') === '1';
@@ -2186,21 +2198,27 @@
     taskEl.querySelectorAll('.exam-dollar-wf-row').forEach(function (tr) {
       if (tr.__jmWfWired) return;
       tr.__jmWfWired = true;
-      var w = tr.querySelector('.exam-dollar-wf-input[data-jm-wf-col="w"]');
-      var f = tr.querySelector('.exam-dollar-wf-input[data-jm-wf-col="f"]');
-      if (!w || !f) return;
-      function onChange(changed) {
-        if (changed.checked) {
-          var other = changed === w ? f : w;
-          other.checked = false;
+      var pairRoots = tr.querySelectorAll('.exam-dollar-wf-alt-pair');
+      if (!pairRoots.length) pairRoots = [tr];
+      pairRoots.forEach(function (container) {
+        if (container.__jmWfPairWired) return;
+        container.__jmWfPairWired = true;
+        var w = container.querySelector('.exam-dollar-wf-input[data-jm-wf-col="w"]');
+        var f = container.querySelector('.exam-dollar-wf-input[data-jm-wf-col="f"]');
+        if (!w || !f) return;
+        function onChange(changed) {
+          if (changed.checked) {
+            var other = changed === w ? f : w;
+            other.checked = false;
+          }
+          maybeUpdateLivePointsDisplay();
         }
-        maybeUpdateLivePointsDisplay();
-      }
-      w.addEventListener('change', function () {
-        onChange(w);
-      });
-      f.addEventListener('change', function () {
-        onChange(f);
+        w.addEventListener('change', function () {
+          onChange(w);
+        });
+        f.addEventListener('change', function () {
+          onChange(f);
+        });
       });
     });
   }
@@ -2611,8 +2629,8 @@
     if (!wf || !wf.alts || !Object.keys(wf.alts).length) {
       return highlightLiveEditLineCommands(suffix);
     }
-    var lead = String(suffix || '').match(/^\s*/);
-    var html = escapeHtml(lead ? lead[0] : '');
+    var lead = String(normalizeWfLineSuffix(suffix)).match(/^(\s*)/);
+    var html = escapeHtml(lead ? lead[1] : '');
     html += examLiveCmdHtml('$' + wf.mode);
     var nums = Object.keys(wf.alts)
       .map(function (n) {
@@ -3337,9 +3355,10 @@
       '.exam-dollar-alt-group{margin:8px 0 10px}' +
       '.exam-dollar-alt-view--hidden{display:none!important}' +
       '.teacher-mode .exam-dollar-math-alt-group .exam-dollar-alt-view:not(.exam-dollar-alt-view--hidden){display:inline-block;max-width:100%}' +
-      '.teacher-mode .exam-dollar-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #8e24aa;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.12)}' +
-      '.teacher-mode .exam-dollar-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ec407a;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(244,143,177,.18)}' +
-      '.teacher-mode .exam-dollar-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ab47bc;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.1)}' +
+      '.teacher-mode .exam-dollar-wf-alt-group .exam-dollar-alt-view:not(.exam-dollar-alt-view--hidden){display:block}' +
+      '.teacher-mode .solution .exam-dollar-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #8e24aa;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.12)}' +
+      '.teacher-mode .solution .exam-dollar-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ec407a;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(244,143,177,.18)}' +
+      '.teacher-mode .solution .exam-dollar-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ab47bc;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.1)}' +
       '.exam-alt-variant-toolbar{display:flex;flex-wrap:wrap;justify-content:flex-start;align-items:stretch;width:100%;margin:2px 0 0;padding:0}' +
       '.exam-alt-variant-toolbar[hidden]{display:none!important}' +
       '.exam-alt-variant-duo{display:inline-flex;width:100%;border:1px solid #bdbdbd;border-radius:7px;overflow:hidden;background:#fff;box-sizing:border-box}' +
