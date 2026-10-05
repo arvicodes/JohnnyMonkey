@@ -229,24 +229,30 @@ export type ExamLibraryCustomIconChoice = {
   label: string;
 };
 
-/** Gespeicherte Bild-Icons (Vorlage + aktuelle Zuordnungen), je Wert einmal. */
+function labelFromExamPath(examPath: string): string {
+  const file = examPath.split('/').pop() || 'Icon';
+  return file.replace(/\.html?$/i, '').replace(/^((ka|ku|hu|hü|qz)_)/i, '').trim() || file;
+}
+
+/** Gespeicherte Bild-Icons (Vorlage + Zuordnungen), jedes Bild nur einmal. */
 export function listExamLibraryCustomIconChoices(
   iconMap: Record<string, string>,
   template: ExamLibraryIconTemplate | null,
 ): ExamLibraryCustomIconChoice[] {
+  const examPaths = new Set<string>([
+    ...Object.keys(iconMap),
+    ...Object.keys(template?.icons ?? {}),
+  ]);
+
   const byValue = new Map<string, string>();
-  const add = (examPath: string, raw: string) => {
-    const value = raw.trim();
-    if (!value || !isExamLibraryImageIcon(value)) return;
-    if (byValue.has(value)) return;
-    const file = examPath.split('/').pop() || 'Icon';
-    const label = file.replace(/\.html?$/i, '').replace(/^((ka|ku|hu|hü|qz)_)/i, '').trim() || file;
-    byValue.set(value, label);
-  };
-  if (template?.icons) {
-    for (const [p, v] of Object.entries(template.icons)) add(p, v);
+
+  for (const examPath of examPaths) {
+    const value = (iconMap[examPath] || template?.icons?.[examPath])?.trim();
+    if (!value || !isExamLibraryImageIcon(value)) continue;
+    if (byValue.has(value)) continue;
+    byValue.set(value, labelFromExamPath(examPath));
   }
-  for (const [p, v] of Object.entries(iconMap)) add(p, v);
+
   return [...byValue.entries()]
     .map(([value, label]) => ({ value, label }))
     .sort((a, b) => a.label.localeCompare(b.label, 'de'));
