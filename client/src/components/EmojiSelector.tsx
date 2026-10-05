@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Typography,
@@ -11,7 +11,10 @@ import {
   DialogContent,
   DialogActions,
   Chip,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
 
 interface EmojiSelectorProps {
@@ -22,9 +25,31 @@ interface EmojiSelectorProps {
   title?: string;
 }
 
-const emojiCategories = [
+type EmojiCategory = {
+  name: string;
+  emojis: string[];
+  keywords?: string[];
+};
+
+const emojiCategories: EmojiCategory[] = [
   {
     name: 'Schule & Prüfung',
+    keywords: [
+      'schule',
+      'prüfung',
+      'pruefung',
+      'quiz',
+      'test',
+      'klasse',
+      'mathe',
+      'informatik',
+      'ki',
+      'note',
+      'arbeit',
+      'hausaufgabe',
+      'hü',
+      'ka',
+    ],
     emojis: [
       '📝', '✏️', '📋', '📊', '🧮', '🔬', '🧪', '💻', '🤖', '⚡', '❓', '📘', '📗', '📙',
       '🎯', '🏫', '✅', '⭐', '🧠', '📐', '📈', '🎓', '🦉', '🔢', '🌍', '🎨', '🎵', '⚽',
@@ -32,6 +57,7 @@ const emojiCategories = [
   },
   {
     name: 'Menschen',
+    keywords: ['mensch', 'lehrer', 'schüler', 'schueler', 'beruf', 'avatar'],
     emojis: [
       '👨‍🎓', '👩‍🎓', '👨‍🏫', '👩‍🏫', '👨‍💻', '👩‍💻',
       '👨‍🔬', '👩‍🔬', '👨‍🎨', '👩‍🎨', '👨‍⚕️', '👩‍⚕️', '👨‍🚀', '👩‍🚀',
@@ -43,6 +69,20 @@ const emojiCategories = [
   },
   {
     name: 'Tiere',
+    keywords: [
+      'tier',
+      'hund',
+      'katze',
+      'hase',
+      'vogel',
+      'fisch',
+      'pferd',
+      'bär',
+      'baer',
+      'affe',
+      'loewe',
+      'einhorn',
+    ],
     emojis: [
       '🐱', '🐶', '🐰', '🐹', '🐭', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮',
       '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐤', '🐣', '🦆', '🦅', '🦉', '🦇',
@@ -57,6 +97,7 @@ const emojiCategories = [
   },
   {
     name: 'Monster & Fantasie',
+    keywords: ['monster', 'fantasie', 'robot', 'roboter', 'alien', 'hexe', 'drache', 'superheld'],
     emojis: [
       '👹', '👺', '👻', '👽', '🤖', '💀', '☠️', '👾', '🤡', '👿', '😈',
       '🧙‍♂️', '🧙‍♀️', '🧛‍♂️', '🧛‍♀️', '🧜‍♂️', '🧜‍♀️', '🧚‍♂️', '🧚‍♀️',
@@ -67,6 +108,7 @@ const emojiCategories = [
   },
   {
     name: 'Emotionen & Gesichter',
+    keywords: ['gesicht', 'smiley', 'emotion', 'lustig', 'traurig', 'freude', 'herz'],
     emojis: [
       '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃',
       '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜',
@@ -84,6 +126,40 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
   currentEmoji = '🧙‍♂️',
   title = '🎭 Wähle dein Avatar-Emoji',
 }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    if (!open) setSearchQuery('');
+  }, [open]);
+
+  const filteredCategories = useMemo(() => {
+    const q = searchQuery.trim();
+    const qLower = q.toLowerCase();
+    if (!qLower) {
+      return emojiCategories.map((c) => ({ name: c.name, emojis: c.emojis }));
+    }
+
+    const emojiHits = new Set<string>();
+    for (const cat of emojiCategories) {
+      for (const emoji of cat.emojis) {
+        if (emoji === q || (q.length >= 1 && emoji.includes(q))) {
+          emojiHits.add(emoji);
+        }
+      }
+    }
+    if (emojiHits.size > 0) {
+      return [{ name: 'Treffer', emojis: [...emojiHits] }];
+    }
+
+    const matched = emojiCategories.filter((cat) => {
+      if (cat.name.toLowerCase().includes(qLower)) return true;
+      return (cat.keywords || []).some((k) => k.includes(qLower) || qLower.includes(k));
+    });
+
+    if (matched.length === 0) return [];
+    return matched.map((c) => ({ name: c.name, emojis: c.emojis }));
+  }, [searchQuery]);
+
   const handleEmojiSelect = (emoji: string) => {
     onSelect(emoji);
     onClose();
@@ -121,7 +197,28 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
       </DialogTitle>
 
       <DialogContent sx={{ p: 2, maxHeight: '60vh', overflowY: 'auto' }}>
-        {emojiCategories.map((category) => (
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Suchen … (z. B. Quiz, Hund, 🤖)"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          autoFocus
+          sx={{ mb: 2, bgcolor: '#fff', borderRadius: 1 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" color="action" />
+              </InputAdornment>
+            ),
+          }}
+        />
+        {filteredCategories.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+            Kein Icon passend zu „{searchQuery.trim()}“
+          </Typography>
+        ) : null}
+        {filteredCategories.map((category) => (
           <Box key={category.name} sx={{ mb: 3 }}>
             <Typography
               variant="subtitle1"
