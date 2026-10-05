@@ -1690,6 +1690,13 @@
           maybeUpdateLivePointsDisplay();
         });
       });
+      document.querySelectorAll('.exam-dollar-paare-state').forEach(function (inp) {
+        if (inp.__jmScoreWired) return;
+        inp.__jmScoreWired = true;
+        inp.addEventListener('input', function () {
+          maybeUpdateLivePointsDisplay();
+        });
+      });
     };
   }
 
@@ -1984,10 +1991,10 @@
     if (a.classList.contains('exam-dollar-paare-card--matched')) return;
     if (b.classList.contains('exam-dollar-paare-card--matched')) return;
     var stack = document.createElement('div');
-    stack.className = 'exam-dollar-paare-stack';
+    stack.className = 'exam-dollar-paare-stack exam-dollar-paare-stack--correct';
     stack.setAttribute('data-pair-id', a.getAttribute('data-pair-id') || '');
-    a.classList.add('exam-dollar-paare-card--matched');
-    b.classList.add('exam-dollar-paare-card--matched');
+    a.classList.add('exam-dollar-paare-card--matched', 'exam-dollar-paare-card--correct');
+    b.classList.add('exam-dollar-paare-card--matched', 'exam-dollar-paare-card--correct');
     a.setAttribute('draggable', 'false');
     b.setAttribute('draggable', 'false');
     a.classList.remove('exam-dollar-paare-card--selected');
@@ -2024,10 +2031,14 @@
           syncPaareHiddenState(paRoot);
           maybeUpdateLivePointsDisplay();
         } else {
+          a.classList.add('exam-dollar-paare-card--incorrect');
+          b.classList.add('exam-dollar-paare-card--incorrect');
+          a.classList.add('exam-dollar-paare-card--wrong');
           b.classList.add('exam-dollar-paare-card--wrong');
           setTimeout(function () {
-            b.classList.remove('exam-dollar-paare-card--wrong');
-          }, 450);
+            a.classList.remove('exam-dollar-paare-card--incorrect', 'exam-dollar-paare-card--wrong');
+            b.classList.remove('exam-dollar-paare-card--incorrect', 'exam-dollar-paare-card--wrong');
+          }, 650);
         }
       }
 
@@ -2081,6 +2092,13 @@
           return;
         }
         tryMatch(selectedCard, card);
+      });
+      paRoot.querySelectorAll('.exam-dollar-paare-state').forEach(function (inp) {
+        if (inp.__jmScoreWired) return;
+        inp.__jmScoreWired = true;
+        inp.addEventListener('input', function () {
+          maybeUpdateLivePointsDisplay();
+        });
       });
     });
   }
@@ -3673,6 +3691,10 @@
       '.exam-dollar-paare-card--over{outline:2px solid #64b5f6}' +
       '.exam-dollar-paare-card--wrong{animation:examDollarPaareShake .4s ease}' +
       '.exam-dollar-paare-card--matched{cursor:default}' +
+      '.exam-dollar-paare-stack--correct{position:relative;padding:2px 4px;border-radius:8px;background:rgba(232,245,233,.75)}' +
+      '.exam-dollar-paare-stack--correct::after{content:"✓";position:absolute;top:-6px;right:-4px;width:18px;height:18px;border-radius:50%;background:#2e7d32;color:#fff;font-size:12px;font-weight:800;line-height:18px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.2)}' +
+      '.exam-dollar-paare-card--correct{border-color:#2e7d32!important;background:#e8f5e9!important;box-shadow:0 2px 6px rgba(0,0,0,.06),inset 0 0 0 2px #fff,0 0 0 2px #66bb6a!important}' +
+      '.exam-dollar-paare-card--incorrect{border-color:#c62828!important;background:#ffebee!important;box-shadow:0 2px 6px rgba(0,0,0,.06),inset 0 0 0 2px #fff,0 0 0 2px #ef5350!important}' +
       '.exam-dollar-paare-stack{display:inline-flex;gap:10px;align-items:center;vertical-align:top}' +
       '.exam-dollar-paare-stack .exam-dollar-paare-card{margin:0}' +
       'body.show-solutions .exam-dollar-paare-match--solution .exam-dollar-paare-card{box-shadow:0 2px 7px rgba(0,0,0,.08),inset 0 0 0 2px rgba(46,125,50,.45)}' +
