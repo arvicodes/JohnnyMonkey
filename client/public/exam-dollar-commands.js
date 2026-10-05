@@ -17,7 +17,7 @@
  * $Bild name.png$ · $10%$ Originalbreite · $t$ Textumfluss · $r5b$ Rahmen
  * · kompakt: $Bild name.png 10% r t r5b$ (alles in einem $…$)
  * Aussage … $wf$   Wahr/Falsch-Tabelle (|$wwf$| = Wahr richtig, |$wff$| = Falsch richtig)
- * $a1$ / $a2$ …    Formulierungsvariante zur Aussage direkt darüber (Buttons „Alternative 1“ …)
+ * $a1$ / $a2$ …    Variante unter Aussage oder in $L 5 $a1 7 $a2 10 L$ (Buttons unter Musterlösung)
  * $Musterlösung$    ab dieser Zeile: Text für die grüne Musterlösungsbox
  */
 (function (global) {
@@ -1090,7 +1090,30 @@
     return null;
   }
 
-  function renderMathHtml(latex) {
+  function parseDollarInlineAltContent(raw) {
+    var s = String(raw || '').replace(/\r/g, '');
+    var markerRe = /\$a(\d+)(?:\$|\s)/i;
+    var first = s.search(markerRe);
+    if (first < 0) return null;
+    var base = s.slice(0, first).trim();
+    var rest = s.slice(first);
+    var alts = {};
+    while (rest.length) {
+      var head = rest.match(/^\$a(\d+)(?:\$|\s)\s*/i);
+      if (!head) break;
+      var num = parseInt(head[1], 10);
+      if (!num) break;
+      rest = rest.slice(head[0].length);
+      var next = rest.search(/\$a(\d+)(?:\$|\s)/i);
+      var chunk = (next < 0 ? rest : rest.slice(0, next)).trim();
+      alts[num] = chunk;
+      rest = next < 0 ? '' : rest.slice(next);
+    }
+    if (!Object.keys(alts).length) return null;
+    return { base: base, alts: alts };
+  }
+
+  function renderMathHtmlCore(latex) {
     var t = String(latex || '').replace(/^\s+|\s+$/g, '');
     if (!t) return '';
     var toRender = shouldUseSimpleMathLatex(t)
@@ -1109,6 +1132,43 @@
       escapeHtml(toRender) +
       '</span></span>'
     );
+  }
+
+  function renderMathHtml(latex, idGen) {
+    var parsed = parseDollarInlineAltContent(latex);
+    if (parsed && Object.keys(parsed.alts).length) {
+      var gid = idGen ? idGen() : 'mathAlt_' + Date.now().toString(36);
+      var nums = Object.keys(parsed.alts)
+        .map(function (n) {
+          return parseInt(n, 10);
+        })
+        .filter(function (n) {
+          return n > 0;
+        })
+        .sort(function (a, b) {
+          return a - b;
+        });
+      var out =
+        '<span class="exam-dollar-alt-group exam-dollar-math-alt-group" data-jm-alt-group="' +
+        escapeHtml(gid) +
+        '" data-jm-alt-active="0">';
+      out += '<span class="exam-dollar-alt-views">';
+      out +=
+        '<span class="exam-dollar-alt-view" data-jm-alt-view="0">' +
+        renderMathHtmlCore(parsed.base) +
+        '</span>';
+      nums.forEach(function (n) {
+        out +=
+          '<span class="exam-dollar-alt-view exam-dollar-alt-view--hidden" data-jm-alt-view="' +
+          n +
+          '">' +
+          renderMathHtmlCore(parsed.alts[n]) +
+          '</span>';
+      });
+      out += '</span></span>';
+      return out;
+    }
+    return renderMathHtmlCore(latex);
   }
 
   function typesetExamMathInRoot(root) {
@@ -1969,7 +2029,7 @@
           compactM.css,
         );
       } else if (mathM) {
-        out += renderMathHtml(mathM[1]);
+        out += renderMathHtml(mathM[1], idGen);
       } else if (codeBoxM) {
         out += renderCodeHtml(codeBoxM[1], idGen, true);
       } else if (codeM) {
