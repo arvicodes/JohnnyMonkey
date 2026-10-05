@@ -12139,6 +12139,46 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     return `${portable.replace(/\/+$/, '')}.html`;
   };
 
+  const handleDuplicateExamination = async (item: { path?: string; name: string }) => {
+    const filePath = normalizeExamDeletePath(item.path || '');
+    if (!filePath) {
+      showSnackbar('Kein Dateipfad für diese Prüfung.', 'error');
+      return;
+    }
+    try {
+      const res = await fetch('/api/file-system-paths/duplicate-examination', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': localStorage.getItem('loginCode') || '',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ filePath }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        fileName?: string;
+        created?: string[];
+      };
+      if (!res.ok) {
+        throw new Error(data.error || 'Duplizieren fehlgeschlagen');
+      }
+      const dir = filePath.replace(/\\/g, '/').replace(/\/[^/]+$/, '');
+      void import('../lib/fsTreeCache').then(({ invalidateFsDirectoryCache }) => {
+        invalidateFsDirectoryCache(dir);
+        invalidateFsDirectoryCache();
+      });
+      refreshAssignedFolderTrees();
+      setExamsPanelRefreshKey((k) => k + 1);
+      const label = data.fileName || item.name;
+      const versions =
+        data.created && data.created.length > 1 ? ` (${data.created.length} Dateien)` : '';
+      showSnackbar(`Kopie erstellt: ${label}${versions}`, 'success');
+    } catch (e) {
+      showSnackbar(e instanceof Error ? e.message : 'Duplizieren fehlgeschlagen', 'error');
+    }
+  };
+
   const examDeleteConfirmationOk = () =>
     confirmExamDeleteCheck && confirmExamDeleteWord.trim().toUpperCase() === 'ENTFERNEN';
 
@@ -12180,6 +12220,16 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
     return dir(o) === dir(d) && baseStem(o) === baseStem(d);
   };
 
+  const invalidateExamFolderCachesAfterChange = (filePath: string) => {
+    const dir = filePath.replace(/\\/g, '/').replace(/\/[^/]+$/, '');
+    void import('../lib/fsTreeCache').then(({ invalidateFsDirectoryCache }) => {
+      invalidateFsDirectoryCache(dir);
+      invalidateFsDirectoryCache();
+    });
+    refreshAssignedFolderTrees();
+    setExamsPanelRefreshKey((k) => k + 1);
+  };
+
   const handleDeleteExamination = async () => {
     if (!examToDelete) return;
     if (!examDeleteConfirmationOk()) {
@@ -12213,8 +12263,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
       }
       const data = (await res.json()) as { deleted?: string[]; alreadyMissing?: boolean };
       if (data.alreadyMissing) {
-        refreshAssignedFolderTrees();
-        setExamsPanelRefreshKey((k) => k + 1);
+        invalidateExamFolderCachesAfterChange(filePath);
         showSnackbar(
           'Die Datei war nicht mehr auf der Platte — Eintrag wurde aus der Liste entfernt.',
           'success',
@@ -12231,8 +12280,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
         setExamGridBuilderOpen(false);
         setSingleQuestionFilePath('');
       }
-      refreshAssignedFolderTrees();
-      setExamsPanelRefreshKey((k) => k + 1);
+      invalidateExamFolderCachesAfterChange(filePath);
       showSnackbar(`Prüfung gelöscht (${deletedNames}).`, 'success');
       handleExamDeleteDialogClose();
     } catch (e) {
@@ -18104,6 +18152,7 @@ Gegenüberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl�
               }}
               onEditExam={(item) => void handleEditSingleQuestion({ path: item.path, name: item.name })}
               onDeleteExam={(item) => handleExamDeleteDialogOpen({ path: item.path, name: item.name })}
+              onDuplicateExam={(item) => handleDuplicateExamination({ path: item.path, name: item.name })}
               onNotify={(message, severity) => showSnackbar(message, severity ?? 'success')}
               onCreateExam={(folderPath) => {
                 setExaminationType('QZ');

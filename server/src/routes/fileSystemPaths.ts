@@ -99,6 +99,7 @@ router.post('/create-examination', FileSystemPathController.createExamination);
 // Prüfung löschen (mit Varianten bei Basis-Datei A)
 router.post('/delete-examination', FileSystemPathController.deleteExamination);
 router.post('/change-examination-type', FileSystemPathController.changeExaminationType);
+router.post('/duplicate-examination', FileSystemPathController.duplicateExamination);
 router.get('/exam-library-icons', FileSystemPathController.getExamLibraryIcons);
 router.post('/exam-library-icons', FileSystemPathController.saveExamLibraryIcon);
 router.post(

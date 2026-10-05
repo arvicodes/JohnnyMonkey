@@ -52,6 +52,7 @@ import { resolveExamHtmlPath } from '../utils/examAutoPoints';
 import { findUserByLoginCode } from '../utils/loginCodeCrypto';
 import { scratchPadUserFolderKey } from '../utils/teacherScratchPadStore';
 import {
+  canonicalExamLibraryIconKey,
   listTeacherExamLibraryCustomIconChoices,
   migrateTeacherExamLibraryIconKey,
   overwriteTeacherExamLibraryIconAsset,
@@ -1705,6 +1706,11 @@ export class FileSystemPathController {
 
       const fullPath = resolveExamHtmlPath(normalizedFp);
       if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
+        const folderKey = normalizedFp.replace(/\/[^/]+$/, '');
+        if (folderKey) {
+          invalidateDirectoryReadCache(folderKey);
+          invalidateDirectoryReadCache();
+        }
         return res.json({ success: true, deleted: [], alreadyMissing: true });
       }
 
@@ -1743,7 +1749,18 @@ export class FileSystemPathController {
       }
 
       if (deleted.length === 0) {
+        const folderKey = normalizedFp.replace(/\/[^/]+$/, '');
+        if (folderKey) {
+          invalidateDirectoryReadCache(folderKey);
+          invalidateDirectoryReadCache();
+        }
         return res.json({ success: true, deleted: [], alreadyMissing: true });
+      }
+
+      const folderKey = normalizedFp.replace(/\/[^/]+$/, '');
+      if (folderKey) {
+        invalidateDirectoryReadCache(folderKey);
+        invalidateDirectoryReadCache();
       }
 
       res.json({ success: true, deleted });
@@ -1866,6 +1883,127 @@ export class FileSystemPathController {
       console.error('Error changing examination type:', error);
       const message = error instanceof Error ? error.message : String(error);
       res.status(500).json({ error: 'Prüfungstyp konnte nicht geändert werden: ' + message });
+    }
+  }
+
+  private static allocateExamDuplicateBaseStem(dirFull: string, sourceBaseStem: string): string {
+    const baseAFree = (stem: string) => {
+      const aName = `${variantStem(stem, 'A')}.html`;
+      return !fs.existsSync(path.join(dirFull, aName));
+    };
+    const first = `${sourceBaseStem} Kopie`;
+    if (baseAFree(first)) return first;
+    for (let n = 2; n < 500; n++) {
+      const candidate = `${sourceBaseStem} Kopie ${n}`;
+      if (baseAFree(candidate)) return candidate;
+    }
+    throw new Error('Kein freier Dateiname für die Kopie');
+  }
+
+  /** Prüfung duplizieren (alle Versionen A/B/C), neuer Name „… Kopie“. */
+  static async duplicateExamination(req: Request, res: Response) {
+    try {
+      const filePathRaw = (req.body?.filePath || req.query?.filePath) as string | undefined;
+      if (!filePathRaw || typeof filePathRaw !== 'string') {
+        return res.status(400).json({ error: 'filePath ist erforderlich' });
+      }
+
+      const fp = FileSystemPathController.normalizeDeleteFilePath(filePathRaw);
+      const normalizedFp = fp.startsWith('J-M-Reihen/')
+        ? `git-intern/${fp.slice('J-M-Reihen/'.length)}`
+        : fp.startsWith('J-M-Reihen')
+          ? 'git-intern'
+          : fp;
+      const fileName = path.basename(normalizedFp);
+      if (!/\.html?$/i.test(fileName) || !FileSystemPathController.isExamCorrectionHtmlFileName(fileName)) {
+        return res.status(403).json({ error: 'Nur Prüfungsdateien (KA_, KU_, HU_, QZ_) dürfen dupliziert werden.' });
+      }
+
+      const fullPath = resolveExamHtmlPath(normalizedFp);
+      if (!fullPath || !fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      }
+
+      const rootErr = FileSystemPathController.assertDeletableUnderJmRoot(fullPath);
+      if (rootErr) {
+        return res.status(403).json({ error: rootErr });
+      }
+
+      const baseGit = gitPathVariant(normalizedFp, 'A');
+      const baseFull = resolveExamHtmlPath(baseGit);
+      if (!baseFull || !fs.existsSync(baseFull)) {
+        return res.status(404).json({ error: 'Basis-Prüfung (Version A) nicht gefunden' });
+      }
+
+      const baseHtml = fs.readFileSync(baseFull, 'utf8');
+      const { letters: metaLetters } = parseExamVersionsMeta(baseHtml);
+      const letters = mergeExamVersionLetters(metaLetters, baseFull);
+      const sourceBaseStem = baseStemFromStem(fileStemFromName(path.basename(baseFull)));
+      const dirFull = path.dirname(baseFull);
+      const newBaseStem = FileSystemPathController.allocateExamDuplicateBaseStem(
+        dirFull,
+        sourceBaseStem,
+      );
+
+      const created: string[] = [];
+      let primaryGit = '';
+
+      for (const L of letters) {
+        const srcGit = gitPathVariant(baseGit, L);
+        const srcFull = resolveExamHtmlPath(srcGit);
+        if (!srcFull || !fs.existsSync(srcFull) || !fs.statSync(srcFull).isFile()) continue;
+
+        const newStem = variantStem(newBaseStem, L);
+        const destFull = path.join(dirFull, `${newStem}.html`);
+        if (fs.existsSync(destFull)) {
+          return res.status(409).json({ error: `Es existiert bereits: ${path.basename(destFull)}` });
+        }
+
+        let content = fs.readFileSync(srcFull, 'utf8');
+        const kaKey = newStem;
+        content = patchKaKeyInHtml(content, kaKey);
+        content = applyVersionsToExamHtml(content, letters, L);
+        fs.writeFileSync(destFull, content, 'utf8');
+        created.push(path.basename(destFull));
+
+        const slash = srcGit.lastIndexOf('/');
+        const destGit =
+          slash >= 0
+            ? `${srcGit.slice(0, slash + 1)}${newStem}.html`
+            : `${newStem}.html`;
+        if (L === 'A' || !primaryGit) primaryGit = destGit;
+      }
+
+      if (!created.length || !primaryGit) {
+        return res.status(500).json({ error: 'Kopie konnte nicht erstellt werden' });
+      }
+
+      const folderKey = primaryGit.replace(/\/[^/]+$/, '');
+      invalidateDirectoryReadCache(folderKey);
+      invalidateDirectoryReadCache(baseGit.replace(/\/[^/]+$/, ''));
+      invalidateDirectoryReadCache();
+
+      const teacher = await FileSystemPathController.requireTeacherUser(req);
+      if (teacher) {
+        const tKey = scratchPadUserFolderKey(teacher.id, teacher.name);
+        const map = readTeacherExamLibraryIcons(tKey);
+        const oldKey = canonicalExamLibraryIconKey(normalizedFp);
+        const iconVal = map[oldKey];
+        if (iconVal) {
+          setTeacherExamLibraryIcon(tKey, primaryGit, iconVal);
+        }
+      }
+
+      res.json({
+        success: true,
+        filePath: primaryGit,
+        fileName: path.basename(primaryGit),
+        created,
+      });
+    } catch (error: unknown) {
+      console.error('duplicateExamination:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Prüfung konnte nicht dupliziert werden: ' + message });
     }
   }
 

@@ -21,11 +21,12 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import GradingIcon from '@mui/icons-material/Grading';
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AddIcon from '@mui/icons-material/Add';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
+import { SwapHoriz as SwapHorizIcon } from '@mui/icons-material';
 import {
   examOpenUrl,
   exerciseEditorUrl,
@@ -723,6 +724,7 @@ export const DashboardExamsPanel: React.FC<{
   onEditExam?: (item: LibraryExamItem) => void;
   onCorrectExam?: (item: LibraryExamItem) => void;
   onDeleteExam?: (item: LibraryExamItem) => void;
+  onDuplicateExam?: (item: LibraryExamItem) => void | Promise<void>;
   onCreateExam?: (folderPath?: string) => void;
   /** Variante 2: nach Erstellen Standard-Prüfungsvorschau (Chrome links) in neuem Tab. */
   onCreateExamStandardTab?: (folderPath?: string) => void;
@@ -737,6 +739,7 @@ export const DashboardExamsPanel: React.FC<{
   onEditExam,
   onCorrectExam,
   onDeleteExam,
+  onDuplicateExam,
   onCreateExam,
   onCreateExamStandardTab,
   groups = [],
@@ -754,6 +757,7 @@ export const DashboardExamsPanel: React.FC<{
   const [customIconChoices, setCustomIconChoices] = useState<ExamLibraryCustomIconChoice[]>([]);
   const [iconTemplateSaving, setIconTemplateSaving] = useState(false);
   const [iconPickerItem, setIconPickerItem] = useState<LibraryExamItem | null>(null);
+  const [duplicatingPath, setDuplicatingPath] = useState<string | null>(null);
 
   const loadExamIcons = useCallback(async () => {
     const loaded = await fetchExamLibraryIconsFromServer();
@@ -783,6 +787,13 @@ export const DashboardExamsPanel: React.FC<{
       setLoading(false);
     }
   }, [rootsKey, rootPaths]);
+
+  const reloadExams = useCallback(async () => {
+    const { invalidateFsDirectoryCache } = await import('../../lib/fsTreeCache');
+    invalidateFsDirectoryCache();
+    await load();
+    await loadExamIcons();
+  }, [load, loadExamIcons]);
 
   useEffect(() => {
     void load();
@@ -922,6 +933,27 @@ export const DashboardExamsPanel: React.FC<{
                     onClick={() => onEditExam(item)}
                   >
                     <EditIcon sx={{ fontSize: 12 }} />
+                  </TinyAction>
+                ) : null}
+                {!isExamVariantFile(item.name) && onDuplicateExam ? (
+                  <TinyAction
+                    title="Prüfung duplizieren (Kopie im gleichen Ordner)"
+                    bgcolor="#00838f"
+                    hover="#006064"
+                    onClick={() => {
+                      if (duplicatingPath) return;
+                      setDuplicatingPath(item.path);
+                      void (async () => {
+                        try {
+                          await onDuplicateExam(item);
+                          await reloadExams();
+                        } finally {
+                          setDuplicatingPath(null);
+                        }
+                      })();
+                    }}
+                  >
+                    <ContentCopyIcon sx={{ fontSize: 12, opacity: duplicatingPath === item.path ? 0.5 : 1 }} />
                   </TinyAction>
                 ) : null}
                 {!isExamVariantFile(item.name) ? (
