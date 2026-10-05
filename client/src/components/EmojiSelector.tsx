@@ -30,8 +30,15 @@ interface EmojiSelectorProps {
   title?: string;
   /** Eigenes Bild hochladen (z. B. Prüfungs-Icons). */
   allowImageUpload?: boolean;
+  /** Gespeicherte Prüfungs-Bilder (Kategorie „Eigene“). */
+  customIcons?: ExamLibraryCustomIconChoice[];
   onUploadImage?: (file: File) => Promise<string>;
 }
+
+export type ExamLibraryCustomIconChoice = {
+  value: string;
+  label: string;
+};
 
 type EmojiCategory = {
   name: string;
@@ -135,6 +142,7 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
   title = '🎭 Wähle dein Avatar-Emoji',
   allowImageUpload = false,
   onUploadImage,
+  customIcons = [],
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [imageUploading, setImageUploading] = useState(false);
@@ -147,6 +155,16 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
       setImageUploading(false);
     }
   }, [open]);
+
+  const filteredCustomIcons = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!customIcons.length) return [];
+    if (!q) return customIcons;
+    if ('eigene'.includes(q) || q.includes('eigen')) return customIcons;
+    return customIcons.filter(
+      (c) => c.label.toLowerCase().includes(q) || c.value.toLowerCase().includes(q),
+    );
+  }, [customIcons, searchQuery]);
 
   const filteredCategories = useMemo(() => {
     const q = searchQuery.trim();
@@ -258,7 +276,7 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
             )}
             <Box sx={{ flex: 1, minWidth: 140 }}>
               <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                Eigenes Bild
+                Neues Bild hochladen
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 PNG, JPG, WebP … (wird verkleinert gespeichert)
@@ -306,10 +324,97 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
             ),
           }}
         />
-        {filteredCategories.length === 0 ? (
+        {filteredCustomIcons.length === 0 && filteredCategories.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
             Kein Icon passend zu „{searchQuery.trim()}“
           </Typography>
+        ) : null}
+        {filteredCustomIcons.length > 0 ? (
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: 'bold',
+                color: '#6a1b9a',
+                mb: 1.5,
+                fontSize: '0.9rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}
+            >
+              Eigene
+            </Typography>
+            <Grid container spacing={1}>
+              {filteredCustomIcons.map((item) => {
+                const selected = currentIsImage && item.value === currentEmoji;
+                return (
+                  <Grid item xs={3} sm={2} key={item.value}>
+                    <Card
+                      sx={{
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease-in-out',
+                        transform: selected ? 'scale(1.05)' : 'scale(1)',
+                        border: selected ? '2px solid #6a1b9a' : '1px solid #e0e0e0',
+                        minHeight: 72,
+                        '&:hover': {
+                          transform: 'scale(1.06)',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                          border: '1px solid #6a1b9a',
+                        },
+                      }}
+                      onClick={() => handleEmojiSelect(item.value)}
+                    >
+                      <CardContent
+                        sx={{
+                          p: 0.75,
+                          textAlign: 'center',
+                          background: selected
+                            ? 'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)'
+                            : 'white',
+                        }}
+                      >
+                        <Box
+                          component="img"
+                          src={examLibraryIconImageSrc(item.value, 96)}
+                          alt=""
+                          sx={{
+                            width: 44,
+                            height: 44,
+                            objectFit: 'contain',
+                            display: 'block',
+                            mx: 'auto',
+                          }}
+                        />
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            display: 'block',
+                            mt: 0.5,
+                            lineHeight: 1.15,
+                            fontSize: '0.62rem',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={item.label}
+                        >
+                          {item.label}
+                        </Typography>
+                        {selected ? (
+                          <Chip
+                            label="Aktuell"
+                            size="small"
+                            color="secondary"
+                            sx={{ mt: 0.35, fontSize: '0.55rem', height: '14px' }}
+                          />
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          </Box>
         ) : null}
         {filteredCategories.map((category) => (
           <Box key={category.name} sx={{ mb: 3 }}>

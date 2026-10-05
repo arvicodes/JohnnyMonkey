@@ -224,6 +224,34 @@ async function syncLegacyIconsToServer(server: Record<string, string>): Promise<
   return merged;
 }
 
+export type ExamLibraryCustomIconChoice = {
+  value: string;
+  label: string;
+};
+
+/** Gespeicherte Bild-Icons (Vorlage + aktuelle Zuordnungen), je Wert einmal. */
+export function listExamLibraryCustomIconChoices(
+  iconMap: Record<string, string>,
+  template: ExamLibraryIconTemplate | null,
+): ExamLibraryCustomIconChoice[] {
+  const byValue = new Map<string, string>();
+  const add = (examPath: string, raw: string) => {
+    const value = raw.trim();
+    if (!value || !isExamLibraryImageIcon(value)) return;
+    if (byValue.has(value)) return;
+    const file = examPath.split('/').pop() || 'Icon';
+    const label = file.replace(/\.html?$/i, '').replace(/^((ka|ku|hu|hü|qz)_)/i, '').trim() || file;
+    byValue.set(value, label);
+  };
+  if (template?.icons) {
+    for (const [p, v] of Object.entries(template.icons)) add(p, v);
+  }
+  for (const [p, v] of Object.entries(iconMap)) add(p, v);
+  return [...byValue.entries()]
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'de'));
+}
+
 export function getExamLibraryIcon(
   filePath: string,
   fileName: string,

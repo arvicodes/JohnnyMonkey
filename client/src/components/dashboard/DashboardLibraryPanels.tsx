@@ -44,6 +44,7 @@ import {
 import {
   fetchExamLibraryIconsFromServer,
   getExamLibraryIcon,
+  listExamLibraryCustomIconChoices,
   saveExamLibraryIconToServer,
   saveExamLibraryIconTemplateToServer,
   uploadExamLibraryIconImageToServer,

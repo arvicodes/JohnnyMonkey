@@ -17,6 +17,7 @@
  * $Bild name.png$ · $10%$ Originalbreite · $t$ Textumfluss · $r5b$ Rahmen
  * · kompakt: $Bild name.png 10% r t r5b$ (alles in einem $…$)
  * Aussage … $wf$   Wahr/Falsch-Tabelle (|$wwf$| = Wahr richtig, |$wff$| = Falsch richtig)
+ * Aussage … $wff $$wwf $$$wff   W/F mit Varianten (Standard/A1/A2 wie bei $L … $$ … $$$ …)
  * $a1$ / $$7 $$$10   Varianten: Zeile $a1$ … oder in $L 5 $$7 $$$10 L$ ($$=A1, $$$=A2)
  * $Musterlösung$    ab dieser Zeile: Text für die grüne Musterlösungsbox
  */
@@ -388,12 +389,17 @@
       }
     }
     if (idx < 0) {
-      return { body: bodyLines.join('\n').trim(), solution: '' };
+      return { body: bodyLines.join('\n'), solution: '' };
     }
     return {
-      body: bodyLines.slice(0, idx).join('\n').trim(),
+      body: bodyLines.slice(0, idx).join('\n'),
       solution: bodyLines.slice(idx + 1).join('\n').trim(),
     };
+  }
+
+  function liveEditPlainTextFromEl(el) {
+    if (!el) return '';
+    return String(el.innerText || '').replace(/\r/g, '');
   }
 
   function parseTaskSource(source) {
@@ -439,8 +445,8 @@
     var lines = [];
     if (aufgabeLabel) lines.push('$Aufgabe ' + aufgabeLabel + '$');
     if (pointsVal != null && pointsVal !== '') lines.push('$' + pointsVal + ' Punkte$');
-    var b = String(body || '').trim();
-    if (b) lines.push(b);
+    var b = String(body || '');
+    if (b.length) lines.push(b);
     var sol = String(solution || '').trim();
     if (sol) {
       lines.push('$Musterlösung$');
@@ -478,7 +484,7 @@
     var live = taskEl.querySelector('.exam-dollar-live-edit');
     var src = taskEl.querySelector('.exam-dollar-source');
     if (!live || !src) return;
-    var liveRaw = String(live.innerText || '').replace(/\r/g, '');
+    var liveRaw = liveEditPlainTextFromEl(live);
     var liveTrim = liveRaw.trim();
     var metaBefore = parseTaskSource(src.value);
     if (!liveTrim && String(metaBefore.body || '').trim() && live.dataset.jmTouched !== '1') {
@@ -1292,14 +1298,75 @@
     return null;
   }
 
+  function parseWfModeFragment(fragment) {
+    var s = String(fragment || '').trim();
+    var m = s.match(/^\$(wf|wff|wwf)\s*\$$/i) || s.match(/^\$(wf|wff|wwf)$/i);
+    if (!m) return null;
+    return String(m[1] || 'wf').toLowerCase();
+  }
+
+  /** Zeilenende: $wff$ oder $wff $$wwf $$$wff (wie $L … $$ … $$$ …) */
+  function parseWfLineModeVariants(suffix) {
+    var rest = String(suffix || '').replace(/^\s+/, '');
+    if (!rest || rest.charAt(0) !== '$') return null;
+    var firstAlt = findNextDollarAltMarkerIndex(rest);
+    if (firstAlt < 0) {
+      var only = parseWfModeFragment(rest);
+      if (!only) return null;
+      return { base: only, alts: {} };
+    }
+    var baseMode = parseWfModeFragment(rest.slice(0, firstAlt));
+    if (!baseMode) return null;
+    var alts = {};
+    var tail = rest.slice(firstAlt).replace(/^\s+/, '');
+    while (tail.length) {
+      tail = tail.replace(/^\s+/, '');
+      if (!tail.length || tail.charAt(0) !== '$') break;
+      var j = 0;
+      while (j < tail.length && tail.charAt(j) === '$') j += 1;
+      if (j < 2) break;
+      var altNum = j - 1;
+      tail = tail.slice(j);
+      var next = findNextDollarAltMarkerIndex(tail);
+      var chunk = trimAltSegmentEnds(next < 0 ? tail : tail.slice(0, next));
+      var modeM = chunk.match(/^(wf|wff|wwf)$/i);
+      if (!modeM) break;
+      alts[altNum] = String(modeM[1]).toLowerCase();
+      tail = next < 0 ? '' : tail.slice(next);
+    }
+    if (!Object.keys(alts).length) return null;
+    return { base: baseMode, alts: alts };
+  }
+
+  function findWfModeSuffixStart(line) {
+    var t = String(line || '');
+    var simple = t.match(/\s+\$(wwf|wff|wf)\s*\$/i);
+    if (simple && simple.index >= 0) return simple.index;
+    var m = t.search(/\s+\$(?:wf|wff|wwf)(?=\s|\$)/i);
+    return m >= 0 ? m : -1;
+  }
+
   function parseWfLine(line) {
     var t = String(line || '').trim();
     if (!t) return null;
-    var m = t.match(/^([\s\S]*?)\s+\$(wwf|wff|wf)\s*\$/i);
-    if (!m) return null;
-    var stmt = String(m[1] || '').trim();
+    var simple = t.match(/^([\s\S]+?)\s+\$(wwf|wff|wf)\s*\$/i);
+    if (simple) {
+      var stmtSimple = String(simple[1] || '').trim();
+      if (!stmtSimple) return null;
+      return { stmt: stmtSimple, mode: String(simple[2] || 'wf').toLowerCase(), alts: null };
+    }
+    var suffixAt = findWfModeSuffixStart(t);
+    if (suffixAt < 0) return null;
+    var stmt = t.slice(0, suffixAt).trim();
+    var suffix = t.slice(suffixAt);
     if (!stmt) return null;
-    return { stmt: stmt, mode: String(m[2] || 'wf').toLowerCase() };
+    var variants = parseWfLineModeVariants(suffix);
+    if (!variants) return null;
+    return {
+      stmt: stmt,
+      mode: variants.base,
+      alts: Object.keys(variants.alts).length ? variants.alts : null,
+    };
   }
 
   function countWfRowsInBody(body) {
@@ -1619,7 +1686,7 @@
     return plain.length === 0;
   }
 
-  function renderWfCheckboxCell(kind, isCorrect, idGen) {
+  function renderWfCheckboxInner(kind, isCorrect, idGen) {
     var id = idGen();
     var cls = 'exam-dollar-choice exam-dollar-wf-choice';
     if (isCorrect) cls += ' exam-dollar-choice-correct';
@@ -1627,7 +1694,6 @@
     var dataCorrect = isCorrect ? ' data-correct="1"' : '';
     var col = kind === 'w' ? 'w' : 'f';
     return (
-      '<td class="exam-dollar-wf-check">' +
       '<label class="' +
       cls +
       '">' +
@@ -1638,7 +1704,78 @@
       '" id="' +
       escapeHtml(id) +
       '">' +
-      '<span class="exam-dollar-choice-box" aria-hidden="true"></span></label></td>'
+      '<span class="exam-dollar-choice-box" aria-hidden="true"></span></label>'
+    );
+  }
+
+  function renderWfCheckboxCell(kind, isCorrect, idGen) {
+    return (
+      '<td class="exam-dollar-wf-check">' + renderWfCheckboxInner(kind, isCorrect, idGen) + '</td>'
+    );
+  }
+
+  function wfModeToCorrectFlags(mode) {
+    var m = String(mode || 'wf').toLowerCase();
+    return { wCorrect: m === 'wwf', fCorrect: m === 'wff' };
+  }
+
+  function renderWfTableRow(row, idGen) {
+    var stmtCell =
+      '<td class="exam-dollar-wf-stmt">' + renderInline(row.stmt, idGen) + '</td>';
+    var alts = row.alts && Object.keys(row.alts).length ? row.alts : null;
+    if (!alts) {
+      var mc = wfModeToCorrectFlags(row.mode);
+      return (
+        '<tr class="exam-dollar-wf-row">' +
+        stmtCell +
+        renderWfCheckboxCell('w', mc.wCorrect, idGen) +
+        renderWfCheckboxCell('f', mc.fCorrect, idGen) +
+        '</tr>'
+      );
+    }
+    var gid = idGen();
+    var views = [{ num: 0, mode: row.mode }];
+    Object.keys(alts)
+      .map(function (n) {
+        return parseInt(n, 10);
+      })
+      .filter(function (n) {
+        return n > 0;
+      })
+      .sort(function (a, b) {
+        return a - b;
+      })
+      .forEach(function (n) {
+        views.push({ num: n, mode: alts[n] });
+      });
+    var viewsHtml = views
+      .map(function (v) {
+        var flags = wfModeToCorrectFlags(v.mode);
+        var hidden = v.num === 0 ? '' : ' exam-dollar-alt-view--hidden';
+        return (
+          '<div class="exam-dollar-alt-view' +
+          hidden +
+          '" data-jm-alt-view="' +
+          v.num +
+          '"><div class="exam-dollar-wf-alt-pair">' +
+          '<div class="exam-dollar-wf-check">' +
+          renderWfCheckboxInner('w', flags.wCorrect, idGen) +
+          '</div><div class="exam-dollar-wf-check">' +
+          renderWfCheckboxInner('f', flags.fCorrect, idGen) +
+          '</div></div></div>'
+        );
+      })
+      .join('');
+    return (
+      '<tr class="exam-dollar-wf-row exam-dollar-wf-row--alts">' +
+      stmtCell +
+      '<td colspan="2" class="exam-dollar-wf-alt-cell">' +
+      '<div class="exam-dollar-alt-group exam-dollar-wf-alt-group" data-jm-alt-group="' +
+      escapeHtml(gid) +
+      '" data-jm-alt-active="0">' +
+      '<div class="exam-dollar-alt-views">' +
+      viewsHtml +
+      '</div></div></td></tr>'
     );
   }
 
@@ -1650,16 +1787,7 @@
       '<th class="exam-dollar-wf-h" scope="col">Falsch</th>' +
       '</tr></thead><tbody>';
     rows.forEach(function (row) {
-      var wCorrect = row.mode === 'wwf';
-      var fCorrect = row.mode === 'wff';
-      html +=
-        '<tr class="exam-dollar-wf-row">' +
-        '<td class="exam-dollar-wf-stmt">' +
-        renderInline(row.stmt, idGen) +
-        '</td>' +
-        renderWfCheckboxCell('w', wCorrect, idGen) +
-        renderWfCheckboxCell('f', fCorrect, idGen) +
-        '</tr>';
+      html += renderWfTableRow(row, idGen);
     });
     html += '</tbody></table>';
     return html;
@@ -2367,6 +2495,11 @@
         delete liveClone.dataset.jmTouched;
         delete liveClone.__jmLiveWired;
       }
+      taskEl.querySelectorAll('.exam-dollar-live-edit-wrap').forEach(function (wrap, idx) {
+        if (idx > 0 && wrap.parentNode) wrap.parentNode.removeChild(wrap);
+      });
+      var contentClone = taskEl.querySelector('.task-content');
+      if (contentClone) dedupeExamLiveEditInContent(contentClone);
       var srcClone = taskEl.querySelector('.exam-dollar-source');
       if (srcClone) delete srcClone.__jmDollarWired;
       taskEl.querySelectorAll('.exam-task-delete').forEach(function (el) {
@@ -2454,6 +2587,47 @@
     return { html: examLiveCmdHtml(slice), end: tok.end };
   }
 
+  function highlightWfModeSuffixHtml(suffix, wf) {
+    if (!wf || !wf.alts || !Object.keys(wf.alts).length) {
+      return highlightLiveEditLineCommands(suffix);
+    }
+    var lead = String(suffix || '').match(/^\s*/);
+    var html = escapeHtml(lead ? lead[0] : '');
+    html += examLiveCmdHtml('$' + wf.mode);
+    var nums = Object.keys(wf.alts)
+      .map(function (n) {
+        return parseInt(n, 10);
+      })
+      .filter(function (n) {
+        return n > 0;
+      })
+      .sort(function (a, b) {
+        return a - b;
+      });
+    nums.forEach(function (n) {
+      var markers = '';
+      var d;
+      for (d = 0; d <= n; d += 1) markers += '$';
+      html += examLiveCmdHtml(markers);
+      html += examLiveAltInlineHtml(n, wf.alts[n]);
+    });
+    return html;
+  }
+
+  function highlightLiveEditLineContent(line) {
+    var suffixAt = findWfModeSuffixStart(line);
+    if (suffixAt >= 0) {
+      var wf = parseWfLine(line);
+      if (wf) {
+        return (
+          highlightLiveEditLineCommands(line.slice(0, suffixAt)) +
+          highlightWfModeSuffixHtml(line.slice(suffixAt), wf)
+        );
+      }
+    }
+    return highlightLiveEditLineCommands(line);
+  }
+
   function highlightLiveEditLineCommands(line) {
     var out = '';
     var i = 0;
@@ -2484,7 +2658,7 @@
         '<span class="exam-live-alt-block exam-live-alt-' +
         altM.num +
         '">' +
-        highlightLiveEditLineCommands(m[4]) +
+        highlightLiveEditLineContent(m[4]) +
         '</span>';
     }
     return out;
@@ -2503,7 +2677,7 @@
         htmlLines.push(
           altM.inline
             ? highlightLiveEditAltMarkerLine(line, altM)
-            : highlightLiveEditLineCommands(line),
+            : highlightLiveEditLineContent(line),
         );
         continue;
       }
@@ -2512,13 +2686,13 @@
           '<span class="exam-live-alt-block exam-live-alt-' +
             blockAlt +
             '">' +
-            highlightLiveEditLineCommands(line) +
+            highlightLiveEditLineContent(line) +
             '</span>',
         );
         continue;
       }
       if (!line.trim()) blockAlt = 0;
-      htmlLines.push(highlightLiveEditLineCommands(line));
+      htmlLines.push(highlightLiveEditLineContent(line));
     }
     return htmlLines.join('\n');
   }
@@ -2544,7 +2718,7 @@
     if (!live) return;
     var hi = ensureLiveEditHighlightWrap(live);
     if (!hi) return;
-    hi.innerHTML = highlightLiveEditPlainText(live.innerText || '');
+    hi.innerHTML = highlightLiveEditPlainText(liveEditPlainTextFromEl(live));
     hi.scrollTop = live.scrollTop;
     hi.scrollLeft = live.scrollLeft;
   }
@@ -2562,7 +2736,7 @@
     var live = taskEl.querySelector('.exam-dollar-live-edit');
     var src = taskEl.querySelector('.exam-dollar-source');
     if (!live || !src) return;
-    var cur = live.innerText || '';
+    var cur = liveEditPlainTextFromEl(live);
     var sep = cur && !/\n$/.test(cur) ? '\n' : '';
     live.textContent = cur + sep + text;
     live.dataset.jmTouched = '1';
@@ -2646,7 +2820,7 @@
     if (!live || !src) return;
     var offsets = getSelectionOffsetsInPlainText(live);
     if (!offsets) return;
-    var full = live.innerText || '';
+    var full = liveEditPlainTextFromEl(live);
     var inner = offsets.text.trim();
     if (!inner) return;
     var wrapped = '$' + colorName + ' ' + inner + ' ' + colorName + '$';
@@ -2804,6 +2978,16 @@
         hi.scrollLeft = live.scrollLeft;
       });
     }
+    var wrap = live.parentNode;
+    if (wrap && wrap.classList && wrap.classList.contains('exam-dollar-live-edit-wrap')) {
+      live.addEventListener('focus', function () {
+        wrap.classList.add('exam-dollar-live-edit-wrap--editing');
+      });
+      live.addEventListener('blur', function () {
+        wrap.classList.remove('exam-dollar-live-edit-wrap--editing');
+        refreshLiveEditHighlight(live);
+      });
+    }
     var debounce;
     live.addEventListener('input', function () {
       live.dataset.jmTouched = '1';
@@ -2860,10 +3044,29 @@
     keep.removeAttribute('spellcheck');
   }
 
+  function dedupeExamLiveEditInContent(content) {
+    if (!content) return null;
+    var lives = content.querySelectorAll('.exam-dollar-live-edit');
+    if (!lives.length) return null;
+    var keep = lives[0];
+    for (var i = 1; i < lives.length; i += 1) {
+      var extra = lives[i];
+      var wrap = extra.closest('.exam-dollar-live-edit-wrap');
+      if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
+      else if (extra.parentNode) extra.parentNode.removeChild(extra);
+    }
+    var wraps = content.querySelectorAll('.exam-dollar-live-edit-wrap');
+    for (var w = 1; w < wraps.length; w += 1) {
+      if (wraps[w].parentNode) wraps[w].parentNode.removeChild(wraps[w]);
+    }
+    return content.querySelector('.exam-dollar-live-edit') || keep;
+  }
+
   function ensureTaskStructure(taskEl) {
     var content = taskEl.querySelector('.task-content');
     if (!content) return;
     normalizeTaskSourceTextareas(taskEl);
+    dedupeExamLiveEditInContent(content);
     if (!content.querySelector('.exam-dollar-rendered')) {
       var rendered = document.createElement('div');
       rendered.className = 'exam-dollar-rendered';
@@ -3001,7 +3204,12 @@
       '.teacher-mode .exam-dollar-live-edit-wrap:focus-within{box-shadow:0 0 0 2px rgba(225,6,0,0.25)}' +
       '.teacher-mode .exam-dollar-live-edit-highlight,.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{display:block;min-height:56px;padding:6px 4px;line-height:1.55;font-family:Arial,sans-serif;font-size:14px;outline:none;border-radius:4px;white-space:pre-wrap;word-break:break-word;box-sizing:border-box}' +
       '.teacher-mode .exam-dollar-live-edit-highlight{position:absolute;inset:0;pointer-events:none;color:#222;overflow:hidden;z-index:0}' +
-      '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{position:relative;z-index:1;background:transparent;color:transparent;caret-color:#222}' +
+      '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{position:relative;z-index:1;background:transparent;color:transparent;-webkit-text-fill-color:transparent;caret-color:#222}' +
+      '.teacher-mode .exam-dollar-live-edit-wrap--editing .exam-dollar-live-edit-highlight{opacity:0}' +
+      '.teacher-mode .exam-dollar-live-edit-wrap--editing .exam-dollar-live-edit{color:#222;-webkit-text-fill-color:#222}' +
+      '.exam-dollar-wf-alt-pair{display:grid;grid-template-columns:4.5em 4.5em;width:100%;max-width:9.5em;margin:0 auto}' +
+      '.exam-dollar-wf-alt-cell{padding:4px 6px!important;vertical-align:middle!important}' +
+      '.exam-dollar-wf-alt-group{width:100%}' +
       '.exam-live-cmd{color:#9e9e9e}' +
       '.exam-live-alt-inline.exam-live-alt-1,.exam-live-alt-block.exam-live-alt-1{background:rgba(186,104,200,.14);box-shadow:inset 0 -2px 0 rgba(142,36,170,.35);border-radius:2px}' +
       '.exam-live-alt-inline.exam-live-alt-2,.exam-live-alt-block.exam-live-alt-2{background:rgba(244,143,177,.2);box-shadow:inset 0 -2px 0 rgba(236,64,122,.4);border-radius:2px}' +
@@ -3265,6 +3473,9 @@
     var isTeacher = localStorage.getItem('teacherId') !== null;
     if (!isTeacher) {
       document.querySelectorAll('.exam-dollar-compose').forEach(function (el) {
+        el.parentNode && el.parentNode.removeChild(el);
+      });
+      document.querySelectorAll('.exam-dollar-live-edit-wrap').forEach(function (el) {
         el.parentNode && el.parentNode.removeChild(el);
       });
       document.querySelectorAll('.exam-dollar-live-edit').forEach(function (el) {
