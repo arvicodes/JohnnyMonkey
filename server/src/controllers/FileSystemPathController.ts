@@ -4139,7 +4139,11 @@ ${aiContent.optionsHTML}
       }
       const key = scratchPadUserFolderKey(user.id, user.name);
       const icons = setTeacherExamLibraryIcon(key, filePath, emoji);
-      res.json({ success: true, icons });
+      res.json({
+        success: true,
+        icons,
+        customIconChoices: listTeacherExamLibraryCustomIconChoices(key),
+      });
     } catch (error) {
       console.error('saveExamLibraryIcon:', error);
       res.status(500).json({ error: 'Icon konnte nicht gespeichert werden' });
@@ -4172,7 +4176,12 @@ ${aiContent.optionsHTML}
         file.buffer,
         originalName,
       );
-      res.json({ success: true, icons, icon: iconValue });
+      res.json({
+        success: true,
+        icons,
+        icon: iconValue,
+        customIconChoices: listTeacherExamLibraryCustomIconChoices(key),
+      });
     } catch (error) {
       console.error('uploadExamLibraryIconImage:', error);
       res.status(500).json({ error: 'Bild-Icon konnte nicht gespeichert werden' });

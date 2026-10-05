@@ -223,7 +223,8 @@ async function syncLegacyIconsToServer(server: Record<string, string>): Promise<
   let merged = { ...server };
   for (const [relKey, emoji] of pending) {
     try {
-      merged = await saveExamLibraryIconToServer(`git-intern/${relKey}`, emoji);
+      const saved = await saveExamLibraryIconToServer(`git-intern/${relKey}`, emoji);
+      merged = saved.icons;
     } catch {
       break;
     }
@@ -241,7 +242,18 @@ function labelFromExamPath(examPath: string): string {
   return file.replace(/\.html?$/i, '').replace(/^((ka|ku|hu|hü|qz)_)/i, '').trim() || file;
 }
 
-/** Fallback ohne Server-Hash: nur aktive Zuordnungen, je URL einmal. */
+/** Neues Bild sofort in „Eigene“ (Fallback wenn API noch keine Liste liefert). */
+export function upsertExamLibraryCustomIconChoice(
+  choices: ExamLibraryCustomIconChoice[],
+  iconValue: string,
+  label: string,
+): ExamLibraryCustomIconChoice[] {
+  const value = iconValue.trim();
+  if (!value || !isExamLibraryImageIcon(value)) return choices;
+  const next = choices.filter((c) => c.value !== value);
+  next.push({ value, label: label.trim() || 'Icon' });
+  return next.sort((a, b) => a.label.localeCompare(b.label, 'de'));
+}
 export function listExamLibraryCustomIconChoices(
   iconMap: Record<string, string>,
   _template: ExamLibraryIconTemplate | null,
@@ -278,10 +290,20 @@ export function getExamLibraryIcon(
   return defaultExamLibraryIcon(fileName);
 }
 
+function parseCustomIconChoices(raw: unknown): ExamLibraryCustomIconChoice[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (c): c is ExamLibraryCustomIconChoice =>
+      Boolean(c) &&
+      typeof (c as ExamLibraryCustomIconChoice).value === 'string' &&
+      typeof (c as ExamLibraryCustomIconChoice).label === 'string',
+  );
+}
+
 export async function saveExamLibraryIconToServer(
   filePath: string,
   emoji: string | null,
-): Promise<Record<string, string>> {
+): Promise<{ icons: Record<string, string>; customIconChoices: ExamLibraryCustomIconChoice[] }> {
   const res = await fetch('/api/file-system-paths/exam-library-icons', {
     method: 'POST',
     headers: authHeaders(),
@@ -291,6 +313,7 @@ export async function saveExamLibraryIconToServer(
   const data = (await res.json().catch(() => ({}))) as {
     error?: string;
     icons?: Record<string, string>;
+    customIconChoices?: ExamLibraryCustomIconChoice[];
   };
   if (!res.ok) {
     throw new Error(data.error || 'Icon konnte nicht gespeichert werden');
@@ -301,13 +324,20 @@ export async function saveExamLibraryIconToServer(
   } catch {
     /* ignore */
   }
-  return icons;
+  return {
+    icons,
+    customIconChoices: parseCustomIconChoices(data.customIconChoices),
+  };
 }
 
 export async function uploadExamLibraryIconImageToServer(
   filePath: string,
   imageFile: File,
-): Promise<{ icons: Record<string, string>; icon: string }> {
+): Promise<{
+  icons: Record<string, string>;
+  icon: string;
+  customIconChoices: ExamLibraryCustomIconChoice[];
+}> {
   let uploadFile = imageFile;
   try {
     uploadFile = (await removeNearWhiteBackgroundFromFile(imageFile, { maxEdge: 768, tolerance: 48 })).file;
@@ -327,6 +357,7 @@ export async function uploadExamLibraryIconImageToServer(
     error?: string;
     icons?: Record<string, string>;
     icon?: string;
+    customIconChoices?: ExamLibraryCustomIconChoice[];
   };
   if (!res.ok) {
     throw new Error(data.error || 'Bild-Icon konnte nicht gespeichert werden');
@@ -341,7 +372,11 @@ export async function uploadExamLibraryIconImageToServer(
     typeof data.icon === 'string' && data.icon.trim()
       ? data.icon.trim()
       : getExamLibraryIcon(filePath, imageFile.name, icons);
-  return { icons, icon };
+  return {
+    icons,
+    icon,
+    customIconChoices: parseCustomIconChoices(data.customIconChoices),
+  };
 }
 
 /** @deprecated Nur noch für Tests — Server ist Quelle der Wahrheit. */

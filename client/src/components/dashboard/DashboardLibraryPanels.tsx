@@ -47,6 +47,7 @@ import {
   saveExamLibraryIconToServer,
   saveExamLibraryIconTemplateToServer,
   uploadExamLibraryIconImageToServer,
+  upsertExamLibraryCustomIconChoice,
   examLibraryIconImageSrc,
   isExamLibraryImageIcon,
   type ExamLibraryCustomIconChoice,
@@ -1007,8 +1008,12 @@ export const DashboardExamsPanel: React.FC<{
         if (!iconPickerItem) return;
         void (async () => {
           try {
-            const icons = await saveExamLibraryIconToServer(iconPickerItem.path, emoji);
+            const { icons, customIconChoices: choices } = await saveExamLibraryIconToServer(
+              iconPickerItem.path,
+              emoji,
+            );
             setIconMap(icons);
+            if (choices.length) setCustomIconChoices(choices);
             onNotify?.('Icon gespeichert', 'success');
           } catch (e) {
             onNotify?.(e instanceof Error ? e.message : 'Speichern fehlgeschlagen', 'error');
@@ -1021,11 +1026,18 @@ export const DashboardExamsPanel: React.FC<{
       allowImageUpload
       onUploadImage={async (file) => {
         if (!iconPickerItem) throw new Error('Keine Prüfung ausgewählt');
-        const { icons, icon } = await uploadExamLibraryIconImageToServer(iconPickerItem.path, file);
+        const { icons, icon, customIconChoices: choices } =
+          await uploadExamLibraryIconImageToServer(iconPickerItem.path, file);
         setIconMap(icons);
-        onNotify?.('Bild-Icon gespeichert', 'success');
+        const label = iconPickerItem.name.replace(/\.html?$/i, '').replace(/^((ka|ku|hu|hü|qz)_)/i, '');
+        setCustomIconChoices((prev) =>
+          choices.length > 0 ? choices : upsertExamLibraryCustomIconChoice(prev, icon, label),
+        );
+        if (!choices.length) void loadExamIcons();
+        onNotify?.('Bild-Icon gespeichert — in „Eigene“', 'success');
         return icon;
       }}
+      keepOpenAfterImageUpload
     />
     </>
   );

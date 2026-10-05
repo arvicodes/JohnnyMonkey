@@ -34,6 +34,8 @@ interface EmojiSelectorProps {
   /** Gespeicherte Prüfungs-Bilder (Kategorie „Eigene“). */
   customIcons?: ExamLibraryCustomIconChoice[];
   onUploadImage?: (file: File) => Promise<string>;
+  /** Nach Upload Dialog offen lassen (Liste „Eigene“ aktualisiert sich). */
+  keepOpenAfterImageUpload?: boolean;
 }
 
 type EmojiCategory = {
@@ -139,6 +141,7 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
   allowImageUpload = false,
   onUploadImage,
   customIcons = [],
+  keepOpenAfterImageUpload = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [imageUploading, setImageUploading] = useState(false);
@@ -201,6 +204,10 @@ const EmojiSelector: React.FC<EmojiSelectorProps> = ({
     setImageUploading(true);
     void (async () => {
       try {
+        if (keepOpenAfterImageUpload) {
+          await onUploadImage(file);
+          return;
+        }
         const iconValue = await onUploadImage(file);
         onSelect(iconValue);
         onClose();
