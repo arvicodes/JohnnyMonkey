@@ -51,9 +51,9 @@ export const EXAM_DOLLAR_COMMANDS_HELP = [
       'Wahr/Falsch-Tabelle (3 Spalten): Aussage | Wahr | Falsch mit Checkboxen; $wwf$ = Wahr ist richtig, $wff$ = Falsch ist richtig (je 0,5 Punkte)',
   },
   {
-    syntax: '$L 5 $a1 7 $a2 10 L$',
+    syntax: '$L 5 $$7 $$$10 L$',
     meaning:
-      'Formel mit eingebetteten Alternativen: vor dem ersten $a1 steht die Hauptfassung (5), danach kommen $a1 …, $a2 … für Alternative 1 und 2. Text nach dem schließenden L$ (z. B. „Kastanien“) bleibt unverändert.',
+      'Formel mit zwei Alternativen: vor $$ steht die Hauptfassung (5), $$7 = Variante A1, $$$10 = Variante A2 (Anzahl $ minus eins). Text nach L$ bleibt gleich. Umschalten mit A1/A2 unter Musterlösung. (Alternativ: $L 5 $a1 7 $a2 10 L$.)',
   },
   { syntax: '$Musterlösung$', meaning: 'ab dieser Zeile: Inhalt für „Musterlösungen anzeigen“ (grüne Box)' },
 ] as const;

@@ -17,7 +17,7 @@
  * $Bild name.png$ · $10%$ Originalbreite · $t$ Textumfluss · $r5b$ Rahmen
  * · kompakt: $Bild name.png 10% r t r5b$ (alles in einem $…$)
  * Aussage … $wf$   Wahr/Falsch-Tabelle (|$wwf$| = Wahr richtig, |$wff$| = Falsch richtig)
- * $a1$ / $a2$ …    Variante unter Aussage oder in $L 5 $a1 7 $a2 10 L$ (Buttons unter Musterlösung)
+ * $a1$ / $$7 $$$10   Varianten: Zeile $a1$ … oder in $L 5 $$7 $$$10 L$ ($$=A1, $$$=A2)
  * $Musterlösung$    ab dieser Zeile: Text für die grüne Musterlösungsbox
  */
 (function (global) {
@@ -1090,7 +1090,44 @@
     return null;
   }
 
-  function parseDollarInlineAltContent(raw) {
+  function findNextDollarAltMarkerIndex(str) {
+    var s = String(str || '');
+    var i;
+    for (i = 0; i < s.length; i += 1) {
+      if (s[i] !== '$') continue;
+      var j = i;
+      while (j < s.length && s[j] === '$') j += 1;
+      if (j - i >= 2) return i;
+      i = j;
+    }
+    return -1;
+  }
+
+  /** $L 5 $$7 $$$10 L$ — Anzahl $ = Variante ($$ → A1, $$$ → A2, …) */
+  function parseDollarCountAltContent(raw) {
+    var s = String(raw || '').replace(/\r/g, '');
+    var first = findNextDollarAltMarkerIndex(s);
+    if (first < 0) return null;
+    var base = s.slice(0, first).trim();
+    var rest = s.slice(first);
+    var alts = {};
+    while (rest.length) {
+      if (rest[0] !== '$') break;
+      var j = 0;
+      while (j < rest.length && rest[j] === '$') j += 1;
+      if (j < 2) break;
+      var altNum = j - 1;
+      rest = rest.slice(j);
+      var next = findNextDollarAltMarkerIndex(rest);
+      var chunk = (next < 0 ? rest : rest.slice(0, next)).trim();
+      alts[altNum] = chunk;
+      rest = next < 0 ? '' : rest.slice(next);
+    }
+    if (!Object.keys(alts).length) return null;
+    return { base: base, alts: alts };
+  }
+
+  function parseDollarAAltContent(raw) {
     var s = String(raw || '').replace(/\r/g, '');
     var markerRe = /\$a(\d+)(?:\$|\s)/i;
     var first = s.search(markerRe);
@@ -1111,6 +1148,15 @@
     }
     if (!Object.keys(alts).length) return null;
     return { base: base, alts: alts };
+  }
+
+  function parseDollarInlineAltContent(raw) {
+    var s = String(raw || '');
+    if (/\$\$/.test(s)) {
+      var byCount = parseDollarCountAltContent(s);
+      if (byCount && Object.keys(byCount.alts).length) return byCount;
+    }
+    return parseDollarAAltContent(s);
   }
 
   function renderMathHtmlCore(latex) {
