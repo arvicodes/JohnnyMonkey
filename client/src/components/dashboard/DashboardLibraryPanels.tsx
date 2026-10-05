@@ -431,16 +431,12 @@ function MaterialRow({
   subtitle,
   accent,
   accentWidth = 3,
-  rowBg = '#FFFFFF',
-  rowBorder = '#e0e0e0',
   actions,
 }: {
   title: string;
   subtitle?: string;
   accent: string;
   accentWidth?: number;
-  rowBg?: string;
-  rowBorder?: string;
   actions: React.ReactNode;
 }) {
   return (
@@ -452,11 +448,10 @@ function MaterialRow({
         px: 0.75,
         py: 0.45,
         borderRadius: 1.1,
-        bgcolor: rowBg,
-        border: '2px solid',
-        borderColor: rowBorder,
+        bgcolor: '#FFFFFF',
+        border: '1px solid #e0e0e0',
         minHeight: 30,
-        '&:hover': { filter: 'brightness(0.97)' },
+        '&:hover': { bgcolor: '#fafbfc' },
       }}
     >
       <Box
@@ -770,8 +765,6 @@ export const DashboardExamsPanel: React.FC<{
             subtitle={item.lessonLabel !== item.reihe ? item.lessonLabel : undefined}
             accent={rowStyle.accent}
             accentWidth={rowStyle.accentWidth}
-            rowBg={rowStyle.rowBg}
-            rowBorder={rowStyle.rowBorder}
             actions={
               <>
                 {onCorrectExam ? (
