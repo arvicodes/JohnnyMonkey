@@ -25,6 +25,8 @@ export type LibraryExamItem = {
   subject: string;
   stufe: string;
   reihe: string;
+  /** Änderungszeit (ms), für Sortierung neueste zuerst. */
+  modifiedAt?: number;
 };
 
 export type LibraryExerciseItem = {
@@ -81,13 +83,20 @@ export function libraryPathHierarchy(path: string): {
 
 type FsNode = FsTreeNode;
 
-function flattenFiles(nodes: FsNode[], out: Array<{ name: string; path: string }> = []): Array<{ name: string; path: string }> {
+function flattenFiles(
+  nodes: FsNode[],
+  out: Array<{ name: string; path: string; mtimeMs?: number }> = [],
+): Array<{ name: string; path: string; mtimeMs?: number }> {
   for (const n of nodes || []) {
     const name = String(n.name || '');
     const path = normalizeFsPath(String(n.path || ''));
     const type = String(n.type || '').toLowerCase();
+    const mtimeMs =
+      typeof (n as { mtimeMs?: number }).mtimeMs === 'number'
+        ? (n as { mtimeMs?: number }).mtimeMs
+        : undefined;
     if ((type === 'file' || (!type && path && name.includes('.'))) && path) {
-      out.push({ name, path });
+      out.push({ name, path, mtimeMs });
     }
     if (Array.isArray(n.children) && n.children.length) flattenFiles(n.children, out);
   }
@@ -141,12 +150,19 @@ export async function scanLibraryExams(rootPaths: string[]): Promise<LibraryExam
   const roots = scanRoots(rootPaths);
   const byKey = new Map<string, LibraryExamItem>();
 
-  const addExam = (name: string, path: string, lessonFolder?: string) => {
+  const addExam = (
+    name: string,
+    path: string,
+    lessonFolder?: string,
+    modifiedAt?: number,
+  ) => {
     const fullPath = normalizeFsPath(path);
     if (!fullPath || !name) return;
     const folder = lessonFolder ? normalizeFsPath(lessonFolder) : parentDir(fullPath);
     const key = canonicalLibraryPath(fullPath).toLowerCase();
-    if (byKey.has(key)) return;
+    const existing = byKey.get(key);
+    const mtime = modifiedAt ?? existing?.modifiedAt ?? 0;
+    if (existing && (existing.modifiedAt ?? 0) >= mtime) return;
     const h = libraryPathHierarchy(folder);
     byKey.set(key, {
       name,
@@ -156,17 +172,37 @@ export async function scanLibraryExams(rootPaths: string[]): Promise<LibraryExam
       subject: h.subject,
       stufe: h.stufe,
       reihe: h.reihe,
+      modifiedAt: mtime,
     });
   };
 
   const trees = await Promise.all(roots.map((root) => readTree(root)));
   const filesByRoot = trees.map((t) => flattenFiles(t));
+  const allFiles = filesByRoot.flat();
+  const fileByCanonical = new Map<string, { name: string; path: string; mtimeMs?: number }>();
+  for (const f of allFiles) {
+    fileByCanonical.set(canonicalLibraryPath(f.path).toLowerCase(), f);
+  }
+
+  const resolveExamOnDisk = (examPath: string, examName: string) => {
+    const canon = canonicalLibraryPath(examPath).toLowerCase();
+    const direct = fileByCanonical.get(canon);
+    if (direct) return direct;
+    const byName = allFiles.filter((f) => f.name === examName);
+    if (byName.length === 1) return byName[0];
+    const parent = parentDir(examPath);
+    const parentCanon = canonicalLibraryPath(parent).toLowerCase();
+    return (
+      byName.find((f) => canonicalLibraryPath(parentDir(f.path)).toLowerCase() === parentCanon) ||
+      byName[0]
+    );
+  };
 
   for (const files of filesByRoot) {
     for (const f of files) {
       if (!/\.(html|htm)$/i.test(f.name)) continue;
       if (!isLessonCorrectionFileName(f.name)) continue;
-      addExam(f.name, f.path, parentDir(f.path));
+      addExam(f.name, f.path, parentDir(f.path), f.mtimeMs ?? 0);
     }
   }
 
@@ -180,12 +216,15 @@ export async function scanLibraryExams(rootPaths: string[]): Promise<LibraryExam
     for (const slide of deck.slides) {
       const exam = sanitizeSlideExam(slide.slideExam as Parameters<typeof sanitizeSlideExam>[0]);
       if (!exam) continue;
-      addExam(exam.name, exam.path, lessonPath);
+      const onDisk = resolveExamOnDisk(exam.path, exam.name);
+      if (!onDisk) continue;
+      addExam(onDisk.name, onDisk.path, lessonPath, onDisk.mtimeMs ?? 0);
     }
   });
 
   return [...byKey.values()].sort(
     (a, b) =>
+      (b.modifiedAt ?? 0) - (a.modifiedAt ?? 0) ||
       a.lessonLabel.localeCompare(b.lessonLabel, 'de', { sensitivity: 'base', numeric: true }) ||
       a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }),
   );

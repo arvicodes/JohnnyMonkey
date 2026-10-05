@@ -1,9 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Box,
+  Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
   IconButton,
+  Radio,
+  RadioGroup,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -13,6 +21,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import GradingIcon from '@mui/icons-material/Grading';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AddIcon from '@mui/icons-material/Add';
@@ -25,6 +34,12 @@ import {
   type LibraryExamItem,
   type LibraryExerciseItem,
 } from '../../lib/dashboardMaterialLibrary';
+import {
+  EXAM_TYPE_LABELS,
+  examAccentColorForFileName,
+  examTypeFromFileName,
+  type ExamLibraryType,
+} from '../../lib/examLibraryUi';
 import {
   folderPathCovers,
   folderPathsEquivalent,
@@ -111,7 +126,7 @@ type StufeBucket<T> = {
   reihen: Array<{ reihe: string; items: T[] }>;
 };
 
-function groupByStufeReihe<T extends { stufe: string; reihe: string; subject: string }>(
+function groupByStufeReihe<T extends { stufe: string; reihe: string; subject: string; name?: string; modifiedAt?: number }>(
   items: T[],
 ): StufeBucket<T>[] {
   const stufeMap = new Map<string, Map<string, T[]>>();
@@ -132,7 +147,14 @@ function groupByStufeReihe<T extends { stufe: string; reihe: string; subject: st
       subject: subjectByStufe.get(stufe) || '',
       reihen: [...reihenMap.entries()]
         .sort(([a], [b]) => a.localeCompare(b, 'de', { numeric: true }))
-        .map(([reihe, list]) => ({ reihe, items: list })),
+        .map(([reihe, list]) => ({
+          reihe,
+          items: [...list].sort(
+            (a, b) =>
+              (b.modifiedAt ?? 0) - (a.modifiedAt ?? 0) ||
+              (a.name || '').localeCompare(b.name || '', 'de', { sensitivity: 'base' }),
+          ),
+        })),
     }));
 }
 
@@ -616,6 +638,7 @@ export const DashboardExamsPanel: React.FC<{
   assignedFolders?: Record<string, string[]>;
   /** Nach Löschen im Dashboard erhöhen, damit die Liste neu lädt. */
   refreshKey?: number;
+  onNotify?: (message: string, severity?: 'success' | 'error') => void;
 }> = ({
   rootPaths,
   colors,
@@ -627,9 +650,13 @@ export const DashboardExamsPanel: React.FC<{
   groups = [],
   assignedFolders = {},
   refreshKey = 0,
+  onNotify,
 }) => {
   const [items, setItems] = useState<LibraryExamItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [typeDialogItem, setTypeDialogItem] = useState<LibraryExamItem | null>(null);
+  const [typeChoice, setTypeChoice] = useState<ExamLibraryType>('QZ');
+  const [typeSaving, setTypeSaving] = useState(false);
   const meta = useMemo(() => ({ groups, assignedFolders }), [groups, assignedFolders]);
 
   const rootsKey = useMemo(
@@ -661,7 +688,46 @@ export const DashboardExamsPanel: React.FC<{
 
   const isExamVariantFile = (name: string) => /__[A-Z]\.html?$/i.test(name || '');
 
+  const openTypeDialog = (item: LibraryExamItem) => {
+    setTypeDialogItem(item);
+    setTypeChoice(examTypeFromFileName(item.name) || 'QZ');
+  };
+
+  const submitTypeChange = async () => {
+    if (!typeDialogItem || !typeChoice) return;
+    setTypeSaving(true);
+    try {
+      const res = await fetch('/api/file-system-paths/change-examination-type', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': localStorage.getItem('loginCode') || '',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ filePath: typeDialogItem.path, examType: typeChoice }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        fileName?: string;
+        unchanged?: boolean;
+      };
+      if (!res.ok) throw new Error(data.error || 'Typ konnte nicht geändert werden');
+      if (data.unchanged) {
+        onNotify?.('Prüfungstyp ist bereits ' + typeChoice, 'success');
+      } else {
+        onNotify?.(`Umbenannt in ${data.fileName || typeChoice + '_…'}`, 'success');
+      }
+      setTypeDialogItem(null);
+      void load();
+    } catch (e) {
+      onNotify?.(e instanceof Error ? e.message : 'Typ konnte nicht geändert werden', 'error');
+    } finally {
+      setTypeSaving(false);
+    }
+  };
+
   return (
+    <>
     <LibraryShell
       colors={colors}
       title="Prüfungen"
@@ -688,12 +754,12 @@ export const DashboardExamsPanel: React.FC<{
         itemAccent={COLOR_PRUEFUNG}
         onCreateInFolder={onCreateExam}
         createAccent={COLOR_PRUEFUNG}
-        renderItem={(item, accent) => (
+        renderItem={(item) => (
           <MaterialRow
             key={item.path}
             title={item.name}
             subtitle={item.lessonLabel !== item.reihe ? item.lessonLabel : undefined}
-            accent={accent}
+            accent={examAccentColorForFileName(item.name)}
             actions={
               <>
                 {onCorrectExam ? (
@@ -714,6 +780,16 @@ export const DashboardExamsPanel: React.FC<{
                     onClick={() => onEditExam(item)}
                   >
                     <EditIcon sx={{ fontSize: 12 }} />
+                  </TinyAction>
+                ) : null}
+                {!isExamVariantFile(item.name) ? (
+                  <TinyAction
+                    title="Prüfungstyp ändern (QZ → HÜ …)"
+                    bgcolor="#546e7a"
+                    hover="#455a64"
+                    onClick={() => openTypeDialog(item)}
+                  >
+                    <SwapHorizIcon sx={{ fontSize: 12 }} />
                   </TinyAction>
                 ) : null}
                 {onDeleteExam ? (
@@ -744,6 +820,39 @@ export const DashboardExamsPanel: React.FC<{
         )}
       />
     </LibraryShell>
+    <Dialog open={Boolean(typeDialogItem)} onClose={() => !typeSaving && setTypeDialogItem(null)} maxWidth="xs" fullWidth>
+      <DialogTitle>Prüfungstyp ändern</DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" sx={{ mb: 1.5, color: 'text.secondary' }}>
+          Datei: <strong>{typeDialogItem?.name}</strong>
+        </Typography>
+        <Typography variant="caption" sx={{ display: 'block', mb: 1, color: 'text.secondary' }}>
+          Präfix und Dateiname werden angepasst (z. B. QZ_… → HU_…), inkl. aller Versionen A/B/C.
+        </Typography>
+        <RadioGroup
+          value={typeChoice}
+          onChange={(e) => setTypeChoice(e.target.value as ExamLibraryType)}
+        >
+          {(Object.keys(EXAM_TYPE_LABELS) as Exclude<ExamLibraryType, ''>[]).map((t) => (
+            <FormControlLabel
+              key={t}
+              value={t}
+              control={<Radio size="small" />}
+              label={EXAM_TYPE_LABELS[t]}
+            />
+          ))}
+        </RadioGroup>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setTypeDialogItem(null)} disabled={typeSaving}>
+          Abbrechen
+        </Button>
+        <Button variant="contained" onClick={() => void submitTypeChange()} disabled={typeSaving || !typeChoice}>
+          {typeSaving ? 'Speichern…' : 'Umbenennen'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+    </>
   );
 };
 

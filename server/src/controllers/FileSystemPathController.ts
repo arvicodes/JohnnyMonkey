@@ -1689,9 +1689,9 @@ export class FileSystemPathController {
         });
       }
 
-      const fullPath = StorageManager.resolveFilePath(normalizedFp);
-      if (!fullPath) {
-        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      const fullPath = resolveExamHtmlPath(normalizedFp);
+      if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
+        return res.json({ success: true, deleted: [], alreadyMissing: true });
       }
 
       const rootErr = FileSystemPathController.assertDeletableUnderJmRoot(fullPath);
@@ -1718,18 +1718,18 @@ export class FileSystemPathController {
 
       const deleted: string[] = [];
       for (const gp of [...new Set(gitPathsToDelete)]) {
-        const resolved = StorageManager.resolveFilePath(gp);
-        if (!resolved) continue;
+        const resolved = resolveExamHtmlPath(gp);
+        if (!resolved || !fs.existsSync(resolved)) continue;
         const rootCheck = FileSystemPathController.assertDeletableUnderJmRoot(resolved);
         if (rootCheck) continue;
-        if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) continue;
+        if (!fs.statSync(resolved).isFile()) continue;
         fs.unlinkSync(resolved);
         deleted.push(path.basename(resolved));
         console.log('Deleted examination file:', resolved);
       }
 
       if (deleted.length === 0) {
-        return res.status(404).json({ error: 'Datei nicht gefunden' });
+        return res.json({ success: true, deleted: [], alreadyMissing: true });
       }
 
       res.json({ success: true, deleted });
@@ -1738,6 +1738,114 @@ export class FileSystemPathController {
       res.status(500).json({
         error: 'Prüfung konnte nicht gelöscht werden: ' + (error.message || ''),
       });
+    }
+  }
+
+  private static examTypeFilePrefix(examType: string): string {
+    const map: Record<string, string> = { KA: 'KA_', KU: 'KU_', HU: 'HU_', QZ: 'QZ_' };
+    return map[examType] || '';
+  }
+
+  private static replaceExamTypeInBaseStem(baseStem: string, examType: string): string {
+    const rest = baseStem.replace(/^(KA|KU|HU|HÜ|QZ)_/i, '');
+    return `${FileSystemPathController.examTypeFilePrefix(examType)}${rest}`;
+  }
+
+  /**
+   * Prüfungspräfix nachträglich ändern (QZ_ → HU_ …), inkl. aller Versionen A/B/C.
+   */
+  static async changeExaminationType(req: Request, res: Response) {
+    try {
+      const filePathRaw = (req.body?.filePath || req.query?.filePath) as string | undefined;
+      const examType = String(req.body?.examType || req.query?.examType || '').trim().toUpperCase();
+      if (!filePathRaw || typeof filePathRaw !== 'string') {
+        return res.status(400).json({ error: 'filePath ist erforderlich' });
+      }
+      const validTypes = ['KA', 'KU', 'HU', 'QZ'];
+      if (!validTypes.includes(examType)) {
+        return res.status(400).json({ error: 'examType muss KA, KU, HU oder QZ sein' });
+      }
+
+      const fp = FileSystemPathController.normalizeDeleteFilePath(filePathRaw);
+      const normalizedFp = fp.startsWith('J-M-Reihen/')
+        ? `git-intern/${fp.slice('J-M-Reihen/'.length)}`
+        : fp.startsWith('J-M-Reihen')
+          ? 'git-intern'
+          : fp;
+      const fileName = path.basename(normalizedFp);
+      if (!/\.html?$/i.test(fileName) || !FileSystemPathController.isExamCorrectionHtmlFileName(fileName)) {
+        return res.status(403).json({ error: 'Nur Prüfungsdateien (KA_, KU_, HU_, QZ_) sind erlaubt.' });
+      }
+
+      const fullPath = resolveExamHtmlPath(normalizedFp);
+      if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
+        return res.status(404).json({ error: 'Datei nicht gefunden' });
+      }
+
+      const rootErr = FileSystemPathController.assertDeletableUnderJmRoot(fullPath);
+      if (rootErr) {
+        return res.status(403).json({ error: rootErr });
+      }
+
+      const baseGit = gitPathVariant(normalizedFp, 'A');
+      let html = fs.readFileSync(fullPath, 'utf8');
+      const { letters } = parseExamVersionsMeta(html);
+      const renames: Array<{ fromFull: string; toFull: string; toGit: string }> = [];
+
+      for (const L of letters) {
+        const vGit = gitPathVariant(baseGit, L);
+        const fromFull = resolveExamHtmlPath(vGit);
+        if (!fromFull || !fs.existsSync(fromFull) || !fs.statSync(fromFull).isFile()) continue;
+        const stem = fileStemFromName(path.basename(fromFull));
+        const baseStem = baseStemFromStem(stem);
+        const newBaseStem = FileSystemPathController.replaceExamTypeInBaseStem(baseStem, examType);
+        if (newBaseStem.toLowerCase() === baseStem.toLowerCase()) continue;
+        const newStem = variantStem(newBaseStem, L);
+        const toFull = path.join(path.dirname(fromFull), `${newStem}.html`);
+        if (path.resolve(fromFull) === path.resolve(toFull)) continue;
+        if (fs.existsSync(toFull)) {
+          return res.status(409).json({
+            error: `Es existiert bereits: ${path.basename(toFull)}`,
+          });
+        }
+        const slash = vGit.lastIndexOf('/');
+        const toGit =
+          slash >= 0 ? `${vGit.slice(0, slash + 1)}${newStem}.html` : `${newStem}.html`;
+        renames.push({ fromFull, toFull, toGit });
+      }
+
+      if (renames.length === 0) {
+        const stem = fileStemFromName(fileName);
+        const baseStem = baseStemFromStem(stem);
+        const newBaseStem = FileSystemPathController.replaceExamTypeInBaseStem(baseStem, examType);
+        if (newBaseStem.toLowerCase() === baseStem.toLowerCase()) {
+          return res.json({ success: true, unchanged: true, filePath: normalizedFp });
+        }
+        return res.status(404).json({ error: 'Keine Prüfungsversion zum Umbenennen gefunden' });
+      }
+
+      for (const r of renames) {
+        let content = fs.readFileSync(r.fromFull, 'utf8');
+        content = patchKaKeyInHtml(content, fileStemFromName(path.basename(r.toFull)));
+        fs.writeFileSync(r.toFull, content, 'utf8');
+        fs.unlinkSync(r.fromFull);
+        console.log('Renamed examination:', r.fromFull, '→', r.toFull);
+      }
+
+      const primary = renames.find((r) => r.toGit.endsWith('.html')) || renames[0];
+      const folderKey = primary.toGit.replace(/\/[^/]+$/, '');
+      if (folderKey) invalidateDirectoryReadCache(folderKey);
+
+      res.json({
+        success: true,
+        filePath: primary.toGit,
+        fileName: path.basename(primary.toGit),
+        renamed: renames.map((r) => path.basename(r.toFull)),
+      });
+    } catch (error: unknown) {
+      console.error('Error changing examination type:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Prüfungstyp konnte nicht geändert werden: ' + message });
     }
   }
 

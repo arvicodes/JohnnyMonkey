@@ -12211,7 +12211,17 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
         }
         throw new Error(message);
       }
-      const data = (await res.json()) as { deleted?: string[] };
+      const data = (await res.json()) as { deleted?: string[]; alreadyMissing?: boolean };
+      if (data.alreadyMissing) {
+        refreshAssignedFolderTrees();
+        setExamsPanelRefreshKey((k) => k + 1);
+        showSnackbar(
+          'Die Datei war nicht mehr auf der Platte â€” Eintrag wurde aus der Liste entfernt.',
+          'success',
+        );
+        handleExamDeleteDialogClose();
+        return;
+      }
       const deletedNames = data.deleted?.length ? data.deleted.join(', ') : examToDelete.name;
       if (
         singleQuestionFilePath &&
@@ -18094,6 +18104,7 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
               }}
               onEditExam={(item) => void handleEditSingleQuestion({ path: item.path, name: item.name })}
               onDeleteExam={(item) => handleExamDeleteDialogOpen({ path: item.path, name: item.name })}
+              onNotify={(message, severity) => showSnackbar(message, severity || 'info')}
               onCreateExam={(folderPath) => {
                 setExaminationType('QZ');
                 setExaminationFileName('');

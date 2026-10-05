@@ -141,7 +141,8 @@ export class StorageManager {
             path: itemDisplayPath,
             type: itemStats.isDirectory() ? 'directory' : 'file',
             size: itemStats.size,
-            extension: this.getFileExtension(item)
+            extension: this.getFileExtension(item),
+            mtimeMs: itemStats.mtimeMs,
           };
           
           // If it's a directory and we want recursive or it's the root level, add children
