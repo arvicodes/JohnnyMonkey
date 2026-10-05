@@ -968,10 +968,30 @@
     }
     var inner = panel.querySelector('.exam-dollar-task-author-inner');
     if (!inner) return;
-    var bar = content.querySelector('.exam-dollar-color-bar');
     var live = content.querySelector('.exam-dollar-live-edit');
-    if (bar && bar.parentNode !== inner) inner.appendChild(bar);
-    if (live && live.parentNode !== inner) inner.appendChild(live);
+    if (live) {
+      var wrap = live.closest('.exam-dollar-live-edit-wrap');
+      var host = wrap || live;
+      if (host.parentNode !== inner) {
+        inner.appendChild(host);
+      }
+    }
+    var bar = content.querySelector('.exam-dollar-color-bar');
+    if (bar && bar.parentNode !== inner) {
+      var editorHost =
+        content.querySelector('.exam-dollar-live-edit-wrap') ||
+        content.querySelector('.exam-dollar-live-edit');
+      if (editorHost && editorHost.parentNode === inner) {
+        inner.insertBefore(bar, editorHost);
+      } else {
+        inner.insertBefore(bar, inner.firstChild);
+      }
+    }
+    content.querySelectorAll('.exam-dollar-live-edit-wrap').forEach(function (w) {
+      if (!w.querySelector('.exam-dollar-live-edit') && w.parentNode) {
+        w.parentNode.removeChild(w);
+      }
+    });
     bindCollapsibleDetails(panel, 'jmExamTaskAuthorOpen', false);
   }
 
@@ -2853,7 +2873,17 @@
       });
       bar.appendChild(btn);
     });
-    live.parentNode.insertBefore(bar, live);
+    var inner = taskEl.querySelector('.exam-dollar-task-author-inner');
+    var host = live.closest('.exam-dollar-live-edit-wrap') || live;
+    if (inner) {
+      if (host.parentNode === inner) {
+        inner.insertBefore(bar, host);
+      } else {
+        inner.insertBefore(bar, inner.firstChild);
+      }
+    } else {
+      host.parentNode.insertBefore(bar, host);
+    }
   }
 
   function normalizeEmptyDollarWraps(text) {
@@ -3004,8 +3034,8 @@
       applySourceToTask(taskEl, src.value);
       scheduleSave({ immediate: true });
     });
-    ensureColorBar(taskEl);
     ensureTaskAuthorPanel(taskEl);
+    ensureColorBar(taskEl);
     wireImageDrop(live, taskEl);
   }
 
@@ -3059,6 +3089,11 @@
     for (var w = 1; w < wraps.length; w += 1) {
       if (wraps[w].parentNode) wraps[w].parentNode.removeChild(wraps[w]);
     }
+    content.querySelectorAll('.exam-dollar-live-edit-wrap').forEach(function (wrap) {
+      if (!wrap.querySelector('.exam-dollar-live-edit') && wrap.parentNode) {
+        wrap.parentNode.removeChild(wrap);
+      }
+    });
     return content.querySelector('.exam-dollar-live-edit') || keep;
   }
 
