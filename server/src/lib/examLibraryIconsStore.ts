@@ -1,6 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import crypto from 'crypto';
 import { readImageFileForServe } from '../utils/imageToJpeg';
 import { StorageManager } from '../utils/storageManager';
 
@@ -308,4 +309,75 @@ export function migrateTeacherExamLibraryIconKey(
   map[newKey] = map[oldKey];
   delete map[oldKey];
   writeTeacherExamLibraryIcons(teacherFolderKey, map);
+}
+
+export type TeacherExamLibraryCustomIconChoice = {
+  value: string;
+  label: string;
+};
+
+function labelFromExamLibraryPath(examPath: string): string {
+  const file = examPath.split('/').pop() || 'Icon';
+  return file.replace(/\.html?$/i, '').replace(/^((ka|ku|hu|hü|qz)_)/i, '').trim() || file;
+}
+
+function resolveTeacherExamLibraryIconImageAbs(
+  teacherFolderKey: string,
+  iconValue: string,
+): string | null {
+  if (!iconValue.startsWith(EXAM_LIBRARY_ICON_IMAGE_PREFIX)) return null;
+  let p = iconValue.slice(EXAM_LIBRARY_ICON_IMAGE_PREFIX.length).replace(/\\/g, '/').trim();
+  if (p.startsWith('git-intern/')) p = p.slice('git-intern/'.length);
+  const allowedPrefixes = [
+    `_Meta/Pruefungs-Icons/_assets/${teacherFolderKey}/`,
+    `_Meta/Pruefungs-Icons/_vorlage/${teacherFolderKey}/`,
+  ];
+  const pl = p.toLowerCase();
+  if (!allowedPrefixes.some((seg) => pl.includes(seg.toLowerCase()))) return null;
+  const abs = StorageManager.resolveGitInternRelativePath(p);
+  return abs && fs.existsSync(abs) ? abs : null;
+}
+
+/** Eigene Icons für die Auswahlliste — identische Bilddateien nur einmal (MD5). */
+export function listTeacherExamLibraryCustomIconChoices(
+  teacherFolderKey: string,
+): TeacherExamLibraryCustomIconChoice[] {
+  const doc = readTeacherExamLibraryIconsDocument(teacherFolderKey);
+  const examPathKeys = new Set<string>([
+    ...Object.keys(doc.icons),
+    ...Object.keys(doc.iconTemplate?.icons ?? {}),
+  ]);
+
+  const byHash = new Map<string, TeacherExamLibraryCustomIconChoice>();
+
+  for (const examPath of examPathKeys) {
+    const key = examPath.toLowerCase();
+    const value = (doc.icons[key] || doc.iconTemplate?.icons?.[key])?.trim();
+    if (!value?.startsWith(EXAM_LIBRARY_ICON_IMAGE_PREFIX)) continue;
+
+    const abs = resolveTeacherExamLibraryIconImageAbs(teacherFolderKey, value);
+    if (!abs) continue;
+
+    let hash: string;
+    try {
+      hash = crypto.createHash('md5').update(fs.readFileSync(abs)).digest('hex');
+    } catch {
+      continue;
+    }
+
+    const choice: TeacherExamLibraryCustomIconChoice = {
+      value,
+      label: labelFromExamLibraryPath(examPath),
+    };
+    const prev = byHash.get(hash);
+    if (!prev) {
+      byHash.set(hash, choice);
+      continue;
+    }
+    const preferAssets =
+      value.includes('/_assets/') && !prev.value.includes('/_assets/');
+    if (preferAssets) byHash.set(hash, choice);
+  }
+
+  return [...byHash.values()].sort((a, b) => a.label.localeCompare(b.label, 'de'));
 }

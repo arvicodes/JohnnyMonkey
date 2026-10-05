@@ -52,6 +52,7 @@ import { resolveExamHtmlPath } from '../utils/examAutoPoints';
 import { findUserByLoginCode } from '../utils/loginCodeCrypto';
 import { scratchPadUserFolderKey } from '../utils/teacherScratchPadStore';
 import {
+  listTeacherExamLibraryCustomIconChoices,
   migrateTeacherExamLibraryIconKey,
   overwriteTeacherExamLibraryIconAsset,
   readTeacherExamLibraryIcons,
@@ -4118,6 +4119,7 @@ ${aiContent.optionsHTML}
         icons: readTeacherExamLibraryIcons(key),
         whiteBgVersion: readTeacherExamLibraryWhiteBgVersion(key),
         iconTemplate: readTeacherExamLibraryIconTemplate(key),
+        customIconChoices: listTeacherExamLibraryCustomIconChoices(key),
       });
     } catch (error) {
       console.error('getExamLibraryIcons:', error);

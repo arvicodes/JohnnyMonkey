@@ -15,6 +15,7 @@ export type ExamLibraryIconTemplate = {
 export type ExamLibraryIconsLoadResult = {
   icons: Record<string, string>;
   template: ExamLibraryIconTemplate | null;
+  customIconChoices: ExamLibraryCustomIconChoice[];
 };
 
 function canonicalExamIconKey(filePath: string): string {
@@ -80,12 +81,13 @@ export async function fetchExamLibraryIconsFromServer(): Promise<ExamLibraryIcon
       credentials: 'include',
     });
     if (!res.ok) {
-      return { icons: loadLegacyLocalIconsMap(), template: null };
+      return { icons: loadLegacyLocalIconsMap(), template: null, customIconChoices: [] };
     }
     const data = (await res.json()) as {
       icons?: Record<string, string>;
       whiteBgVersion?: number;
       iconTemplate?: ExamLibraryIconTemplate | null;
+      customIconChoices?: ExamLibraryCustomIconChoice[];
     };
     const serverIcons = data.icons && typeof data.icons === 'object' ? data.icons : {};
     let merged = await syncLegacyIconsToServer(serverIcons);
@@ -95,9 +97,14 @@ export async function fetchExamLibraryIconsFromServer(): Promise<ExamLibraryIcon
     }
     const template =
       data.iconTemplate && typeof data.iconTemplate === 'object' ? data.iconTemplate : null;
-    return { icons: merged, template };
+    const customIconChoices = Array.isArray(data.customIconChoices)
+      ? data.customIconChoices.filter(
+          (c) => c && typeof c.value === 'string' && typeof c.label === 'string',
+        )
+      : listExamLibraryCustomIconChoices(merged, template);
+    return { icons: merged, template, customIconChoices };
   } catch {
-    return { icons: loadLegacyLocalIconsMap(), template: null };
+    return { icons: loadLegacyLocalIconsMap(), template: null, customIconChoices: [] };
   }
 }
 
@@ -234,25 +241,18 @@ function labelFromExamPath(examPath: string): string {
   return file.replace(/\.html?$/i, '').replace(/^((ka|ku|hu|hü|qz)_)/i, '').trim() || file;
 }
 
-/** Gespeicherte Bild-Icons (Vorlage + Zuordnungen), jedes Bild nur einmal. */
+/** Fallback ohne Server-Hash: nur aktive Zuordnungen, je URL einmal. */
 export function listExamLibraryCustomIconChoices(
   iconMap: Record<string, string>,
-  template: ExamLibraryIconTemplate | null,
+  _template: ExamLibraryIconTemplate | null,
 ): ExamLibraryCustomIconChoice[] {
-  const examPaths = new Set<string>([
-    ...Object.keys(iconMap),
-    ...Object.keys(template?.icons ?? {}),
-  ]);
-
   const byValue = new Map<string, string>();
-
-  for (const examPath of examPaths) {
-    const value = (iconMap[examPath] || template?.icons?.[examPath])?.trim();
+  for (const [examPath, raw] of Object.entries(iconMap)) {
+    const value = raw?.trim();
     if (!value || !isExamLibraryImageIcon(value)) continue;
     if (byValue.has(value)) continue;
     byValue.set(value, labelFromExamPath(examPath));
   }
-
   return [...byValue.entries()]
     .map(([value, label]) => ({ value, label }))
     .sort((a, b) => a.label.localeCompare(b.label, 'de'));

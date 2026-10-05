@@ -44,12 +44,12 @@ import {
 import {
   fetchExamLibraryIconsFromServer,
   getExamLibraryIcon,
-  listExamLibraryCustomIconChoices,
   saveExamLibraryIconToServer,
   saveExamLibraryIconTemplateToServer,
   uploadExamLibraryIconImageToServer,
   examLibraryIconImageSrc,
   isExamLibraryImageIcon,
+  type ExamLibraryCustomIconChoice,
   type ExamLibraryIconTemplate,
 } from '../../lib/examLibraryIcons';
 import EmojiSelector from '../EmojiSelector';
@@ -750,6 +750,7 @@ export const DashboardExamsPanel: React.FC<{
   const [typeSaving, setTypeSaving] = useState(false);
   const [iconMap, setIconMap] = useState<Record<string, string>>({});
   const [iconTemplate, setIconTemplate] = useState<ExamLibraryIconTemplate | null>(null);
+  const [customIconChoices, setCustomIconChoices] = useState<ExamLibraryCustomIconChoice[]>([]);
   const [iconTemplateSaving, setIconTemplateSaving] = useState(false);
   const [iconPickerItem, setIconPickerItem] = useState<LibraryExamItem | null>(null);
 
@@ -757,6 +758,7 @@ export const DashboardExamsPanel: React.FC<{
     const loaded = await fetchExamLibraryIconsFromServer();
     setIconMap(loaded.icons);
     setIconTemplate(loaded.template);
+    setCustomIconChoices(loaded.customIconChoices);
   }, []);
 
   useEffect(() => {
@@ -806,6 +808,7 @@ export const DashboardExamsPanel: React.FC<{
         const { icons, iconTemplate: tpl } = await saveExamLibraryIconTemplateToServer();
         setIconMap(icons);
         setIconTemplate(tpl);
+        void loadExamIcons();
         const n = Object.keys(tpl.icons).length;
         onNotify?.(
           n
@@ -854,10 +857,7 @@ export const DashboardExamsPanel: React.FC<{
     }
   };
 
-  const examCustomIconChoices = useMemo(
-    () => listExamLibraryCustomIconChoices(iconMap, iconTemplate),
-    [iconMap, iconTemplate],
-  );
+  const examCustomIconChoices = customIconChoices;
 
   return (
     <>
