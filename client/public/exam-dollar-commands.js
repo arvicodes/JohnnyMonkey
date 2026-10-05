@@ -285,6 +285,21 @@
       };
     }
 
+    if (/^L\s+/i.test(rest)) {
+      var lClose = rest.match(/\sL\s*\$/);
+      if (lClose && lClose.index >= 0) {
+        var lEnd = lClose.index + lClose[0].length;
+        return { end: start + 1 + lEnd, inner: rest.slice(0, lEnd - 1) };
+      }
+    }
+    if (/^M\s+/i.test(rest)) {
+      var mClose = rest.match(/\sM\s*\$/);
+      if (mClose && mClose.index >= 0) {
+        var mEnd = mClose.index + mClose[0].length;
+        return { end: start + 1 + mEnd, inner: rest.slice(0, mEnd - 1) };
+      }
+    }
+
     var simple = rest.match(/^([^$]+)\$/);
     if (simple) {
       return { end: start + 1 + simple[0].length, inner: simple[1] };
