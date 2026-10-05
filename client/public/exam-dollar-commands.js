@@ -967,10 +967,10 @@
   }
 
   function normalizeProseMathText(raw) {
-    var s = String(raw || '').replace(/^\s+|\s+$/g, '').replace(/\t/g, ' ');
+    var s = String(raw || '').replace(/\t/g, ' ');
     s = s.replace(/(\d)\s*:\s*(\d)/g, '$1:$2');
     s = s.replace(/(\d)(Uhr)\b/gi, '$1 $2');
-    s = s.replace(/(\d)([tkgml])\b(?![a-zäöüß])/gi, '$1 $2');
+    s = s.replace(/(\d)([tkgml])(?![a-zäöüß])/gi, '$1 $2');
     return s;
   }
 
@@ -1118,12 +1118,16 @@
     return -1;
   }
 
+  function trimAltSegmentEnds(s) {
+    return String(s || '').replace(/^\s+/, '').replace(/\s+$/, '');
+  }
+
   /** $L 5 $$7 $$$10 L$ — Anzahl $ = Variante ($$ → A1, $$$ → A2, …) */
   function parseDollarCountAltContent(raw) {
     var s = String(raw || '').replace(/\r/g, '');
     var first = findNextDollarAltMarkerIndex(s);
     if (first < 0) return null;
-    var base = s.slice(0, first).trim();
+    var base = trimAltSegmentEnds(s.slice(0, first));
     var rest = s.slice(first);
     var alts = {};
     while (rest.length) {
@@ -1134,7 +1138,7 @@
       var altNum = j - 1;
       rest = rest.slice(j);
       var next = findNextDollarAltMarkerIndex(rest);
-      var chunk = (next < 0 ? rest : rest.slice(0, next)).trim();
+      var chunk = trimAltSegmentEnds(next < 0 ? rest : rest.slice(0, next));
       alts[altNum] = chunk;
       rest = next < 0 ? '' : rest.slice(next);
     }
@@ -1147,7 +1151,7 @@
     var markerRe = /\$a(\d+)(?:\$|\s)/i;
     var first = s.search(markerRe);
     if (first < 0) return null;
-    var base = s.slice(0, first).trim();
+    var base = trimAltSegmentEnds(s.slice(0, first));
     var rest = s.slice(first);
     var alts = {};
     while (rest.length) {
@@ -1157,7 +1161,7 @@
       if (!num) break;
       rest = rest.slice(head[0].length);
       var next = rest.search(/\$a(\d+)(?:\$|\s)/i);
-      var chunk = (next < 0 ? rest : rest.slice(0, next)).trim();
+      var chunk = trimAltSegmentEnds(next < 0 ? rest : rest.slice(0, next));
       alts[num] = chunk;
       rest = next < 0 ? '' : rest.slice(next);
     }
@@ -1175,7 +1179,7 @@
   }
 
   function renderMathHtmlCore(latex) {
-    var t = String(latex || '').replace(/^\s+|\s+$/g, '');
+    var t = trimAltSegmentEnds(String(latex || ''));
     if (!t) return '';
     var toRender = shouldUseSimpleMathLatex(t)
       ? simpleMathContentToLatex(t)
@@ -2908,7 +2912,6 @@
       '.exam-dollar-math-latex{display:inline;vertical-align:baseline;margin:0 1px}' +
       '.exam-dollar-math-latex .katex{font-size:1.1em;color:inherit;font-weight:normal}' +
       '.exam-dollar-math-fallback{font-family:inherit;font-style:normal;font-size:1.1em;color:inherit}' +
-      '.teacher-mode .exam-dollar-alt-group{outline:2px dashed #e65100;outline-offset:3px;border-radius:6px;padding:1px 2px;background:rgba(255,243,224,.45)}' +
       '.exam-dollar-biggap{margin:5px 0}' +
       '.exam-dollar-area{width:100%;min-height:72px;margin:5px 0;box-sizing:border-box}' +
       '.exam-dollar-hint{font-size:10px;color:#888;margin-top:4px}' +
@@ -2923,13 +2926,20 @@
       'body.show-solutions .exam-dollar-wf-row .exam-dollar-choice-correct .exam-dollar-choice-box{border-color:#2e7d32}' +
       '.exam-dollar-alt-group{margin:8px 0 10px}' +
       '.exam-dollar-alt-view--hidden{display:none!important}' +
+      '.teacher-mode .exam-dollar-math-alt-group .exam-dollar-alt-view:not(.exam-dollar-alt-view--hidden){display:inline-block;max-width:100%}' +
+      '.teacher-mode .exam-dollar-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #8e24aa;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.12)}' +
+      '.teacher-mode .exam-dollar-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ec407a;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(244,143,177,.18)}' +
+      '.teacher-mode .exam-dollar-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ab47bc;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.1)}' +
       '.exam-alt-variant-toolbar{display:flex;flex-wrap:wrap;justify-content:flex-start;align-items:stretch;width:100%;margin:2px 0 0;padding:0}' +
       '.exam-alt-variant-toolbar[hidden]{display:none!important}' +
       '.exam-alt-variant-duo{display:inline-flex;width:100%;border:1px solid #bdbdbd;border-radius:7px;overflow:hidden;background:#fff;box-sizing:border-box}' +
       '.exam-alt-variant-duo .exam-alt-variant-btn{flex:1;min-width:0;margin:0;border:none;border-radius:0;border-right:1px solid #bdbdbd;padding:6px 8px;font-size:11px;line-height:1.2;background:#fff;color:#333;cursor:pointer;font-family:Arial,sans-serif;text-align:center;white-space:nowrap}' +
       '.exam-alt-variant-duo .exam-alt-variant-btn:last-child{border-right:none}' +
-      '.exam-alt-variant-duo .exam-alt-variant-btn:hover{color:#E10600;background:#fff8f8}' +
-      '.exam-alt-variant-duo .exam-alt-variant-btn--active{color:#E10600;font-weight:700;background:#fff5f5;box-shadow:inset 0 0 0 1px #E10600}';
+      '.exam-alt-variant-duo .exam-alt-variant-btn:hover{color:#555;background:#fafafa}' +
+      '.exam-alt-variant-duo .exam-alt-variant-btn--active{font-weight:700}' +
+      '.exam-alt-variant-duo .exam-alt-variant-btn[data-jm-global-alt="1"].exam-alt-variant-btn--active{color:#7b1fa2;background:#f3e5f5;box-shadow:inset 0 0 0 1px #8e24aa}' +
+      '.exam-alt-variant-duo .exam-alt-variant-btn[data-jm-global-alt="2"].exam-alt-variant-btn--active{color:#c2185b;background:#fce4ec;box-shadow:inset 0 0 0 1px #ec407a}' +
+      '.exam-alt-variant-duo .exam-alt-variant-btn[data-jm-global-alt="3"].exam-alt-variant-btn--active{color:#8e24aa;background:#f3e5f5;box-shadow:inset 0 0 0 1px #ab47bc}';
   }
 
   function ensureComposeArea() {
