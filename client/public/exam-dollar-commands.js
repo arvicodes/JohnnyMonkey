@@ -3274,10 +3274,10 @@
       '.exam-dollar-color-bar{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 6px}' +
       '.exam-dollar-color-swatch{width:20px;height:20px;border:1px solid rgba(0,0,0,.2);border-radius:4px;cursor:pointer;padding:0}' +
       '.exam-dollar-color-swatch:hover{transform:scale(1.08)}' +
-      '.teacher-mode .exam-dollar-live-edit-wrap{position:relative;display:block;min-height:0;margin:0;padding:2px 4px;border-radius:3px;overflow:hidden}' +
-      '.teacher-mode .exam-dollar-live-edit-wrap:focus-within{box-shadow:0 0 0 2px rgba(225,6,0,0.25)}' +
-      '.teacher-mode .exam-dollar-live-edit-highlight,.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{display:block;min-height:0!important;padding:0;margin:0;line-height:1.32;font-family:Arial,sans-serif;font-size:12px;outline:none;border-radius:0;white-space:pre-wrap;word-break:break-word;box-sizing:border-box;border:none}' +
-      '.teacher-mode .exam-dollar-live-edit-highlight{position:absolute;left:0;right:0;top:0;pointer-events:none;color:#222;overflow:hidden;z-index:0;width:100%}' +
+      '.teacher-mode .exam-dollar-live-edit-wrap{position:relative;display:block;min-height:0;margin:0;padding:2px 4px;border-radius:3px;overflow:hidden;background:#e3f2fd;border:1px solid #bbdefb}' +
+      '.teacher-mode .exam-dollar-live-edit-wrap:focus-within{box-shadow:0 0 0 2px rgba(225,6,0,0.25);border-color:#90caf9}' +
+      '.teacher-mode .exam-dollar-live-edit-highlight,.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{display:block;min-height:0!important;padding:0;margin:0;line-height:1.32;font-family:Arial,sans-serif;font-size:12px;outline:none;border-radius:0;white-space:pre-wrap;word-break:break-word;box-sizing:border-box;border:none;background:transparent}' +
+      '.teacher-mode .exam-dollar-live-edit-highlight{position:absolute;left:0;right:0;top:0;pointer-events:none;color:#222;overflow:hidden;z-index:0;width:100%;background:#e3f2fd}' +
       '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{position:relative;z-index:1;width:100%;min-height:0!important;height:auto;overflow:hidden;resize:none;background:transparent;color:transparent;-webkit-text-fill-color:transparent;caret-color:#222}' +
       '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit::selection{background:rgba(21,101,192,.22);-webkit-text-fill-color:transparent}' +
       '.exam-dollar-wf-alt-pair{display:grid;grid-template-columns:4.5em 4.5em;width:100%;max-width:9.5em;margin:0 auto}' +
