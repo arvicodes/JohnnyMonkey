@@ -854,6 +854,11 @@ export const DashboardExamsPanel: React.FC<{
     }
   };
 
+  const examCustomIconChoices = useMemo(
+    () => listExamLibraryCustomIconChoices(iconMap, iconTemplate),
+    [iconMap, iconTemplate],
+  );
+
   return (
     <>
     <LibraryShell
@@ -1000,10 +1005,6 @@ export const DashboardExamsPanel: React.FC<{
       }
       onSelect={(emoji) => {
         if (!iconPickerItem) return;
-        if (isExamLibraryImageIcon(emoji)) {
-          setIconPickerItem(null);
-          return;
-        }
         void (async () => {
           try {
             const icons = await saveExamLibraryIconToServer(iconPickerItem.path, emoji);
@@ -1016,6 +1017,7 @@ export const DashboardExamsPanel: React.FC<{
           }
         })();
       }}
+      customIcons={examCustomIconChoices}
       allowImageUpload
       onUploadImage={async (file) => {
         if (!iconPickerItem) throw new Error('Keine Prüfung ausgewählt');

@@ -20,6 +20,7 @@ import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-ico
 import {
   examLibraryIconImageSrc,
   isExamLibraryImageIcon,
+  type ExamLibraryCustomIconChoice,
 } from '../lib/examLibraryIcons';
 
 interface EmojiSelectorProps {
@@ -34,11 +35,6 @@ interface EmojiSelectorProps {
   customIcons?: ExamLibraryCustomIconChoice[];
   onUploadImage?: (file: File) => Promise<string>;
 }
-
-export type ExamLibraryCustomIconChoice = {
-  value: string;
-  label: string;
-};
 
 type EmojiCategory = {
   name: string;
