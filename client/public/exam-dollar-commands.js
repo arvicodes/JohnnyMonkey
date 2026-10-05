@@ -3029,10 +3029,6 @@
     var wrap = live.parentNode;
     if (wrap && wrap.classList && wrap.classList.contains('exam-dollar-live-edit-wrap')) {
       live.addEventListener('focus', function () {
-        wrap.classList.add('exam-dollar-live-edit-wrap--editing');
-      });
-      live.addEventListener('blur', function () {
-        wrap.classList.remove('exam-dollar-live-edit-wrap--editing');
         refreshLiveEditHighlight(live);
       });
     }
@@ -3253,13 +3249,12 @@
       '.exam-dollar-color-bar{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 6px}' +
       '.exam-dollar-color-swatch{width:20px;height:20px;border:1px solid rgba(0,0,0,.2);border-radius:4px;cursor:pointer;padding:0}' +
       '.exam-dollar-color-swatch:hover{transform:scale(1.08)}' +
-      '.teacher-mode .exam-dollar-live-edit-wrap{position:relative;display:block;min-height:56px;margin:0 0 6px;border-radius:4px}' +
+      '.teacher-mode .exam-dollar-live-edit-wrap{position:relative;display:block;min-height:0;margin:0 0 4px;border-radius:4px}' +
       '.teacher-mode .exam-dollar-live-edit-wrap:focus-within{box-shadow:0 0 0 2px rgba(225,6,0,0.25)}' +
-      '.teacher-mode .exam-dollar-live-edit-highlight,.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{display:block;min-height:56px;padding:6px 4px;line-height:1.55;font-family:Arial,sans-serif;font-size:14px;outline:none;border-radius:4px;white-space:pre-wrap;word-break:break-word;box-sizing:border-box}' +
-      '.teacher-mode .exam-dollar-live-edit-highlight{position:absolute;inset:0;pointer-events:none;color:#222;overflow:hidden;z-index:0}' +
-      '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{position:relative;z-index:1;background:transparent;color:transparent;-webkit-text-fill-color:transparent;caret-color:#222}' +
-      '.teacher-mode .exam-dollar-live-edit-wrap--editing .exam-dollar-live-edit-highlight{opacity:0}' +
-      '.teacher-mode .exam-dollar-live-edit-wrap--editing .exam-dollar-live-edit{color:#222;-webkit-text-fill-color:#222}' +
+      '.teacher-mode .exam-dollar-live-edit-highlight,.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{display:block;min-height:0;padding:3px 4px;line-height:1.45;font-family:Arial,sans-serif;font-size:13px;outline:none;border-radius:4px;white-space:pre-wrap;word-break:break-word;box-sizing:border-box;margin:0}' +
+      '.teacher-mode .exam-dollar-live-edit-highlight{position:absolute;inset:0;pointer-events:none;color:#222;overflow:hidden;z-index:0;height:100%}' +
+      '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{position:relative;z-index:1;min-height:1.45em;background:transparent;color:transparent;-webkit-text-fill-color:transparent;caret-color:#222}' +
+      '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit::selection{background:rgba(21,101,192,.22);-webkit-text-fill-color:transparent}' +
       '.exam-dollar-wf-alt-pair{display:grid;grid-template-columns:4.5em 4.5em;width:100%;max-width:9.5em;margin:0 auto}' +
       '.exam-dollar-wf-alt-cell{padding:4px 6px!important;vertical-align:middle!important}' +
       '.exam-dollar-wf-alt-group{width:100%}' +
