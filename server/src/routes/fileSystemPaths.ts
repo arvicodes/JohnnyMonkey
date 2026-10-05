@@ -94,6 +94,8 @@ router.post('/create-examination', FileSystemPathController.createExamination);
 // Prüfung löschen (mit Varianten bei Basis-Datei A)
 router.post('/delete-examination', FileSystemPathController.deleteExamination);
 router.post('/change-examination-type', FileSystemPathController.changeExaminationType);
+router.get('/exam-library-icons', FileSystemPathController.getExamLibraryIcons);
+router.post('/exam-library-icons', FileSystemPathController.saveExamLibraryIcon);
 
 // Stunde erstellen (Ordner + Standardmaterialien)
 router.post('/create-lesson-folder', FileSystemPathController.createLessonFolder);

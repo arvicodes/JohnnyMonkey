@@ -41,9 +41,9 @@ import {
   type ExamLibraryType,
 } from '../../lib/examLibraryUi';
 import {
+  fetchExamLibraryIconsFromServer,
   getExamLibraryIcon,
-  loadExamLibraryIconsMap,
-  setExamLibraryIcon,
+  saveExamLibraryIconToServer,
 } from '../../lib/examLibraryIcons';
 import EmojiSelector from '../EmojiSelector';
 import {
@@ -703,12 +703,17 @@ export const DashboardExamsPanel: React.FC<{
   const [typeDialogItem, setTypeDialogItem] = useState<LibraryExamItem | null>(null);
   const [typeChoice, setTypeChoice] = useState<ExamLibraryType>('QZ');
   const [typeSaving, setTypeSaving] = useState(false);
-  const [iconMap, setIconMap] = useState<Record<string, string>>(() => loadExamLibraryIconsMap());
+  const [iconMap, setIconMap] = useState<Record<string, string>>({});
   const [iconPickerItem, setIconPickerItem] = useState<LibraryExamItem | null>(null);
 
+  const loadExamIcons = useCallback(async () => {
+    setIconMap(await fetchExamLibraryIconsFromServer());
+  }, []);
+
   useEffect(() => {
-    setIconMap(loadExamLibraryIconsMap());
-  }, [refreshKey]);
+    void loadExamIcons();
+  }, [refreshKey, loadExamIcons]);
+
   const meta = useMemo(() => ({ groups, assignedFolders }), [groups, assignedFolders]);
 
   const rootsKey = useMemo(
@@ -922,9 +927,17 @@ export const DashboardExamsPanel: React.FC<{
       }
       onSelect={(emoji) => {
         if (!iconPickerItem) return;
-        setExamLibraryIcon(iconPickerItem.path, emoji);
-        setIconMap(loadExamLibraryIconsMap());
-        setIconPickerItem(null);
+        void (async () => {
+          try {
+            const icons = await saveExamLibraryIconToServer(iconPickerItem.path, emoji);
+            setIconMap(icons);
+            onNotify?.('Icon gespeichert', 'success');
+          } catch (e) {
+            onNotify?.(e instanceof Error ? e.message : 'Speichern fehlgeschlagen', 'error');
+          } finally {
+            setIconPickerItem(null);
+          }
+        })();
       }}
     />
     </>

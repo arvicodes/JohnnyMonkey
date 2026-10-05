@@ -49,6 +49,13 @@ import {
   writeExamVersionsMeta,
 } from '../lib/examVersionPaths';
 import { resolveExamHtmlPath } from '../utils/examAutoPoints';
+import { findUserByLoginCode } from '../utils/loginCodeCrypto';
+import { scratchPadUserFolderKey } from '../utils/teacherScratchPadStore';
+import {
+  migrateTeacherExamLibraryIconKey,
+  readTeacherExamLibraryIcons,
+  setTeacherExamLibraryIcon,
+} from '../lib/examLibraryIconsStore';
 
 const prisma = new PrismaClient();
 const DEV_PROJECT_ROOT = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
@@ -1835,6 +1842,12 @@ export class FileSystemPathController {
       const primary = renames.find((r) => r.toGit.endsWith('.html')) || renames[0];
       const folderKey = primary.toGit.replace(/\/[^/]+$/, '');
       if (folderKey) invalidateDirectoryReadCache(folderKey);
+
+      const teacher = await FileSystemPathController.requireTeacherUser(req);
+      if (teacher && renames.length > 0) {
+        const tKey = scratchPadUserFolderKey(teacher.id, teacher.name);
+        migrateTeacherExamLibraryIconKey(tKey, normalizedFp, primary.toGit);
+      }
 
       res.json({
         success: true,
@@ -4076,6 +4089,48 @@ ${aiContent.optionsHTML}
     } catch (error) {
       console.error('removeExaminationVersion:', error);
       res.status(500).json({ error: 'Fehler beim Entfernen der Version' });
+    }
+  }
+
+  private static async requireTeacherUser(req: Request) {
+    const raw = req.headers['x-login-code'];
+    const loginCode = typeof raw === 'string' ? raw.trim() : Array.isArray(raw) ? raw[0]?.trim() : '';
+    if (!loginCode) return null;
+    const user = await findUserByLoginCode(prisma, loginCode);
+    if (!user || user.role !== 'TEACHER') return null;
+    return user;
+  }
+
+  static async getExamLibraryIcons(req: Request, res: Response) {
+    try {
+      const user = await FileSystemPathController.requireTeacherUser(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Lehrer-Login erforderlich' });
+      }
+      const key = scratchPadUserFolderKey(user.id, user.name);
+      res.json({ icons: readTeacherExamLibraryIcons(key) });
+    } catch (error) {
+      console.error('getExamLibraryIcons:', error);
+      res.status(500).json({ error: 'Icons konnten nicht geladen werden' });
+    }
+  }
+
+  static async saveExamLibraryIcon(req: Request, res: Response) {
+    try {
+      const user = await FileSystemPathController.requireTeacherUser(req);
+      if (!user) {
+        return res.status(401).json({ error: 'Lehrer-Login erforderlich' });
+      }
+      const { filePath, emoji } = req.body as { filePath?: string; emoji?: string | null };
+      if (!filePath || typeof filePath !== 'string') {
+        return res.status(400).json({ error: 'filePath ist erforderlich' });
+      }
+      const key = scratchPadUserFolderKey(user.id, user.name);
+      const icons = setTeacherExamLibraryIcon(key, filePath, emoji);
+      res.json({ success: true, icons });
+    } catch (error) {
+      console.error('saveExamLibraryIcon:', error);
+      res.status(500).json({ error: 'Icon konnte nicht gespeichert werden' });
     }
   }
 }
