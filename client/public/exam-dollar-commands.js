@@ -2128,7 +2128,11 @@
         if (!btn || !mount.contains(btn)) return;
         e.preventDefault();
         var pick = btn.getAttribute('data-jm-global-alt');
-        if (!pick) return;
+        if (pick == null || pick === '') return;
+        if (pick === '0') {
+          setExamGlobalAltIndex(0);
+          return;
+        }
         var cur = getExamGlobalAltIndex();
         if (cur === pick) setExamGlobalAltIndex(0);
         else setExamGlobalAltIndex(pick);
@@ -2161,6 +2165,12 @@
     mount.hidden = false;
     var cur = getExamGlobalAltIndex();
     var html = '<div class="exam-alt-variant-duo" role="group" aria-label="Formulierungsvarianten">';
+    html +=
+      '<button type="button" class="exam-alt-variant-btn exam-alt-variant-btn--original' +
+      (cur === '0' ? ' exam-alt-variant-btn--active' : '') +
+      '" data-jm-global-alt="0" aria-pressed="' +
+      (cur === '0' ? 'true' : 'false') +
+      '" title="Original">O</button>';
     nums.forEach(function (n) {
       html +=
         '<button type="button" class="exam-alt-variant-btn' +
@@ -3361,6 +3371,7 @@
       '.exam-alt-variant-duo .exam-alt-variant-btn:last-child{border-right:none}' +
       '.exam-alt-variant-duo .exam-alt-variant-btn:hover{color:#555;background:#fafafa}' +
       '.exam-alt-variant-duo .exam-alt-variant-btn--active{font-weight:700}' +
+      '.exam-alt-variant-duo .exam-alt-variant-btn[data-jm-global-alt="0"].exam-alt-variant-btn--active{color:#424242;background:#f5f5f5;box-shadow:inset 0 0 0 1px #9e9e9e}' +
       '.exam-alt-variant-duo .exam-alt-variant-btn[data-jm-global-alt="1"].exam-alt-variant-btn--active{color:#7b1fa2;background:#f3e5f5;box-shadow:inset 0 0 0 1px #8e24aa}' +
       '.exam-alt-variant-duo .exam-alt-variant-btn[data-jm-global-alt="2"].exam-alt-variant-btn--active{color:#c2185b;background:#fce4ec;box-shadow:inset 0 0 0 1px #ec407a}' +
       '.exam-alt-variant-duo .exam-alt-variant-btn[data-jm-global-alt="3"].exam-alt-variant-btn--active{color:#8e24aa;background:#f3e5f5;box-shadow:inset 0 0 0 1px #ab47bc}';
