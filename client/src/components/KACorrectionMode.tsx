@@ -50,6 +50,7 @@ import {
   RestartAlt,
 } from '@mui/icons-material';
 import { teacherIdFromStorage } from '../lib/lessonExamBeacon';
+import { openExamHtmlInNewTab } from '../lib/openExamHtml';
 import { buildExamReviewedHtml } from '../lib/examReviewedView';
 import { downloadCombinedExamReviewsPdf } from '../lib/examReviewPdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
@@ -1559,18 +1560,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
 
   const handleOpenKA = async () => {
     try {
-      // kaFilePath sollte jetzt der vollständige Pfad sein
-      const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(kaFilePath)}`);
-      if (response.ok) {
-        const htmlContent = await response.text();
-        const blob = new Blob([htmlContent], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      } else {
-        const errorText = await response.text().catch(() => 'Unbekannter Fehler');
-        console.error('Fehler beim Öffnen:', response.status, errorText);
-        alert(`${getFileTypeName()} konnte nicht geöffnet werden. (Status: ${response.status})`);
+      if (!openExamHtmlInNewTab(kaFilePath)) {
+        window.location.assign(
+          `/api/file-system-paths/read-html?filePath=${encodeURIComponent(kaFilePath)}`,
+        );
       }
     } catch (error) {
       console.error('Fehler beim Öffnen der Klassenarbeit:', error);

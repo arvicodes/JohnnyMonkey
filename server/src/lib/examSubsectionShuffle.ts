@@ -198,22 +198,32 @@ function injectHideLiveScoreForStudents(html: string): string {
 
 export const EXAM_DOLLAR_SCRIPT_MARKER = 'data-jm-exam-dollar-script';
 
-const EXAM_DOLLAR_BOOT_SNIPPET = `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" ${EXAM_DOLLAR_SCRIPT_MARKER}-katex="css">
+function examAssetUrl(assetBase: string | undefined, path: string): string {
+  const p = path.startsWith('/') ? path : `/${path}`;
+  const base = String(assetBase || '').replace(/\/+$/, '');
+  return base ? `${base}${p}` : p;
+}
+
+function buildExamDollarBootSnippet(assetBase?: string): string {
+  const dollarJs = examAssetUrl(assetBase, '/exam-dollar-commands.js');
+  return `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" ${EXAM_DOLLAR_SCRIPT_MARKER}-katex="css">
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js" ${EXAM_DOLLAR_SCRIPT_MARKER}-katex="js"></script>
-<script src="/exam-dollar-commands.js" ${EXAM_DOLLAR_SCRIPT_MARKER}="1"></script>
+<script src="${dollarJs}" ${EXAM_DOLLAR_SCRIPT_MARKER}="1"></script>
 <script ${EXAM_DOLLAR_SCRIPT_MARKER}-init="1">
 (function(){
   function boot(){
     if (typeof setupExamDollarAuthoring === 'function') setupExamDollarAuthoring();
+    else if (typeof jmBootstrapExamTasksFromSource === 'function') jmBootstrapExamTasksFromSource({});
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();
 </script>`;
+}
 
-function injectExamDollarAuthoring(html: string): string {
+function injectExamDollarAuthoring(html: string, assetBase?: string): string {
   if (html.includes(EXAM_DOLLAR_SCRIPT_MARKER)) return html;
-  return injectBeforeLastBodyClose(html, EXAM_DOLLAR_BOOT_SNIPPET);
+  return injectBeforeLastBodyClose(html, buildExamDollarBootSnippet(assetBase));
 }
 
 export const EXAM_CHROME_SCRIPT_MARKER = 'data-jm-exam-chrome-script';
@@ -275,7 +285,11 @@ function injectExamChromeRuntime(html: string): string {
   return injectBeforeLastBodyClose(html, EXAM_CHROME_BOOT_SNIPPET);
 }
 
-export function transformExamHtmlForDelivery(html: string, filePath?: string): string {
+export function transformExamHtmlForDelivery(
+  html: string,
+  filePath?: string,
+  assetBase?: string,
+): string {
   if (!isDeliverableExamHtml(html, filePath)) return html;
 
   let out = html;
@@ -307,7 +321,7 @@ export function transformExamHtmlForDelivery(html: string, filePath?: string): s
   out = patchAidsGeneralRulesListDisplay(out);
   out = patchExamPaperComposeMarkup(out);
   out = injectExamChromeRuntime(out);
-  out = injectExamDollarAuthoring(out);
+  out = injectExamDollarAuthoring(out, assetBase);
   out = injectExamTimerTeacherBridge(out);
   return injectHideLiveScoreForStudents(out);
 }

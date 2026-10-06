@@ -12,6 +12,7 @@ import {
 } from './presentationLessonAssets';
 import { presentationEditorUrl, presentationPresentUrl } from './presentationDeck';
 import { preparePresentationAudioForPlay } from './presentationSound';
+import { examReadHtmlUrl, openExamHtmlInNewTab } from './openExamHtml';
 
 export type LessonFolderFileLike = { type: string; name: string; path: string };
 
@@ -110,6 +111,12 @@ export async function openLessonFolderFile(
 
   if (fileExtension === 'html' || fileExtension === 'htm') {
     try {
+      if (isLessonCorrectionFileName(item.name)) {
+        if (!openExamHtmlInNewTab(item.path)) {
+          window.location.assign(examReadHtmlUrl(item.path));
+        }
+        return;
+      }
       const response = await fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(item.path)}`);
       if (!response.ok) return;
       const htmlContent = await response.text();

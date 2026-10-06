@@ -282,7 +282,9 @@ export class FileSystemPathController {
 
       let htmlOut = fileContent.toString('utf-8');
       try {
-        htmlOut = transformExamHtmlForDelivery(htmlOut, String(filePath));
+        const host = req.get('host');
+        const assetBase = host ? `${req.protocol}://${host}` : undefined;
+        htmlOut = transformExamHtmlForDelivery(htmlOut, String(filePath), assetBase);
       } catch (transformErr) {
         console.warn('exam shuffle transform skipped:', transformErr);
       }
