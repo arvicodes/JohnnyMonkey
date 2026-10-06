@@ -1367,12 +1367,7 @@ export const DashboardExamsPanel: React.FC<{
           </span>
         </Tooltip>
       </DialogTitle>
-      <DialogContent sx={{ pt: 0 }}>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-          Pro Start: Lerngruppe, Beginn, Dauer (bis Stopp oder jetzt), Abgaben in diesem Zeitraum.
-          Einträge gibt es ab dem ersten Start nach dem Update; ältere Durchläufe sind nicht
-          nachträglich erfasst.
-        </Typography>
+      <DialogContent>
         {examHistoryLoading && examHistoryRows.length === 0 ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
             <CircularProgress size={28} />
