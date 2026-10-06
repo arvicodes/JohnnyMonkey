@@ -817,7 +817,10 @@
 
   function gapSegmentToHtml(segment, idGen, variantNum) {
     var seg = String(segment || '').trim();
-    if (!seg) return renderOneGapInput([], idGen, variantNum);
+    if (!seg) {
+      if (variantNum != null && parseInt(variantNum, 10) > 0) return '';
+      return renderOneGapInput([], idGen, null);
+    }
     if (/\$/.test(seg)) return renderInline(seg, idGen);
     return renderOneGapInput(parseGapSlashAnswers(seg), idGen, variantNum);
   }
@@ -833,7 +836,7 @@
         return parseInt(n, 10);
       })
       .filter(function (n) {
-        return n > 0;
+        return n > 0 && String(gap.altSegments[n] || '').trim();
       })
       .sort(function (a, b) {
         return a - b;
@@ -843,17 +846,23 @@
       .map(function (n) {
         var hidden = n === 0 ? '' : ' exam-dollar-alt-view--hidden';
         var seg = n === 0 ? gap.baseSegment : gap.altSegments[n];
+        var html = gapSegmentToHtml(seg, idGen, n);
+        if (!html) return '';
         return (
           '<span class="exam-dollar-alt-view exam-dollar-variant-part' +
           hidden +
           '" data-jm-alt-view="' +
           n +
           '">' +
-          gapSegmentToHtml(seg, idGen, n) +
+          html +
           '</span>'
         );
       })
+      .filter(Boolean)
       .join('');
+    if (!viewsHtml) {
+      return renderOneGapInput(parseGapSlashAnswers(gap.baseSegment), idGen, null);
+    }
     return (
       '<span class="exam-dollar-alt-group exam-dollar-gap-alt-group" data-jm-alt-group="' +
       escapeHtml(gid) +
@@ -2253,10 +2262,22 @@
     return row.baseKind;
   }
 
+  function variantMarkHasVisibleContent(inner) {
+    var s = String(inner || '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return !!s;
+  }
+
   function variantMarkHtml(inner, variantNum) {
+    var n = parseInt(variantNum, 10);
+    if (!n || n < 1) return inner || '';
+    if (!variantMarkHasVisibleContent(inner)) return '';
     return (
       '<span class="exam-dollar-variant-mark" data-jm-variant="' +
-      String(variantNum) +
+      String(n) +
       '">' +
       inner +
       '</span>'
@@ -2535,7 +2556,7 @@
           '" data-jm-alt-view="' +
           num +
           '">' +
-          variantMarkHtml(renderWfPhysicalLineInnerHtml(lineViews[num], idGen), num) +
+          renderWfPhysicalLineInnerHtml(lineViews[num], idGen) +
           '</div>'
         );
       })
@@ -4977,6 +4998,7 @@
       '.exam-dollar-choice-kind-alt .exam-dollar-alt-views,.exam-dollar-stmt-alt .exam-dollar-alt-views{display:inline}' +
       '.exam-dollar-variant-part{display:inline}' +
       '.exam-dollar-variant-mark{display:inline;vertical-align:baseline}' +
+      '.exam-dollar-variant-mark:empty{display:none!important}' +
       '.exam-dollar-gap-alt-group.exam-dollar-alt-group,.exam-dollar-word-gap-alt.exam-dollar-alt-group{margin:0;display:inline;vertical-align:baseline}' +
       '.exam-dollar-gap-alt-group .exam-dollar-alt-views,.exam-dollar-word-gap-alt .exam-dollar-alt-views{display:inline}' +
       '.exam-dollar-flow-alt-group.exam-dollar-alt-group{margin:6px 0;display:block}' +
@@ -5041,6 +5063,9 @@
       '.exam-dollar-alt-view--hidden{display:none!important}' +
       '.teacher-mode .exam-dollar-math-alt-group .exam-dollar-alt-view:not(.exam-dollar-alt-view--hidden){display:inline-block;max-width:100%}' +
       '.teacher-mode .exam-dollar-wf-alt-group .exam-dollar-alt-view:not(.exam-dollar-alt-view--hidden){display:block}' +
+      '.teacher-mode .exam-dollar-wf-line-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-wf-line-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #8e24aa;outline-offset:2px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.12)}' +
+      '.teacher-mode .exam-dollar-wf-line-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-wf-line-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ec407a;outline-offset:2px;border-radius:5px;padding:1px 4px;background:rgba(244,143,177,.18)}' +
+      '.teacher-mode .exam-dollar-wf-line-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-wf-line-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ab47bc;outline-offset:2px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.1)}' +
       '.teacher-mode .solution .exam-dollar-math-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-math-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #8e24aa;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.12)}' +
       '.teacher-mode .solution .exam-dollar-math-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-math-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ec407a;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(244,143,177,.18)}' +
       '.teacher-mode .solution .exam-dollar-math-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-math-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ab47bc;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.1)}' +
