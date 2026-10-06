@@ -2015,35 +2015,105 @@
     return row.baseKind;
   }
 
+  function variantMarkHtml(inner, variantNum) {
+    return (
+      '<span class="exam-dollar-variant-mark" data-jm-variant="' +
+      String(variantNum) +
+      '">' +
+      inner +
+      '</span>'
+    );
+  }
+
+  function choiceVariantStmtMiddle(row, altNum) {
+    var stmt = row.stmt;
+    var parsed = parseDollarCountAltContent(stmt);
+    if (!parsed) {
+      return { stem: '', middle: choiceVariantStmtText(stmt, altNum) };
+    }
+    var stem = stmtStemFromParsedBase(parsed.base);
+    var suffix = stmtAltGapSuffix(stmt, parsed);
+    if (altNum === 0) {
+      var baseMid = parsed.base.slice(stem.length);
+      if (suffix && baseMid.indexOf('$L') < 0) {
+        var trimmed = baseMid.replace(/\s+$/, '');
+        if (/\bmehr$/i.test(trimmed)) baseMid = trimmed + ' als ' + suffix;
+        else baseMid = baseMid + suffix;
+      }
+      return { stem: stem, middle: baseMid };
+    }
+    var alt = parsed.alts[altNum];
+    if (!alt) {
+      return {
+        stem: stem,
+        middle: choiceVariantStmtText(stmt, altNum).slice(stem.length),
+      };
+    }
+    var mid = alt.indexOf('$L') >= 0 ? alt : alt + suffix;
+    return { stem: stem, middle: mid };
+  }
+
   function renderChoiceVariantListItem(row, idGen) {
-    var gid = idGen();
     var nums = choiceVariantViewNums(row);
-    var viewsHtml = nums
+    var kindGid = idGen();
+    var stmtGid = idGen();
+    var stem = '';
+    var parsed = parseDollarCountAltContent(row.stmt);
+    if (parsed) stem = stmtStemFromParsedBase(parsed.base);
+
+    var kindViewsHtml = nums
       .map(function (n) {
         var hidden = n === 0 ? '' : ' exam-dollar-alt-view--hidden';
         var kind = choiceVariantKindForView(row, n);
-        var stmtText = choiceVariantStmtText(row.stmt, n);
+        var cb = renderChoiceCheckbox(kind === 'cc', idGen);
         return (
-          '<div class="exam-dollar-alt-view exam-dollar-choice-alt-view' +
+          '<span class="exam-dollar-alt-view exam-dollar-variant-part' +
           hidden +
           '" data-jm-alt-view="' +
           n +
           '">' +
-          renderChoiceCheckbox(kind === 'cc', idGen) +
-          ' <span class="exam-dollar-choice-text">' +
-          renderInline(stmtText, idGen) +
-          '</span></div>'
+          variantMarkHtml(cb, n) +
+          '</span>'
         );
       })
       .join('');
+
+    var stmtViewsHtml = nums
+      .map(function (n) {
+        var hidden = n === 0 ? '' : ' exam-dollar-alt-view--hidden';
+        var parts = choiceVariantStmtMiddle(row, n);
+        if (!stem && parts.stem) stem = parts.stem;
+        var midHtml = renderInline(String(parts.middle || '').trim(), idGen);
+        return (
+          '<span class="exam-dollar-alt-view exam-dollar-variant-part' +
+          hidden +
+          '" data-jm-alt-view="' +
+          n +
+          '">' +
+          variantMarkHtml(midHtml, n) +
+          '</span>'
+        );
+      })
+      .join('');
+
     return (
       '<li class="exam-dollar-choice-list-item exam-dollar-choice-list-item--alts">' +
-      '<div class="exam-dollar-alt-group exam-dollar-choice-alt-group" data-jm-alt-group="' +
-      escapeHtml(gid) +
+      '<div class="exam-dollar-choice-alt-row">' +
+      '<span class="exam-dollar-alt-group exam-dollar-choice-kind-alt" data-jm-alt-group="' +
+      escapeHtml(kindGid) +
       '" data-jm-alt-active="0">' +
-      '<div class="exam-dollar-alt-views">' +
-      viewsHtml +
-      '</div></div></li>'
+      '<span class="exam-dollar-alt-views">' +
+      kindViewsHtml +
+      '</span></span>' +
+      '<span class="exam-dollar-choice-text">' +
+      (stem ? renderInline(stem, idGen) : '') +
+      '<span class="exam-dollar-alt-group exam-dollar-stmt-alt" data-jm-alt-group="' +
+      escapeHtml(stmtGid) +
+      '" data-jm-alt-active="0">' +
+      '<span class="exam-dollar-alt-views">' +
+      stmtViewsHtml +
+      '</span></span>' +
+      '</span></div></li>'
     );
   }
 
@@ -2171,12 +2241,17 @@
           hidden +
           '" data-jm-alt-view="' +
           v.num +
-          '"><div class="exam-dollar-wf-alt-pair">' +
-          '<div class="exam-dollar-wf-check">' +
-          renderWfCheckboxInner('w', flags.wCorrect, idGen) +
-          '</div><div class="exam-dollar-wf-check">' +
-          renderWfCheckboxInner('f', flags.fCorrect, idGen) +
-          '</div></div></div>'
+          '">' +
+          variantMarkHtml(
+            '<div class="exam-dollar-wf-alt-pair">' +
+              '<div class="exam-dollar-wf-check">' +
+              renderWfCheckboxInner('w', flags.wCorrect, idGen) +
+              '</div><div class="exam-dollar-wf-check">' +
+              renderWfCheckboxInner('f', flags.fCorrect, idGen) +
+              '</div></div>',
+            v.num
+          ) +
+          '</div>'
         );
       })
       .join('');
@@ -4459,7 +4534,11 @@
       '.exam-dollar-choice-list{list-style:none;margin:8px 0 10px;padding:0}' +
       '.exam-dollar-choice-list-item{display:flex;align-items:flex-start;gap:8px;margin:0 0 8px;line-height:1.55}' +
       '.exam-dollar-choice-list-item:last-child{margin-bottom:0}' +
-      '.exam-dollar-choice-list-item--alts .exam-dollar-choice-alt-view{display:flex;align-items:flex-start;gap:8px;width:100%;line-height:1.55}' +
+      '.exam-dollar-choice-list-item--alts .exam-dollar-choice-alt-row{display:flex;align-items:flex-start;gap:8px;width:100%;line-height:1.55;flex-wrap:wrap}' +
+      '.exam-dollar-choice-kind-alt.exam-dollar-alt-group,.exam-dollar-stmt-alt.exam-dollar-alt-group{margin:0;display:inline;vertical-align:baseline}' +
+      '.exam-dollar-choice-kind-alt .exam-dollar-alt-views,.exam-dollar-stmt-alt .exam-dollar-alt-views{display:inline}' +
+      '.exam-dollar-variant-part{display:inline}' +
+      '.exam-dollar-variant-mark{display:inline;vertical-align:baseline}' +
       '.exam-dollar-choice-text{flex:1;min-width:0}' +
       '.aids-box{width:100%;max-width:none;box-sizing:border-box}' +
       '.aids-general-rules-list{margin:0;padding:0 0 0 1.35em;list-style:disc outside}' +
@@ -4520,9 +4599,12 @@
       '.exam-dollar-alt-view--hidden{display:none!important}' +
       '.teacher-mode .exam-dollar-math-alt-group .exam-dollar-alt-view:not(.exam-dollar-alt-view--hidden){display:inline-block;max-width:100%}' +
       '.teacher-mode .exam-dollar-wf-alt-group .exam-dollar-alt-view:not(.exam-dollar-alt-view--hidden){display:block}' +
-      '.teacher-mode .solution .exam-dollar-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #8e24aa;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.12)}' +
-      '.teacher-mode .solution .exam-dollar-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ec407a;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(244,143,177,.18)}' +
-      '.teacher-mode .solution .exam-dollar-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ab47bc;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.1)}' +
+      '.teacher-mode .solution .exam-dollar-math-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-math-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #8e24aa;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.12)}' +
+      '.teacher-mode .solution .exam-dollar-math-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-math-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ec407a;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(244,143,177,.18)}' +
+      '.teacher-mode .solution .exam-dollar-math-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-math-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ab47bc;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.1)}' +
+      '.teacher-mode .solution .exam-dollar-alt-group[data-jm-alt-active="1"] .exam-dollar-variant-mark[data-jm-variant="1"],.teacher-mode .exam-dollar-alt-group[data-jm-alt-active="1"] .exam-dollar-variant-mark[data-jm-variant="1"]{outline:2px dashed #8e24aa;outline-offset:2px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.12)}' +
+      '.teacher-mode .solution .exam-dollar-alt-group[data-jm-alt-active="2"] .exam-dollar-variant-mark[data-jm-variant="2"],.teacher-mode .exam-dollar-alt-group[data-jm-alt-active="2"] .exam-dollar-variant-mark[data-jm-variant="2"]{outline:2px dashed #ec407a;outline-offset:2px;border-radius:5px;padding:1px 4px;background:rgba(244,143,177,.18)}' +
+      '.teacher-mode .solution .exam-dollar-alt-group[data-jm-alt-active="3"] .exam-dollar-variant-mark[data-jm-variant="3"],.teacher-mode .exam-dollar-alt-group[data-jm-alt-active="3"] .exam-dollar-variant-mark[data-jm-variant="3"]{outline:2px dashed #ab47bc;outline-offset:2px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.1)}' +
       '.exam-alt-variant-toolbar{display:flex;flex-wrap:wrap;justify-content:flex-start;align-items:stretch;width:100%;margin:2px 0 0;padding:0}' +
       '.exam-alt-variant-toolbar[hidden]{display:none!important}' +
       '.exam-alt-variant-duo{display:inline-flex;width:100%;border:1px solid #bdbdbd;border-radius:7px;overflow:hidden;background:#fff;box-sizing:border-box}' +
