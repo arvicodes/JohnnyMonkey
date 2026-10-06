@@ -9,7 +9,9 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  FormGroup,
   IconButton,
+  Checkbox,
   Radio,
   RadioGroup,
   Tooltip,
@@ -23,6 +25,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import GradingIcon from '@mui/icons-material/Grading';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import StopIcon from '@mui/icons-material/Stop';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AddIcon from '@mui/icons-material/Add';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
@@ -43,6 +46,12 @@ import {
   examTypeFromFileName,
   type ExamLibraryType,
 } from '../../lib/examLibraryUi';
+import {
+  fetchLessonExamBeacon,
+  startLessonExam,
+  stopLessonExam,
+  teacherIdFromStorage,
+} from '../../lib/lessonExamBeacon';
 import {
   fetchExamLibraryIconsFromServer,
   getExamLibraryIcon,
@@ -119,6 +128,16 @@ function pathMatchesAssigned(itemPath: string, assignedPath: string): boolean {
   const a = toPortableWorkingReihePath(assignedPath) || assignedPath;
   const b = toPortableWorkingReihePath(itemPath) || itemPath;
   return folderPathsEquivalent(a, b) || folderPathCovers(a, b) || folderPathCovers(b, a);
+}
+
+function normalizeExamBeaconPath(raw: string): string {
+  let p = (raw || '').replace(/\\/g, '/').trim();
+  if (p.startsWith('J-M-Reihen/')) p = `git-intern/${p.slice('J-M-Reihen/'.length)}`;
+  return p.toLowerCase();
+}
+
+function examBeaconPathsEqual(a: string, b: string): boolean {
+  return normalizeExamBeaconPath(a) === normalizeExamBeaconPath(b);
 }
 
 function groupsForMaterialPath(
@@ -759,6 +778,15 @@ export const DashboardExamsPanel: React.FC<{
   const [iconTemplateSaving, setIconTemplateSaving] = useState(false);
   const [iconPickerItem, setIconPickerItem] = useState<LibraryExamItem | null>(null);
   const [duplicatingPath, setDuplicatingPath] = useState<string | null>(null);
+  const [activeExamBeacons, setActiveExamBeacons] = useState<
+    Record<string, { filePath: string; beaconId: string }>
+  >({});
+  const [examStartDialogItem, setExamStartDialogItem] = useState<LibraryExamItem | null>(null);
+  const [examStartGroupIds, setExamStartGroupIds] = useState<string[]>([]);
+  const [examRunBusyPath, setExamRunBusyPath] = useState<string | null>(null);
+  const [lastStartGroupIdsByExam, setLastStartGroupIdsByExam] = useState<Record<string, string[]>>(
+    {},
+  );
 
   const loadExamIcons = useCallback(async () => {
     const loaded = await fetchExamLibraryIconsFromServer();
@@ -806,6 +834,153 @@ export const DashboardExamsPanel: React.FC<{
   useEffect(() => {
     void load();
   }, [load, refreshKey]);
+
+  const teacherGroupIdsKey = useMemo(
+    () =>
+      [...groups]
+        .map((g) => g.id)
+        .filter(Boolean)
+        .sort()
+        .join('|'),
+    [groups],
+  );
+
+  useEffect(() => {
+    if (!teacherGroupIdsKey) {
+      setActiveExamBeacons({});
+      return undefined;
+    }
+    const ids = teacherGroupIdsKey.split('|').filter(Boolean);
+    let cancelled = false;
+    const refresh = async () => {
+      const next: Record<string, { filePath: string; beaconId: string }> = {};
+      await Promise.all(
+        ids.map(async (gid) => {
+          try {
+            const status = await fetchLessonExamBeacon(gid);
+            if (status.active && status.filePath && status.beaconId) {
+              next[gid] = {
+                filePath: status.filePath.replace(/\\/g, '/'),
+                beaconId: status.beaconId,
+              };
+            }
+          } catch {
+            /* ignore */
+          }
+        }),
+      );
+      if (!cancelled) setActiveExamBeacons(next);
+    };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [teacherGroupIdsKey, refreshKey]);
+
+  const runningGroupIdsForExam = useCallback(
+    (examPath: string) =>
+      groups
+        .map((g) => g.id)
+        .filter((gid) => {
+          const row = activeExamBeacons[gid];
+          return row && examBeaconPathsEqual(row.filePath, examPath);
+        }),
+    [groups, activeExamBeacons],
+  );
+
+  const openExamStartDialog = useCallback(
+    (item: LibraryExamItem) => {
+      const examKey = normalizeExamBeaconPath(item.path);
+      const suggested = groupsForMaterialPath(item.lessonFolder, meta).map((g) => g.id);
+      const fromLast = lastStartGroupIdsByExam[examKey];
+      let preselect = fromLast?.length ? fromLast : suggested;
+      if (!preselect.length && groups.length === 1) preselect = [groups[0].id];
+      setExamStartGroupIds(preselect);
+      setExamStartDialogItem(item);
+
+      const teacherId = teacherIdFromStorage();
+      const lesson = (item.lessonFolder || '').replace(/\\/g, '/').trim();
+      if (!teacherId || !lesson) return;
+      void fetch(
+        `/api/learning-groups/groups-for-path?path=${encodeURIComponent(lesson)}&teacherId=${encodeURIComponent(teacherId)}`,
+      )
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { groupIds?: string[] } | null) => {
+          const ids = (data?.groupIds || []).filter(Boolean);
+          if (ids.length) setExamStartGroupIds(ids);
+        })
+        .catch(() => {});
+    },
+    [groups, lastStartGroupIdsByExam, meta],
+  );
+
+  const stopExamForGroups = useCallback(
+    async (item: LibraryExamItem, groupIds: string[]) => {
+      const useIds = [...new Set(groupIds.map((id) => id.trim()).filter(Boolean))];
+      if (!useIds.length) return;
+      setExamRunBusyPath(item.path);
+      try {
+        const teacherId = teacherIdFromStorage();
+        if (!teacherId) throw new Error('Bitte zuerst anmelden.');
+        await stopLessonExam({ teacherId, groupIds: useIds });
+        setActiveExamBeacons((prev) => {
+          const next = { ...prev };
+          for (const gid of useIds) delete next[gid];
+          return next;
+        });
+        onNotify?.('Prüfung beendet', 'success');
+      } catch (e) {
+        onNotify?.(e instanceof Error ? e.message : 'Prüfung konnte nicht beendet werden', 'error');
+      } finally {
+        setExamRunBusyPath(null);
+      }
+    },
+    [onNotify],
+  );
+
+  const confirmExamStart = useCallback(async () => {
+    const item = examStartDialogItem;
+    if (!item) return;
+    const useIds = [...new Set(examStartGroupIds.map((id) => id.trim()).filter(Boolean))];
+    if (!useIds.length) {
+      onNotify?.('Bitte mindestens eine Lerngruppe wählen.', 'warning');
+      return;
+    }
+    setExamStartDialogItem(null);
+    setExamRunBusyPath(item.path);
+    try {
+      const teacherId = teacherIdFromStorage();
+      if (!teacherId) throw new Error('Bitte zuerst anmelden.');
+      const started = await startLessonExam({
+        teacherId,
+        groupIds: useIds,
+        filePath: item.path,
+        lessonPath: item.lessonFolder,
+      });
+      const filePath = (started.filePath || item.path).replace(/\\/g, '/');
+      const examKey = normalizeExamBeaconPath(item.path);
+      setLastStartGroupIdsByExam((prev) => ({ ...prev, [examKey]: started.groupIds || useIds }));
+      setActiveExamBeacons((prev) => {
+        const next = { ...prev };
+        for (const gid of started.groupIds || useIds) {
+          next[gid] = { filePath, beaconId: started.beaconId };
+        }
+        return next;
+      });
+      onNotify?.(
+        (started.groupIds || useIds).length > 1
+          ? `Prüfung gestartet — ${(started.groupIds || useIds).length} Lerngruppen sehen Vollbild`
+          : 'Prüfung gestartet — SuS sehen Vollbild',
+        'success',
+      );
+    } catch (e) {
+      onNotify?.(e instanceof Error ? e.message : 'Prüfung konnte nicht gestartet werden', 'error');
+    } finally {
+      setExamRunBusyPath(null);
+    }
+  }, [examStartDialogItem, examStartGroupIds, onNotify]);
 
   const buckets = useMemo(() => groupByStufeReihe(items), [items]);
 
@@ -923,6 +1098,35 @@ export const DashboardExamsPanel: React.FC<{
             onIconClick={() => setIconPickerItem(item)}
             actions={
               <>
+                {!isExamVariantFile(item.name) ? (() => {
+                  const runningGids = runningGroupIdsForExam(item.path);
+                  const isRunning = runningGids.length > 0;
+                  const runBusy = examRunBusyPath === item.path;
+                  return (
+                    <TinyAction
+                      title={
+                        isRunning
+                          ? `Prüfung beenden (${runningGids.length} Lerngruppe${runningGids.length === 1 ? '' : 'n'})`
+                          : 'Prüfung starten — Lerngruppe wählen'
+                      }
+                      bgcolor={isRunning ? BTN_DELETE : BTN_PLAY}
+                      hover={isRunning ? BTN_DELETE_HOVER : BTN_PLAY_HOVER}
+                      onClick={() => {
+                        if (runBusy) return;
+                        if (isRunning) void stopExamForGroups(item, runningGids);
+                        else openExamStartDialog(item);
+                      }}
+                    >
+                      {runBusy ? (
+                        <CircularProgress size={11} sx={{ color: '#fff' }} />
+                      ) : isRunning ? (
+                        <StopIcon sx={{ fontSize: 12 }} />
+                      ) : (
+                        <PlayArrowIcon sx={{ fontSize: 13 }} />
+                      )}
+                    </TinyAction>
+                  );
+                })() : null}
                 {onCorrectExam ? (
                   <TinyAction
                     title="Korrektur"
@@ -1032,6 +1236,59 @@ export const DashboardExamsPanel: React.FC<{
         </Button>
         <Button variant="contained" onClick={() => void submitTypeChange()} disabled={typeSaving || !typeChoice}>
           {typeSaving ? 'Speichern…' : 'Umbenennen'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+    <Dialog
+      open={Boolean(examStartDialogItem)}
+      onClose={() => setExamStartDialogItem(null)}
+      maxWidth="xs"
+      fullWidth
+    >
+      <DialogTitle>Prüfung starten — Lerngruppe(n)</DialogTitle>
+      <DialogContent sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+          {examStartDialogItem ? (
+            <>
+              <strong>{examStartDialogItem.name.replace(/\.html?$/i, '')}</strong>
+              {' — '}
+              SuS der gewählten Gruppe(n) sehen die Prüfung im Vollbild.
+            </>
+          ) : null}
+        </Typography>
+        {groups.length === 0 ? (
+          <Typography variant="body2">Keine Lerngruppe vorhanden — zuerst im Tab „Lerngruppen“ anlegen.</Typography>
+        ) : (
+          <FormGroup>
+            {groups.map((g) => (
+              <FormControlLabel
+                key={g.id}
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={examStartGroupIds.includes(g.id)}
+                    onChange={(_, checked) => {
+                      setExamStartGroupIds((prev) =>
+                        checked ? [...new Set([...prev, g.id])] : prev.filter((id) => id !== g.id),
+                      );
+                    }}
+                  />
+                }
+                label={g.name}
+              />
+            ))}
+          </FormGroup>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setExamStartDialogItem(null)}>Abbrechen</Button>
+        <Button
+          variant="contained"
+          disabled={!examStartGroupIds.length || examRunBusyPath === examStartDialogItem?.path}
+          onClick={() => void confirmExamStart()}
+          sx={{ bgcolor: COLOR_PRUEFUNG, '&:hover': { bgcolor: COLOR_PRUEFUNG_HOVER } }}
+        >
+          Starten
         </Button>
       </DialogActions>
     </Dialog>
