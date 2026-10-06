@@ -229,9 +229,15 @@
     var rest = text.slice(start + 1);
 
     if (rest.charAt(0) === '_') {
-      var gapM = rest.match(/^([\s\S]*?)_\$/);
-      if (gapM) {
-        return { end: start + 1 + gapM[0].length, inner: '_' + gapM[1] + '_' };
+      if (/^_\$$/.test(rest)) {
+        return { end: start + 3, inner: '_' };
+      }
+      var gapClose = rest.lastIndexOf('_$');
+      if (gapClose > 0) {
+        return {
+          end: start + 1 + gapClose + 2,
+          inner: '_' + rest.slice(1, gapClose) + '_',
+        };
       }
       return null;
     }
@@ -752,6 +758,12 @@
     return [b];
   }
 
+  function normalizeGapVariantSegment(seg) {
+    return String(seg || '')
+      .replace(/_+$/, '')
+      .trim();
+  }
+
   function parseGapToken(inner) {
     if (inner === '__') return null;
     if (inner === '_') return { answers: [] };
@@ -761,10 +773,14 @@
     if (!body) return { answers: [] };
     var parsed = parseDollarCountAltContent(body);
     if (parsed && Object.keys(parsed.alts).length) {
+      var altSegments = {};
+      Object.keys(parsed.alts).forEach(function (k) {
+        altSegments[k] = normalizeGapVariantSegment(parsed.alts[k]);
+      });
       return {
         variant: true,
-        baseSegment: parsed.base,
-        altSegments: parsed.alts,
+        baseSegment: normalizeGapVariantSegment(parsed.base),
+        altSegments: altSegments,
       };
     }
     return { answers: parseGapSlashAnswers(body) };
