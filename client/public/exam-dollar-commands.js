@@ -1902,8 +1902,8 @@
     return String(text || '')
       .replace(/\$\s*e\s*\$/gi, '$e$')
       .replace(/\$\s*t\s*\$/gi, '$t$')
-      .replace(/\$\s*CC\s*\$/gi, '$CC$')
-      .replace(/\$\s*C\s*\$/gi, '$C$');
+      .replace(/\$\s*CC\s*\$(?!\$)/gi, '$CC$')
+      .replace(/\$\s*C\s*\$(?!\$)/gi, '$C$');
   }
 
   function parseChoiceLine(line) {
