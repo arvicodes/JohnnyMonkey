@@ -3843,7 +3843,7 @@
         '<div class="points">… Punkte</div></div></div>' +
         '<div class="task-content">' +
         '<div class="exam-dollar-rendered"></div>' +
-        '<div class="exam-dollar-live-edit teacher-only" contenteditable="plaintext-only" spellcheck="true" role="textbox" aria-multiline="true"></div>' +
+        '<div class="exam-dollar-live-edit teacher-only" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true"></div>' +
         '<textarea class="exam-dollar-source" hidden aria-hidden="true"></textarea>' +
         '</div>';
     }
@@ -4106,34 +4106,15 @@
   }
 
   function fitLiveEditWrapToContent(live) {
-    var wrap = live && live.closest('.exam-dollar-live-edit-wrap');
-    if (!wrap) return;
-    var hi = wrap.querySelector('.exam-dollar-live-edit-highlight');
-    if (!hi) return;
-    function apply() {
-      wrap.style.height = 'auto';
-      hi.style.height = 'auto';
-      live.style.height = 'auto';
-      var contentH = hi.offsetHeight;
-      if (contentH < 1) contentH = Math.ceil(14 * 1.32);
-      var padY = 4;
-      wrap.style.height = contentH + padY + 'px';
-      live.style.height = contentH + 'px';
-    }
-    apply();
-    if (typeof requestAnimationFrame === 'function') {
-      requestAnimationFrame(apply);
-    }
+    if (!live) return;
+    live.style.height = 'auto';
+    live.style.minHeight = '4.5em';
+    var wrap = live.closest('.exam-dollar-live-edit-wrap');
+    if (wrap) wrap.style.height = 'auto';
   }
 
   function refreshLiveEditHighlight(live) {
     if (!live) return;
-    var hi = ensureLiveEditHighlightWrap(live);
-    if (!hi) return;
-    var plain = trimLiveEditTrailingBlankLines(liveEditPlainTextFromEl(live));
-    hi.innerHTML = highlightLiveEditPlainText(plain);
-    hi.scrollTop = live.scrollTop;
-    hi.scrollLeft = live.scrollLeft;
     fitLiveEditWrapToContent(live);
   }
 
@@ -4373,6 +4354,13 @@
           insertLiveEditToken(live, '$e$');
           return;
         }
+        if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          insertPlainTextIntoLiveEdit(live, '\n');
+          live.dispatchEvent(new Event('input', { bubbles: true }));
+          return;
+        }
         if (!e.metaKey && !e.ctrlKey) return;
         if (e.altKey) return;
         var marker = null;
@@ -4396,38 +4384,23 @@
     var src = taskEl.querySelector('.exam-dollar-source');
     if (!live || !src || live.__jmLiveWired) return;
     live.__jmLiveWired = true;
-    live.setAttribute('contenteditable', 'plaintext-only');
+    live.setAttribute('contenteditable', 'true');
+    live.setAttribute('spellcheck', 'true');
     ensureLiveEditHighlightWrap(live);
     syncLiveEditFromSource(taskEl);
     wireLiveEditFormattingShortcuts(live);
     wireLiveEditPasteAndUndo(live, taskEl);
-    var hi = live.parentNode.querySelector('.exam-dollar-live-edit-highlight');
-    if (hi) {
-      live.addEventListener('scroll', function () {
-        hi.scrollTop = live.scrollTop;
-        hi.scrollLeft = live.scrollLeft;
-      });
-    }
-    var wrap = live.parentNode;
-    if (wrap && wrap.classList && wrap.classList.contains('exam-dollar-live-edit-wrap')) {
-      live.addEventListener('focus', function () {
-        refreshLiveEditHighlight(live);
-      });
-    }
     var debounce;
     live.addEventListener('input', function () {
       live.dataset.jmTouched = '1';
-      if (sanitizeLiveEditDom(live)) {
-        refreshLiveEditHighlight(live);
-      } else {
-        refreshLiveEditHighlight(live);
-      }
+      sanitizeLiveEditDom(live);
+      refreshLiveEditHighlight(live);
       syncSourceFromLiveEdit(taskEl);
       clearTimeout(debounce);
       debounce = setTimeout(function () {
         applySourceToTask(taskEl, src.value);
         scheduleSave();
-      }, 80);
+      }, 120);
     });
     live.addEventListener('blur', function () {
       var trimmed = trimLiveEditTrailingBlankLines(liveEditPlainTextFromEl(live));
@@ -4529,7 +4502,7 @@
     if (!content.querySelector('.exam-dollar-live-edit')) {
       var live = document.createElement('div');
       live.className = 'exam-dollar-live-edit teacher-only';
-      live.setAttribute('contenteditable', 'plaintext-only');
+      live.setAttribute('contenteditable', 'true');
       live.setAttribute('spellcheck', 'true');
       live.setAttribute('role', 'textbox');
       live.setAttribute('aria-multiline', 'true');
@@ -4642,12 +4615,11 @@
       '.exam-dollar-restore-source:hover{background:#e3f2fd}' +
       '.exam-dollar-color-swatch{width:20px;height:20px;border:1px solid rgba(0,0,0,.2);border-radius:4px;cursor:pointer;padding:0}' +
       '.exam-dollar-color-swatch:hover{transform:scale(1.08)}' +
-      '.teacher-mode .exam-dollar-live-edit-wrap{position:relative;display:block;width:100%;min-height:0;margin:0;padding:2px 4px;border-radius:3px;background:#e3f2fd;border:1px solid #bbdefb;overflow:hidden;box-sizing:border-box}' +
+      '.teacher-mode .exam-dollar-live-edit-wrap{position:relative;display:block;width:100%;min-height:0;margin:0;padding:2px 4px;border-radius:3px;background:#e3f2fd;border:1px solid #bbdefb;overflow:visible;box-sizing:border-box}' +
       '.teacher-mode .exam-dollar-live-edit-wrap:focus-within{box-shadow:0 0 0 2px rgba(225,6,0,0.25);border-color:#90caf9}' +
-      '.teacher-mode .exam-dollar-live-edit-highlight,.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{display:block;min-height:0!important;padding:0;margin:0;line-height:1.32;font-family:Arial,sans-serif;font-size:14px;outline:none;border-radius:0;white-space:pre-wrap;word-break:break-word;box-sizing:border-box;border:none}' +
-      '.teacher-mode .exam-dollar-live-edit-highlight{position:relative;z-index:0;pointer-events:none;color:#222;width:100%;background:transparent;overflow:visible}' +
-      '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{position:absolute!important;top:2px;left:4px;right:4px;bottom:auto!important;z-index:1;width:auto;min-height:0!important;max-height:none;overflow:auto;resize:none;background:transparent;color:transparent;-webkit-text-fill-color:transparent;caret-color:#222}' +
-      '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit::selection{background:rgba(21,101,192,.22);-webkit-text-fill-color:transparent}' +
+      '.teacher-mode .exam-dollar-live-edit-highlight{display:none!important}' +
+      '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{display:block;position:relative!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;z-index:1;width:100%;min-height:4.5em!important;padding:0;margin:0;line-height:1.32;font-family:Arial,sans-serif;font-size:14px;outline:none;border-radius:0;white-space:pre-wrap;word-break:break-word;box-sizing:border-box;border:none;overflow:visible;resize:none;background:transparent;color:#222;-webkit-text-fill-color:#222;caret-color:#222}' +
+      '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit::selection{background:rgba(21,101,192,.22);color:#222;-webkit-text-fill-color:#222}' +
       '.exam-dollar-wf-alt-pair{display:grid;grid-template-columns:4.5em 4.5em;width:100%;max-width:9.5em;margin:0 auto}' +
       '.exam-dollar-wf-alt-cell{padding:4px 6px!important;vertical-align:middle!important}' +
       '.exam-dollar-wf-alt-group{width:100%}' +
