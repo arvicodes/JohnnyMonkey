@@ -32,6 +32,7 @@ import {
   exerciseEditorUrl,
   exercisePresentUrl,
   scanLibraryExams,
+  invalidateExamLibraryScanCache,
   scanLibraryInteractiveExercises,
   type LibraryExamItem,
   type LibraryExerciseItem,
@@ -766,10 +767,6 @@ export const DashboardExamsPanel: React.FC<{
     setCustomIconChoices(loaded.customIconChoices);
   }, []);
 
-  useEffect(() => {
-    void loadExamIcons();
-  }, [refreshKey, loadExamIcons]);
-
   const meta = useMemo(() => ({ groups, assignedFolders }), [groups, assignedFolders]);
 
   const rootsKey = useMemo(
@@ -780,20 +777,31 @@ export const DashboardExamsPanel: React.FC<{
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setItems(await scanLibraryExams(rootPaths));
+      const iconsPromise = loadExamIcons();
+      let firstProgress = false;
+      await scanLibraryExams(rootPaths, {
+        onProgress: (partial) => {
+          setItems(partial);
+          if (!firstProgress) {
+            firstProgress = true;
+            setLoading(false);
+          }
+        },
+      });
+      await iconsPromise;
     } catch {
       setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [rootsKey, rootPaths]);
+  }, [rootsKey, rootPaths, loadExamIcons]);
 
   const reloadExams = useCallback(async () => {
     const { invalidateFsDirectoryCache } = await import('../../lib/fsTreeCache');
     invalidateFsDirectoryCache();
+    invalidateExamLibraryScanCache();
     await load();
-    await loadExamIcons();
-  }, [load, loadExamIcons]);
+  }, [load]);
 
   useEffect(() => {
     void load();

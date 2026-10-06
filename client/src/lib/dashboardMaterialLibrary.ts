@@ -144,10 +144,41 @@ function scanRoots(rootPaths: string[]): string[] {
   return filterOutNestedAssignedFolderPaths(normalized);
 }
 
-const DECK_SCAN_CONCURRENCY = 5;
+const DECK_SCAN_CONCURRENCY = 14;
 
-export async function scanLibraryExams(rootPaths: string[]): Promise<LibraryExamItem[]> {
+const EXAM_LIST_CACHE_TTL_MS = 90_000;
+let examListCache: { key: string; expires: number; items: LibraryExamItem[] } | null = null;
+
+export function invalidateExamLibraryScanCache(): void {
+  examListCache = null;
+}
+
+function sortExamItems(items: LibraryExamItem[]): LibraryExamItem[] {
+  return [...items].sort(
+    (a, b) =>
+      (b.modifiedAt ?? 0) - (a.modifiedAt ?? 0) ||
+      a.lessonLabel.localeCompare(b.lessonLabel, 'de', { sensitivity: 'base', numeric: true }) ||
+      a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }),
+  );
+}
+
+export type ScanLibraryExamsOptions = {
+  /** Nur HTML-Prüfungen (ohne Folien-$slideExam$); schneller erster Render. */
+  skipDeckSlideExams?: boolean;
+  /** Zwischenstand (z. B. nach HTML-Scan, dann nach Deck-Scan). */
+  onProgress?: (items: LibraryExamItem[]) => void;
+};
+
+export async function scanLibraryExams(
+  rootPaths: string[],
+  options?: ScanLibraryExamsOptions,
+): Promise<LibraryExamItem[]> {
   const roots = scanRoots(rootPaths);
+  const fullScan = !options?.skipDeckSlideExams;
+  const cacheKey = `${roots.slice().sort().join('\n')}|${fullScan ? 'full' : 'html'}`;
+  if (fullScan && examListCache && examListCache.key === cacheKey && examListCache.expires > Date.now()) {
+    return examListCache.items;
+  }
   const byKey = new Map<string, LibraryExamItem>();
 
   const addExam = (
@@ -206,6 +237,12 @@ export async function scanLibraryExams(rootPaths: string[]): Promise<LibraryExam
     }
   }
 
+  options?.onProgress?.(sortExamItems([...byKey.values()]));
+
+  if (!fullScan) {
+    return sortExamItems([...byKey.values()]);
+  }
+
   const deckPaths = collectDeckPaths(filesByRoot);
   await runPool(deckPaths, DECK_SCAN_CONCURRENCY, async (deckPath) => {
     const lessonPath = parentDir(deckPath);
@@ -222,12 +259,10 @@ export async function scanLibraryExams(rootPaths: string[]): Promise<LibraryExam
     }
   });
 
-  return [...byKey.values()].sort(
-    (a, b) =>
-      (b.modifiedAt ?? 0) - (a.modifiedAt ?? 0) ||
-      a.lessonLabel.localeCompare(b.lessonLabel, 'de', { sensitivity: 'base', numeric: true }) ||
-      a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }),
-  );
+  const result = sortExamItems([...byKey.values()]);
+  options?.onProgress?.(result);
+  examListCache = { key: cacheKey, expires: Date.now() + EXAM_LIST_CACHE_TTL_MS, items: result };
+  return result;
 }
 
 export async function scanLibraryInteractiveExercises(
