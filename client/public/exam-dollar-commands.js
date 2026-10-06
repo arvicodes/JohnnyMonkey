@@ -843,7 +843,7 @@
   }
 
   /** „ ich mit $$durch $_1000/…_$ “ — Wort tauschen + gemeinsame Lücke (A1) */
-  function tryParseInlineWordSwapWithGap(s, i, idGen) {
+  function peekInlineWordSwapWithGap(s, i) {
     if (s[i] !== '$') return null;
     var j = i;
     while (j < s.length && s[j] === '$') j += 1;
@@ -863,26 +863,35 @@
     var before = s.slice(0, i).replace(/\s+$/, '');
     var wm = before.match(/([\s\S]*\s)(\S+)$/);
     if (!wm) return null;
+    return {
+      baseWord: wm[2],
+      altWord: altWord,
+      altNum: altNum,
+      gap: gap,
+      end: gapTok.end,
+    };
+  }
+
+  function renderInlineWordSwapHtml(peek, idGen) {
     var wordGid = idGen();
     var wordViews =
       '<span class="exam-dollar-alt-view exam-dollar-variant-part" data-jm-alt-view="0">' +
-      variantMarkHtml(escapeHtml(wm[2]) + ' ', 0) +
+      variantMarkHtml(escapeHtml(peek.baseWord) + ' ', 0) +
       '</span>' +
       '<span class="exam-dollar-alt-view exam-dollar-variant-part exam-dollar-alt-view--hidden" data-jm-alt-view="' +
-      altNum +
+      peek.altNum +
       '">' +
-      variantMarkHtml(escapeHtml(altWord) + ' ', altNum) +
+      variantMarkHtml(escapeHtml(peek.altWord) + ' ', peek.altNum) +
       '</span>';
-    var html =
-      escapeHtml(wm[1]) +
+    return (
       '<span class="exam-dollar-alt-group exam-dollar-word-gap-alt" data-jm-alt-group="' +
       escapeHtml(wordGid) +
       '" data-jm-alt-active="0">' +
       '<span class="exam-dollar-alt-views">' +
       wordViews +
       '</span></span>' +
-      renderOneGapInput(gap.answers, idGen, null);
-    return { html: html, end: gapTok.end };
+      renderOneGapInput(peek.gap.answers, idGen, null)
+    );
   }
 
   function parsePointsFromLabel(text) {
@@ -3504,14 +3513,25 @@
           out += escapeHtml(s.slice(i));
           break;
         }
+        var swapPeek = peekInlineWordSwapWithGap(s, next);
+        if (swapPeek) {
+          var chunkBeforeSwap = s.slice(i, next).replace(/\s+$/, '');
+          var baseRe = new RegExp('([\\s\\S]*\\s)' + escapeRegExp(swapPeek.baseWord) + '$');
+          var chunkM = chunkBeforeSwap.match(baseRe);
+          if (chunkM) {
+            out += escapeHtml(chunkM[1]);
+            i = next;
+            continue;
+          }
+        }
         out += escapeHtml(s.slice(i, next));
         i = next;
         continue;
       }
-      var wordSwap = tryParseInlineWordSwapWithGap(s, i, idGen);
-      if (wordSwap) {
-        out += wordSwap.html;
-        i = wordSwap.end;
+      var wordSwapPeek = peekInlineWordSwapWithGap(s, i);
+      if (wordSwapPeek) {
+        out += renderInlineWordSwapHtml(wordSwapPeek, idGen);
+        i = wordSwapPeek.end;
         continue;
       }
       var tok = consumeDollarToken(s, i);
