@@ -62,8 +62,33 @@
   }
 
   function syncAllLiveToSource() {
+    ensureTaskAuthoringFromSourceBeforeSave();
     document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
       syncSourceFromLiveEdit(taskEl);
+    });
+  }
+
+  /** Leeres Live-Feld darf gespeicherten Quelltext nicht löschen — vor Autosave wiederherstellen. */
+  function ensureTaskAuthoringFromSourceBeforeSave() {
+    document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
+      var src = taskEl.querySelector('.exam-dollar-source');
+      var live = taskEl.querySelector('.exam-dollar-live-edit');
+      if (!src) return;
+      var meta = parseTaskSource(src.value);
+      if (!String(meta.body || '').trim()) return;
+      var liveTrim = live ? liveEditPlainTextFromEl(live).trim() : '';
+      var rendered = taskEl.querySelector('.exam-dollar-rendered');
+      var rendEmpty = !rendered || !String(rendered.innerHTML || '').trim();
+      if (liveTrim || !rendEmpty) return;
+      try {
+        if (live) {
+          syncLiveEditFromSource(taskEl);
+          delete live.dataset.jmTouched;
+        }
+        applySourceToTask(taskEl, src.value);
+      } catch (e) {
+        showTaskRenderFallback(taskEl, src.value);
+      }
     });
   }
 
@@ -4507,6 +4532,7 @@
       wireSolutionsInGapsToggle();
       return;
     }
+    ensureTaskAuthoringFromSourceBeforeSave();
     ensureComposeArea();
     document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
       ensureTaskStructure(taskEl);
