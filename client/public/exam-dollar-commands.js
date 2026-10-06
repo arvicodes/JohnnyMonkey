@@ -232,14 +232,18 @@
       if (/^_\$$/.test(rest)) {
         return { end: start + 3, inner: '_' };
       }
-      var gapClose = rest.lastIndexOf('_$');
-      if (gapClose > 0) {
-        return {
-          end: start + 1 + gapClose + 2,
-          inner: '_' + rest.slice(1, gapClose) + '_',
-        };
+      var firstClose = rest.indexOf('_$');
+      if (firstClose < 0) return null;
+      var firstBody = rest.slice(1, firstClose);
+      var closeAt = firstClose;
+      if (firstBody.indexOf('$$') >= 0) {
+        var lastClose = rest.lastIndexOf('_$');
+        if (lastClose > firstClose) closeAt = lastClose;
       }
-      return null;
+      return {
+        end: start + 1 + closeAt + 2,
+        inner: '_' + rest.slice(1, closeAt) + '_',
+      };
     }
 
     if (/^Bild\s+/i.test(rest)) {
