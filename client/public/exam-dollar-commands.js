@@ -25,6 +25,7 @@
  * $a1$ / $$7 $$$10   Varianten: Zeile $a1$ … oder in $L 5 $$7 $$$10 L$ ($$=A1, $$$=A2)
  * $Musterlösung$    ab dieser Zeile: Text für die grüne Musterlösungsbox
  * $Paare … Paare$   Zuordnung: Zeilen „Wert A ; Wert B“ (gleiche Werte aufeinanderziehen)
+ * In $Paare$-Blöcken: Basiszeilen = A0, „$$ … ; …“ = A1, „$$$ … ; …“ = A2 (eigener Kartenstapel pro Variante)
  */
 (function (global) {
   'use strict';
@@ -1969,7 +1970,9 @@
     var achieved = 0;
     var total = 0;
     taskEl.querySelectorAll('.exam-dollar-paare-match').forEach(function (root) {
-      var hidden = root.querySelector('.exam-dollar-paare-state');
+      var shell = getActivePaareShell(root);
+      if (!shell) return;
+      var hidden = shell.querySelector('.exam-dollar-paare-state');
       var totalPairs = hidden
         ? parseInt(hidden.getAttribute('data-jm-paare-total') || '0', 10)
         : 0;
@@ -2662,14 +2665,34 @@
   }
 
   function parsePaarePairLine(line) {
-    var t = String(line || '').trim();
+    var raw = String(line || '');
+    var lineAlt = 0;
+    var t = raw.trim();
     if (!t || isPaareOpenLine(line) || isPaareCloseLine(line)) return null;
+    var linePref = parseFlowLineLeadingAltPrefix(raw);
+    if (linePref) {
+      lineAlt = linePref.altNum;
+      t = linePref.content;
+    }
     var semi = t.indexOf(';');
     if (semi < 0) return null;
     var left = t.slice(0, semi).trim();
     var right = t.slice(semi + 1).trim();
     if (!left || !right) return null;
-    return { left: left, right: right };
+    return { left: left, right: right, lineAlt: lineAlt };
+  }
+
+  function paarePairCountByAltInBlock(lines, fromIndex) {
+    var byAlt = { 0: 0, 1: 0, 2: 0 };
+    var i = fromIndex;
+    while (i < lines.length && !isPaareCloseLine(lines[i])) {
+      var p = parsePaarePairLine(lines[i]);
+      if (p) byAlt[p.lineAlt || 0] += 1;
+      i += 1;
+    }
+    if (byAlt[0]) return byAlt[0];
+    if (byAlt[1]) return byAlt[1];
+    return byAlt[2];
   }
 
   function countPaarePairsInBody(body) {
@@ -2678,24 +2701,28 @@
     var i;
     for (i = 0; i < lines.length; i += 1) {
       if (!isPaareOpenLine(lines[i])) continue;
-      i += 1;
-      while (i < lines.length && !isPaareCloseLine(lines[i])) {
-        if (parsePaarePairLine(lines[i])) n += 1;
-        i += 1;
-      }
+      n += paarePairCountByAltInBlock(lines, i + 1);
     }
     return n;
   }
 
   function parsePaareBlockLines(lines, openIndex) {
-    var pairs = [];
+    var byAlt = { 0: [], 1: [], 2: [] };
     var i = openIndex + 1;
     while (i < lines.length) {
       if (isPaareCloseLine(lines[i])) {
-        return pairs.length ? { pairs: pairs, nextIndex: i } : null;
+        var hasAny = byAlt[0].length || byAlt[1].length || byAlt[2].length;
+        if (!hasAny) return null;
+        var altNums = [0, 1, 2].filter(function (n) {
+          return byAlt[n].length;
+        });
+        if (altNums.length <= 1) {
+          return { pairs: byAlt[altNums[0] || 0], nextIndex: i };
+        }
+        return { lineViews: byAlt, nextIndex: i };
       }
       var p = parsePaarePairLine(lines[i]);
-      if (p) pairs.push(p);
+      if (p) byAlt[p.lineAlt || 0].push({ left: p.left, right: p.right });
       i += 1;
     }
     return null;
@@ -2713,9 +2740,8 @@
     return a;
   }
 
-  function renderPaareMatch(pairs, idGen) {
+  function renderPaareShellHtml(pairs, idGen) {
     if (!pairs || !pairs.length) return '';
-    var gid = idGen();
     var hiddenId = idGen();
     var cards = [];
     pairs.forEach(function (p, idx) {
@@ -2726,9 +2752,7 @@
     cards = shuffleExamPaareCards(cards);
     var pairsJson = escapeHtml(JSON.stringify(pairs));
     var html =
-      '<div class="exam-dollar-paare exam-dollar-paare-match" data-jm-paare-group="' +
-      escapeHtml(gid) +
-      '" data-jm-paare-pairs="' +
+      '<div class="exam-dollar-paare-shell" data-jm-paare-pairs="' +
       pairsJson +
       '">';
     html +=
@@ -2757,6 +2781,55 @@
       '">';
     html += '</div>';
     return html;
+  }
+
+  function renderPaareMatch(paBlock, idGen) {
+    if (!paBlock) return '';
+    var lineViews = paBlock.lineViews;
+    if (lineViews) {
+      var nums = [0, 1, 2].filter(function (n) {
+        return lineViews[n] && lineViews[n].length;
+      });
+      if (!nums.length) return '';
+      if (nums.length === 1) {
+        return (
+          '<div class="exam-dollar-paare exam-dollar-paare-match">' +
+          renderPaareShellHtml(lineViews[nums[0]], idGen) +
+          '</div>'
+        );
+      }
+      var gid = idGen();
+      var viewsHtml = nums
+        .map(function (n) {
+          var hidden = n === 0 ? '' : ' exam-dollar-alt-view--hidden';
+          return (
+            '<div class="exam-dollar-alt-view' +
+            hidden +
+            '" data-jm-alt-view="' +
+            n +
+            '">' +
+            renderPaareShellHtml(lineViews[n], idGen) +
+            '</div>'
+          );
+        })
+        .join('');
+      return (
+        '<div class="exam-dollar-paare exam-dollar-paare-match exam-dollar-paare-match--alts">' +
+        '<div class="exam-dollar-alt-group exam-dollar-paare-alt-group" data-jm-alt-group="' +
+        escapeHtml(gid) +
+        '" data-jm-alt-active="0">' +
+        '<div class="exam-dollar-alt-views">' +
+        viewsHtml +
+        '</div></div></div>'
+      );
+    }
+    var pairs = paBlock.pairs;
+    if (!pairs || !pairs.length) return '';
+    return (
+      '<div class="exam-dollar-paare exam-dollar-paare-match">' +
+      renderPaareShellHtml(pairs, idGen) +
+      '</div>'
+    );
   }
 
   function paareHash(index, total, salt) {
@@ -2962,10 +3035,29 @@
     if (slot != null) toEl.setAttribute('data-jm-paare-slot', slot);
   }
 
-  function syncPaareHiddenState(root) {
-    var hidden = root.querySelector('.exam-dollar-paare-state');
-    if (!hidden) return;
-    var stacks = root.querySelectorAll('.exam-dollar-paare-stack');
+  function getActivePaareShell(root) {
+    if (!root) return null;
+    var vis = root.querySelector(
+      '.exam-dollar-paare-alt-group > .exam-dollar-alt-views > .exam-dollar-alt-view:not(.exam-dollar-alt-view--hidden) .exam-dollar-paare-shell',
+    );
+    if (vis) return vis;
+    return root.querySelector('.exam-dollar-paare-shell');
+  }
+
+  function syncPaareHiddenState(container) {
+    var shell =
+      container && container.closest
+        ? container.closest('.exam-dollar-paare-shell')
+        : null;
+    if (!shell && container && container.classList && container.classList.contains('exam-dollar-paare-shell')) {
+      shell = container;
+    }
+    if (!shell) shell = container;
+    if (!shell) return;
+    var pool = shell.querySelector('.exam-dollar-paare-pool');
+    var hidden = shell.querySelector('.exam-dollar-paare-state');
+    if (!pool || !hidden) return;
+    var stacks = pool.querySelectorAll('.exam-dollar-paare-stack');
     var ids = [];
     stacks.forEach(function (stack) {
       var cards = stack.querySelectorAll('.exam-dollar-paare-card');
@@ -3022,8 +3114,19 @@
     scope.querySelectorAll('.exam-dollar-paare-match').forEach(function (paRoot) {
       if (paRoot.__jmPaareWired) return;
       paRoot.__jmPaareWired = true;
-      var pool = paRoot.querySelector('.exam-dollar-paare-pool');
-      if (!pool) return;
+      var shells = paRoot.querySelectorAll('.exam-dollar-paare-shell');
+      if (!shells.length) return;
+      shells.forEach(function (shell) {
+        wireOneExamPaareShell(shell);
+      });
+    });
+  }
+
+  function wireOneExamPaareShell(shell) {
+    if (!shell || shell.__jmPaareShellWired) return;
+    shell.__jmPaareShellWired = true;
+    var pool = shell.querySelector('.exam-dollar-paare-pool');
+    if (!pool) return;
       var selectedCard = null;
       var dragState = null;
       var suppressPaareClick = false;
@@ -3076,7 +3179,7 @@
         if (b.classList.contains('exam-dollar-paare-card--matched')) return;
         paareMatchTwoCards(pool, a, b);
         clearSelected();
-        syncPaareHiddenState(paRoot);
+        syncPaareHiddenState(shell);
         maybeUpdateLivePointsDisplay();
       }
 
@@ -3123,7 +3226,7 @@
             var pr = pulled.getBoundingClientRect();
             dragState.offsetX = e.clientX - pr.left;
             dragState.offsetY = e.clientY - pr.top;
-            syncPaareHiddenState(paRoot);
+            syncPaareHiddenState(shell);
             maybeUpdateLivePointsDisplay();
           }
         }
@@ -3188,13 +3291,13 @@
         }
         tryMatch(selectedCard, card);
       });
-      paRoot.querySelectorAll('.exam-dollar-paare-state').forEach(function (inp) {
-        if (inp.__jmScoreWired) return;
-        inp.__jmScoreWired = true;
-        inp.addEventListener('input', function () {
+      var hiddenInp = shell.querySelector('.exam-dollar-paare-state');
+      if (hiddenInp && !hiddenInp.__jmScoreWired) {
+        hiddenInp.__jmScoreWired = true;
+        hiddenInp.addEventListener('input', function () {
           maybeUpdateLivePointsDisplay();
         });
-      });
+      }
       initExamPaarePoolLayout(pool);
       if (typeof requestAnimationFrame === 'function') {
         requestAnimationFrame(function () {
@@ -3202,11 +3305,13 @@
           lockExamPaarePoolCardSizes(pool);
         });
       }
-    });
   }
 
   function parsePaarePairsFromRoot(root) {
-    var raw = root.getAttribute('data-jm-paare-pairs');
+    var shell = getActivePaareShell(root);
+    var raw = shell
+      ? shell.getAttribute('data-jm-paare-pairs')
+      : root.getAttribute('data-jm-paare-pairs');
     if (!raw) return [];
     try {
       var parsed = JSON.parse(raw);
@@ -3263,7 +3368,8 @@
 
   function applyPaareSolutionDisplay(on) {
     document.querySelectorAll('.exam-dollar-paare-match').forEach(function (root) {
-      var pool = root.querySelector('.exam-dollar-paare-pool');
+      var shell = getActivePaareShell(root);
+      var pool = shell ? shell.querySelector('.exam-dollar-paare-pool') : null;
       if (!pool) return;
       root.classList.toggle('exam-dollar-paare-match--solution', !!on);
       if (on) {
@@ -3271,7 +3377,7 @@
         root.__jmPaareLiveHtml = pool.innerHTML;
         root.__jmPaareLivePoolH = pool.style.height;
         root.__jmPaareLivePoolMinH = pool.style.minHeight;
-        var hidden = root.querySelector('.exam-dollar-paare-state');
+        var hidden = shell ? shell.querySelector('.exam-dollar-paare-state') : root.querySelector('.exam-dollar-paare-state');
         root.__jmPaareLiveState = hidden ? hidden.value : '';
         renderPaareSolutionPool(root, pool);
         root.__jmPaareSolutionActive = true;
@@ -3280,7 +3386,9 @@
         pool.innerHTML = root.__jmPaareLiveHtml || '';
         pool.style.height = root.__jmPaareLivePoolH || '';
         pool.style.minHeight = root.__jmPaareLivePoolMinH || '';
-        var hiddenRestore = root.querySelector('.exam-dollar-paare-state');
+        var hiddenRestore = shell
+          ? shell.querySelector('.exam-dollar-paare-state')
+          : root.querySelector('.exam-dollar-paare-state');
         if (hiddenRestore && root.__jmPaareLiveState != null) {
           hiddenRestore.value = root.__jmPaareLiveState;
         }
@@ -3523,7 +3631,7 @@
         flushFlow();
         var paBlock = parsePaareBlockLines(lines, i);
         if (paBlock) {
-          parts.push(renderPaareMatch(paBlock.pairs, idGen));
+          parts.push(renderPaareMatch(paBlock, idGen));
           i = paBlock.nextIndex;
           continue;
         }
@@ -3648,6 +3756,14 @@
       setExamAltGroupActive(groupEl, use);
     });
     refreshExamAltVariantToolbarActiveState();
+    document
+      .querySelectorAll(
+        '.exam-dollar-paare-alt-group .exam-dollar-alt-view:not(.exam-dollar-alt-view--hidden) .exam-dollar-paare-pool',
+      )
+      .forEach(function (pool) {
+        initExamPaarePoolLayout(pool);
+        lockExamPaarePoolCardSizes(pool);
+      });
   }
 
   function collectExamAltVariantNumbers() {
@@ -5039,6 +5155,8 @@
       '.exam-dollar-wf-check{text-align:center}' +
       '.exam-dollar-wf-check .exam-dollar-choice{margin:0 auto}' +
       '.exam-dollar-paare{margin:8px 0 11px}' +
+      '.exam-dollar-paare-alt-group{width:100%}' +
+      '.exam-dollar-paare-alt-group .exam-dollar-alt-view{display:block}' +
       '.exam-dollar-paare-pool{position:relative;width:100%;min-height:176px;margin:4px 0 8px;padding:4px 2px 8px;box-sizing:border-box;overflow:visible}' +
       '.exam-dollar-paare-pool>.exam-dollar-paare-card{position:absolute;width:auto;max-width:min(9em,calc((100% - 1.2rem) / var(--jm-paare-cols,4) - 0.45rem));box-sizing:border-box;transform-origin:top left}' +
       '.exam-dollar-paare-pool>.exam-dollar-paare-card[data-jm-paare-w]{max-width:none!important}' +
