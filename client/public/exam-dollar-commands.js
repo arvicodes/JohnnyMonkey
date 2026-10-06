@@ -471,13 +471,23 @@
   }
 
   function insertPlainTextIntoLiveEdit(live, text) {
-    if (!live) return;
+    if (!live || text == null) return false;
     live.focus();
     var sel = window.getSelection();
-    if (!sel || !sel.rangeCount || !live.contains(sel.getRangeAt(0).commonAncestorContainer)) {
-      var cur = liveEditPlainTextFromEl(live);
-      live.textContent = cur + text;
-      return;
+    if (!sel) return false;
+    if (!sel.rangeCount || !live.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+      var r0 = document.createRange();
+      r0.selectNodeContents(live);
+      r0.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(r0);
+    }
+    try {
+      if (typeof document.execCommand === 'function' && document.execCommand('insertText', false, text)) {
+        return true;
+      }
+    } catch (execErr) {
+      /* fallback below */
     }
     var range = sel.getRangeAt(0);
     range.deleteContents();
@@ -487,13 +497,24 @@
     range.collapse(true);
     sel.removeAllRanges();
     sel.addRange(range);
+    return true;
   }
 
   function clipboardPlainForLiveEdit(clipboardData) {
     if (!clipboardData) return '';
-    var plain = clipboardData.getData('text/plain');
-    if (plain && String(plain).trim()) return normalizeClipboardPlainText(plain);
-    var html = clipboardData.getData('text/html');
+    var plain = '';
+    try {
+      plain = clipboardData.getData('text/plain') || '';
+    } catch (e1) {
+      plain = '';
+    }
+    if (plain) return normalizeClipboardPlainText(plain);
+    var html = '';
+    try {
+      html = clipboardData.getData('text/html') || '';
+    } catch (e2) {
+      html = '';
+    }
     if (!html) return '';
     var div = document.createElement('div');
     div.innerHTML = html;
@@ -503,26 +524,33 @@
   function wireLiveEditPasteAndUndo(live, taskEl) {
     if (!live || live.__jmPasteWired) return;
     live.__jmPasteWired = true;
-    live.addEventListener('paste', function (e) {
-      var items = e.clipboardData && e.clipboardData.items;
-      if (items) {
-        var i;
-        for (i = 0; i < items.length; i += 1) {
-          if (String(items[i].type || '').indexOf('image/') === 0) return;
+    live.addEventListener(
+      'paste',
+      function (e) {
+        var cd = e.clipboardData;
+        if (!cd) return;
+        var items = cd.items;
+        if (items) {
+          var i;
+          for (i = 0; i < items.length; i += 1) {
+            if (String(items[i].type || '').indexOf('image/') === 0) return;
+          }
         }
-      }
-      e.preventDefault();
-      e.stopPropagation();
-      pushLiveEditUndo(live);
-      var plain = clipboardPlainForLiveEdit(e.clipboardData);
-      insertPlainTextIntoLiveEdit(live, plain);
-      sanitizeLiveEditDom(live);
-      live.dataset.jmTouched = '1';
-      refreshLiveEditHighlight(live);
-      syncSourceFromLiveEdit(taskEl);
-      applySourceToTask(taskEl, taskEl.querySelector('.exam-dollar-source').value);
-      live.dispatchEvent(new Event('input', { bubbles: true }));
-    });
+        var plain = clipboardPlainForLiveEdit(cd);
+        if (!plain) return;
+        e.preventDefault();
+        pushLiveEditUndo(live);
+        insertPlainTextIntoLiveEdit(live, plain);
+        sanitizeLiveEditDom(live);
+        live.dataset.jmTouched = '1';
+        refreshLiveEditHighlight(live);
+        syncSourceFromLiveEdit(taskEl);
+        var src = taskEl.querySelector('.exam-dollar-source');
+        if (src) applySourceToTask(taskEl, src.value);
+        live.dispatchEvent(new Event('input', { bubbles: true }));
+      },
+      true,
+    );
     live.addEventListener('keydown', function (e) {
       if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
       if (e.key !== 'z' && e.key !== 'Z') return;
@@ -3927,9 +3955,18 @@
       var items = e.clipboardData && e.clipboardData.items;
       if (!items) return;
       var i;
+      var hasImage = false;
       for (i = 0; i < items.length; i++) {
         if (items[i].type.indexOf('image/') === 0) {
-          e.preventDefault();
+          hasImage = true;
+          break;
+        }
+      }
+      if (!hasImage) return;
+      e.preventDefault();
+      e.stopPropagation();
+      for (i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image/') === 0) {
           handleImageFileForTask(taskEl, items[i].getAsFile());
           break;
         }
