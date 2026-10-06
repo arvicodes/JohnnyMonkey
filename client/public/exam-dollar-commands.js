@@ -6,6 +6,8 @@
  * $CC$         Checkbox — nur diese markiert die richtige Lösung
  * $_$          kleine Lücke (inline)
  * $_a/b/c_$    Lücke mit mehreren gültigen Lösungen
+ * $_a $$b_$    Lücke mit Formulierungsvariante (Standard / A1 wie bei $L … $$ … $)
+ * Wort tauschen: „… mit $$durch $_1000/t_$“ → A1: „durch“ statt „mit“, Lücke bleibt gleich
  * $__$         großes Eingabefeld
  * $B Wort B$   fett · $I Wort I$ kursiv · $U Wort U$ unterstrichen (⌘/Ctrl+B, I, U im Textfeld)
  * $L Formel L$  Mathe/Formelschrift (LaTeX, KaTeX) · ⌘/Ctrl+L (auch $M … M$)
@@ -736,6 +738,20 @@
       .join('|');
   }
 
+  function parseGapSlashAnswers(body) {
+    var b = String(body || '').trim();
+    if (!b) return [];
+    if (b.indexOf('/') >= 0) {
+      return b
+        .split('/')
+        .map(function (s) {
+          return s.trim();
+        })
+        .filter(Boolean);
+    }
+    return [b];
+  }
+
   function parseGapToken(inner) {
     if (inner === '__') return null;
     if (inner === '_') return { answers: [] };
@@ -743,17 +759,130 @@
     if (!wrapped) return null;
     var body = String(wrapped[1] || '').trim();
     if (!body) return { answers: [] };
-    if (body.indexOf('/') >= 0) {
+    var parsed = parseDollarCountAltContent(body);
+    if (parsed && Object.keys(parsed.alts).length) {
       return {
-        answers: body
-          .split('/')
-          .map(function (s) {
-            return s.trim();
-          })
-          .filter(Boolean),
+        variant: true,
+        baseSegment: parsed.base,
+        altSegments: parsed.alts,
       };
     }
-    return { answers: [body] };
+    return { answers: parseGapSlashAnswers(body) };
+  }
+
+  function renderOneGapInput(answers, idGen, variantNum) {
+    var id = idGen();
+    var accepted = encodeAcceptedAttr(answers || []);
+    var attr = accepted ? ' data-jm-accepted="' + escapeHtml(accepted) + '"' : '';
+    var sizeAttr = '';
+    if (answers && answers.length) {
+      var maxLen = 2;
+      answers.forEach(function (a) {
+        maxLen = Math.max(maxLen, String(a).length);
+      });
+      sizeAttr = ' size="' + String(maxLen + 1) + '"';
+    }
+    var inp =
+      '<input type="text" class="exam-dollar-gap blank-tiny" id="' +
+      id +
+      '"' +
+      attr +
+      sizeAttr +
+      ' autocomplete="off">';
+    if (variantNum == null) return inp;
+    return variantMarkHtml(inp, variantNum);
+  }
+
+  function gapSegmentToHtml(segment, idGen, variantNum) {
+    var seg = String(segment || '').trim();
+    if (!seg) return renderOneGapInput([], idGen, variantNum);
+    if (/\$/.test(seg)) return renderInline(seg, idGen);
+    return renderOneGapInput(parseGapSlashAnswers(seg), idGen, variantNum);
+  }
+
+  function renderGapFromParsedToken(gap, idGen) {
+    if (!gap) return '';
+    if (!gap.variant) {
+      return renderOneGapInput(gap.answers, idGen, null);
+    }
+    var gid = idGen();
+    var altNums = Object.keys(gap.altSegments)
+      .map(function (n) {
+        return parseInt(n, 10);
+      })
+      .filter(function (n) {
+        return n > 0;
+      })
+      .sort(function (a, b) {
+        return a - b;
+      });
+    var nums = [0].concat(altNums);
+    var viewsHtml = nums
+      .map(function (n) {
+        var hidden = n === 0 ? '' : ' exam-dollar-alt-view--hidden';
+        var seg = n === 0 ? gap.baseSegment : gap.altSegments[n];
+        return (
+          '<span class="exam-dollar-alt-view exam-dollar-variant-part' +
+          hidden +
+          '" data-jm-alt-view="' +
+          n +
+          '">' +
+          gapSegmentToHtml(seg, idGen, n) +
+          '</span>'
+        );
+      })
+      .join('');
+    return (
+      '<span class="exam-dollar-alt-group exam-dollar-gap-alt-group" data-jm-alt-group="' +
+      escapeHtml(gid) +
+      '" data-jm-alt-active="0">' +
+      '<span class="exam-dollar-alt-views">' +
+      viewsHtml +
+      '</span></span>'
+    );
+  }
+
+  /** „ ich mit $$durch $_1000/…_$ “ — Wort tauschen + gemeinsame Lücke (A1) */
+  function tryParseInlineWordSwapWithGap(s, i, idGen) {
+    if (s[i] !== '$') return null;
+    var j = i;
+    while (j < s.length && s[j] === '$') j += 1;
+    if (j - i < 2) return null;
+    var altNum = j - i - 1;
+    if (altNum < 1) return null;
+    var wordM = s.slice(j).match(/^([^\s$]+)/);
+    if (!wordM) return null;
+    var altWord = wordM[1];
+    var p = j + altWord.length;
+    while (p < s.length && /\s/.test(s[p])) p += 1;
+    if (s[p] !== '$' || s[p + 1] !== '_') return null;
+    var gapTok = consumeDollarToken(s, p);
+    if (!gapTok) return null;
+    var gap = parseGapToken(gapTok.inner);
+    if (!gap || gap.variant) return null;
+    var before = s.slice(0, i).replace(/\s+$/, '');
+    var wm = before.match(/([\s\S]*\s)(\S+)$/);
+    if (!wm) return null;
+    var wordGid = idGen();
+    var wordViews =
+      '<span class="exam-dollar-alt-view exam-dollar-variant-part" data-jm-alt-view="0">' +
+      variantMarkHtml(escapeHtml(wm[2]) + ' ', 0) +
+      '</span>' +
+      '<span class="exam-dollar-alt-view exam-dollar-variant-part exam-dollar-alt-view--hidden" data-jm-alt-view="' +
+      altNum +
+      '">' +
+      variantMarkHtml(escapeHtml(altWord) + ' ', altNum) +
+      '</span>';
+    var html =
+      escapeHtml(wm[1]) +
+      '<span class="exam-dollar-alt-group exam-dollar-word-gap-alt" data-jm-alt-group="' +
+      escapeHtml(wordGid) +
+      '" data-jm-alt-active="0">' +
+      '<span class="exam-dollar-alt-views">' +
+      wordViews +
+      '</span></span>' +
+      renderOneGapInput(gap.answers, idGen, null);
+    return { html: html, end: gapTok.end };
   }
 
   function parsePointsFromLabel(text) {
@@ -3379,6 +3508,12 @@
         i = next;
         continue;
       }
+      var wordSwap = tryParseInlineWordSwapWithGap(s, i, idGen);
+      if (wordSwap) {
+        out += wordSwap.html;
+        i = wordSwap.end;
+        continue;
+      }
       var tok = consumeDollarToken(s, i);
       if (!tok) {
         out += escapeHtml(s[i]);
@@ -3473,26 +3608,7 @@
       } else {
         var gap = parseGapToken(innerTrim);
         if (gap) {
-          var id = idGen();
-          var accepted = encodeAcceptedAttr(gap.answers);
-          var attr = accepted
-            ? ' data-jm-accepted="' + escapeHtml(accepted) + '"'
-            : '';
-          var sizeAttr = '';
-          if (gap.answers.length) {
-            var maxLen = 2;
-            gap.answers.forEach(function (a) {
-              maxLen = Math.max(maxLen, String(a).length);
-            });
-            sizeAttr = ' size="' + String(maxLen + 1) + '"';
-          }
-          out +=
-            '<input type="text" class="exam-dollar-gap blank-tiny" id="' +
-            id +
-            '"' +
-            attr +
-            sizeAttr +
-            ' autocomplete="off">';
+          out += renderGapFromParsedToken(gap, idGen);
         } else if (/^a\d+$/i.test(innerTrim)) {
           /* Block-Marker $a1$ — nur eigene Zeile in renderBlockToHtml */
         } else if (/^Paare\s/i.test(innerTrim)) {
@@ -3765,6 +3881,30 @@
         html += examLiveCmdHtml(' ' + letter + '$');
         return { html: html, end: tok.end };
       }
+    }
+    var gapParsed = parseGapToken(inner);
+    if (gapParsed && gapParsed.variant) {
+      var ghtml = examLiveCmdHtml('$_');
+      ghtml += escapeHtml(String(gapParsed.baseSegment || ''));
+      var gnums = Object.keys(gapParsed.altSegments)
+        .map(function (n) {
+          return parseInt(n, 10);
+        })
+        .filter(function (n) {
+          return n > 0;
+        })
+        .sort(function (a, b) {
+          return a - b;
+        });
+      gnums.forEach(function (n) {
+        var markers = '';
+        var d2;
+        for (d2 = 0; d2 <= n; d2 += 1) markers += '$';
+        ghtml += examLiveCmdHtml(markers);
+        ghtml += examLiveAltInlineHtml(n, gapParsed.altSegments[n]);
+      });
+      ghtml += examLiveCmdHtml('_$');
+      return { html: ghtml, end: tok.end };
     }
     return { html: examLiveCmdHtml(slice), end: tok.end };
   }
@@ -4539,6 +4679,8 @@
       '.exam-dollar-choice-kind-alt .exam-dollar-alt-views,.exam-dollar-stmt-alt .exam-dollar-alt-views{display:inline}' +
       '.exam-dollar-variant-part{display:inline}' +
       '.exam-dollar-variant-mark{display:inline;vertical-align:baseline}' +
+      '.exam-dollar-gap-alt-group.exam-dollar-alt-group,.exam-dollar-word-gap-alt.exam-dollar-alt-group{margin:0;display:inline;vertical-align:baseline}' +
+      '.exam-dollar-gap-alt-group .exam-dollar-alt-views,.exam-dollar-word-gap-alt .exam-dollar-alt-views{display:inline}' +
       '.exam-dollar-choice-text{flex:1;min-width:0}' +
       '.aids-box{width:100%;max-width:none;box-sizing:border-box}' +
       '.aids-general-rules-list{margin:0;padding:0 0 0 1.35em;list-style:disc outside}' +
