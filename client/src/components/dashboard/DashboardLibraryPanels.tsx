@@ -824,6 +824,7 @@ export const DashboardExamsPanel: React.FC<{
       const iconsPromise = loadExamIcons();
       let firstProgress = false;
       await scanLibraryExams(rootPaths, {
+        skipDeckSlideExams: true,
         onProgress: (partial) => {
           setItems(partial);
           if (!firstProgress) {
@@ -833,6 +834,11 @@ export const DashboardExamsPanel: React.FC<{
         },
       });
       await iconsPromise;
+      void scanLibraryExams(rootPaths, {
+        onProgress: (partial) => {
+          setItems(partial);
+        },
+      });
     } catch {
       setItems([]);
     } finally {

@@ -3471,9 +3471,9 @@
     });
   }
 
-  function wireExamAltGroups(root) {
+  function wireExamAltGroups(root, options) {
     syncExamAltGroupsToGlobal(root);
-    refreshExamAltVariantToolbar();
+    if (!options || !options.skipToolbarRefresh) refreshExamAltVariantToolbar();
   }
 
   function wireWfExclusiveCheckboxes(taskEl) {
@@ -3707,7 +3707,7 @@
     return false;
   }
 
-  function syncSolutionElement(solEl, parsed, idGen) {
+  function syncSolutionElement(solEl, parsed, idGen, deferTypeset) {
     if (!solEl) return;
     var solBody = String(parsed.solution || '').trim();
     if (!solBody || isPlaceholderSolutionText(solBody)) {
@@ -3727,13 +3727,26 @@
     solEl.classList.remove('solution--empty');
     solEl.innerHTML = '<h4>Musterlösung:</h4>' + solHtml;
     applyExamImageNaturalSizing(solEl);
-    typesetExamMathInRoot(solEl);
+    if (!deferTypeset) typesetExamMathInRoot(solEl);
   }
 
-  function applySourceToTask(taskEl, source) {
+  function taskSourceFingerprint(source) {
+    return String(source || '');
+  }
+
+  function applySourceToTask(taskEl, source, opts) {
+    opts = opts || {};
     var rendered = taskEl.querySelector('.exam-dollar-rendered');
     if (!rendered) return;
     source = applyAutoPointsToSource(taskEl, source);
+    var fp = taskSourceFingerprint(source);
+    if (
+      !opts.force &&
+      taskEl.dataset.jmDollarRenderedFp === fp &&
+      String(rendered.innerHTML || '').trim()
+    ) {
+      return;
+    }
     var srcEl = taskEl.querySelector('.exam-dollar-source');
     if (srcEl && srcEl.value !== source) srcEl.value = source;
     var taskNumEl = taskEl.querySelector('.task-number');
@@ -3762,7 +3775,7 @@
     var html = renderBlockToHtml(parsed.body, idGen);
     rendered.innerHTML = html || '';
     applyExamImageNaturalSizing(rendered);
-    typesetExamMathInRoot(rendered);
+    if (!opts.deferTypeset) typesetExamMathInRoot(rendered);
 
     var content = taskEl.querySelector('.task-content');
     var solEl = taskEl.querySelector('.solution');
@@ -3772,22 +3785,16 @@
       content.appendChild(solEl);
     }
     if (solEl) {
-      syncSolutionElement(solEl, parsed, idGen);
+      syncSolutionElement(solEl, parsed, idGen, opts.deferTypeset);
     }
 
-    if (typeof global.attachInputListeners === 'function') {
-      try {
-        global.attachInputListeners();
-      } catch (e) {
-        /* ignore */
-      }
-    }
     wireGapAutoWidth(taskEl);
     syncGapInputWidths(taskEl);
     wireWfExclusiveCheckboxes(taskEl);
     wireExamPaareMatch(taskEl);
-    wireExamAltGroups(taskEl);
+    wireExamAltGroups(taskEl, { skipToolbarRefresh: !!opts.deferToolbar });
     refreshGapSolutionDisplay();
+    taskEl.dataset.jmDollarRenderedFp = fp;
   }
 
   function nextTaskNumber() {
@@ -4869,59 +4876,76 @@
   }
 
   function bootstrapExamTasksFromSource(options) {
+    if (global.__jmExamTasksBootstrapping) return;
+    global.__jmExamTasksBootstrapping = true;
     var opts = options || {};
     var isTeacher = !!opts.teacher;
-    document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
-      var src = taskEl.querySelector('.exam-dollar-source');
-      if (!src) return;
-      var raw = String(src.value || '');
-      if (!raw.trim()) return;
-      try {
-        if (isTeacher) {
-          var cleaned = stripDefaultBoilerplateSource(raw);
-          var metaClean = parseTaskSource(cleaned);
-          var metaRaw = parseTaskSource(raw);
-          var useText =
-            String(metaClean.body || '').trim() || !String(metaRaw.body || '').trim()
-              ? cleaned
-              : raw;
-          var meta = parseTaskSource(useText);
-          src.value = composeTaskSource(
-            meta.aufgabeLabel,
-            meta.pointsVal,
-            meta.body,
-            meta.solution,
-          );
-          syncLiveEditFromSource(taskEl);
+    var bootstrapOpts = { deferTypeset: true, deferToolbar: true };
+    var paper = document.querySelector('.exam-paper');
+    try {
+      document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
+        var src = taskEl.querySelector('.exam-dollar-source');
+        if (!src) return;
+        var raw = String(src.value || '');
+        if (!raw.trim()) return;
+        try {
+          if (isTeacher) {
+            var cleaned = stripDefaultBoilerplateSource(raw);
+            var metaClean = parseTaskSource(cleaned);
+            var metaRaw = parseTaskSource(raw);
+            var useText =
+              String(metaClean.body || '').trim() || !String(metaRaw.body || '').trim()
+                ? cleaned
+                : raw;
+            var meta = parseTaskSource(useText);
+            src.value = composeTaskSource(
+              meta.aufgabeLabel,
+              meta.pointsVal,
+              meta.body,
+              meta.solution,
+            );
+            syncLiveEditFromSource(taskEl);
+          }
+          applySourceToTask(taskEl, src.value, bootstrapOpts);
+        } catch (bootstrapErr) {
+          console.error('exam-dollar task bootstrap failed', bootstrapErr);
+          showTaskRenderFallback(taskEl, raw);
         }
-        applySourceToTask(taskEl, src.value);
-      } catch (bootstrapErr) {
-        console.error('exam-dollar task bootstrap failed', bootstrapErr);
-        showTaskRenderFallback(taskEl, raw);
-      }
-      var renderedCheck = taskEl.querySelector('.exam-dollar-rendered');
-      if (!renderedCheck || !String(renderedCheck.innerHTML || '').trim()) {
-        showTaskRenderFallback(taskEl, raw);
-      }
-      if (!isTeacher) {
-        var rend = taskEl.querySelector('.exam-dollar-rendered');
-        if (rend && String(rend.innerHTML || '').trim() && src.parentNode) {
-          src.parentNode.removeChild(src);
+        var renderedCheck = taskEl.querySelector('.exam-dollar-rendered');
+        if (!renderedCheck || !String(renderedCheck.innerHTML || '').trim()) {
+          showTaskRenderFallback(taskEl, raw);
         }
+        if (!isTeacher) {
+          var rend = taskEl.querySelector('.exam-dollar-rendered');
+          if (rend && String(rend.innerHTML || '').trim() && src.parentNode) {
+            src.parentNode.removeChild(src);
+          }
+        }
+      });
+      if (paper) {
+        typesetExamMathInRoot(paper);
+        syncExamAltGroupsToGlobal(paper);
       }
-    });
-    refreshExamAltVariantToolbar();
-    syncExamAltGroupsToGlobal(document.querySelector('.exam-paper'));
+      refreshExamAltVariantToolbar();
+    } finally {
+      global.__jmExamTasksBootstrapping = false;
+      global.__jmExamTasksBootstrapped = true;
+    }
   }
 
   function scheduleExamTaskBootstrap(isTeacher) {
-    bootstrapExamTasksFromSource({ teacher: isTeacher });
-    setTimeout(function () {
+    if (global.__jmExamTaskBootstrapScheduled) return;
+    global.__jmExamTaskBootstrapScheduled = true;
+    requestAnimationFrame(function () {
       bootstrapExamTasksFromSource({ teacher: isTeacher });
-    }, 0);
-    setTimeout(function () {
-      bootstrapExamTasksFromSource({ teacher: isTeacher });
-    }, 300);
+      if (typeof global.attachInputListeners === 'function') {
+        try {
+          global.attachInputListeners();
+        } catch (eAttach) {
+          /* ignore */
+        }
+      }
+    });
   }
 
   function setupExamDollarAuthoring() {
@@ -4935,7 +4959,6 @@
     if (rulesForKeys && typeof global.jmWireExamDollarFormatKeys === 'function') {
       global.jmWireExamDollarFormatKeys(rulesForKeys);
     }
-    typesetExamMathInRoot(document.querySelector('.exam-paper'));
     var isTeacher = localStorage.getItem('teacherId') !== null;
     if (!isTeacher) {
       document.querySelectorAll('.exam-dollar-compose').forEach(function (el) {
@@ -4951,7 +4974,6 @@
       wireSolutionsInGapsToggle();
       return;
     }
-    ensureTaskAuthoringFromSourceBeforeSave();
     ensureComposeArea();
     document.querySelectorAll('.exam-paper .task').forEach(function (taskEl) {
       ensureTaskStructure(taskEl);
