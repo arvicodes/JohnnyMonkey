@@ -1434,24 +1434,32 @@
     var choices = 0;
     choices += countWfRowsInBody(body);
     choices += countPaarePairsInBody(body);
-    var i = 0;
-    var s = String(body || '');
-    while (i < s.length) {
-      if (s[i] !== '$') {
-        i += 1;
-        continue;
-      }
-      var tok = consumeDollarToken(s, i);
-      if (!tok) {
-        i += 1;
-        continue;
-      }
-      var innerTrim = String(tok.inner || '').trim();
-      if (parseGapToken(innerTrim)) gaps += 1;
-      else if (/^CC$/i.test(innerTrim)) choices += 1;
-      else if (/^C$/i.test(innerTrim)) choices += 1;
-      i = tok.end;
-    }
+    String(body || '')
+      .split(/\r?\n/)
+      .forEach(function (line) {
+        if (parseChoiceVariantLine(line)) {
+          choices += 1;
+          return;
+        }
+        var i = 0;
+        var s = line;
+        while (i < s.length) {
+          if (s[i] !== '$') {
+            i += 1;
+            continue;
+          }
+          var tok = consumeDollarToken(s, i);
+          if (!tok) {
+            i += 1;
+            continue;
+          }
+          var innerTrim = String(tok.inner || '').trim();
+          if (parseGapToken(innerTrim)) gaps += 1;
+          else if (/^CC$/i.test(innerTrim)) choices += 1;
+          else if (/^C$/i.test(innerTrim)) choices += 1;
+          i = tok.end;
+        }
+      });
     return { gaps: gaps, choices: choices };
   }
 
@@ -1721,6 +1729,138 @@
     return null;
   }
 
+  /** Zeilenanfang: $C $$CC $$$C … — Checkbox-Art pro Variante (wie $wff $$wwf …) */
+  function parseChoiceVariantLine(line) {
+    var t = String(line || '').trim();
+    if (/^\$CC?\$/i.test(t)) return null;
+    if (!/^\$CC(?=\s|\$)/i.test(t) && !/^\$C(?=\s|\$)/i.test(t)) return null;
+    var pos = 0;
+    var baseKind = null;
+    var kindAlts = {};
+    while (pos < t.length) {
+      while (pos < t.length && /\s/.test(t[pos])) pos += 1;
+      if (pos >= t.length || t[pos] !== '$') break;
+      var j = pos;
+      while (j < t.length && t[j] === '$') j += 1;
+      var dollarCount = j - pos;
+      if (dollarCount < 1) break;
+      pos = j;
+      while (pos < t.length && /\s/.test(t[pos])) pos += 1;
+      var kindM = t.slice(pos).match(/^(CC|C)(?=\s|\$|$)/i);
+      if (!kindM) break;
+      var kind = kindM[1].toUpperCase() === 'CC' ? 'cc' : 'c';
+      pos += kindM[0].length;
+      if (dollarCount === 1) {
+        if (baseKind !== null) break;
+        baseKind = kind;
+        if (/^\s*\$(?!\$)/.test(t.slice(pos))) return null;
+      } else {
+        kindAlts[dollarCount - 1] = kind;
+      }
+    }
+    var stmt = t.slice(pos).trim();
+    if (baseKind === null || !stmt) return null;
+    if (!Object.keys(kindAlts).length) return null;
+    return { variant: true, baseKind: baseKind, kindAlts: kindAlts, stmt: stmt };
+  }
+
+  function stmtAltGapSuffix(stmt, parsed) {
+    if (!parsed) return '';
+    var best = '';
+    Object.keys(parsed.alts).forEach(function (n) {
+      var chunk = String(parsed.alts[n] || '');
+      var m = chunk.match(/\$L\s+[\s\S]*?\s+L\$\.?/i);
+      if (m && m[0].length > best.length) best = m[0];
+    });
+    if (!best) {
+      var m2 = String(stmt || '').match(/\$L\s+[\s\S]*?\s+L\$\.?/i);
+      if (m2) best = m2[0];
+    }
+    return best;
+  }
+
+  function stmtStemFromParsedBase(base) {
+    var m = String(base || '').match(/^(.*?\bsind\s+)/i);
+    return m ? m[1] : '';
+  }
+
+  function choiceVariantStmtText(stmt, altNum) {
+    var parsed = parseDollarCountAltContent(stmt);
+    if (!parsed) return stmt;
+    var suffix = stmtAltGapSuffix(stmt, parsed);
+    if (altNum === 0) {
+      var t = parsed.base;
+      if (suffix && t.indexOf('$L') < 0) {
+        var trimmed = t.replace(/\s+$/, '');
+        if (/\bmehr$/i.test(trimmed)) t = trimmed + ' als ' + suffix;
+        else t = t + suffix;
+      }
+      return t;
+    }
+    var alt = parsed.alts[altNum];
+    if (!alt) return choiceVariantStmtText(stmt, 0);
+    if (alt.indexOf('$L') >= 0) return stmtStemFromParsedBase(parsed.base) + alt;
+    return stmtStemFromParsedBase(parsed.base) + alt + suffix;
+  }
+
+  function choiceVariantViewNums(row) {
+    var map = { 0: true };
+    Object.keys(row.kindAlts || {}).forEach(function (k) {
+      map[parseInt(k, 10)] = true;
+    });
+    var parsed = parseDollarCountAltContent(row.stmt);
+    if (parsed) {
+      Object.keys(parsed.alts).forEach(function (k) {
+        map[parseInt(k, 10)] = true;
+      });
+    }
+    return Object.keys(map)
+      .map(function (n) {
+        return parseInt(n, 10);
+      })
+      .sort(function (a, b) {
+        return a - b;
+      });
+  }
+
+  function choiceVariantKindForView(row, altNum) {
+    if (altNum === 0) return row.baseKind;
+    if (row.kindAlts && row.kindAlts[altNum]) return row.kindAlts[altNum];
+    return row.baseKind;
+  }
+
+  function renderChoiceVariantListItem(row, idGen) {
+    var gid = idGen();
+    var nums = choiceVariantViewNums(row);
+    var viewsHtml = nums
+      .map(function (n) {
+        var hidden = n === 0 ? '' : ' exam-dollar-alt-view--hidden';
+        var kind = choiceVariantKindForView(row, n);
+        var stmtText = choiceVariantStmtText(row.stmt, n);
+        return (
+          '<div class="exam-dollar-alt-view exam-dollar-choice-alt-view' +
+          hidden +
+          '" data-jm-alt-view="' +
+          n +
+          '">' +
+          renderChoiceCheckbox(kind === 'cc', idGen) +
+          ' <span class="exam-dollar-choice-text">' +
+          renderInline(stmtText, idGen) +
+          '</span></div>'
+        );
+      })
+      .join('');
+    return (
+      '<li class="exam-dollar-choice-list-item exam-dollar-choice-list-item--alts">' +
+      '<div class="exam-dollar-alt-group exam-dollar-choice-alt-group" data-jm-alt-group="' +
+      escapeHtml(gid) +
+      '" data-jm-alt-active="0">' +
+      '<div class="exam-dollar-alt-views">' +
+      viewsHtml +
+      '</div></div></li>'
+    );
+  }
+
   function renderChoiceCheckbox(isCorrect, idGen) {
     var id = idGen();
     if (isCorrect) {
@@ -1744,6 +1884,10 @@
   function renderChoiceList(rows, idGen) {
     var html = '<ul class="exam-dollar-choice-list">';
     rows.forEach(function (row) {
+      if (row.variant) {
+        html += renderChoiceVariantListItem(row, idGen);
+        return;
+      }
       html +=
         '<li class="exam-dollar-choice-list-item">' +
         renderChoiceCheckbox(row.kind === 'cc', idGen);
@@ -2677,7 +2821,14 @@
             j += 1;
             break;
           }
-          if (parseAltMarkerLine(ln) || parseChoiceLine(ln) || parseWfLine(ln) || isPaareOpenLine(ln)) break;
+          if (
+            parseAltMarkerLine(ln) ||
+            parseChoiceLine(ln) ||
+            parseChoiceVariantLine(ln) ||
+            parseWfLine(ln) ||
+            isPaareOpenLine(ln)
+          )
+            break;
           if (isFlowImageOnlyLine(ln)) {
             altFlowImgs.push(ln);
           } else {
@@ -2727,7 +2878,11 @@
         ) {
           continue;
         }
-        if (nxt && parseChoiceLine(nxt.line) && choiceBuffer.length) {
+        if (
+          nxt &&
+          (parseChoiceLine(nxt.line) || parseChoiceVariantLine(nxt.line)) &&
+          choiceBuffer.length
+        ) {
           continue;
         }
         if (nxt && parseWfLine(nxt.line) && wfBuffer.length) {
@@ -2744,6 +2899,13 @@
         flushFlow();
         flushChoice();
         wfBuffer.push(wf);
+        continue;
+      }
+      var chVar = parseChoiceVariantLine(line);
+      if (chVar) {
+        flushFlow();
+        flushWf();
+        choiceBuffer.push(chVar);
         continue;
       }
       var ch = parseChoiceLine(line);
@@ -3373,7 +3535,46 @@
     return html;
   }
 
+  function highlightChoiceVariantStmtHtml(stmt) {
+    var parsed = parseDollarCountAltContent(stmt);
+    if (!parsed || !Object.keys(parsed.alts).length) {
+      return highlightLiveEditLineCommands(stmt);
+    }
+    var html = highlightLiveEditLineCommands(parsed.base);
+    var nums = Object.keys(parsed.alts)
+      .map(function (n) {
+        return parseInt(n, 10);
+      })
+      .filter(function (n) {
+        return n > 0;
+      })
+      .sort(function (a, b) {
+        return a - b;
+      });
+    nums.forEach(function (n) {
+      var markers = '';
+      var d;
+      for (d = 0; d <= n; d += 1) markers += '$';
+      html += examLiveCmdHtml(markers);
+      html += examLiveAltInlineHtml(n, parsed.alts[n]);
+    });
+    return html;
+  }
+
+  function highlightChoiceVariantLineHtml(line, row) {
+    var stmtIdx = line.indexOf(row.stmt);
+    if (stmtIdx < 0) return highlightLiveEditLineCommands(line);
+    var html = highlightLiveEditLineCommands(line.slice(0, stmtIdx));
+    html += highlightChoiceVariantStmtHtml(row.stmt);
+    if (stmtIdx + row.stmt.length < line.length) {
+      html += highlightLiveEditLineCommands(line.slice(stmtIdx + row.stmt.length));
+    }
+    return html;
+  }
+
   function highlightLiveEditLineContent(line) {
+    var chVar = parseChoiceVariantLine(line);
+    if (chVar) return highlightChoiceVariantLineHtml(line, chVar);
     var suffixAt = findWfModeSuffixStart(line);
     if (suffixAt >= 0) {
       var wf = parseWfLine(line);
@@ -4061,6 +4262,7 @@
       '.exam-dollar-choice-list{list-style:none;margin:8px 0 10px;padding:0}' +
       '.exam-dollar-choice-list-item{display:flex;align-items:flex-start;gap:8px;margin:0 0 8px;line-height:1.55}' +
       '.exam-dollar-choice-list-item:last-child{margin-bottom:0}' +
+      '.exam-dollar-choice-list-item--alts .exam-dollar-choice-alt-view{display:flex;align-items:flex-start;gap:8px;width:100%;line-height:1.55}' +
       '.exam-dollar-choice-text{flex:1;min-width:0}' +
       '.aids-box{width:100%;max-width:none;box-sizing:border-box}' +
       '.aids-general-rules-list{margin:0;padding:0 0 0 1.35em;list-style:disc outside}' +
