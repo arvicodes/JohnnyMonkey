@@ -521,6 +521,16 @@
     return normalizeClipboardPlainText(div.innerText || div.textContent || '');
   }
 
+  function clipboardHasImageItem(clipboardData) {
+    var items = clipboardData && clipboardData.items;
+    if (!items) return false;
+    var i;
+    for (i = 0; i < items.length; i += 1) {
+      if (String(items[i].type || '').indexOf('image/') === 0) return true;
+    }
+    return false;
+  }
+
   function wireLiveEditPasteAndUndo(live, taskEl) {
     if (!live || live.__jmPasteWired) return;
     live.__jmPasteWired = true;
@@ -529,16 +539,10 @@
       function (e) {
         var cd = e.clipboardData;
         if (!cd) return;
-        var items = cd.items;
-        if (items) {
-          var i;
-          for (i = 0; i < items.length; i += 1) {
-            if (String(items[i].type || '').indexOf('image/') === 0) return;
-          }
-        }
         var plain = clipboardPlainForLiveEdit(cd);
         if (!plain) return;
         e.preventDefault();
+        e.stopImmediatePropagation();
         pushLiveEditUndo(live);
         insertPlainTextIntoLiveEdit(live, plain);
         sanitizeLiveEditDom(live);
@@ -3952,19 +3956,14 @@
       if (f) handleImageFileForTask(taskEl, f);
     });
     el.addEventListener('paste', function (e) {
-      var items = e.clipboardData && e.clipboardData.items;
+      var cd = e.clipboardData;
+      if (!cd || !clipboardHasImageItem(cd)) return;
+      if (clipboardPlainForLiveEdit(cd)) return;
+      var items = cd.items;
       if (!items) return;
-      var i;
-      var hasImage = false;
-      for (i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf('image/') === 0) {
-          hasImage = true;
-          break;
-        }
-      }
-      if (!hasImage) return;
       e.preventDefault();
       e.stopPropagation();
+      var i;
       for (i = 0; i < items.length; i++) {
         if (items[i].type.indexOf('image/') === 0) {
           handleImageFileForTask(taskEl, items[i].getAsFile());
