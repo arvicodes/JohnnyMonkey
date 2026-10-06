@@ -4092,25 +4092,29 @@
     if (!live) return null;
     var wrap = live.parentNode;
     if (wrap && wrap.classList && wrap.classList.contains('exam-dollar-live-edit-wrap')) {
-      return wrap.querySelector('.exam-dollar-live-edit-highlight');
+      var staleHi = wrap.querySelector('.exam-dollar-live-edit-highlight');
+      if (staleHi && staleHi.parentNode) staleHi.parentNode.removeChild(staleHi);
+      return null;
     }
     wrap = document.createElement('div');
     wrap.className = 'exam-dollar-live-edit-wrap teacher-only';
-    var hi = document.createElement('div');
-    hi.className = 'exam-dollar-live-edit-highlight';
-    hi.setAttribute('aria-hidden', 'true');
     live.parentNode.insertBefore(wrap, live);
-    wrap.appendChild(hi);
     wrap.appendChild(live);
-    return hi;
+    return null;
   }
 
   function fitLiveEditWrapToContent(live) {
     if (!live) return;
-    live.style.height = 'auto';
-    live.style.minHeight = '4.5em';
+    live.style.height = '';
+    live.style.minHeight = '';
     var wrap = live.closest('.exam-dollar-live-edit-wrap');
-    if (wrap) wrap.style.height = 'auto';
+    if (wrap) wrap.style.height = '';
+  }
+
+  function normalizeLiveEditDisplayText(text) {
+    var t = String(text || '').replace(/\r/g, '');
+    t = t.replace(/\n{3,}/g, '\n\n');
+    return t.replace(/\n+$/, '');
   }
 
   function refreshLiveEditHighlight(live) {
@@ -4123,7 +4127,7 @@
     var live = taskEl.querySelector('.exam-dollar-live-edit');
     if (!src || !live) return;
     var meta = parseTaskSource(src.value);
-    live.textContent = liveEditTextFromMeta(meta);
+    live.textContent = normalizeLiveEditDisplayText(liveEditTextFromMeta(meta));
     refreshLiveEditHighlight(live);
   }
 
@@ -4403,9 +4407,9 @@
       }, 120);
     });
     live.addEventListener('blur', function () {
-      var trimmed = trimLiveEditTrailingBlankLines(liveEditPlainTextFromEl(live));
-      if (trimmed !== liveEditPlainTextFromEl(live)) {
-        live.textContent = trimmed;
+      var plain = normalizeLiveEditDisplayText(liveEditPlainTextFromEl(live));
+      if (plain !== liveEditPlainTextFromEl(live)) {
+        live.textContent = plain;
         refreshLiveEditHighlight(live);
       }
       syncSourceFromLiveEdit(taskEl);
@@ -4615,10 +4619,11 @@
       '.exam-dollar-restore-source:hover{background:#e3f2fd}' +
       '.exam-dollar-color-swatch{width:20px;height:20px;border:1px solid rgba(0,0,0,.2);border-radius:4px;cursor:pointer;padding:0}' +
       '.exam-dollar-color-swatch:hover{transform:scale(1.08)}' +
-      '.teacher-mode .exam-dollar-live-edit-wrap{position:relative;display:block;width:100%;min-height:0;margin:0;padding:2px 4px;border-radius:3px;background:#e3f2fd;border:1px solid #bbdefb;overflow:visible;box-sizing:border-box}' +
+      '.teacher-mode .exam-dollar-live-edit-wrap{position:relative;display:block;width:100%;margin:0;padding:2px 4px;border-radius:3px;background:#e3f2fd;border:1px solid #bbdefb;overflow:hidden;box-sizing:border-box}' +
       '.teacher-mode .exam-dollar-live-edit-wrap:focus-within{box-shadow:0 0 0 2px rgba(225,6,0,0.25);border-color:#90caf9}' +
       '.teacher-mode .exam-dollar-live-edit-highlight{display:none!important}' +
-      '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{display:block;position:relative!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;z-index:1;width:100%;min-height:4.5em!important;padding:0;margin:0;line-height:1.32;font-family:Arial,sans-serif;font-size:14px;outline:none;border-radius:0;white-space:pre-wrap;word-break:break-word;box-sizing:border-box;border:none;overflow:visible;resize:none;background:transparent;color:#222;-webkit-text-fill-color:#222;caret-color:#222}' +
+      '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit{display:block;position:relative!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;z-index:1;width:100%;min-height:3.25em;max-height:min(280px,38vh);padding:0;margin:0;line-height:1.32;font-family:Arial,sans-serif;font-size:14px;outline:none;border-radius:0;white-space:pre-wrap;word-break:break-word;box-sizing:border-box;border:none;overflow-x:hidden;overflow-y:auto;resize:none;background:transparent;color:#222;-webkit-text-fill-color:#222;caret-color:#222}' +
+      '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit div,.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit p{margin:0;padding:0;line-height:inherit}' +
       '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit::selection{background:rgba(21,101,192,.22);color:#222;-webkit-text-fill-color:#222}' +
       '.exam-dollar-wf-alt-pair{display:grid;grid-template-columns:4.5em 4.5em;width:100%;max-width:9.5em;margin:0 auto}' +
       '.exam-dollar-wf-alt-cell{padding:4px 6px!important;vertical-align:middle!important}' +
