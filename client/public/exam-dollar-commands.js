@@ -8,6 +8,7 @@
  * $_a/b/c_$    Lücke mit mehreren gültigen Lösungen
  * $_a $$b_$    Lücke mit Formulierungsvariante (Standard / A1 wie bei $L … $$ … $)
  * Wort tauschen: „… mit $$durch $_1000/t_$“ → A1: „durch“ statt „mit“, Lücke bleibt gleich
+ * Zeilen-Varianten (A1/A2): Basiszeile, dann „$$ …“ / „$$$ …“ (z. B. Umrechnungsaufgaben)
  * $__$         großes Eingabefeld
  * $B Wort B$   fett · $I Wort I$ kursiv · $U Wort U$ unterstrichen (⌘/Ctrl+B, I, U im Textfeld)
  * $L Formel L$  Mathe/Formelschrift (LaTeX, KaTeX) · ⌘/Ctrl+L (auch $M … M$)
@@ -3145,14 +3146,53 @@
     return { num: num, inline: String(m[2] || '').trim() };
   }
 
-  function renderAltGroupHtml(baseHtml, alts, idGen) {
+  /** Zeilenanfang: „$$ 85 mm …“ → A1, „$$$ …“ → A2 (wie $a1$ / $a2$) */
+  function parseFlowLineLeadingAltPrefix(line) {
+    var t = String(line || '');
+    var pos = 0;
+    while (pos < t.length && /\s/.test(t[pos])) pos += 1;
+    if (pos >= t.length || t[pos] !== '$') return null;
+    var j = pos;
+    while (j < t.length && t[j] === '$') j += 1;
+    if (j - pos < 2) return null;
+    var altNum = j - pos - 1;
+    while (j < t.length && /\s/.test(t[j])) j += 1;
+    return { altNum: altNum, content: t.slice(j).trim() };
+  }
+
+  function tryCollectFlowDollarCountAltBlock(lines, startIndex) {
+    var rawBase = String(lines[startIndex] || '');
+    var baseLine = rawBase.trim();
+    if (!baseLine) return null;
+    if (/^\s*\$\$/.test(rawBase)) return null;
+    var alts = [];
+    var j = startIndex + 1;
+    var expected = 1;
+    while (j < lines.length) {
+      var raw = lines[j];
+      if (!String(raw || '').trim()) break;
+      var pref = parseFlowLineLeadingAltPrefix(raw);
+      if (!pref || pref.altNum !== expected) break;
+      alts.push({ num: pref.altNum, content: pref.content });
+      expected += 1;
+      j += 1;
+    }
+    if (!alts.length) return null;
+    return { baseLine: baseLine, alts: alts, nextIndex: j };
+  }
+
+  function renderAltGroupHtml(baseHtml, alts, idGen, extraGroupClass) {
     if (!alts || !alts.length) return baseHtml || '';
     var gid = idGen();
     var sorted = alts.slice().sort(function (a, b) {
       return a.num - b.num;
     });
+    var groupClass = 'exam-dollar-alt-group';
+    if (extraGroupClass) groupClass += ' ' + extraGroupClass;
     var out =
-      '<div class="exam-dollar-alt-group" data-jm-alt-group="' +
+      '<div class="' +
+      groupClass +
+      '" data-jm-alt-group="' +
       escapeHtml(gid) +
       '" data-jm-alt-active="0">';
     out += '<div class="exam-dollar-alt-views">';
@@ -3339,6 +3379,22 @@
       }
       flushWf();
       flushChoice();
+      var flowAltBlock = tryCollectFlowDollarCountAltBlock(lines, i);
+      if (flowAltBlock) {
+        flushFlow();
+        parts.push(
+          renderAltGroupHtml(
+            renderInline(flowAltBlock.baseLine, idGen),
+            flowAltBlock.alts.map(function (a) {
+              return { num: a.num, html: renderInline(a.content, idGen) };
+            }),
+            idGen,
+            'exam-dollar-flow-alt-group',
+          ),
+        );
+        i = flowAltBlock.nextIndex - 1;
+        continue;
+      }
       if (isFlowImageOnlyLine(line)) {
         if (textBuffer.length) {
           flowImgBuffer.push(line);
@@ -4092,6 +4148,25 @@
         );
         continue;
       }
+      var flowAltPref = parseFlowLineLeadingAltPrefix(line);
+      if (flowAltPref) {
+        var lead = String(line || '').match(/^(\s*)/);
+        var prefix = lead ? lead[1] : '';
+        var markers = '';
+        var d;
+        for (d = 0; d <= flowAltPref.altNum; d += 1) markers += '$';
+        htmlLines.push(
+          escapeHtml(prefix) +
+            examLiveCmdHtml(markers) +
+            ' ' +
+            '<span class="exam-live-alt-block exam-live-alt-' +
+            flowAltPref.altNum +
+            '">' +
+            highlightLiveEditLineContent(flowAltPref.content) +
+            '</span>',
+        );
+        continue;
+      }
       if (blockAlt && line.trim()) {
         htmlLines.push(
           '<span class="exam-live-alt-block exam-live-alt-' +
@@ -4708,6 +4783,8 @@
       '.exam-dollar-variant-mark{display:inline;vertical-align:baseline}' +
       '.exam-dollar-gap-alt-group.exam-dollar-alt-group,.exam-dollar-word-gap-alt.exam-dollar-alt-group{margin:0;display:inline;vertical-align:baseline}' +
       '.exam-dollar-gap-alt-group .exam-dollar-alt-views,.exam-dollar-word-gap-alt .exam-dollar-alt-views{display:inline}' +
+      '.exam-dollar-flow-alt-group.exam-dollar-alt-group{margin:6px 0;display:block}' +
+      '.exam-dollar-flow-alt-group .exam-dollar-alt-view{display:block;line-height:1.55}' +
       '.exam-dollar-choice-text{flex:1;min-width:0}' +
       '.aids-box{width:100%;max-width:none;box-sizing:border-box}' +
       '.aids-general-rules-list{margin:0;padding:0 0 0 1.35em;list-style:disc outside}' +
