@@ -23,6 +23,11 @@ import {
   toPortableFolderRef,
 } from '../utils/folderPathMatch';
 import { buildExamVersionInfo } from '../lib/examVersionPaths';
+import {
+  closeOpenExamSessionsForGroups,
+  getExamSessionHistoryForTeacher,
+  recordExamSessionStarts,
+} from '../lib/examSessionHistory';
 import { StorageManager } from '../utils/storageManager';
 import { ensureDefaultModeratorsForGroups } from '../services/learningGroupModerator';
 
@@ -583,6 +588,15 @@ router.post('/exam-beacon/start', async (req: Request, res: Response) => {
         update: {},
       });
     }
+    await recordExamSessionStarts(
+      prisma,
+      ids.map((gid) => ({
+        groupId: gid,
+        filePath: normalizedPath,
+        lessonPath: lessonPathNorm,
+        beaconId,
+      })),
+    );
     return res.json({ ok: true, beaconId, filePath: normalizedPath, active: true, groupIds: ids });
   } catch (e: any) {
     console.error('exam-beacon/start:', e);
@@ -620,10 +634,28 @@ router.post('/exam-beacon/stop', async (req: Request, res: Response) => {
         });
       }
     }
+    await closeOpenExamSessionsForGroups(prisma, ids);
     return res.json({ ok: true, active: false, filePath: lastPath, groupIds: ids });
   } catch (e: any) {
     console.error('exam-beacon/stop:', e);
     return res.status(500).json({ error: e?.message || 'Serverfehler' });
+  }
+});
+
+/** Lehrer: Start-/Stop-Historie einer Prüfungsdatei (Lerngruppe, Dauer, Abgaben). */
+router.get('/exam-sessions/history', async (req: Request, res: Response) => {
+  try {
+    const teacherId = String(req.query.teacherId || '').trim();
+    const filePath = String(req.query.filePath || '').trim();
+    if (!teacherId || !filePath) {
+      return res.status(400).json({ error: 'teacherId und filePath sind erforderlich' });
+    }
+    const sessions = await getExamSessionHistoryForTeacher(prisma, teacherId, filePath);
+    return res.json({ sessions });
+  } catch (e: unknown) {
+    console.error('exam-sessions/history:', e);
+    const message = e instanceof Error ? e.message : String(e);
+    return res.status(500).json({ error: message || 'Serverfehler' });
   }
 });
 

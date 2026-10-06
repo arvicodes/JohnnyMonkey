@@ -16,6 +16,11 @@ import {
   RadioGroup,
   Tooltip,
   Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
 } from '@mui/material';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import QuizIcon from '@mui/icons-material/Quiz';
@@ -26,6 +31,7 @@ import GradingIcon from '@mui/icons-material/Grading';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
+import HistoryIcon from '@mui/icons-material/History';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AddIcon from '@mui/icons-material/Add';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
@@ -52,6 +58,12 @@ import {
   stopLessonExam,
   teacherIdFromStorage,
 } from '../../lib/lessonExamBeacon';
+import {
+  fetchExamSessionHistory,
+  formatExamSessionDateTime,
+  formatExamSessionDuration,
+  type ExamSessionHistoryRow,
+} from '../../lib/examSessionHistory';
 import {
   fetchExamLibraryIconsFromServer,
   getExamLibraryIcon,
@@ -787,6 +799,10 @@ export const DashboardExamsPanel: React.FC<{
   const [lastStartGroupIdsByExam, setLastStartGroupIdsByExam] = useState<Record<string, string[]>>(
     {},
   );
+  const [examHistoryItem, setExamHistoryItem] = useState<LibraryExamItem | null>(null);
+  const [examHistoryRows, setExamHistoryRows] = useState<ExamSessionHistoryRow[]>([]);
+  const [examHistoryLoading, setExamHistoryLoading] = useState(false);
+  const [examHistoryError, setExamHistoryError] = useState<string | null>(null);
 
   const loadExamIcons = useCallback(async () => {
     const loaded = await fetchExamLibraryIconsFromServer();
@@ -982,6 +998,31 @@ export const DashboardExamsPanel: React.FC<{
     }
   }, [examStartDialogItem, examStartGroupIds, onNotify]);
 
+  const openExamHistoryDialog = useCallback((item: LibraryExamItem) => {
+    setExamHistoryItem(item);
+    setExamHistoryRows([]);
+    setExamHistoryError(null);
+    setExamHistoryLoading(true);
+    void fetchExamSessionHistory(item.path)
+      .then((rows) => setExamHistoryRows(rows))
+      .catch((e) =>
+        setExamHistoryError(e instanceof Error ? e.message : 'Historie konnte nicht geladen werden'),
+      )
+      .finally(() => setExamHistoryLoading(false));
+  }, []);
+
+  const refreshExamHistory = useCallback(() => {
+    if (!examHistoryItem) return;
+    setExamHistoryLoading(true);
+    setExamHistoryError(null);
+    void fetchExamSessionHistory(examHistoryItem.path)
+      .then((rows) => setExamHistoryRows(rows))
+      .catch((e) =>
+        setExamHistoryError(e instanceof Error ? e.message : 'Historie konnte nicht geladen werden'),
+      )
+      .finally(() => setExamHistoryLoading(false));
+  }, [examHistoryItem]);
+
   const buckets = useMemo(() => groupByStufeReihe(items), [items]);
 
   const emptyHint =
@@ -1127,6 +1168,16 @@ export const DashboardExamsPanel: React.FC<{
                     </TinyAction>
                   );
                 })() : null}
+                {!isExamVariantFile(item.name) ? (
+                  <TinyAction
+                    title="Historie — Starts, Dauer und Abgaben pro Lerngruppe"
+                    bgcolor="#546e7a"
+                    hover="#455a64"
+                    onClick={() => openExamHistoryDialog(item)}
+                  >
+                    <HistoryIcon sx={{ fontSize: 12 }} />
+                  </TinyAction>
+                ) : null}
                 {onCorrectExam ? (
                   <TinyAction
                     title="Korrektur"
@@ -1290,6 +1341,84 @@ export const DashboardExamsPanel: React.FC<{
         >
           Starten
         </Button>
+      </DialogActions>
+    </Dialog>
+    <Dialog
+      open={Boolean(examHistoryItem)}
+      onClose={() => setExamHistoryItem(null)}
+      maxWidth="md"
+      fullWidth
+    >
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+        <span>
+          Historie —{' '}
+          {examHistoryItem?.name.replace(/\.html?$/i, '') || 'Prüfung'}
+        </span>
+        <Tooltip title="Aktualisieren">
+          <span>
+            <IconButton
+              size="small"
+              aria-label="Historie aktualisieren"
+              disabled={examHistoryLoading}
+              onClick={() => refreshExamHistory()}
+            >
+              <RefreshIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </DialogTitle>
+      <DialogContent sx={{ pt: 0 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+          Pro Start: Lerngruppe, Beginn, Dauer (bis Stopp oder jetzt), Abgaben in diesem Zeitraum.
+          Einträge gibt es ab dem ersten Start nach dem Update; ältere Durchläufe sind nicht
+          nachträglich erfasst.
+        </Typography>
+        {examHistoryLoading && examHistoryRows.length === 0 ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+            <CircularProgress size={28} />
+          </Box>
+        ) : examHistoryError ? (
+          <Typography color="error" variant="body2">
+            {examHistoryError}
+          </Typography>
+        ) : examHistoryRows.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            Noch keine protokollierten Starts für diese Prüfung.
+          </Typography>
+        ) : (
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Lerngruppe</TableCell>
+                <TableCell>Start</TableCell>
+                <TableCell>Ende</TableCell>
+                <TableCell align="right">Dauer</TableCell>
+                <TableCell align="right">Abgaben</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {examHistoryRows.map((row) => (
+                <TableRow key={row.id} sx={row.running ? { bgcolor: 'rgba(46, 125, 50, 0.06)' } : undefined}>
+                  <TableCell>
+                    {row.groupName}
+                    {row.running ? (
+                      <Chip label="läuft" size="small" color="success" sx={{ ml: 0.75, height: 18, fontSize: '0.65rem' }} />
+                    ) : null}
+                  </TableCell>
+                  <TableCell>{formatExamSessionDateTime(row.startedAt)}</TableCell>
+                  <TableCell>
+                    {row.endedAt ? formatExamSessionDateTime(row.endedAt) : '—'}
+                  </TableCell>
+                  <TableCell align="right">{formatExamSessionDuration(row.durationMs)}</TableCell>
+                  <TableCell align="right">{row.submissionCount}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setExamHistoryItem(null)}>Schließen</Button>
       </DialogActions>
     </Dialog>
     <EmojiSelector

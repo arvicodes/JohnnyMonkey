@@ -154,6 +154,7 @@ model LearningGroup {
   lessonSharedInputShares LessonSharedInputShare[]
   lessonCollabFlashcardBeacons LessonCollabFlashcardBeacon[]
   lessonExamBeacons            LessonExamBeacon[]
+  lessonExamSessions           LessonExamSession[]
   lessonInteractiveExerciseBeacons LessonInteractiveExerciseBeacon[]
   interactiveExerciseProgress    LessonInteractiveExerciseProgress[]
   scheduleSlots                ScheduleSlot[]
@@ -177,6 +178,22 @@ model LessonExamBeacon {
   active     Boolean       @default(true)
   updatedAt  DateTime      @updatedAt
   group      LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+/// Protokoll: wann welche Lerngruppe welche Prüfung gestartet/beendet hat (Historie-Tab).
+model LessonExamSession {
+  id         String        @id @default(uuid())
+  groupId    String
+  filePath   String
+  lessonPath String        @default("")
+  beaconId   String
+  startedAt  DateTime      @default(now())
+  endedAt    DateTime?
+  group      LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([filePath])
+  @@index([groupId])
+  @@index([startedAt])
 }
 
 /// Lehrer startet interaktive Übung → SuS bekommen Vollbild-Overlay (Poll).

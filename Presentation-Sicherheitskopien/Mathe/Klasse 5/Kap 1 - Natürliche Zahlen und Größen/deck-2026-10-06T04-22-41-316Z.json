@@ -2,7 +2,7 @@
   "version": 1,
   "title": "Kap 1 - Natürliche Zahlen und Größen",
   "lessonPath": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen",
-  "updatedAt": "2026-09-18T08:12:58.021Z",
+  "updatedAt": "2026-09-29T08:12:53.438Z",
   "slides": [
     {
       "layout": "title-slide",
@@ -2773,7 +2773,11 @@
       "elements": [],
       "transition": "fade",
       "revealEnabled": true,
-      "zoneRevealSteps": {}
+      "zoneRevealSteps": {},
+      "slideExam": {
+        "path": "git-intern/Mathe/Klasse 5/Kap 1 - Natürliche Zahlen und Größen/KA_Klassenarbeit 1: Natürliche Zahlen.html",
+        "name": "KA_Klassenarbeit 1: Natürliche Zahlen.html"
+      }
     },
     {
       "id": "slide-1788431257741-o54ld",
@@ -2809,7 +2813,13 @@
       "elements": [],
       "transition": "fade",
       "revealEnabled": true,
-      "zoneRevealSteps": {}
+      "zoneRevealSteps": {},
+      "slideInteractiveExercise": {
+        "id": "ex-1790669422446",
+        "title": "Interaktive Übung",
+        "packId": "roman-numerals",
+        "topics": []
+      }
     },
     {
       "layout": "blank",
