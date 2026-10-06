@@ -2033,8 +2033,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   
   // Noten-Sektion aufklappbar
   const [gradesExpanded, setGradesExpanded] = useState(false);
-  /** Kacheln unter dem Namen (Noten/EPO/…) vorerst hinter Häkchen versteckt */
-  const studentStatsSectionEnabled = false;
+  /** Kacheln unter dem Namen (Noten, Epochal, Karteikarten, …) */
+  const studentStatsSectionEnabled = true;
   
   // Flashcard Learning States
   const [flashcardLearningOpen, setFlashcardLearningOpen] = useState(false);
@@ -6357,264 +6357,96 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   )}
                 </Box>
 
-                {/* Noten / EPO / Kacheln — vorerst nur Aufklapp-Häkchen (noch nicht aktiv) */}
-                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1.4 }}>
-                  <Tooltip title="Noten & Übersicht — kommt bald wieder">
-                    <Box
-                      component="span"
-                      aria-label="Noten und Übersicht (vorübergehend geschlossen)"
-                      aria-disabled
-                      sx={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 0.35,
-                        px: 1,
-                        py: 0.35,
-                        borderRadius: 1.25,
-                        border: '1px solid rgba(158,158,158,0.45)',
-                        bgcolor: 'rgba(245,245,245,0.95)',
-                        color: '#9e9e9e',
-                        opacity: 0.72,
-                        cursor: 'default',
-                        userSelect: 'none',
-                        filter: 'grayscale(0.35)',
-                      }}
-                    >
-                      <Typography
-                        component="span"
-                        sx={{
-                          fontSize: '0.68rem',
-                          fontWeight: 650,
-                          letterSpacing: 0.02,
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        Noten · EPO · mehr
-                      </Typography>
-                      <ExpandMoreIcon sx={{ fontSize: 18, opacity: 0.85 }} />
-                    </Box>
-                  </Tooltip>
-                </Box>
-
-                {studentStatsSectionEnabled && (
-                  <>
-                {/* Character Stats */}
-                <Grid container spacing={1.4} sx={{ mb: 2.1 }}>
-                  <Grid item xs={4}>
-                    <Box sx={{ 
-                      bgcolor: '#f5f5f5',
-                      borderRadius: 1.4,
-                      p: 1.4,
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      '&:hover': {
-                        bgcolor: '#e0e0e0'
-                      }
-                    }}
-                    onClick={() => {
-                      setFlashcardLearningOpen(true);
-                      setGradesExpanded(false);
-                      setParticipationExpanded(false);
-                    }}
-                    >
-                      <Typography variant="h4" sx={{ 
-                        color: '#424242',
-                        fontWeight: 'bold',
-                        fontSize: '1.8rem',
-                        mb: 0.35
-                      }}>
-                        🗂️
-                      </Typography>
-                      <Typography variant="caption" sx={{ 
-                        color: '#424242',
-                        fontSize: '0.65rem',
-                        fontWeight: 600,
-                        textTransform: 'uppercase'
-                      }}>
-                        Karteikarten lernen
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={4}>
-                    <Box sx={{ 
-                      bgcolor: '#f5f5f5',
-                      borderRadius: 1.4,
-                      p: 1.4,
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      '&:hover': {
-                        bgcolor: '#e0e0e0'
-                      }
-                    }}
-                    onClick={() => {
-                      setShowSubmissionStats(true);
-                      setGradesExpanded(false);
-                      setParticipationExpanded(false);
-                    }}
-                    >
-                      <Typography variant="h4" sx={{ 
-                        color: '#424242',
-                        fontWeight: 'bold',
-                        fontSize: '1.8rem',
-                        mb: 0.35
-                      }}>
-                        📊
-                      </Typography>
-                      <Typography variant="caption" sx={{ 
-                        color: '#424242',
-                        fontSize: '0.65rem',
-                        fontWeight: 600,
-                        textTransform: 'uppercase'
-                      }}>
-                        Abgabestatistik
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={4}>
-                    <Box sx={{ 
-                      bgcolor: '#f5f5f5',
-                      borderRadius: 1.4,
-                      p: 1.4,
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      position: 'relative',
-                      '&:hover': {
-                        bgcolor: '#e0e0e0'
-                      }
-                    }}
-                    onClick={() => {
-                      setShowInbox(true);
-                      setGradesExpanded(false);
-                      setParticipationExpanded(false);
-                    }}
-                    >
-                      {unreadMessageCount > 0 && (
-                        <Box sx={{
-                          position: 'absolute',
-                          top: 8,
-                          right: 8,
-                          bgcolor: '#f44336',
-                          color: '#fff',
-                          borderRadius: '50%',
-                          width: 20,
-                          height: 20,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          zIndex: 1
-                        }}>
-                          {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
-                        </Box>
-                      )}
-                      <Typography variant="h4" sx={{ 
-                        color: '#424242',
-                        fontWeight: 'bold',
-                        fontSize: '1.8rem',
-                        mb: 0.35
-                      }}>
-                        📬
-                      </Typography>
-                      <Typography variant="caption" sx={{ 
-                        color: '#424242',
-                        fontSize: '0.65rem',
-                        fontWeight: 600,
-                        textTransform: 'uppercase'
-                      }}>
-                        Posteingang
-                      </Typography>
-                    </Box>
-                  </Grid>
-                </Grid>
-
-                {/* Noten und Mitarbeit Kacheln */}
-                {lerngruppen.length > 0 && (
+                {studentStatsSectionEnabled && lerngruppen.length > 0 && (
                   <Grid container spacing={1.4} sx={{ mb: 2.1 }}>
                     <Grid item xs={6}>
-                      <Box sx={{ 
-                        bgcolor: '#f5f5f5',
-                        borderRadius: 1.4,
-                        p: 1.4,
-                        textAlign: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        '&:hover': {
-                          bgcolor: '#e0e0e0'
-                        }
-                      }}
-                      onClick={() => {
-                        if (gradesExpanded) {
-                          setGradesExpanded(false);
-                        } else {
-                          setGradesExpanded(true);
-                          setParticipationExpanded(false);
-                        }
-                      }}
+                      <Box
+                        sx={{
+                          bgcolor: gradesExpanded ? 'rgba(25, 118, 210, 0.08)' : '#f5f5f5',
+                          borderRadius: 1.4,
+                          p: 1.4,
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          border: gradesExpanded
+                            ? '1px solid rgba(25, 118, 210, 0.35)'
+                            : '1px solid transparent',
+                          '&:hover': {
+                            bgcolor: gradesExpanded ? 'rgba(25, 118, 210, 0.12)' : '#e0e0e0',
+                          },
+                        }}
+                        onClick={() => setGradesExpanded((open) => !open)}
                       >
-                        <Typography variant="h4" sx={{ 
-                          color: '#424242',
-                          fontWeight: 'bold',
-                          fontSize: '1.8rem',
-                          mb: 0.35
-                        }}>
+                        <Typography
+                          variant="h4"
+                          sx={{
+                            color: '#424242',
+                            fontWeight: 'bold',
+                            fontSize: '1.8rem',
+                            mb: 0.35,
+                          }}
+                        >
                           📝
                         </Typography>
-                        <Typography variant="caption" sx={{ 
-                          color: '#424242',
-                          fontSize: '0.65rem',
-                          fontWeight: 600,
-                          textTransform: 'uppercase'
-                        }}>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: '#424242',
+                            fontSize: '0.65rem',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                          }}
+                        >
                           Noten
                         </Typography>
                       </Box>
                     </Grid>
                     <Grid item xs={6}>
-                      <Box sx={{ 
-                        bgcolor: '#f5f5f5',
-                        borderRadius: 1.4,
-                        p: 1.4,
-                        textAlign: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        '&:hover': {
-                          bgcolor: '#e0e0e0'
-                        }
-                      }}
-                      onClick={() => {
-                        if (participationExpanded) {
-                          setParticipationExpanded(false);
-                        } else {
-                          setParticipationExpanded(true);
-                          setGradesExpanded(false);
-                        }
-                      }}
-                      >
-                        <Typography variant="h4" sx={{ 
-                          color: '#424242',
-                          fontWeight: 'bold',
-                          fontSize: '1.8rem',
-                          mb: 0.35
-                        }}>
-                          👋
-                        </Typography>
-                        <Typography variant="caption" sx={{ 
-                          color: '#424242',
-                          fontSize: '0.65rem',
-                          fontWeight: 600,
-                          textTransform: 'uppercase'
-                        }}>
-                          Epochal
-                        </Typography>
-                      </Box>
+                      <Tooltip title="Weitere Bereiche — noch nicht aktiv">
+                        <Box
+                          component="span"
+                          aria-label="Mehr (noch nicht aktiv)"
+                          aria-disabled
+                          sx={{
+                            display: 'block',
+                            bgcolor: 'rgba(245, 245, 245, 0.95)',
+                            borderRadius: 1.4,
+                            p: 1.4,
+                            textAlign: 'center',
+                            cursor: 'default',
+                            userSelect: 'none',
+                            border: '1px solid rgba(158, 158, 158, 0.45)',
+                            opacity: 0.72,
+                            filter: 'grayscale(0.35)',
+                          }}
+                        >
+                          <Typography
+                            variant="h4"
+                            sx={{
+                              color: '#9e9e9e',
+                              fontWeight: 'bold',
+                              fontSize: '1.8rem',
+                              mb: 0.35,
+                              lineHeight: 1,
+                            }}
+                          >
+                            <ExpandMoreIcon sx={{ fontSize: '1.8rem' }} />
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: '#9e9e9e',
+                              fontSize: '0.65rem',
+                              fontWeight: 600,
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            Mehr
+                          </Typography>
+                        </Box>
+                      </Tooltip>
                     </Grid>
                   </Grid>
-                )}
-                  </>
                 )}
 
                 {/* Noten Anzeige */}

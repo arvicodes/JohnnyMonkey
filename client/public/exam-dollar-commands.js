@@ -4,6 +4,7 @@
  * $5 Punkte$   Punkte rechts in der Aufgabenzeile
  * $C$          Checkbox (normale Aussage)
  * $CC$         Checkbox — nur diese markiert die richtige Lösung
+ * $C $$CC $$$C …   Checkbox-Art pro Variante in einer Zeile · Zeilenanfang $$/$$$: ganze Zeile pro A1/A2
  * $_$          kleine Lücke (inline)
  * $_a/b/c_$    Lücke mit mehreren gültigen Lösungen
  * $_a $$b_$    Lücke mit Formulierungsvariante (Standard / A1 wie bei $L … $$ … $)
@@ -1848,16 +1849,13 @@
 
   function scanBodyDollarTokens(body) {
     var gaps = 0;
-    var checkboxes = 0;
+    var checkboxes = countCheckboxRowsInBody(body);
     var wfRows = countWfRowsInBody(body);
     var paarePairs = countPaarePairsInBody(body);
     String(body || '')
       .split(/\r?\n/)
       .forEach(function (line) {
-        if (parseChoiceVariantLine(line)) {
-          checkboxes += 1;
-          return;
-        }
+        if (parseChoiceLineAny(line)) return;
         var i = 0;
         var s = line;
         while (i < s.length) {
@@ -1872,8 +1870,6 @@
           }
           var innerTrim = String(tok.inner || '').trim();
           if (parseGapToken(innerTrim)) gaps += 1;
-          else if (/^CC$/i.test(innerTrim)) checkboxes += 1;
-          else if (/^C$/i.test(innerTrim)) checkboxes += 1;
           i = tok.end;
         }
       });
@@ -1995,6 +1991,7 @@
       '.exam-dollar-choice-input:not(.exam-dollar-wf-input)',
     );
     inputs.forEach(function (inp) {
+      if (inp.closest('.exam-dollar-alt-view--hidden')) return;
       total += 1;
       var shouldCheck = inp.getAttribute('data-correct') === '1';
       if (inp.checked === shouldCheck) achieved += 1;
@@ -2200,6 +2197,84 @@
     return { variant: true, baseKind: baseKind, kindAlts: kindAlts, stmt: stmt };
   }
 
+  /** $CC$-Zeile mit optionalem $$/$$$-Zeilenpräfix (wie bei W/F-Paaren) */
+  function parseChoiceLineAny(line) {
+    var raw = String(line || '');
+    var lineAlt = 0;
+    var t = raw.trim();
+    if (!t) return null;
+    var linePref = parseFlowLineLeadingAltPrefix(raw);
+    if (linePref) {
+      lineAlt = linePref.altNum;
+      t = linePref.content;
+    }
+    var chVar = parseChoiceVariantLine(t);
+    if (chVar) {
+      chVar.lineAlt = lineAlt;
+      return chVar;
+    }
+    var ch = parseChoiceLine(t);
+    if (ch) {
+      ch.lineAlt = lineAlt;
+      return ch;
+    }
+    return null;
+  }
+
+  function coalesceChoiceLineAltGroups(buffer) {
+    var out = [];
+    var i = 0;
+    while (i < buffer.length) {
+      var a = buffer[i];
+      var la = a.lineAlt || 0;
+      if (la === 0) {
+        var lv = { 0: a };
+        i += 1;
+        if (i < buffer.length && (buffer[i].lineAlt || 0) === 1) {
+          lv[1] = buffer[i];
+          i += 1;
+          if (i < buffer.length && (buffer[i].lineAlt || 0) === 2) {
+            lv[2] = buffer[i];
+            i += 1;
+          }
+        }
+        if (Object.keys(lv).length > 1) out.push({ lineViews: lv });
+        else out.push(a);
+      } else if (la === 1) {
+        var lv2 = { 1: a };
+        i += 1;
+        if (i < buffer.length && (buffer[i].lineAlt || 0) === 2) {
+          lv2[2] = buffer[i];
+          i += 1;
+        }
+        out.push({ lineViews: lv2 });
+      } else {
+        out.push({ lineViews: { 2: a } });
+        i += 1;
+      }
+    }
+    return out;
+  }
+
+  function countCheckboxRowsInBody(body) {
+    var n = 0;
+    var buffer = [];
+    function flushBuf() {
+      if (!buffer.length) return;
+      n += coalesceChoiceLineAltGroups(buffer).length;
+      buffer = [];
+    }
+    String(body || '')
+      .split(/\r?\n/)
+      .forEach(function (line) {
+        var row = parseChoiceLineAny(line);
+        if (row) buffer.push(row);
+        else flushBuf();
+      });
+    flushBuf();
+    return n;
+  }
+
   function stmtAltGapSuffix(stmt, parsed) {
     if (!parsed) return '';
     var best = '';
@@ -2399,21 +2474,64 @@
     );
   }
 
+  function renderChoiceRowInner(row, idGen) {
+    if (row.variant) {
+      return renderChoiceVariantListItem(row, idGen)
+        .replace(/^\s*<li[^>]*>/, '')
+        .replace(/<\/li>\s*$/, '');
+    }
+    var html = renderChoiceCheckbox(row.kind === 'cc', idGen);
+    if (row.text) {
+      html +=
+        ' <span class="exam-dollar-choice-text">' + renderInline(row.text, idGen) + '</span>';
+    }
+    return html;
+  }
+
+  function renderChoiceLineAltListItem(lineViews, idGen) {
+    var nums = [0, 1, 2].filter(function (n) {
+      return !!lineViews[n];
+    });
+    if (!nums.length) return '';
+    var gid = idGen();
+    var viewsHtml = nums
+      .map(function (num) {
+        var hidden = num === 0 ? '' : ' exam-dollar-alt-view--hidden';
+        return (
+          '<div class="exam-dollar-alt-view' +
+          hidden +
+          '" data-jm-alt-view="' +
+          num +
+          '">' +
+          '<div class="exam-dollar-choice-line-alt-inner">' +
+          renderChoiceRowInner(lineViews[num], idGen) +
+          '</div></div>'
+        );
+      })
+      .join('');
+    return (
+      '<li class="exam-dollar-choice-list-item exam-dollar-choice-list-item--line-alts">' +
+      '<div class="exam-dollar-alt-group exam-dollar-choice-line-alt-group" data-jm-alt-group="' +
+      escapeHtml(gid) +
+      '" data-jm-alt-active="0">' +
+      '<div class="exam-dollar-alt-views">' +
+      viewsHtml +
+      '</div></div></li>'
+    );
+  }
+
   function renderChoiceList(rows, idGen) {
     var html = '<ul class="exam-dollar-choice-list">';
     rows.forEach(function (row) {
+      if (row.lineViews) {
+        html += renderChoiceLineAltListItem(row.lineViews, idGen);
+        return;
+      }
       if (row.variant) {
         html += renderChoiceVariantListItem(row, idGen);
         return;
       }
-      html +=
-        '<li class="exam-dollar-choice-list-item">' +
-        renderChoiceCheckbox(row.kind === 'cc', idGen);
-      if (row.text) {
-        html +=
-          ' <span class="exam-dollar-choice-text">' + renderInline(row.text, idGen) + '</span>';
-      }
-      html += '</li>';
+      html += '<li class="exam-dollar-choice-list-item">' + renderChoiceRowInner(row, idGen) + '</li>';
     });
     html += '</ul>';
     return html;
@@ -3559,7 +3677,7 @@
 
     function flushChoice() {
       if (!choiceBuffer.length) return;
-      parts.push(renderChoiceList(choiceBuffer, idGen));
+      parts.push(renderChoiceList(coalesceChoiceLineAltGroups(choiceBuffer), idGen));
       choiceBuffer = [];
     }
 
@@ -3602,8 +3720,7 @@
           }
           if (
             parseAltMarkerLine(ln) ||
-            parseChoiceLine(ln) ||
-            parseChoiceVariantLine(ln) ||
+            parseChoiceLineAny(ln) ||
             parseWfLine(ln) ||
             isPaareOpenLine(ln)
           )
@@ -3659,7 +3776,7 @@
         }
         if (
           nxt &&
-          (parseChoiceLine(nxt.line) || parseChoiceVariantLine(nxt.line)) &&
+          (parseChoiceLineAny(nxt.line)) &&
           choiceBuffer.length
         ) {
           continue;
@@ -3680,18 +3797,11 @@
         wfBuffer.push(wf);
         continue;
       }
-      var chVar = parseChoiceVariantLine(line);
-      if (chVar) {
+      var chRow = parseChoiceLineAny(line);
+      if (chRow) {
         flushFlow();
         flushWf();
-        choiceBuffer.push(chVar);
-        continue;
-      }
-      var ch = parseChoiceLine(line);
-      if (ch) {
-        flushFlow();
-        flushWf();
-        choiceBuffer.push(ch);
+        choiceBuffer.push(chRow);
         continue;
       }
       flushWf();
@@ -4405,6 +4515,24 @@
   }
 
   function highlightLiveEditLineContent(line) {
+    var flowPref = parseFlowLineLeadingAltPrefix(line);
+    if (flowPref) {
+      var lead = String(line || '').match(/^(\s*)/);
+      var prefix = lead ? lead[1] : '';
+      var markers = '';
+      var d;
+      for (d = 0; d <= flowPref.altNum; d += 1) markers += '$';
+      return (
+        escapeHtml(prefix) +
+        examLiveCmdHtml(markers) +
+        ' ' +
+        '<span class="exam-live-alt-block exam-live-alt-' +
+        flowPref.altNum +
+        '">' +
+        highlightLiveEditLineContent(flowPref.content) +
+        '</span>'
+      );
+    }
     var chVar = parseChoiceVariantLine(line);
     if (chVar) return highlightChoiceVariantLineHtml(line, chVar);
     var suffixAt = findWfModeSuffixStart(line);
@@ -5106,10 +5234,13 @@
       '.exam-dollar-compose-body{padding:0 10px 10px}' +
       '.exam-dollar-compose-label{font-size:11px;font-weight:700;color:#e65100;margin-bottom:6px}' +
       '.exam-dollar-compose-input{width:100%;font-family:Consolas,Monaco,monospace;font-size:12px;padding:8px;border:1px solid #ffb74d;border-radius:6px;resize:vertical;box-sizing:border-box}' +
-      '.exam-dollar-choice-list{list-style:none;margin:8px 0 10px;padding:0}' +
-      '.exam-dollar-choice-list-item{display:flex;align-items:flex-start;gap:8px;margin:0 0 8px;line-height:1.55}' +
-      '.exam-dollar-choice-list-item:last-child{margin-bottom:0}' +
+      '.exam-dollar-choice-list{list-style:none;margin:8px 0 10px;padding:0;display:flex;flex-direction:column;gap:8px}' +
+      '.exam-dollar-choice-list-item{display:flex;align-items:flex-start;gap:8px;margin:0;line-height:1.55}' +
       '.exam-dollar-choice-list-item--alts .exam-dollar-choice-alt-row{display:flex;align-items:flex-start;gap:8px;width:100%;line-height:1.55;flex-wrap:wrap}' +
+      '.exam-dollar-choice-list .exam-dollar-choice-line-alt-group,.exam-dollar-choice-list .exam-dollar-choice-line-alt-group .exam-dollar-alt-group{margin:0}' +
+      '.exam-dollar-choice-line-alt-group{width:100%}' +
+      '.exam-dollar-choice-line-alt-group .exam-dollar-alt-view{display:block;margin:0}' +
+      '.exam-dollar-choice-list-item--line-alts .exam-dollar-choice-line-alt-inner{display:flex;align-items:flex-start;gap:8px;width:100%;line-height:1.55;flex-wrap:wrap}' +
       '.exam-dollar-choice-kind-alt.exam-dollar-alt-group,.exam-dollar-stmt-alt.exam-dollar-alt-group{margin:0;display:inline;vertical-align:baseline}' +
       '.exam-dollar-choice-kind-alt .exam-dollar-alt-views,.exam-dollar-stmt-alt .exam-dollar-alt-views{display:inline}' +
       '.exam-dollar-variant-part{display:inline}' +
@@ -5178,12 +5309,16 @@
       '.exam-dollar-paare-pool--solution .exam-dollar-paare-card-inner{color:inherit!important}' +
       'body.show-solutions .exam-dollar-wf-row .exam-dollar-choice-correct .exam-dollar-choice-box{border-color:#2e7d32}' +
       '.exam-dollar-alt-group{margin:8px 0 10px}' +
+      '.exam-dollar-choice-list>.exam-dollar-choice-list-item .exam-dollar-alt-group{margin:0}' +
       '.exam-dollar-alt-view--hidden{display:none!important}' +
       '.teacher-mode .exam-dollar-math-alt-group .exam-dollar-alt-view:not(.exam-dollar-alt-view--hidden){display:inline-block;max-width:100%}' +
       '.teacher-mode .exam-dollar-wf-alt-group .exam-dollar-alt-view:not(.exam-dollar-alt-view--hidden){display:block}' +
       '.teacher-mode .exam-dollar-wf-line-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-wf-line-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #8e24aa;outline-offset:2px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.12)}' +
       '.teacher-mode .exam-dollar-wf-line-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-wf-line-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ec407a;outline-offset:2px;border-radius:5px;padding:1px 4px;background:rgba(244,143,177,.18)}' +
       '.teacher-mode .exam-dollar-wf-line-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-wf-line-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ab47bc;outline-offset:2px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.1)}' +
+      '.teacher-mode .exam-dollar-choice-line-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-choice-line-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #8e24aa;outline-offset:2px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.12)}' +
+      '.teacher-mode .exam-dollar-choice-line-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-choice-line-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ec407a;outline-offset:2px;border-radius:5px;padding:1px 4px;background:rgba(244,143,177,.18)}' +
+      '.teacher-mode .exam-dollar-choice-line-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-choice-line-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ab47bc;outline-offset:2px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.1)}' +
       '.teacher-mode .solution .exam-dollar-math-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-math-alt-group[data-jm-alt-active="1"] .exam-dollar-alt-view[data-jm-alt-view="1"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #8e24aa;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.12)}' +
       '.teacher-mode .solution .exam-dollar-math-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-math-alt-group[data-jm-alt-active="2"] .exam-dollar-alt-view[data-jm-alt-view="2"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ec407a;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(244,143,177,.18)}' +
       '.teacher-mode .solution .exam-dollar-math-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden),.teacher-mode .exam-dollar-math-alt-group[data-jm-alt-active="3"] .exam-dollar-alt-view[data-jm-alt-view="3"]:not(.exam-dollar-alt-view--hidden){outline:2px dashed #ab47bc;outline-offset:3px;border-radius:5px;padding:1px 4px;background:rgba(186,104,200,.1)}' +

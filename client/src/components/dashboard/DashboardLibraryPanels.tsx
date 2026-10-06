@@ -14,6 +14,7 @@ import {
   Checkbox,
   Radio,
   RadioGroup,
+  TextField,
   Tooltip,
   Typography,
   Table,
@@ -50,6 +51,7 @@ import {
   EXAM_TYPE_LABELS,
   examMaterialRowStyle,
   examTypeFromFileName,
+  examTitleFromFileName,
   type ExamLibraryType,
 } from '../../lib/examLibraryUi';
 import {
@@ -783,6 +785,7 @@ export const DashboardExamsPanel: React.FC<{
   const [loading, setLoading] = useState(false);
   const [typeDialogItem, setTypeDialogItem] = useState<LibraryExamItem | null>(null);
   const [typeChoice, setTypeChoice] = useState<ExamLibraryType>('QZ');
+  const [typeName, setTypeName] = useState('');
   const [typeSaving, setTypeSaving] = useState(false);
   const [iconMap, setIconMap] = useState<Record<string, string>>({});
   const [iconTemplate, setIconTemplate] = useState<ExamLibraryIconTemplate | null>(null);
@@ -1041,6 +1044,7 @@ export const DashboardExamsPanel: React.FC<{
   const openTypeDialog = (item: LibraryExamItem) => {
     setTypeDialogItem(item);
     setTypeChoice(examTypeFromFileName(item.name) || 'QZ');
+    setTypeName(examTitleFromFileName(item.name));
   };
 
   const saveIconTemplate = () => {
@@ -1067,7 +1071,7 @@ export const DashboardExamsPanel: React.FC<{
   };
 
   const submitTypeChange = async () => {
-    if (!typeDialogItem || !typeChoice) return;
+    if (!typeDialogItem || !typeChoice || !typeName.trim()) return;
     setTypeSaving(true);
     try {
       const res = await fetch('/api/file-system-paths/change-examination-type', {
@@ -1077,7 +1081,11 @@ export const DashboardExamsPanel: React.FC<{
           'x-login-code': localStorage.getItem('loginCode') || '',
         },
         credentials: 'include',
-        body: JSON.stringify({ filePath: typeDialogItem.path, examType: typeChoice }),
+        body: JSON.stringify({
+          filePath: typeDialogItem.path,
+          examType: typeChoice,
+          examName: typeName.trim(),
+        }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         error?: string;
@@ -1270,9 +1278,20 @@ export const DashboardExamsPanel: React.FC<{
         <Typography variant="body2" sx={{ mb: 1.5, color: 'text.secondary' }}>
           Datei: <strong>{typeDialogItem?.name}</strong>
         </Typography>
-        <Typography variant="caption" sx={{ display: 'block', mb: 1, color: 'text.secondary' }}>
-          Präfix und Dateiname werden angepasst (z. B. QZ_… → HU_…), inkl. aller Versionen A/B/C.
+        <Typography variant="caption" sx={{ display: 'block', mb: 1.5, color: 'text.secondary' }}>
+          Typ-Präfix und Dateiname werden angepasst (z. B. QZ_… → HU_…), inkl. aller Versionen A/B/C.
         </Typography>
+        <TextField
+          label="Name (Dateiname ohne Präfix)"
+          value={typeName}
+          onChange={(e) => setTypeName(e.target.value)}
+          fullWidth
+          size="small"
+          margin="dense"
+          disabled={typeSaving}
+          helperText={`Ergebnis: ${typeChoice}_${typeName.trim() || '…'}.html`}
+          sx={{ mb: 1.5 }}
+        />
         <RadioGroup
           value={typeChoice}
           onChange={(e) => setTypeChoice(e.target.value as ExamLibraryType)}
@@ -1291,7 +1310,11 @@ export const DashboardExamsPanel: React.FC<{
         <Button onClick={() => setTypeDialogItem(null)} disabled={typeSaving}>
           Abbrechen
         </Button>
-        <Button variant="contained" onClick={() => void submitTypeChange()} disabled={typeSaving || !typeChoice}>
+        <Button
+          variant="contained"
+          onClick={() => void submitTypeChange()}
+          disabled={typeSaving || !typeChoice || !typeName.trim()}
+        >
           {typeSaving ? 'Speichern…' : 'Umbenennen'}
         </Button>
       </DialogActions>

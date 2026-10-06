@@ -9,6 +9,15 @@ export function examTypeFromFileName(fileName: string): ExamLibraryType {
   return '';
 }
 
+/** Titelteil ohne Präfix (QZ_/KA_/…) und ohne Versions-Suffix __B */
+export function examTitleFromFileName(fileName: string): string {
+  const stem = String(fileName || '')
+    .trim()
+    .replace(/\.html?$/i, '');
+  const base = stem.replace(/__([A-Z])$/i, '');
+  return base.replace(/^(KA|KU|HU|HÜ|QZ)_/i, '');
+}
+
 /** Typ-Streifen links + dezenter Hintergrund. */
 export type ExamMaterialRowStyle = {
   accent: string;

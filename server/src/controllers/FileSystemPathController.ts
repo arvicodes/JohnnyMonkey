@@ -1784,6 +1784,26 @@ export class FileSystemPathController {
     return `${FileSystemPathController.examTypeFilePrefix(examType)}${rest}`;
   }
 
+  private static sanitizeExamTitleForFileName(raw: string): string {
+    return String(raw || '')
+      .trim()
+      .replace(/[/\\?%*:|"<>]/g, '')
+      .replace(/\s+/g, ' ')
+      .slice(0, 180);
+  }
+
+  private static buildExamBaseStemFromTypeAndTitle(baseStem: string, examType: string, examNameRaw: unknown): string {
+    const nameTrim = examNameRaw == null ? '' : String(examNameRaw).trim();
+    if (nameTrim) {
+      const namePart = FileSystemPathController.sanitizeExamTitleForFileName(nameTrim);
+      if (!namePart) {
+        throw new Error('Ungültiger Prüfungsname');
+      }
+      return `${FileSystemPathController.examTypeFilePrefix(examType)}${namePart}`;
+    }
+    return FileSystemPathController.replaceExamTypeInBaseStem(baseStem, examType);
+  }
+
   /**
    * Prüfungspräfix nachträglich ändern (QZ_ → HU_ …), inkl. aller Versionen A/B/C.
    */
@@ -1791,6 +1811,7 @@ export class FileSystemPathController {
     try {
       const filePathRaw = (req.body?.filePath || req.query?.filePath) as string | undefined;
       const examType = String(req.body?.examType || req.query?.examType || '').trim().toUpperCase();
+      const examNameRaw = req.body?.examName ?? req.body?.title ?? req.query?.examName;
       if (!filePathRaw || typeof filePathRaw !== 'string') {
         return res.status(400).json({ error: 'filePath ist erforderlich' });
       }
@@ -1824,6 +1845,19 @@ export class FileSystemPathController {
       let html = fs.readFileSync(fullPath, 'utf8');
       const { letters } = parseExamVersionsMeta(html);
       const renames: Array<{ fromFull: string; toFull: string; toGit: string }> = [];
+      const refStem = fileStemFromName(fileName);
+      const refBaseStem = baseStemFromStem(refStem);
+      let newBaseStem: string;
+      try {
+        newBaseStem = FileSystemPathController.buildExamBaseStemFromTypeAndTitle(
+          refBaseStem,
+          examType,
+          examNameRaw,
+        );
+      } catch (nameErr: unknown) {
+        const msg = nameErr instanceof Error ? nameErr.message : String(nameErr);
+        return res.status(400).json({ error: msg });
+      }
 
       for (const L of letters) {
         const vGit = gitPathVariant(baseGit, L);
@@ -1831,7 +1865,6 @@ export class FileSystemPathController {
         if (!fromFull || !fs.existsSync(fromFull) || !fs.statSync(fromFull).isFile()) continue;
         const stem = fileStemFromName(path.basename(fromFull));
         const baseStem = baseStemFromStem(stem);
-        const newBaseStem = FileSystemPathController.replaceExamTypeInBaseStem(baseStem, examType);
         if (newBaseStem.toLowerCase() === baseStem.toLowerCase()) continue;
         const newStem = variantStem(newBaseStem, L);
         const toFull = path.join(path.dirname(fromFull), `${newStem}.html`);
@@ -1848,10 +1881,7 @@ export class FileSystemPathController {
       }
 
       if (renames.length === 0) {
-        const stem = fileStemFromName(fileName);
-        const baseStem = baseStemFromStem(stem);
-        const newBaseStem = FileSystemPathController.replaceExamTypeInBaseStem(baseStem, examType);
-        if (newBaseStem.toLowerCase() === baseStem.toLowerCase()) {
+        if (newBaseStem.toLowerCase() === refBaseStem.toLowerCase()) {
           return res.json({ success: true, unchanged: true, filePath: normalizedFp });
         }
         return res.status(404).json({ error: 'Keine Prüfungsversion zum Umbenennen gefunden' });
