@@ -436,6 +436,111 @@
     return String(el.innerText || '').replace(/\r/g, '');
   }
 
+  function normalizeClipboardPlainText(raw) {
+    return String(raw || '')
+      .replace(/\uFEFF/g, '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/[\u00A0\u202F]/g, ' ')
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u2013\u2014]/g, '-');
+  }
+
+  function sanitizeLiveEditDom(live) {
+    if (!live || !live.childNodes) return false;
+    var hasElement = false;
+    var i;
+    for (i = 0; i < live.childNodes.length; i += 1) {
+      if (live.childNodes[i].nodeType === 1) {
+        hasElement = true;
+        break;
+      }
+    }
+    if (!hasElement) return false;
+    live.textContent = liveEditPlainTextFromEl(live);
+    return true;
+  }
+
+  function pushLiveEditUndo(live) {
+    if (!live) return;
+    var stack = live.__jmUndoStack;
+    if (!stack) stack = live.__jmUndoStack = [];
+    stack.push(liveEditPlainTextFromEl(live));
+    if (stack.length > 48) stack.shift();
+  }
+
+  function insertPlainTextIntoLiveEdit(live, text) {
+    if (!live) return;
+    live.focus();
+    var sel = window.getSelection();
+    if (!sel || !sel.rangeCount || !live.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+      var cur = liveEditPlainTextFromEl(live);
+      live.textContent = cur + text;
+      return;
+    }
+    var range = sel.getRangeAt(0);
+    range.deleteContents();
+    var node = document.createTextNode(text);
+    range.insertNode(node);
+    range.setStartAfter(node);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function clipboardPlainForLiveEdit(clipboardData) {
+    if (!clipboardData) return '';
+    var plain = clipboardData.getData('text/plain');
+    if (plain && String(plain).trim()) return normalizeClipboardPlainText(plain);
+    var html = clipboardData.getData('text/html');
+    if (!html) return '';
+    var div = document.createElement('div');
+    div.innerHTML = html;
+    return normalizeClipboardPlainText(div.innerText || div.textContent || '');
+  }
+
+  function wireLiveEditPasteAndUndo(live, taskEl) {
+    if (!live || live.__jmPasteWired) return;
+    live.__jmPasteWired = true;
+    live.addEventListener('paste', function (e) {
+      var items = e.clipboardData && e.clipboardData.items;
+      if (items) {
+        var i;
+        for (i = 0; i < items.length; i += 1) {
+          if (String(items[i].type || '').indexOf('image/') === 0) return;
+        }
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      pushLiveEditUndo(live);
+      var plain = clipboardPlainForLiveEdit(e.clipboardData);
+      insertPlainTextIntoLiveEdit(live, plain);
+      sanitizeLiveEditDom(live);
+      live.dataset.jmTouched = '1';
+      refreshLiveEditHighlight(live);
+      syncSourceFromLiveEdit(taskEl);
+      applySourceToTask(taskEl, taskEl.querySelector('.exam-dollar-source').value);
+      live.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    live.addEventListener('keydown', function (e) {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      if (e.key !== 'z' && e.key !== 'Z') return;
+      if (e.shiftKey) return;
+      var stack = live.__jmUndoStack;
+      if (!stack || !stack.length) return;
+      e.preventDefault();
+      e.stopPropagation();
+      live.textContent = stack.pop();
+      live.dataset.jmTouched = '1';
+      refreshLiveEditHighlight(live);
+      syncSourceFromLiveEdit(taskEl);
+      var src = taskEl.querySelector('.exam-dollar-source');
+      if (src) applySourceToTask(taskEl, src.value);
+      live.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  }
+
   function trimLiveEditTrailingBlankLines(text) {
     var lines = String(text || '').replace(/\r/g, '').split('\n');
     while (lines.length > 0 && !lines[lines.length - 1].trim()) {
@@ -1037,7 +1142,31 @@
         w.parentNode.removeChild(w);
       }
     });
+    if (!inner.querySelector('.exam-dollar-restore-source')) {
+      var restoreBtn = document.createElement('button');
+      restoreBtn.type = 'button';
+      restoreBtn.className = 'exam-dollar-restore-source teacher-only';
+      restoreBtn.textContent = 'Editor aus gespeicherter Quelle zurücksetzen';
+      restoreBtn.title =
+        'Setzt das blaue Feld auf den zuletzt gespeicherten Dollar-Text zurück (z. B. nach Word-Einfügen).';
+      restoreBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        restoreTaskLiveEditFromSource(taskEl);
+      });
+      inner.appendChild(restoreBtn);
+    }
     bindCollapsibleDetails(panel, 'jmExamTaskAuthorOpen', false);
+  }
+
+  function restoreTaskLiveEditFromSource(taskEl) {
+    var src = taskEl.querySelector('.exam-dollar-source');
+    var live = taskEl.querySelector('.exam-dollar-live-edit');
+    if (!src || !live) return;
+    pushLiveEditUndo(live);
+    delete live.dataset.jmTouched;
+    syncLiveEditFromSource(taskEl);
+    applySourceToTask(taskEl, src.value);
+    scheduleSave({ immediate: true });
   }
 
   function normalizeProseMathText(raw) {
@@ -3990,6 +4119,7 @@
     ensureLiveEditHighlightWrap(live);
     syncLiveEditFromSource(taskEl);
     wireLiveEditFormattingShortcuts(live);
+    wireLiveEditPasteAndUndo(live, taskEl);
     var hi = live.parentNode.querySelector('.exam-dollar-live-edit-highlight');
     if (hi) {
       live.addEventListener('scroll', function () {
@@ -4006,7 +4136,11 @@
     var debounce;
     live.addEventListener('input', function () {
       live.dataset.jmTouched = '1';
-      refreshLiveEditHighlight(live);
+      if (sanitizeLiveEditDom(live)) {
+        refreshLiveEditHighlight(live);
+      } else {
+        refreshLiveEditHighlight(live);
+      }
       syncSourceFromLiveEdit(taskEl);
       clearTimeout(debounce);
       debounce = setTimeout(function () {
@@ -4223,6 +4357,8 @@
       '.exam-dollar-rendered{margin-bottom:6px;font-family:Arial,sans-serif;font-size:14px;line-height:1.55}' +
       '.teacher-mode .task-content .exam-dollar-rendered{display:block!important;margin:0 0 8px;padding:8px 6px;border:1px dashed #ddd;border-radius:6px;background:#fafafa}' +
       '.exam-dollar-color-bar{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 6px}' +
+      '.exam-dollar-restore-source{display:block;margin:6px 0 0;padding:4px 8px;font-size:11px;border:1px solid #90caf9;border-radius:4px;background:#fff;color:#1565c0;cursor:pointer}' +
+      '.exam-dollar-restore-source:hover{background:#e3f2fd}' +
       '.exam-dollar-color-swatch{width:20px;height:20px;border:1px solid rgba(0,0,0,.2);border-radius:4px;cursor:pointer;padding:0}' +
       '.exam-dollar-color-swatch:hover{transform:scale(1.08)}' +
       '.teacher-mode .exam-dollar-live-edit-wrap{position:relative;display:block;width:100%;min-height:0;margin:0;padding:2px 4px;border-radius:3px;background:#e3f2fd;border:1px solid #bbdefb;overflow:hidden;box-sizing:border-box}' +
