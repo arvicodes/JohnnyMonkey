@@ -21,6 +21,7 @@
  * · kompakt: $Bild name.png 10% r t r5b$ (alles in einem $…$)
  * Aussage … $wf$   Wahr/Falsch-Tabelle (|$wwf$| = Wahr richtig, |$wff$| = Falsch richtig)
  * Aussage … $wff $$wwf $$$wff   W/F mit Varianten (Standard/A1/A2 wie bei $L … $$ … $$$ …)
+ * Zeilenanfang $$/$$$ vor WF-Aussage: eigene Aussage pro Variante (z. B. „$$ … $wff$“ nur in A1)
  * $a1$ / $$7 $$$10   Varianten: Zeile $a1$ … oder in $L 5 $$7 $$$10 L$ ($$=A1, $$$=A2)
  * $Musterlösung$    ab dieser Zeile: Text für die grüne Musterlösungsbox
  * $Paare … Paare$   Zuordnung: Zeilen „Wert A ; Wert B“ (gleiche Werte aufeinanderziehen)
@@ -1738,15 +1739,23 @@
   }
 
   function parseWfLine(line) {
-    var t = String(line || '').trim();
+    var raw = String(line || '');
+    var lineAlt = 0;
+    var t = raw.trim();
     if (!t) return null;
+    var linePref = parseFlowLineLeadingAltPrefix(raw);
+    if (linePref) {
+      lineAlt = linePref.altNum;
+      t = linePref.content;
+    }
+    var result = null;
     var suffixAt = findWfModeSuffixStart(t);
     if (suffixAt >= 0) {
       var stmt = t.slice(0, suffixAt).trim();
       if (stmt) {
         var variants = parseWfLineModeVariants(t.slice(suffixAt));
         if (variants) {
-          return {
+          result = {
             stmt: stmt,
             mode: variants.base,
             alts: Object.keys(variants.alts).length ? variants.alts : null,
@@ -1754,23 +1763,76 @@
         }
       }
     }
-    if (/\$\$/.test(t)) return null;
-    var simple = t.match(/^([\s\S]+?)\s+\$(wwf|wff|wf)\s*\$/i);
-    if (simple) {
-      var stmtSimple = String(simple[1] || '').trim();
-      if (!stmtSimple) return null;
-      return { stmt: stmtSimple, mode: String(simple[2] || 'wf').toLowerCase(), alts: null };
+    if (!result) {
+      var simple = t.match(/^([\s\S]+?)\s+\$(wwf|wff|wf)\s*\$/i);
+      if (simple) {
+        var stmtSimple = String(simple[1] || '').trim();
+        if (stmtSimple) {
+          result = {
+            stmt: stmtSimple,
+            mode: String(simple[2] || 'wf').toLowerCase(),
+            alts: null,
+          };
+        }
+      }
     }
-    return null;
+    if (!result) return null;
+    result.lineAlt = lineAlt;
+    return result;
+  }
+
+  /** WF-Zeilen mit $$/$$$ am Zeilenanfang zu Tabellenzeilen zusammenfassen */
+  function coalesceWfLineAltGroups(buffer) {
+    var out = [];
+    var i = 0;
+    while (i < buffer.length) {
+      var a = buffer[i];
+      var la = a.lineAlt || 0;
+      if (la === 0) {
+        var lv = { 0: a };
+        i += 1;
+        if (i < buffer.length && (buffer[i].lineAlt || 0) === 1) {
+          lv[1] = buffer[i];
+          i += 1;
+          if (i < buffer.length && (buffer[i].lineAlt || 0) === 2) {
+            lv[2] = buffer[i];
+            i += 1;
+          }
+        }
+        if (Object.keys(lv).length > 1) out.push({ lineViews: lv });
+        else out.push(a);
+      } else if (la === 1) {
+        var lv2 = { 1: a };
+        i += 1;
+        if (i < buffer.length && (buffer[i].lineAlt || 0) === 2) {
+          lv2[2] = buffer[i];
+          i += 1;
+        }
+        out.push({ lineViews: lv2 });
+      } else {
+        out.push({ lineViews: { 2: a } });
+        i += 1;
+      }
+    }
+    return out;
   }
 
   function countWfRowsInBody(body) {
     var n = 0;
+    var buffer = [];
+    function flushBuf() {
+      if (!buffer.length) return;
+      n += coalesceWfLineAltGroups(buffer).length;
+      buffer = [];
+    }
     String(body || '')
       .split(/\r?\n/)
       .forEach(function (line) {
-        if (parseWfLine(line)) n += 1;
+        var wf = parseWfLine(line);
+        if (wf) buffer.push(wf);
+        else flushBuf();
       });
+    flushBuf();
     return n;
   }
 
@@ -1862,8 +1924,22 @@
     var achieved = 0;
     var total = 0;
     taskEl.querySelectorAll('.exam-dollar-wf-row').forEach(function (tr) {
-      var visibleView = tr.querySelector('.exam-dollar-alt-view:not(.exam-dollar-alt-view--hidden)');
+      var visibleView = null;
+      if (tr.classList.contains('exam-dollar-wf-row--line-alts')) {
+        visibleView = tr.querySelector(
+          '.exam-dollar-wf-line-alt-group > .exam-dollar-alt-views > .exam-dollar-alt-view:not(.exam-dollar-alt-view--hidden)',
+        );
+        if (!visibleView) return;
+      } else {
+        visibleView = tr.querySelector('.exam-dollar-alt-view:not(.exam-dollar-alt-view--hidden)');
+      }
       var scope = visibleView || tr;
+      if (scope !== tr && scope.querySelector('.exam-dollar-wf-alt-group')) {
+        var modeView = scope.querySelector(
+          '.exam-dollar-wf-alt-group > .exam-dollar-alt-views > .exam-dollar-alt-view:not(.exam-dollar-alt-view--hidden)',
+        );
+        if (modeView) scope = modeView;
+      }
       var w = scope.querySelector('.exam-dollar-wf-input[data-jm-wf-col="w"]');
       var f = scope.querySelector('.exam-dollar-wf-input[data-jm-wf-col="f"]');
       if (!w || !f) return;
@@ -2365,7 +2441,119 @@
     return { wCorrect: m === 'wwf', fCorrect: m === 'wff' };
   }
 
+  function renderWfModeAltPairHtml(row, idGen) {
+    var alts = row.alts && Object.keys(row.alts).length ? row.alts : null;
+    if (!alts) {
+      var mc = wfModeToCorrectFlags(row.mode);
+      return (
+        '<div class="exam-dollar-wf-alt-pair">' +
+        '<div class="exam-dollar-wf-check">' +
+        renderWfCheckboxInner('w', mc.wCorrect, idGen) +
+        '</div><div class="exam-dollar-wf-check">' +
+        renderWfCheckboxInner('f', mc.fCorrect, idGen) +
+        '</div></div>'
+      );
+    }
+    var gid = idGen();
+    var views = [{ num: 0, mode: row.mode }];
+    Object.keys(alts)
+      .map(function (n) {
+        return parseInt(n, 10);
+      })
+      .filter(function (n) {
+        return n > 0;
+      })
+      .sort(function (a, b) {
+        return a - b;
+      })
+      .forEach(function (n) {
+        views.push({ num: n, mode: alts[n] });
+      });
+    var viewsHtml = views
+      .map(function (v) {
+        var flags = wfModeToCorrectFlags(v.mode);
+        var hidden = v.num === 0 ? '' : ' exam-dollar-alt-view--hidden';
+        return (
+          '<div class="exam-dollar-alt-view' +
+          hidden +
+          '" data-jm-alt-view="' +
+          v.num +
+          '">' +
+          variantMarkHtml(
+            '<div class="exam-dollar-wf-alt-pair">' +
+              '<div class="exam-dollar-wf-check">' +
+              renderWfCheckboxInner('w', flags.wCorrect, idGen) +
+              '</div><div class="exam-dollar-wf-check">' +
+              renderWfCheckboxInner('f', flags.fCorrect, idGen) +
+              '</div></div>',
+            v.num,
+          ) +
+          '</div>'
+        );
+      })
+      .join('');
+    return (
+      '<div class="exam-dollar-alt-group exam-dollar-wf-alt-group" data-jm-alt-group="' +
+      escapeHtml(gid) +
+      '" data-jm-alt-active="0">' +
+      '<div class="exam-dollar-alt-views">' +
+      viewsHtml +
+      '</div></div>'
+    );
+  }
+
+  function renderWfPhysicalLineInnerHtml(row, idGen) {
+    var checks = renderWfModeAltPairHtml(row, idGen);
+    var checksSpan =
+      row.alts && Object.keys(row.alts).length
+        ? '<div class="exam-dollar-wf-line-alt-checks exam-dollar-wf-line-alt-checks--mode-alts">' +
+          checks +
+          '</div>'
+        : '<div class="exam-dollar-wf-line-alt-checks">' + checks + '</div>';
+    return (
+      '<div class="exam-dollar-wf-line-alt-inner">' +
+      '<div class="exam-dollar-wf-stmt exam-dollar-wf-line-alt-stmt">' +
+      renderInline(row.stmt, idGen) +
+      '</div>' +
+      checksSpan +
+      '</div>'
+    );
+  }
+
+  function renderWfLineAltTableRow(lineViews, idGen) {
+    var gid = idGen();
+    var viewNums = [0, 1, 2].filter(function (n) {
+      return !!lineViews[n];
+    });
+    if (!viewNums.length) return '';
+    var viewsHtml = viewNums
+      .map(function (num) {
+        var hidden = num === 0 ? '' : ' exam-dollar-alt-view--hidden';
+        return (
+          '<div class="exam-dollar-alt-view' +
+          hidden +
+          '" data-jm-alt-view="' +
+          num +
+          '">' +
+          variantMarkHtml(renderWfPhysicalLineInnerHtml(lineViews[num], idGen), num) +
+          '</div>'
+        );
+      })
+      .join('');
+    return (
+      '<tr class="exam-dollar-wf-row exam-dollar-wf-row--line-alts">' +
+      '<td colspan="3" class="exam-dollar-wf-line-alt-wrap">' +
+      '<div class="exam-dollar-alt-group exam-dollar-wf-line-alt-group" data-jm-alt-group="' +
+      escapeHtml(gid) +
+      '" data-jm-alt-active="0">' +
+      '<div class="exam-dollar-alt-views">' +
+      viewsHtml +
+      '</div></div></td></tr>'
+    );
+  }
+
   function renderWfTableRow(row, idGen) {
+    if (row.lineViews) return renderWfLineAltTableRow(row.lineViews, idGen);
     var stmtCell =
       '<td class="exam-dollar-wf-stmt">' + renderInline(row.stmt, idGen) + '</td>';
     var alts = row.alts && Object.keys(row.alts).length ? row.alts : null;
@@ -2411,7 +2599,7 @@
               '</div><div class="exam-dollar-wf-check">' +
               renderWfCheckboxInner('f', flags.fCorrect, idGen) +
               '</div></div>',
-            v.num
+            v.num,
           ) +
           '</div>'
         );
@@ -3248,7 +3436,7 @@
 
     function flushWf() {
       if (!wfBuffer.length) return;
-      parts.push(renderWfTable(wfBuffer, idGen));
+      parts.push(renderWfTable(coalesceWfLineAltGroups(wfBuffer), idGen));
       wfBuffer = [];
     }
 
@@ -4721,6 +4909,14 @@
       '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit div,.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit p{margin:0;padding:0;line-height:inherit}' +
       '.teacher-mode .exam-dollar-live-edit-wrap .exam-dollar-live-edit::selection{background:rgba(21,101,192,.22);color:#222;-webkit-text-fill-color:#222}' +
       '.exam-dollar-wf-alt-pair{display:grid;grid-template-columns:4.5em 4.5em;width:100%;max-width:9.5em;margin:0 auto}' +
+      '.exam-dollar-wf-line-alt-wrap{padding:0!important;vertical-align:middle!important}' +
+      '.exam-dollar-wf-line-alt-inner{display:grid;grid-template-columns:1fr 9.5em;align-items:stretch;width:100%}' +
+      '.exam-dollar-wf-line-alt-stmt{padding:6px 8px;text-align:left;border-right:1px solid #ccc;font-weight:normal}' +
+      '.exam-dollar-wf-line-alt-checks{display:flex;align-items:center;justify-content:center;padding:4px 6px}' +
+      '.exam-dollar-wf-line-alt-checks .exam-dollar-wf-alt-pair{margin:0}' +
+      '.exam-dollar-wf-line-alt-checks--mode-alts{width:100%}' +
+      '.exam-dollar-wf-line-alt-group{width:100%}' +
+      '.exam-dollar-wf-line-alt-group .exam-dollar-alt-view{display:block}' +
       '.exam-dollar-wf-alt-cell{padding:4px 6px!important;vertical-align:middle!important}' +
       '.exam-dollar-wf-alt-group{width:100%}' +
       '.exam-live-cmd{color:#9e9e9e}' +
