@@ -1755,14 +1755,14 @@
 
   function scanBodyDollarTokens(body) {
     var gaps = 0;
-    var choices = 0;
-    choices += countWfRowsInBody(body);
-    choices += countPaarePairsInBody(body);
+    var checkboxes = 0;
+    var wfRows = countWfRowsInBody(body);
+    var paarePairs = countPaarePairsInBody(body);
     String(body || '')
       .split(/\r?\n/)
       .forEach(function (line) {
         if (parseChoiceVariantLine(line)) {
-          choices += 1;
+          checkboxes += 1;
           return;
         }
         var i = 0;
@@ -1779,12 +1779,12 @@
           }
           var innerTrim = String(tok.inner || '').trim();
           if (parseGapToken(innerTrim)) gaps += 1;
-          else if (/^CC$/i.test(innerTrim)) choices += 1;
-          else if (/^C$/i.test(innerTrim)) choices += 1;
+          else if (/^CC$/i.test(innerTrim)) checkboxes += 1;
+          else if (/^C$/i.test(innerTrim)) checkboxes += 1;
           i = tok.end;
         }
       });
-    return { gaps: gaps, choices: choices };
+    return { gaps: gaps, checkboxes: checkboxes, wfRows: wfRows, paarePairs: paarePairs };
   }
 
   function formatPointsNumber(n) {
@@ -1794,18 +1794,16 @@
     return String(r).replace('.', ',');
   }
 
+  function countScorableChoiceUnits(scan) {
+    if (!scan) return 0;
+    return (scan.checkboxes || 0) + (scan.wfRows || 0);
+  }
+
   function computeAutoPointsFromBody(body) {
     var scan = scanBodyDollarTokens(body);
-    if (scan.choices > 0 && scan.gaps === 0) {
-      return formatPointsNumber(scan.choices * 0.5);
-    }
-    if (scan.gaps > 0 && scan.choices === 0) {
-      return formatPointsNumber(scan.gaps);
-    }
-    if (scan.gaps > 0 && scan.choices > 0) {
-      return formatPointsNumber(scan.gaps + scan.choices * 0.5);
-    }
-    return null;
+    var sum = (scan.gaps || 0) + countScorableChoiceUnits(scan) + (scan.paarePairs || 0);
+    if (sum <= 0) return null;
+    return formatPointsNumber(sum);
   }
 
   function applyAutoPointsToSource(taskEl, source) {
@@ -1851,12 +1849,12 @@
       var wSol = w.getAttribute('data-correct') === '1';
       var fSol = f.getAttribute('data-correct') === '1';
       if (!wSol && !fSol) return;
-      total += 0.5;
+      total += 1;
       var wOn = w.checked;
       var fOn = f.checked;
-      if (wSol && wOn && !fOn) achieved += 0.5;
-      else if (fSol && fOn && !wOn) achieved += 0.5;
-      else if (wOn || fOn) achieved -= 0.5;
+      if (wSol && wOn && !fOn) achieved += 1;
+      else if (fSol && fOn && !wOn) achieved += 1;
+      else if (wOn || fOn) achieved -= 1;
     });
     return { achieved: achieved, total: total };
   }
@@ -1870,28 +1868,30 @@
         ? parseInt(hidden.getAttribute('data-jm-paare-total') || '0', 10)
         : 0;
       if (!totalPairs) return;
-      total += totalPairs * 0.5;
+      total += totalPairs;
       var matched = String(hidden.value || '')
         .split(',')
         .filter(function (x) {
           return x !== '';
         }).length;
-      achieved += matched * 0.5;
+      achieved += matched;
     });
     return { achieved: achieved, total: total };
   }
 
   function scoreCheckboxChoicesInTask(taskEl) {
     var achieved = 0;
+    var total = 0;
     var inputs = taskEl.querySelectorAll(
       '.exam-dollar-choice-input:not(.exam-dollar-wf-input)',
     );
     inputs.forEach(function (inp) {
+      total += 1;
       var shouldCheck = inp.getAttribute('data-correct') === '1';
-      if (inp.checked === shouldCheck) achieved += 0.5;
-      else achieved -= 0.5;
+      if (inp.checked === shouldCheck) achieved += 1;
+      else achieved -= 1;
     });
-    return { achieved: achieved, total: inputs.length * 0.5 };
+    return { achieved: achieved, total: total };
   }
 
   function scoreChoicesInTask(taskEl) {
@@ -1915,26 +1915,29 @@
       any = true;
       var meta = parseTaskSource(src.value);
       var scan = scanBodyDollarTokens(meta.body);
-      if (scan.choices > 0 && scan.gaps === 0) {
+      var taskAchieved = 0;
+      var taskTotal = 0;
+      var choiceUnits = countScorableChoiceUnits(scan);
+      var hasChoices = choiceUnits > 0 || (scan.paarePairs || 0) > 0;
+
+      if (hasChoices) {
         var ch = scoreChoicesInTask(taskEl);
-        total += ch.total;
-        achieved += ch.achieved;
-        return;
+        taskAchieved += ch.achieved;
+        taskTotal += ch.total;
       }
       if (scan.gaps > 0) {
-        total += scan.gaps;
+        taskTotal += scan.gaps;
         taskEl.querySelectorAll('input.exam-dollar-gap').forEach(function (inp) {
-          if (gapInputIsCorrect(inp)) achieved += 1;
+          if (inp.closest('.exam-dollar-alt-view--hidden')) return;
+          if (gapInputIsCorrect(inp)) taskAchieved += 1;
         });
-        if (scan.choices > 0) {
-          var ch2 = scoreChoicesInTask(taskEl);
-          total += ch2.total;
-          achieved += ch2.achieved;
-        }
-        return;
       }
-      var p = parseFloat(String(meta.pointsVal || '0').replace(',', '.'));
-      if (!isNaN(p) && p > 0) total += p;
+      if (taskTotal <= 0) {
+        var p = parseFloat(String(meta.pointsVal || '0').replace(',', '.'));
+        if (!isNaN(p) && p > 0) taskTotal = p;
+      }
+      total += taskTotal;
+      achieved += Math.max(0, taskAchieved);
     });
     if (!any) return null;
     return { achieved: achieved, total: total };
