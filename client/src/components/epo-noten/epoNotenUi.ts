@@ -5,6 +5,12 @@ export const epoNotenPalette = {
   primaryTint: 'rgba(25, 118, 210, 0.12)',
   accent: '#2E7D32',
   accentTint: 'rgba(46, 125, 50, 0.14)',
+  /** Fertig / erledigt — heller Hintergrund, kräftiger grüner Akzent */
+  fertigBg: '#E8F5E9',
+  fertigBgSelected: '#C8E6C9',
+  fertigBorder: '#66BB6A',
+  fertigAccent: '#43A047',
+  fertigChipBg: '#43A047',
   warn: '#F57C00',
   heading: '#1a237e',
   textPrimary: '#2C3E50',
@@ -16,37 +22,46 @@ export const epoNotenPalette = {
 };
 
 export const epoNotenPageBgSx = {
-  minHeight: '100vh',
-  width: '100%',
+  minHeight: 'calc(100vh - 1%)',
+  height: 'calc(100vh - 1%)',
+  width: 'calc(100% - 4%)',
+  margin: '1% 2% 0 2%',
   bgcolor: epoNotenPalette.background,
-  py: { xs: 0.75, sm: 1.25 },
+  py: { xs: 0.5, sm: 0.65 },
   px: 0,
   display: 'flex',
   flexDirection: 'column',
-  alignItems: 'center',
+  alignItems: 'stretch',
+  overflow: 'hidden',
+  boxSizing: 'border-box',
 };
 
-/** Lehrer + SuS: einheitlich 80 % der Bildschirmbreite, zentriert */
-export const EPO_NOTEN_CONTENT_WIDTH = '80vw';
+/** Lehrer + SuS: volle nutzbare Seitenbreite */
+export const EPO_NOTEN_CONTENT_WIDTH = '100%';
 
 export const epoNotenContentShellSx = {
   width: EPO_NOTEN_CONTENT_WIDTH,
   maxWidth: EPO_NOTEN_CONTENT_WIDTH,
   minWidth: 0,
-  mx: 'auto',
+  mx: 0,
   boxSizing: 'border-box' as const,
 };
 
 /** Seitenrahmen (Kopfzeile + Inhalt) */
 export const epoNotenPageShellSx = {
   ...epoNotenContentShellSx,
-  alignSelf: 'center',
+  alignSelf: 'stretch',
+  flex: 1,
+  minHeight: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  overflow: 'hidden',
 };
 
 /** @deprecated Alias — bitte epoNotenPageShellSx verwenden */
 export const epoNotenTeacherShellSx = epoNotenPageShellSx;
 
-/** Karten/Listen innerhalb der 80 %-Spalte */
+/** Karten/Listen innerhalb der Seitenbreite */
 export const epoNotenStudentSurfaceSx = {
   width: '100%',
   maxWidth: '100%',
@@ -122,12 +137,40 @@ export const epoNotenCompactIconBtnSx = {
 
 export const epoNotenCompactIconSx = { fontSize: 14 } as const;
 
+/** Lehrer-SuS-Liste: kleinere Status-Icons */
+export const epoNotenTeacherListStatusChipSx = {
+  height: 20,
+  width: 20,
+  minWidth: 20,
+  maxWidth: 20,
+} as const;
+
+export const epoNotenTeacherListStatusIconSx = { fontSize: 11 } as const;
+
+/** Runde Status-Chips (Icon-only, Kreis) */
+export const epoNotenRoundIconChipSx = {
+  height: 26,
+  width: 26,
+  minWidth: 26,
+  maxWidth: 26,
+  borderRadius: '50%',
+  flexShrink: 0,
+  p: 0,
+  '& .MuiChip-label': { display: 'none', width: 0, p: 0 },
+  '& .MuiChip-icon': {
+    margin: 0,
+    marginLeft: 0,
+    marginRight: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+} as const;
+
 /** SuS-Aktion offen: „Bitte ausfüllen“ (Liste + Chips) */
 export const epoNotenBitteAusfuellenChipSx = {
   fontWeight: 800,
   fontSize: '0.62rem',
-  height: 20,
-  '& .MuiChip-label': { px: 0.6 },
   animation: 'epoBitteAusfuellenPulse 1.2s ease-in-out infinite',
   '@keyframes epoBitteAusfuellenPulse': {
     '0%, 100%': { boxShadow: '0 0 0 0 rgba(245, 124, 0, 0.45)' },
@@ -139,6 +182,21 @@ export const epoNotenBitteAusfuellenRowSx = {
   bgcolor: 'rgba(245, 124, 0, 0.09)',
   borderLeft: '3px solid',
   borderLeftColor: epoNotenPalette.warn,
+} as const;
+
+/** SuS erledigt / Kurs „fertig“ — gut sichtbares helles Grün */
+export const epoNotenFertigRowSx = {
+  bgcolor: epoNotenPalette.fertigBg,
+  borderLeft: '3px solid',
+  borderLeftColor: epoNotenPalette.fertigAccent,
+} as const;
+
+export const epoNotenFertigChipSx = {
+  bgcolor: epoNotenPalette.fertigChipBg,
+  color: '#fff',
+  border: '2px solid',
+  borderColor: epoNotenPalette.fertigBorder,
+  '& .MuiChip-icon': { color: '#fff !important' },
 } as const;
 
 export const epoNotenBitteAusfuellenAlertSx = {

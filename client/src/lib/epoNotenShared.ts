@@ -5,6 +5,7 @@ import {
   minPointsThresholdForTotalOnScale,
   pointsOnScaleToGradeTendency,
 } from './gradeScale';
+import { EPO_VARIANT2_ID } from './epoNotenVariantPresets';
 
 export const EPO_NOTEN_CATEGORY_COUNT = 5;
 export const EPO_NOTEN_MAX_POINTS = 15;
@@ -111,12 +112,21 @@ export function normalizeCategoryScores(raw: unknown): number[] {
 export type EpoNotenSuggestedGradeMode = 'note' | 'mss';
 export type EpoNotenAssessmentMode = EpoNotenSuggestedGradeMode;
 
-/** Informatik GK 11 (und gleich benannte Kurse) — immer MSS-Punkte 0–15. */
-export function epoGroupUsesMssPoints(groupName: string | undefined | null): boolean {
+/** Klassen 5a / 5c — Standard ist Note (umschaltbar). */
+export function epoGroupUsesNoteByDefault(groupName: string | undefined | null): boolean {
   if (!groupName?.trim()) return false;
   const n = groupName.trim().toLowerCase();
-  if (!n.includes('informatik')) return false;
-  return /\bgk\s*11\b/.test(n);
+  return /\b5a\b/.test(n) || /\b5c\b/.test(n);
+}
+
+/** Informatik, Stammkurs u. ä. — immer MSS-Punkte 0–15 (nicht umschaltbar). */
+export function epoGroupUsesMssPoints(groupName: string | undefined | null): boolean {
+  if (!groupName?.trim()) return false;
+  if (epoGroupUsesNoteByDefault(groupName)) return false;
+  const n = groupName.trim().toLowerCase();
+  if (n.includes('stammkurs')) return true;
+  if (n.includes('informatik')) return true;
+  return false;
 }
 
 export function defaultAssessmentModeForGroup(
@@ -245,8 +255,16 @@ export function compareEpoStudentListOrder(
 
   const liveA = liveForStudent ? liveForStudent(a) : roundPublished;
   const liveB = liveForStudent ? liveForStudent(b) : roundPublished;
-  const pendA = !pa && Boolean(studentEpoPendingKind(a, liveA));
-  const pendB = !pb && Boolean(studentEpoPendingKind(b, liveB));
+  const pendA =
+    !pa &&
+    !a.withoutSelfAssessment &&
+    !a.teacherGradeOnly &&
+    Boolean(studentEpoPendingKind(a, liveA));
+  const pendB =
+    !pb &&
+    !b.withoutSelfAssessment &&
+    !b.teacherGradeOnly &&
+    Boolean(studentEpoPendingKind(b, liveB));
   if (pendA !== pendB) return pendA ? -1 : 1;
 
   return a.studentName.localeCompare(b.studentName, 'de');
@@ -254,11 +272,16 @@ export function compareEpoStudentListOrder(
 
 export type EpoNotenEntry = {
   studentId: string;
+  /** Lerngruppe (Speicherung pro Runde; im Lehrer-Detail) */
+  groupId?: string;
   studentName: string;
   avatarEmoji?: string | null;
   avatarUrl?: string | null;
-  /** Nur in Lehrer-Detail: Lerngruppe des SuS in dieser Runde */
-  groupId?: string;
+  /** Lehrkraft: keine Selbsteinschätzung — nur Lehrer-Raster */
+  withoutSelfAssessment?: boolean;
+  /** Lehrkraft: nur Note/Punkte + Begründung, kein Raster */
+  teacherGradeOnly?: boolean;
+  teacherJustification?: string;
   suggestedGrade?: string;
   suggestedGradeMode?: EpoNotenSuggestedGradeMode;
   justification?: string;
@@ -271,18 +294,29 @@ export type EpoNotenEntry = {
   goal?: string;
   goalAction?: string;
   goalsSubmittedAt?: string | null;
+  /** Lehrkraft: SuS muss keine Ziele eintragen */
+  goalsWaived?: boolean;
 };
 
 /** SuS muss noch etwas in einer freigeschalteten Runde erledigen. */
 export type StudentEpoPendingKind = 'self' | 'goals';
 
 export function studentEpoPendingKind(
-  entry: Pick<EpoNotenEntry, 'studentSubmittedAt' | 'teacherReleasedAt' | 'goalsSubmittedAt'>,
+  entry: Pick<
+    EpoNotenEntry,
+    | 'studentSubmittedAt'
+    | 'teacherReleasedAt'
+    | 'goalsSubmittedAt'
+    | 'withoutSelfAssessment'
+    | 'teacherGradeOnly'
+    | 'goalsWaived'
+  >,
   roundPublished: boolean,
 ): StudentEpoPendingKind | null {
   if (!roundPublished) return null;
-  if (!entry.studentSubmittedAt) return 'self';
-  if (entry.teacherReleasedAt && !entry.goalsSubmittedAt) return 'goals';
+  if (entry.goalsWaived) return null;
+  if (!entry.studentSubmittedAt && !entry.withoutSelfAssessment && !entry.teacherGradeOnly) return 'self';
+  if (entry.teacherReleasedAt && !entry.goalsSubmittedAt && !entry.goalsWaived) return 'goals';
   return null;
 }
 
@@ -338,11 +372,12 @@ export function teacherFormGradeFromEntry(
 ): string {
   if (!entry) return '';
   if (entry.teacherGrade?.trim()) return entry.teacherGrade.trim();
-  if (!entry.studentSubmittedAt) return '';
+  if (entry.teacherGradeOnly) return '';
   const scores = teacherFormScoresFromEntry(entry);
   if (allCategoriesSelected(scores)) {
     return rasterResultFromTotal(mode, epoRoundedPoints(scores, weightsPercent));
   }
+  if (!entry.studentSubmittedAt && !entry.withoutSelfAssessment && !entry.teacherGradeOnly) return '';
   if (entry.suggestedGrade?.trim()) return entry.suggestedGrade.trim();
   if (entry.selfGradeFromTable?.trim()) return entry.selfGradeFromTable.trim();
   return '';
@@ -360,8 +395,9 @@ export function epoVariantIdForGroup(
 ): string {
   const per = round.variantIdByGroup?.[groupId];
   if (per && String(per).trim()) return String(per).trim();
-  if (round.variantId && String(round.variantId).trim()) return String(round.variantId).trim();
-  return 'default';
+  const roundDefault = round.variantId && String(round.variantId).trim();
+  if (roundDefault && roundDefault !== 'default') return roundDefault;
+  return EPO_VARIANT2_ID;
 }
 
 export type EpoNotenVariantSheet = {

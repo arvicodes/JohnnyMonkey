@@ -44,6 +44,8 @@ const examGradeNumeric_1 = require("../utils/examGradeNumeric");
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const examVersionPaths_1 = require("../lib/examVersionPaths");
+const examSubmissionAliases_1 = require("../lib/examSubmissionAliases");
+const examSubmissionPathVariants_1 = require("../lib/examSubmissionPathVariants");
 const prisma = new client_1.PrismaClient();
 /**
  * Helper-Funktion: Prüft ob eine Datei eine korrigierbare Datei ist (KA_, KU_, HÜ_, HU_, QZ_)
@@ -93,43 +95,8 @@ function submissionMatchesLesson(kaFilePath, lessonNorm, lessonFolderAbs, fileNa
     }
     return false;
 }
-/**
- * Pfad-Varianten für Abgaben: Lehrer übergibt oft den vollen Ordnerpfad,
- * SuS speichern meist nur den Dateinamen (z. B. HU_….html).
- */
 function getPossiblePaths(filePath) {
-    const normalized = (filePath || '').replace(/\\/g, '/').trim();
-    const base = normalized.split('/').pop() || normalized;
-    const withoutExt = base.replace(/\.(html|htm)$/i, '');
-    const stem = withoutExt.replace(/^(KA_|KU_|HÜ_|HU_|QZ_)/i, '');
-    const candidates = new Set();
-    const add = (p) => {
-        const v = (p || '').trim();
-        if (!v)
-            return;
-        candidates.add(v);
-        const noExt = v.replace(/\.(html|htm)$/i, '');
-        candidates.add(noExt);
-        if (!/\.(html|htm)$/i.test(v)) {
-            candidates.add(`${v}.html`);
-            candidates.add(`${v}.htm`);
-        }
-    };
-    add(normalized);
-    add(base);
-    add(withoutExt);
-    const familyStem = (0, examVersionPaths_1.baseStemFromStem)(withoutExt);
-    for (const letter of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
-        const variantFileStem = (0, examVersionPaths_1.variantStem)(familyStem, letter);
-        add(variantFileStem);
-        for (const pref of ['KA_', 'KU_', 'HÜ_', 'HU_', 'QZ_', '']) {
-            add(`${pref}${variantFileStem.replace(/^(KA_|KU_|HÜ_|HU_|QZ_)/i, '')}`);
-        }
-    }
-    for (const pref of ['KA_', 'KU_', 'HÜ_', 'HU_', 'QZ_', '']) {
-        add(`${pref}${stem}`);
-    }
-    return [...candidates];
+    return (0, examSubmissionPathVariants_1.getPossibleKaSubmissionPaths)(filePath);
 }
 async function requireTeacher(req) {
     const loginCode = req.headers['x-login-code'];
@@ -303,6 +270,20 @@ class KACorrectionController {
             const fileNameLower = fileName.toLowerCase();
             const stemLower = fileNameWithoutExt.toLowerCase();
             console.log('🔍 Dateiname:', fileName);
+            let submissionAliases = [];
+            for (const probe of [kaFilePath, fileName]) {
+                try {
+                    submissionAliases = (0, examSubmissionAliases_1.parseExamSubmissionAliases)((0, examAutoPoints_1.readExamHtml)(probe));
+                    if (submissionAliases.length > 0)
+                        break;
+                }
+                catch {
+                    /* andere Pfadform probieren */
+                }
+            }
+            if (submissionAliases.length > 0) {
+                console.log('🔗 Abgabe-Aliase:', submissionAliases);
+            }
             const pathMatches = (stored) => {
                 const n = (stored || '').replace(/\\/g, '/');
                 const base = (n.split('/').pop() || n).toLowerCase();
@@ -313,6 +294,7 @@ class KACorrectionController {
                     n.toLowerCase().endsWith('/' + fileNameLower) ||
                     (0, examVersionPaths_1.kaPathsMatchFamily)(kaFilePath, stored));
             };
+            const submissionPathMatches = (stored) => (0, examSubmissionAliases_1.storedKaPathMatchesRequest)(kaFilePath, stored, submissionAliases, pathMatches);
             let submissions = [];
             try {
                 // Alle Abgaben laden und nach Dateiname matchen (SuS speichern oft nur den Namen)
@@ -329,7 +311,7 @@ class KACorrectionController {
                 console.log(`📊 Gesamt Submissions: ${allSubmissionsRaw.length}`);
                 const matchingIds = allSubmissionsRaw
                     .filter((sub) => {
-                    if (!pathMatches(sub.kaFilePath))
+                    if (!submissionPathMatches(sub.kaFilePath))
                         return false;
                     // leere/draft ausblenden, alles Abgegebene behalten
                     const st = String(sub.status || '').toLowerCase();
@@ -396,7 +378,7 @@ class KACorrectionController {
                 console.log(`🔍 Filtere ${allSubmissionsForVariantSearch.length} Submissions mit Dateiname: ${fileName}`);
                 submissions = allSubmissionsForVariantSearch.filter(sub => {
                     var _a;
-                    if (pathMatches(sub.kaFilePath))
+                    if (submissionPathMatches(sub.kaFilePath))
                         return true;
                     const subPathLower = sub.kaFilePath.toLowerCase();
                     const subFileName = sub.kaFilePath.split('/').pop() || sub.kaFilePath;
@@ -445,27 +427,7 @@ class KACorrectionController {
                 });
                 // Filtere manuell: Prüfe ob der Dateiname im kaFilePath enthalten ist
                 // WICHTIG: Studenten speichern oft nur den Dateinamen, Lehrer verwenden den vollständigen Pfad
-                submissions = allSubmissionsForFilter.filter(sub => {
-                    const subFileName = sub.kaFilePath.split('/').pop() || sub.kaFilePath;
-                    const subFileNameWithoutExt = subFileName.replace(/\.(html|htm)$/i, '');
-                    const subFileNameLower = subFileName.toLowerCase();
-                    const fileNameLower = fileName.toLowerCase();
-                    const fileNameWithoutExtLower = fileNameWithoutExt.toLowerCase();
-                    // Prüfe verschiedene Match-Varianten
-                    return subFileName === fileName ||
-                        subFileNameLower === fileNameLower ||
-                        subFileNameWithoutExt === fileNameWithoutExt ||
-                        subFileNameWithoutExt.toLowerCase() === fileNameWithoutExtLower ||
-                        sub.kaFilePath === kaFilePath ||
-                        sub.kaFilePath.toLowerCase() === kaFilePath.toLowerCase() ||
-                        sub.kaFilePath.includes(fileName) ||
-                        sub.kaFilePath.toLowerCase().includes(fileNameLower) ||
-                        sub.kaFilePath.includes(fileNameWithoutExt) ||
-                        sub.kaFilePath.toLowerCase().includes(fileNameWithoutExtLower) ||
-                        // Auch umgekehrt: Prüfe ob der gesuchte Dateiname im gespeicherten Pfad vorkommt
-                        subFileName.includes(fileNameWithoutExt) ||
-                        subFileNameLower.includes(fileNameWithoutExtLower);
-                });
+                submissions = allSubmissionsForFilter.filter((sub) => submissionPathMatches(sub.kaFilePath));
                 console.log(`✅ Nach manuellem Filtern: ${submissions.length} Submissions gefunden`);
             }
             console.log(`✅ Gefunden: ${submissions.length} Submissions`);

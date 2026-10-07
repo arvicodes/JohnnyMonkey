@@ -10,29 +10,59 @@ import {
   Slider,
   Typography,
   Avatar,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CropIcon from '@mui/icons-material/Crop';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import RotateRightIcon from '@mui/icons-material/RotateRight';
+import Brightness6Icon from '@mui/icons-material/Brightness6';
+import ContrastIcon from '@mui/icons-material/Contrast';
+import OpacityIcon from '@mui/icons-material/Opacity';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import RestoreIcon from '@mui/icons-material/Restore';
 import Cropper from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
 import { DialogCloseIconButton, dialogCloseTitleSx } from './ui/dialog-close-icon-button';
-import { getCroppedImageBlob, PixelCrop } from '../lib/cropImage';
-import { resolveAvatarUrl } from '../lib/avatarUrl';
+import { buildImageAdjustFilter, getCroppedImageBlob, PixelCrop } from '../lib/cropImage';
+import { resolveAvatarUrl, type AvatarPhotoSlot } from '../lib/avatarUrl';
 
 type Step = 'manage' | 'crop';
+
+export type AvatarPhotoUploadMeta = {
+  targetSlot: AvatarPhotoSlot;
+  customMode?: 'base' | 'edit';
+  customGalleryId?: string;
+};
+
+export type AvatarGalleryCustomItem = {
+  id: string;
+  url?: string | null;
+  hasEdit?: boolean;
+};
 
 type AvatarPhotoDialogProps = {
   open: boolean;
   onClose: () => void;
   currentImageUrl?: string | null;
-  onUpload: (file: File) => Promise<void>;
-  onRemove?: () => Promise<void>;
+  onUpload: (file: File, meta?: AvatarPhotoUploadMeta) => Promise<void>;
   isUploading?: boolean;
+  /** Anzeige-URL je Slot (Original oder Bearbeitung) */
+  galleryPrimaryUrl?: string | null;
+  galleryAltUrl?: string | null;
+  galleryCustomItems?: AvatarGalleryCustomItem[];
+  slotHasEdit?: Partial<Record<AvatarPhotoSlot, boolean>>;
+  onResetSlotEdit?: (slot: AvatarPhotoSlot, customGalleryId?: string) => void | Promise<void>;
+  activePhotoSlot?: AvatarPhotoSlot;
+  activeCustomGalleryId?: string | null;
+  onSelectGallerySlot?: (slot: AvatarPhotoSlot, customGalleryId?: string) => void | Promise<void>;
+  allowRemoveActive?: boolean;
+  onRemoveActive?: () => void | Promise<void>;
 };
 
-/** react-easy-crop Area shape (types package exports are type-only) */
 type CropArea = PixelCrop;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -43,14 +73,30 @@ const AvatarPhotoDialog: React.FC<AvatarPhotoDialogProps> = ({
   onClose,
   currentImageUrl = null,
   onUpload,
-  onRemove,
   isUploading = false,
+  galleryPrimaryUrl = null,
+  galleryAltUrl = null,
+  galleryCustomItems = [],
+  slotHasEdit = {},
+  onResetSlotEdit,
+  activePhotoSlot = 'primary',
+  activeCustomGalleryId = null,
+  onSelectGallerySlot,
+  allowRemoveActive = false,
+  onRemoveActive,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<Step>('manage');
   const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [editSourceSlot, setEditSourceSlot] = useState<AvatarPhotoSlot>('custom');
+  const [editCustomGalleryId, setEditCustomGalleryId] = useState<string | null>(null);
+  const [customUploadBase, setCustomUploadBase] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [brightness, setBrightness] = useState(1);
+  const [contrast, setContrast] = useState(1);
+  const [saturation, setSaturation] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<CropArea | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -58,11 +104,18 @@ const AvatarPhotoDialog: React.FC<AvatarPhotoDialogProps> = ({
   const resetCropState = useCallback(() => {
     setStep('manage');
     setImageSrc((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
+      if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
       return null;
     });
+    setEditSourceSlot('custom');
+    setEditCustomGalleryId(null);
+    setCustomUploadBase(false);
     setCrop({ x: 0, y: 0 });
     setZoom(1);
+    setRotation(0);
+    setBrightness(1);
+    setContrast(1);
+    setSaturation(1);
     setCroppedAreaPixels(null);
     setError(null);
     setSaving(false);
@@ -77,6 +130,55 @@ const AvatarPhotoDialog: React.FC<AvatarPhotoDialogProps> = ({
     onClose();
   };
 
+  const beginCropEditor = (
+    objectUrl: string,
+    sourceSlot: AvatarPhotoSlot,
+    isCustomBase = false,
+    customGalleryId: string | null = null,
+  ) => {
+    setImageSrc((prev) => {
+      if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
+      return objectUrl;
+    });
+    setEditSourceSlot(sourceSlot);
+    setEditCustomGalleryId(customGalleryId);
+    setCustomUploadBase(isCustomBase);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setRotation(0);
+    setBrightness(1);
+    setContrast(1);
+    setSaturation(1);
+    setCroppedAreaPixels(null);
+    setStep('crop');
+  };
+
+  const startCropWithUrl = async (
+    url: string | undefined,
+    sourceSlot: AvatarPhotoSlot,
+    customGalleryId?: string,
+  ) => {
+    setError(null);
+    const resolved = resolveAvatarUrl(url) || url;
+    if (!resolved) {
+      setError('Kein Bild zum Bearbeiten.');
+      return;
+    }
+    try {
+      const response = await fetch(resolved);
+      if (!response.ok) throw new Error('Bild konnte nicht geladen werden');
+      const blob = await response.blob();
+      beginCropEditor(
+        URL.createObjectURL(blob),
+        sourceSlot,
+        false,
+        sourceSlot === 'custom' ? customGalleryId || null : null,
+      );
+    } catch {
+      setError('Bild konnte nicht geladen werden.');
+    }
+  };
+
   const startCropWithFile = async (file: File) => {
     setError(null);
     if (!file.type.startsWith('image/') && !/\.(heic|heif)$/i.test(file.name)) {
@@ -88,7 +190,6 @@ const AvatarPhotoDialog: React.FC<AvatarPhotoDialogProps> = ({
       return;
     }
 
-    // HEIC: try heic2any if available in project
     let blob: Blob = file;
     if (/\.(heic|heif)$/i.test(file.name) || file.type === 'image/heic' || file.type === 'image/heif') {
       try {
@@ -101,14 +202,7 @@ const AvatarPhotoDialog: React.FC<AvatarPhotoDialogProps> = ({
       }
     }
 
-    setImageSrc((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return URL.createObjectURL(blob);
-    });
-    setCrop({ x: 0, y: 0 });
-    setZoom(1);
-    setCroppedAreaPixels(null);
-    setStep('crop');
+    beginCropEditor(URL.createObjectURL(blob), 'custom', true);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -126,11 +220,22 @@ const AvatarPhotoDialog: React.FC<AvatarPhotoDialogProps> = ({
     setSaving(true);
     setError(null);
     try {
-      const blob = await getCroppedImageBlob(imageSrc, croppedAreaPixels, 512);
+      const blob = await getCroppedImageBlob(imageSrc, croppedAreaPixels, 512, {
+        rotation,
+        brightness,
+        contrast,
+        saturation,
+      });
       const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
-      await onUpload(file);
+      await onUpload(file, {
+        targetSlot: editSourceSlot,
+        customMode: editSourceSlot === 'custom' && customUploadBase ? 'base' : 'edit',
+        customGalleryId:
+          editSourceSlot === 'custom' && !customUploadBase && editCustomGalleryId
+            ? editCustomGalleryId
+            : undefined,
+      });
       resetCropState();
-      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen');
     } finally {
@@ -138,18 +243,145 @@ const AvatarPhotoDialog: React.FC<AvatarPhotoDialogProps> = ({
     }
   };
 
-  const handleRemove = async () => {
-    if (!onRemove) return;
-    setError(null);
-    try {
-      await onRemove();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Entfernen fehlgeschlagen');
-    }
-  };
-
   const previewUrl = resolveAvatarUrl(currentImageUrl);
+  const galleryPrimary = resolveAvatarUrl(galleryPrimaryUrl);
+  const galleryAlt = resolveAvatarUrl(galleryAltUrl);
+  const customTiles = galleryCustomItems
+    .map((item) => ({
+      ...item,
+      imgUrl: resolveAvatarUrl(item.url),
+    }))
+    .filter((item) => Boolean(item.imgUrl));
+  const showGalleryPicker =
+    Boolean(onSelectGallerySlot) &&
+    Boolean(galleryPrimary || galleryAlt || customTiles.length > 0);
   const busy = saving || isUploading;
+  const adjustPreviewFilter = buildImageAdjustFilter({ brightness, contrast, saturation });
+
+  const galleryTile = (
+    slot: AvatarPhotoSlot,
+    label: string,
+    imgUrl: string | undefined,
+    selected: boolean,
+    hasEditOverride?: boolean,
+    customGalleryId?: string,
+  ) => {
+    if (!imgUrl) return null;
+    const hasEdit = hasEditOverride ?? Boolean(slotHasEdit[slot]);
+    return (
+      <Box sx={{ textAlign: 'center' }}>
+        <Box sx={{ position: 'relative', display: 'inline-block' }}>
+          <Box
+            component="button"
+            type="button"
+            disabled={busy}
+            onClick={() =>
+              void onSelectGallerySlot?.(
+                slot,
+                slot === 'custom' ? customGalleryId : undefined,
+              )
+            }
+            sx={{
+              width: 88,
+              height: 88,
+              borderRadius: '50%',
+              overflow: 'hidden',
+              border: selected ? '3px solid #2e7d32' : '2px solid rgba(0,0,0,0.12)',
+              boxShadow: selected ? '0 0 0 2px rgba(46,125,50,0.35)' : '0 2px 8px rgba(0,0,0,0.1)',
+              cursor: 'pointer',
+              p: 0,
+              bgcolor: '#f0f0f0',
+              position: 'relative',
+              display: 'block',
+            }}
+            aria-label={`${label} wählen`}
+          >
+            <Box
+              component="img"
+              src={imgUrl}
+              alt={label}
+              sx={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: '50% 22%',
+                display: 'block',
+              }}
+            />
+            {selected ? (
+              <CheckCircleIcon
+                sx={{
+                  position: 'absolute',
+                  bottom: 2,
+                  right: 2,
+                  fontSize: 20,
+                  color: '#2e7d32',
+                  bgcolor: '#fff',
+                  borderRadius: '50%',
+                }}
+              />
+            ) : null}
+          </Box>
+          <Tooltip title="Bearbeiten">
+            <IconButton
+              size="small"
+              disabled={busy}
+              onClick={(e) => {
+                e.stopPropagation();
+                void startCropWithUrl(
+                  imgUrl,
+                  slot,
+                  slot === 'custom' ? customGalleryId : undefined,
+                );
+              }}
+              sx={{
+                position: 'absolute',
+                bottom: -4,
+                right: -4,
+                bgcolor: '#fff',
+                boxShadow: 1,
+                width: 28,
+                height: 28,
+                '&:hover': { bgcolor: '#f5f5f5' },
+              }}
+              aria-label={`${label} bearbeiten`}
+            >
+              <EditIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
+          {hasEdit && onResetSlotEdit ? (
+            <Tooltip title="Auf Ausgang zurücksetzen">
+              <IconButton
+                size="small"
+                disabled={busy}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void onResetSlotEdit(
+                    slot,
+                    slot === 'custom' ? customGalleryId : undefined,
+                  );
+                }}
+                sx={{
+                  position: 'absolute',
+                  bottom: -4,
+                  left: -4,
+                  bgcolor: '#fff',
+                  boxShadow: 1,
+                  width: 28,
+                  height: 28,
+                  '&:hover': { bgcolor: '#f5f5f5' },
+                }}
+                aria-label={`${label} zurücksetzen`}
+              >
+                <RestoreIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+          ) : null}
+        </Box>
+        <Typography variant="caption" sx={{ mt: 0.75, display: 'block' }}>{label}</Typography>
+      </Box>
+    );
+  };
 
   return (
     <Dialog
@@ -175,7 +407,7 @@ const AvatarPhotoDialog: React.FC<AvatarPhotoDialogProps> = ({
         }}
       >
         <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-          {step === 'crop' ? 'Ausschnitt anpassen' : 'Eigenes Bild'}
+          {step === 'crop' ? 'Bild anpassen' : 'Dein Profilbild'}
         </Typography>
         <DialogCloseIconButton
           onClose={handleClose}
@@ -196,35 +428,137 @@ const AvatarPhotoDialog: React.FC<AvatarPhotoDialogProps> = ({
                 bgcolor: '#111',
                 borderRadius: 2,
                 overflow: 'hidden',
+                filter: adjustPreviewFilter || 'none',
               }}
             >
               <ImageCropper
                 image={imageSrc}
                 crop={crop}
                 zoom={zoom}
+                rotation={rotation}
                 aspect={1}
                 cropShape="round"
                 showGrid={false}
                 onCropChange={setCrop}
                 onZoomChange={setZoom}
+                onRotationChange={setRotation}
                 onCropComplete={onCropComplete}
               />
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 1 }}>
-              <ZoomInIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
-              <Slider
-                value={zoom}
-                min={1}
-                max={3}
-                step={0.05}
-                onChange={(_e, v) => setZoom(v as number)}
-                aria-label="Zoom"
-                sx={{ color: '#667eea' }}
-              />
+            <Box sx={{ display: 'flex', gap: 1.5, px: 0.5 }}>
+              <Box
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 0.25,
+                }}
+              >
+                <ZoomInIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                <Slider
+                  size="small"
+                  value={zoom}
+                  min={1}
+                  max={3}
+                  step={0.05}
+                  onChange={(_e, v) => setZoom(v as number)}
+                  aria-label="Zoom"
+                  sx={{ width: '100%', color: '#667eea', py: 0.25 }}
+                />
+              </Box>
+              <Box
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 0.25,
+                }}
+              >
+                <RotateRightIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                <Slider
+                  size="small"
+                  value={rotation}
+                  min={-180}
+                  max={180}
+                  step={1}
+                  onChange={(_e, v) => setRotation(v as number)}
+                  aria-label="Drehen"
+                  sx={{ width: '100%', color: '#667eea', py: 0.25 }}
+                />
+              </Box>
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
-              Ziehe das Bild und zoome, bis der Ausschnitt passt.
-            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, px: 0.5 }}>
+              <Box
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 0.25,
+                }}
+              >
+                <Brightness6Icon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                <Slider
+                  size="small"
+                  value={brightness}
+                  min={0.55}
+                  max={1.45}
+                  step={0.02}
+                  onChange={(_e, v) => setBrightness(v as number)}
+                  aria-label="Helligkeit"
+                  sx={{ width: '100%', color: '#667eea', py: 0.25 }}
+                />
+              </Box>
+              <Box
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 0.25,
+                }}
+              >
+                <ContrastIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                <Slider
+                  size="small"
+                  value={contrast}
+                  min={0.55}
+                  max={1.45}
+                  step={0.02}
+                  onChange={(_e, v) => setContrast(v as number)}
+                  aria-label="Kontrast"
+                  sx={{ width: '100%', color: '#667eea', py: 0.25 }}
+                />
+              </Box>
+              <Box
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 0.25,
+                }}
+              >
+                <OpacityIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                <Slider
+                  size="small"
+                  value={saturation}
+                  min={0}
+                  max={2}
+                  step={0.02}
+                  onChange={(_e, v) => setSaturation(v as number)}
+                  aria-label="Farbsättigung"
+                  sx={{ width: '100%', color: '#667eea', py: 0.25 }}
+                />
+              </Box>
+            </Box>
           </Box>
         ) : (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 2 }}>
@@ -241,9 +575,22 @@ const AvatarPhotoDialog: React.FC<AvatarPhotoDialogProps> = ({
             >
               <PhotoCameraIcon sx={{ fontSize: 40 }} />
             </Avatar>
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', maxWidth: 340 }}>
-              Dein Foto erscheint neben dem Avatar-Emoji. Du kannst den Ausschnitt nach dem Hochladen anpassen.
-            </Typography>
+            {showGalleryPicker ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap', mt: 0.5 }}>
+                {galleryTile('primary', 'Foto 1', galleryPrimary, activePhotoSlot === 'primary')}
+                {galleryTile('alt', 'Foto 2', galleryAlt, activePhotoSlot === 'alt')}
+                {customTiles.map((item, index) =>
+                  galleryTile(
+                    'custom',
+                    customTiles.length > 1 ? `Eigenes ${index + 1}` : 'Eigenes',
+                    item.imgUrl,
+                    activePhotoSlot === 'custom' && activeCustomGalleryId === item.id,
+                    item.hasEdit,
+                    item.id,
+                  ),
+                )}
+              </Box>
+            ) : null}
             <input
               ref={fileInputRef}
               type="file"
@@ -264,21 +611,25 @@ const AvatarPhotoDialog: React.FC<AvatarPhotoDialogProps> = ({
                 fontWeight: 600,
               }}
             >
-              {previewUrl ? 'Neues Bild wählen & zuschneiden' : 'Bild wählen & zuschneiden'}
+              {galleryPrimary || galleryAlt || customTiles.length > 0
+                ? 'Eigenes Foto hinzufügen'
+                : previewUrl
+                  ? 'Neues Bild wählen'
+                  : 'Bild wählen'}
             </Button>
-            {previewUrl && onRemove && (
+            {previewUrl && allowRemoveActive && onRemoveActive ? (
               <Button
                 variant="outlined"
                 color="error"
                 size="small"
                 startIcon={<DeleteOutlineIcon />}
                 disabled={busy}
-                onClick={handleRemove}
+                onClick={() => void onRemoveActive()}
                 sx={{ textTransform: 'none', borderRadius: 1.5 }}
               >
                 Bild entfernen
               </Button>
-            )}
+            ) : null}
           </Box>
         )}
         {error && (
@@ -288,57 +639,32 @@ const AvatarPhotoDialog: React.FC<AvatarPhotoDialogProps> = ({
         )}
       </DialogContent>
 
-      <DialogActions sx={{ p: 2, justifyContent: 'center', gap: 1 }}>
-        {step === 'crop' ? (
-          <>
-            <Button
-              onClick={() => {
-                setImageSrc((prev) => {
-                  if (prev) URL.revokeObjectURL(prev);
-                  return null;
-                });
-                setStep('manage');
-                setError(null);
-              }}
-              disabled={busy}
-              variant="outlined"
-              sx={{ textTransform: 'none', borderRadius: 1.5 }}
-            >
-              Zurück
-            </Button>
-            <Button
-              onClick={handleSaveCrop}
-              disabled={busy || !croppedAreaPixels}
-              variant="contained"
-              startIcon={busy ? <CircularProgress size={18} color="inherit" /> : <PhotoCameraIcon />}
-              sx={{
-                textTransform: 'none',
-                borderRadius: 1.5,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                fontWeight: 600,
-              }}
-            >
-              {busy ? 'Speichern…' : 'Ausschnitt speichern'}
-            </Button>
-          </>
-        ) : (
+      {step === 'crop' ? (
+        <DialogActions sx={{ p: 2, justifyContent: 'center', gap: 1 }}>
           <Button
-            onClick={handleClose}
+            onClick={resetCropState}
             disabled={busy}
             variant="outlined"
+            sx={{ textTransform: 'none', borderRadius: 1.5 }}
+          >
+            Zurück
+          </Button>
+          <Button
+            onClick={handleSaveCrop}
+            disabled={busy || !croppedAreaPixels}
+            variant="contained"
+            startIcon={busy ? <CircularProgress size={18} color="inherit" /> : <PhotoCameraIcon />}
             sx={{
-              borderRadius: 1.5,
-              px: 3,
-              fontWeight: 600,
-              borderColor: '#1976d2',
-              color: '#1976d2',
               textTransform: 'none',
+              borderRadius: 1.5,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              fontWeight: 600,
             }}
           >
-            Schließen
+            {busy ? 'Speichern…' : 'Speichern'}
           </Button>
-        )}
-      </DialogActions>
+        </DialogActions>
+      ) : null}
     </Dialog>
   );
 };

@@ -64,6 +64,12 @@ import {
   parseExamAnswerKey,
   sortExamAnswerFieldIds,
 } from '../lib/examAnswerKey';
+import {
+  buildExamDollarAnswerKeyFromHtml,
+  examHtmlUsesDollarAuthoring,
+  isPlaceholderLegacyExamKey,
+  remapExamDollarSubmissionToSynthetic,
+} from '../lib/examDollarCorrection';
 import { examAnswerScoreFraction } from '../lib/examMcPartialScore';
 import {
   examGradeLabelForCorrection,
@@ -237,6 +243,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const [reviewPdfBusy, setReviewPdfBusy] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [examAnswers, setExamAnswers] = useState<Record<string, any>>({});
+  const [examDollarHtml, setExamDollarHtml] = useState('');
   const [examPoints, setExamPoints] = useState<Record<string, number>>({});
   const [examMaxPoints, setExamMaxPoints] = useState(0);
   const [useGeometryTask3, setUseGeometryTask3] = useState(false);
@@ -297,7 +304,21 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         if (!res.ok) throw new Error('html');
         const html = await res.text();
         if (cancelled) return;
+        setExamDollarHtml(examHtmlUsesDollarAuthoring(html) ? html : '');
         const parsed = parseExamAnswerKey(html);
+        const dollarKey = examHtmlUsesDollarAuthoring(html)
+          ? buildExamDollarAnswerKeyFromHtml(html)
+          : null;
+        const useDollar =
+          dollarKey &&
+          (Object.keys(parsed.answers).length === 0 || isPlaceholderLegacyExamKey(parsed));
+        if (useDollar && dollarKey) {
+          setExamAnswers(dollarKey.answers);
+          setExamPoints(dollarKey.points);
+          setExamMaxPoints(dollarKey.maxPoints);
+          setUseGeometryTask3(false);
+          return;
+        }
         if (Object.keys(parsed.answers).length > 0) {
           setExamAnswers(parsed.answers);
           setExamPoints(parsed.points);
@@ -424,10 +445,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
       }
 
       console.log('🔍 Lade Abgaben für:', kaFilePath);
-      // SuS speichern oft nur den Dateinamen — gezielt danach suchen
-      const fileNameOnly = (kaFilePath.split('/').pop() || kaFilePath).trim();
       const qs = new URLSearchParams({
-        kaFilePath: fileNameOnly,
+        kaFilePath: kaFilePath.trim(),
         loginCode,
       });
 
@@ -835,6 +854,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     }
   };
 
+  const answersForCorrectionGrouping = (answersJson: string): Record<string, unknown> => {
+    const raw = parseAnswers(answersJson) as Record<string, unknown>;
+    if (!examDollarHtml) return raw;
+    const hasDollar = Object.keys(raw).some((k) => k.startsWith('examDollar_'));
+    if (!hasDollar) return raw;
+    return remapExamDollarSubmissionToSynthetic(raw, examDollarHtml);
+  };
+
   const GEOMETRY_POINTS: Record<string, number> = {
     a1a: 1, a1b: 1, a1c: 1, a1d: 1, a1e: 1, a1f: 1, a1g: 1, a1h: 1,
     a2a: 1, a2b: 1, a2c: 1,
@@ -974,7 +1001,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   const answerFieldTabIndex = useMemo(() => {
     const map = new Map<string, number>();
     if (!tabThroughAnswersOnly || !selectedSubmission) return map;
-    const parsed = parseAnswers(selectedSubmission.answers);
+    const parsed = answersForCorrectionGrouping(selectedSubmission.answers);
     const fieldIds = sortExamAnswerFieldIds(
       Array.from(new Set([...Object.keys(parsed), ...Object.keys(correctAnswers)])),
     ).filter((taskId) => {
@@ -991,6 +1018,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     selectedSubmission?.answers,
     examAnswers,
     useGeometryTask3,
+    examDollarHtml,
   ]);
 
   const tabIndexForAnswerField = (taskId: string): number | undefined => {
@@ -1043,7 +1071,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   };
 
   const liveAchievedTotal = (submission: KASubmission): number => {
-    const answers = parseAnswers(submission.answers);
+    const answers = answersForCorrectionGrouping(submission.answers);
     const grouped = groupAnswersByTask(answers);
     let sum = 0;
     Object.entries(grouped).forEach(([taskNum, taskAnswers]) => {
@@ -1321,7 +1349,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
 
   const saveStudentAnswerField = async (taskId: string, value: string) => {
     if (!selectedSubmission) return;
-    const parsed = parseAnswers(selectedSubmission.answers);
+    const parsed = answersForCorrectionGrouping(selectedSubmission.answers);
     const next = { ...parsed, [taskId]: value };
     const loginCode = localStorage.getItem('loginCode') || '';
     const res = await fetch(`/api/ka-corrections/submissions/${selectedSubmission.id}/answers`, {
@@ -2448,7 +2476,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
             const checkAllFieldsFilled = () => {
               if (!submission) return false;
               // Bestimme welche Aufgaben vorhanden sind basierend auf den Antworten des Schülers
-              const answers = parseAnswers(submission.answers);
+              const answers = answersForCorrectionGrouping(submission.answers);
               const existingTasks = new Set<string>();
               Object.keys(answers).forEach(taskId => {
                 const match = taskId.match(/a(\d+)/);
@@ -2493,7 +2521,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                 if (taskNum === '3' && useGeometryTask3) {
                   return allTask3Filled;
                 } else {
-                  const parsed = parseAnswers(submission.answers);
+                  const parsed = answersForCorrectionGrouping(submission.answers);
                   const fieldIds = Object.keys(parsed).filter((id) => {
                     const m = id.match(/a(\d+)/);
                     return m && m[1] === taskNum;
@@ -3060,7 +3088,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           {/* Answers Section - Gruppiert nach Aufgaben */}
           <Box>
             {(() => {
-              const answers = parseAnswers(selectedSubmission.answers);
+              const answers = answersForCorrectionGrouping(selectedSubmission.answers);
               const groupedAnswers = groupAnswersByTask(answers);
               
               const taskSections: React.ReactElement[] = [];
@@ -3953,7 +3981,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
               }),
             );
             const taskSubmissions = groupSubmissions.map(sub => {
-              const answers = parseAnswers(sub.answers);
+              const answers = answersForCorrectionGrouping(sub.answers);
               const taskAnswers = taskFieldIds.map((taskId) => ({
                 taskId,
                 answer: answers[taskId] ?? '',

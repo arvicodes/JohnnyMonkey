@@ -1,5 +1,7 @@
 /** Lehrer startet/beendet eine Prüfungs-HTML für eine Lerngruppe (Vollbild bei SuS). */
 
+import type { ExamStartPayloadConfig } from './examStartConfig';
+
 export type LessonExamBeaconStatus = {
   active: boolean;
   filePath: string | null;
@@ -65,6 +67,7 @@ export async function startLessonExam(opts: {
   groupIds?: string[];
   filePath: string;
   lessonPath?: string;
+  examConfig?: ExamStartPayloadConfig;
 }): Promise<{ filePath: string; beaconId: string; groupIds: string[] }> {
   const groupIds = normalizeExamGroupIds(opts.groupIds, opts.groupId);
   if (!groupIds.length) throw new Error('Keine Lerngruppe');
@@ -76,6 +79,7 @@ export async function startLessonExam(opts: {
       groupIds,
       filePath: opts.filePath,
       lessonPath: opts.lessonPath || '',
+      examConfig: opts.examConfig,
     }),
   });
   const data = (await res.json().catch(() => ({}))) as {

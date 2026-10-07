@@ -77,9 +77,13 @@ export default function EpoNotenPage() {
   const [error, setError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<EpoNotenStudentSession[]>([]);
   const [myEntry, setMyEntry] = useState<EpoNotenEntry | null>(null);
-  const [roundMeta, setRoundMeta] = useState<{ id: string; title: string; date: string; groupName: string } | null>(
-    null,
-  );
+  const [roundMeta, setRoundMeta] = useState<{
+    id: string;
+    title: string;
+    date: string;
+    groupId: string;
+    groupName: string;
+  } | null>(null);
   const [canEditSelf, setCanEditSelf] = useState(false);
   const [canEditGoals, setCanEditGoals] = useState(false);
   const [teacherId, setTeacherId] = useState('');
@@ -99,6 +103,7 @@ export default function EpoNotenPage() {
   const selfFormDirtyRef = useRef(false);
 
   const selectedRoundId = searchParams.get('roundId') || '';
+  const selectedGroupId = searchParams.get('groupId') || '';
   const showStudentList = !isTeacher && !selectedRoundId;
 
   const populateFromEntry = useCallback(
@@ -131,8 +136,11 @@ export default function EpoNotenPage() {
     setLoading(true);
     setError(null);
     try {
-      const q = selectedRoundId ? `?roundId=${encodeURIComponent(selectedRoundId)}` : '';
-      const res = await apiGetSafe(`/api/epo-noten/current${q}`);
+      const q = new URLSearchParams();
+      if (selectedRoundId) q.set('roundId', selectedRoundId);
+      if (selectedGroupId) q.set('groupId', selectedGroupId);
+      const qs = q.toString();
+      const res = await apiGetSafe(`/api/epo-noten/current${qs ? `?${qs}` : ''}`);
       if (!res?.ok) throw new Error('Daten konnten nicht geladen werden');
       const data = await res.json();
       const list = Array.isArray(data.sessions) ? (data.sessions as EpoNotenStudentSession[]) : [];
@@ -145,7 +153,10 @@ export default function EpoNotenPage() {
         setCanEditGoals(Boolean(data.canEditGoals));
         setTeacherId(typeof data.teacherId === 'string' ? data.teacherId : '');
 
-        const fromList = list.find((s) => s.id === selectedRoundId);
+        const fromList =
+          list.find(
+            (s) => s.id === selectedRoundId && (!selectedGroupId || s.groupId === selectedGroupId),
+          ) || list.find((s) => s.id === selectedRoundId);
         let mode: EpoNotenAssessmentMode = 'note';
         let weightsForRound: number[] | undefined;
 
@@ -154,6 +165,7 @@ export default function EpoNotenPage() {
             id: string;
             title: string;
             date: string;
+            groupId: string;
             groupName: string;
             assessmentMode?: EpoNotenAssessmentMode;
             studentCategories?: string[];
@@ -161,7 +173,13 @@ export default function EpoNotenPage() {
             categoryTitles?: string[];
             categoryWeightsPercent?: number[];
           };
-          setRoundMeta({ id: r.id, title: r.title, date: r.date, groupName: r.groupName });
+          setRoundMeta({
+            id: r.id,
+            title: r.title,
+            date: r.date,
+            groupId: r.groupId,
+            groupName: r.groupName,
+          });
           if (Array.isArray(r.studentCategories) && r.studentCategories.length > 0) {
             setStudentCategories(r.studentCategories);
           } else {
@@ -182,6 +200,7 @@ export default function EpoNotenPage() {
             id: fromList.id,
             title: fromList.title,
             date: fromList.date,
+            groupId: fromList.groupId,
             groupName: fromList.groupName,
           });
           mode =
@@ -206,19 +225,19 @@ export default function EpoNotenPage() {
     } finally {
       setLoading(false);
     }
-  }, [populateFromEntry, selectedRoundId]);
+  }, [populateFromEntry, selectedGroupId, selectedRoundId]);
 
   useEffect(() => {
     selfFormDirtyRef.current = false;
-  }, [selectedRoundId]);
+  }, [selectedGroupId, selectedRoundId]);
 
   useEffect(() => {
     if (!isTeacher) loadStudent();
-  }, [isTeacher, loadStudent, selectedRoundId]);
+  }, [isTeacher, loadStudent, selectedGroupId, selectedRoundId]);
 
-  const openRound = (id: string) => {
+  const openRound = (session: EpoNotenStudentSession) => {
     selfFormDirtyRef.current = false;
-    setSearchParams({ roundId: id });
+    setSearchParams({ roundId: session.id, groupId: session.groupId });
   };
 
   const backToList = () => {
@@ -233,6 +252,7 @@ export default function EpoNotenPage() {
     try {
       const res = await apiPost('/api/epo-noten/submit-self', {
         roundId: roundMeta?.id || selectedRoundId,
+        groupId: roundMeta?.groupId || selectedGroupId,
         teacherId,
         suggestedGrade,
         justification,
@@ -255,7 +275,9 @@ export default function EpoNotenPage() {
   }, [
     justification,
     loadStudent,
+    roundMeta?.groupId,
     roundMeta?.id,
+    selectedGroupId,
     selectedRoundId,
     selfScores,
     assessmentMode,
@@ -270,6 +292,7 @@ export default function EpoNotenPage() {
     try {
       const res = await apiPost('/api/epo-noten/submit-goals', {
         roundId: roundMeta?.id || selectedRoundId,
+        groupId: roundMeta?.groupId || selectedGroupId,
         teacherId,
         goal,
         goalAction,
@@ -287,77 +310,77 @@ export default function EpoNotenPage() {
   };
 
   const phase = useMemo(() => {
-    if (!myEntry?.studentSubmittedAt) return 'self';
+    if (
+      !myEntry?.studentSubmittedAt &&
+      !myEntry?.withoutSelfAssessment &&
+      !myEntry?.teacherGradeOnly &&
+      !myEntry?.goalsWaived
+    )
+      return 'self';
     if (!myEntry?.teacherReleasedAt) return 'wait';
-    if (!myEntry?.goalsSubmittedAt) return 'goals';
+    if (!myEntry?.goalsSubmittedAt && !myEntry?.goalsWaived) return 'goals';
     return 'done';
   }, [myEntry]);
 
+  const osWaitOnly =
+    Boolean(myEntry?.withoutSelfAssessment || myEntry?.teacherGradeOnly) &&
+    !myEntry?.studentSubmittedAt &&
+    phase === 'wait';
+
   return (
-    <Box sx={{ ...epoNotenPageBgSx, py: isTeacher ? 0.35 : epoNotenPageBgSx.py }}>
+    <Box sx={{ ...epoNotenPageBgSx, py: isTeacher ? 0 : epoNotenPageBgSx.py }}>
       <Box sx={epoNotenPageShellSx}>
-        <Stack
-          direction="row"
-          alignItems="center"
-          justifyContent="space-between"
-          sx={{ mb: isTeacher ? 0.25 : 0.65, minHeight: isTeacher ? 22 : 26 }}
-        >
-          {!isTeacher && selectedRoundId ? (
-            <IconButton onClick={backToList} aria-label="Zur Liste" size="small" sx={{ ...compactIconBtn, ml: -0.25 }}>
-              <ArrowBackIcon sx={{ fontSize: 15 }} />
-            </IconButton>
-          ) : (
+        {!isTeacher && (
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ mb: 0.65, minHeight: 26, flexShrink: 0 }}
+          >
+            {selectedRoundId ? (
+              <IconButton onClick={backToList} aria-label="Zur Liste" size="small" sx={{ ...compactIconBtn, ml: -0.25 }}>
+                <ArrowBackIcon sx={{ fontSize: 15 }} />
+              </IconButton>
+            ) : (
+              <Box sx={{ width: 28 }} />
+            )}
             <Typography
               variant="body2"
               sx={{
                 fontWeight: 800,
                 color: epoNotenPalette.primary,
-                fontSize: isTeacher ? '0.8rem' : '0.88rem',
+                fontSize: '0.88rem',
+                flex: 1,
+                textAlign: 'center',
                 minWidth: 0,
-                pl: isTeacher ? 0.25 : 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                px: 0.5,
               }}
             >
-              {isTeacher ? 'EPO — Lehrer' : ''}
+              EPO-Noten
             </Typography>
-          )}
-          {!isTeacher && (
-          <Typography
-            variant="body2"
-            sx={{
-              fontWeight: 800,
-              color: epoNotenPalette.primary,
-              fontSize: '0.88rem',
-              flex: 1,
-              textAlign: 'center',
-              minWidth: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              px: 0.5,
-            }}
-          >
-            EPO-Noten
-          </Typography>
-          )}
-          {isTeacher && <Box sx={{ flex: 1 }} />}
-          <IconButton
-            onClick={() => navigate('/')}
-            aria-label="Schließen"
-            size="small"
-            sx={{ ...compactIconBtn, mr: -0.25 }}
-          >
-            <CloseIcon sx={{ fontSize: 15 }} />
-          </IconButton>
-        </Stack>
+            <IconButton
+              onClick={() => navigate('/')}
+              aria-label="Schließen"
+              size="small"
+              sx={{ ...compactIconBtn, mr: -0.25 }}
+            >
+              <CloseIcon sx={{ fontSize: 15 }} />
+            </IconButton>
+          </Stack>
+        )}
 
+        <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {isTeacher ? (
           <EpoNotenTeacherView />
         ) : loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6, flex: 1 }}>
             <CircularProgress size={28} />
           </Box>
         ) : (
-          <Stack spacing={1.25} sx={{ width: '100%' }}>
+          <Stack spacing={1.25} sx={{ width: '100%', flex: 1, minHeight: 0, overflow: 'auto' }}>
             {error && <Alert severity="error">{error}</Alert>}
 
             {sessions.length === 0 ? (
@@ -366,7 +389,11 @@ export default function EpoNotenPage() {
               <EpoNotenStudentRoundList sessions={sessions} onSelect={openRound} />
             ) : (
               <>
-                {sessions.find((s) => s.id === (roundMeta?.id || selectedRoundId))?.isArchived && (
+                {sessions.find(
+                  (s) =>
+                    s.id === (roundMeta?.id || selectedRoundId) &&
+                    (!selectedGroupId || s.groupId === (roundMeta?.groupId || selectedGroupId)),
+                )?.isArchived && (
                   <Alert severity="info" sx={{ py: 0.75 }}>
                     Diese ältere Runde ist abgeschlossen — nur noch ansehen.
                   </Alert>
@@ -391,7 +418,13 @@ export default function EpoNotenPage() {
                   </Alert>
                 )}
 
-                {(phase === 'self' || phase === 'wait') && (
+                {osWaitOnly && (
+                  <Alert severity="info" sx={{ py: 0.85 }}>
+                    Deine Lehrkraft bewertet ohne Selbsteinschätzung. Du siehst das Ergebnis, sobald es freigegeben ist.
+                  </Alert>
+                )}
+
+                {(phase === 'self' || (phase === 'wait' && myEntry?.studentSubmittedAt)) && (
                   <EpoNotenStudentSelfWizard
                     key={`${selectedRoundId}-${assessmentMode}`}
                     locked={phase === 'wait' || !canEditSelf}
@@ -493,6 +526,20 @@ export default function EpoNotenPage() {
                                   {teacherSub}
                                 </Typography>
                               )}
+                              {myEntry.teacherJustification?.trim() ? (
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                  sx={{ mt: 0.5, lineHeight: 1.45 }}
+                                >
+                                  <Typography component="span" sx={{ fontWeight: 700, fontStyle: 'normal' }}>
+                                    Bemerkung:{' '}
+                                  </Typography>
+                                  <Typography component="span" sx={{ fontStyle: 'italic' }}>
+                                    {myEntry.teacherJustification.trim()}
+                                  </Typography>
+                                </Typography>
+                              ) : null}
                             </Box>
                           </Stack>
 
@@ -584,6 +631,10 @@ export default function EpoNotenPage() {
                             </Button>
                           </Box>
                         </Stack>
+                      ) : myEntry?.goalsWaived ? (
+                        <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.45 }}>
+                          Für dich sind in dieser Runde keine Ziele vorgesehen.
+                        </Typography>
                       ) : (
                         <Stack spacing={1.25}>
                           <Box>
@@ -607,6 +658,7 @@ export default function EpoNotenPage() {
             )}
           </Stack>
         )}
+        </Box>
       </Box>
     </Box>
   );

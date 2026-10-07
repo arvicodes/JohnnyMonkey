@@ -199,10 +199,99 @@ export function ensureVersionLetterMarkup(html: string, letter: string): string 
   return out;
 }
 
+export function examDisplayTitleFromKaKey(kaKey: string): string {
+  const stem = String(kaKey || '').replace(/__([A-Z])$/i, '');
+  return stem.replace(/^(KA|KU|HU|HÜ|QZ)_/i, '');
+}
+
+function escapeHtmlText(text: string): string {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export function patchKaKeyInHtml(html: string, kaKey: string): string {
   let out = html.replace(/const KA_KEY = ['"](.*?)['"]/g, `const KA_KEY = '${kaKey}'`);
   out = out.replace(/KA_KEY = ['"](.*?)['"]/g, `KA_KEY = '${kaKey}'`);
   return out;
+}
+
+/** KA_KEY, Browser-Tab (<title>) und Kopfzeile (.header-title) an Dateinamen anpassen */
+export function patchExamPresentationInHtml(
+  html: string,
+  kaKey: string,
+  displayTitle?: string,
+): string {
+  const title = String(displayTitle || '').trim() || examDisplayTitleFromKaKey(kaKey);
+  const safe = escapeHtmlText(title);
+  let out = patchKaKeyInHtml(html, kaKey);
+  out = out.replace(/<title>[^<]*<\/title>/gi, `<title>${safe}</title>`);
+  out = out.replace(
+    /<div class="header-title">([^<$][^<]*)<\/div>/gi,
+    `<div class="header-title">${safe}</div>`,
+  );
+  return out;
+}
+
+export function extractKaKeyFromExamHtml(html: string): string | null {
+  const m = html.match(/const\s+KA_KEY\s*=\s*['"]([^'"]*)['"]/);
+  return m?.[1]?.trim() || null;
+}
+
+function decodeHtmlTextEntities(text: string): string {
+  return String(text || '')
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
+/** Tab- und Kopfzeilen-Titel an Dateiname bzw. KA_KEY anpassen (nur für read-html). */
+export function syncExamPresentationForDelivery(html: string, filePath?: string): string {
+  const fp = String(filePath || '').replace(/\\/g, '/');
+  const base = fp.split('/').pop() || '';
+  const stem = base.replace(/\.html?$/i, '').replace(/__([A-Z])$/i, '');
+  const kaKey = extractKaKeyFromExamHtml(html);
+  let expected = '';
+  if (/^(KA|KU|HU|HÜ|QZ)_/i.test(stem)) {
+    expected = examDisplayTitleFromKaKey(stem);
+  } else if (kaKey) {
+    expected = examDisplayTitleFromKaKey(kaKey);
+  }
+  if (!expected) return html;
+
+  const titleM = html.match(/<title>([^<]*)<\/title>/i);
+  const headerM = html.match(/<div class="header-title">([^<$][^<]*)<\/div>/i);
+  const curTitle = decodeHtmlTextEntities(titleM?.[1]?.trim() || '');
+  const curHeader = decodeHtmlTextEntities(headerM?.[1]?.trim() || '');
+  if (curTitle === expected && curHeader === expected) return html;
+
+  const keyForPatch = kaKey || stem;
+  return patchExamPresentationInHtml(html, keyForPatch, expected);
+}
+
+export function patchAllExamVersionPresentationFiles(
+  baseGit: string,
+  letters: string[],
+  resolveFullPath: (gitPath: string) => string,
+  displayTitle: string,
+): number {
+  let patched = 0;
+  for (const L of letters) {
+    const vGit = gitPathVariant(baseGit, L);
+    const fromFull = resolveFullPath(vGit);
+    if (!fromFull || !fs.existsSync(fromFull) || !fs.statSync(fromFull).isFile()) continue;
+    const content = fs.readFileSync(fromFull, 'utf8');
+    const stemKey = fileStemFromName(path.basename(fromFull));
+    const next = patchExamPresentationInHtml(content, stemKey, displayTitle);
+    if (next !== content) {
+      fs.writeFileSync(fromFull, next, 'utf8');
+      patched += 1;
+    }
+  }
+  return patched;
 }
 
 export function applyVersionsToExamHtml(

@@ -26,7 +26,14 @@ export declare function examFamilyStemFromKaPath(kaPath: string): string;
 export declare function kaPathsMatchFamily(requestPath: string, storedPath: string): boolean;
 export declare function versionLetterFromKaPath(kaPath: string): string;
 export declare function ensureVersionLetterMarkup(html: string, letter: string): string;
+export declare function examDisplayTitleFromKaKey(kaKey: string): string;
 export declare function patchKaKeyInHtml(html: string, kaKey: string): string;
+/** KA_KEY, Browser-Tab (<title>) und Kopfzeile (.header-title) an Dateinamen anpassen */
+export declare function patchExamPresentationInHtml(html: string, kaKey: string, displayTitle?: string): string;
+export declare function extractKaKeyFromExamHtml(html: string): string | null;
+/** Tab- und Kopfzeilen-Titel an Dateiname bzw. KA_KEY anpassen (nur für read-html). */
+export declare function syncExamPresentationForDelivery(html: string, filePath?: string): string;
+export declare function patchAllExamVersionPresentationFiles(baseGit: string, letters: string[], resolveFullPath: (gitPath: string) => string, displayTitle: string): number;
 export declare function applyVersionsToExamHtml(html: string, letters: string[], fileLetter: string): string;
 export declare function resolveFullPathFromGitIntern(gitInternPath: string, devProjectRoot: string): string;
 export declare function readExamHtmlFullPath(fullFilePath: string): string;

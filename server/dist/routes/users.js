@@ -12,6 +12,7 @@ const uuid_1 = require("uuid");
 const auth_1 = require("../middleware/auth");
 const imageToJpeg_1 = require("../utils/imageToJpeg");
 const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
+const avatarCustomGallery_1 = require("../lib/avatarCustomGallery");
 const router = (0, express_1.Router)();
 const prisma = new client_1.PrismaClient();
 const AVATAR_DIR = path_1.default.join(__dirname, '../../uploads/avatars');
@@ -46,8 +47,31 @@ const userSelect = {
     loginCode: true,
     avatarEmoji: true,
     avatarUrl: true,
+    avatarUrlAlt: true,
+    avatarUrlCustom: true,
+    avatarEditPrimary: true,
+    avatarEditAlt: true,
+    avatarEditCustom: true,
+    avatarCustomGallery: true,
+    avatarCustomActiveId: true,
+    avatarPhotoSlot: true,
     profileColor: true,
 };
+function parseAvatarTargetSlot(raw) {
+    const s = String(raw || '').trim();
+    if (s === 'primary' || s === 'alt' || s === 'custom')
+        return s;
+    return 'custom';
+}
+function editFieldForSlot(slot, customMode) {
+    if (slot === 'primary')
+        return 'avatarEditPrimary';
+    if (slot === 'alt')
+        return 'avatarEditAlt';
+    if (customMode === 'base')
+        return 'avatarUrlCustom';
+    return 'avatarEditCustom';
+}
 const avatarUpload = (0, multer_1.default)({
     storage: multer_1.default.memoryStorage(),
     fileFilter: (_req, file, cb) => {
@@ -80,10 +104,52 @@ function normalizeAvatarUrl(avatarUrl) {
     }
     return avatarUrl;
 }
-function withNormalizedAvatar(user) {
+function normalizeGalleryPhoto(photo) {
     var _a;
-    return { ...user, avatarUrl: normalizeAvatarUrl((_a = user.avatarUrl) !== null && _a !== void 0 ? _a : null) };
+    return {
+        id: photo.id,
+        base: normalizeAvatarUrl(photo.base) || photo.base,
+        edit: (_a = normalizeAvatarUrl(photo.edit)) !== null && _a !== void 0 ? _a : null,
+    };
 }
+function withNormalizedAvatar(user) {
+    var _a, _b, _c, _d;
+    const gallery = (0, avatarCustomGallery_1.resolveAvatarCustomGallery)(user).map(normalizeGalleryPhoto);
+    const activeId = (0, avatarCustomGallery_1.resolveAvatarCustomActiveId)(user, gallery);
+    const legacy = (0, avatarCustomGallery_1.syncLegacyCustomFields)(gallery, activeId);
+    return {
+        ...user,
+        avatarUrl: normalizeAvatarUrl((_a = user.avatarUrl) !== null && _a !== void 0 ? _a : null),
+        avatarUrlAlt: normalizeAvatarUrl((_b = user.avatarUrlAlt) !== null && _b !== void 0 ? _b : null),
+        avatarUrlCustom: normalizeAvatarUrl(legacy.avatarUrlCustom),
+        avatarEditPrimary: normalizeAvatarUrl((_c = user.avatarEditPrimary) !== null && _c !== void 0 ? _c : null),
+        avatarEditAlt: normalizeAvatarUrl((_d = user.avatarEditAlt) !== null && _d !== void 0 ? _d : null),
+        avatarEditCustom: normalizeAvatarUrl(legacy.avatarEditCustom),
+        avatarCustomGallery: gallery,
+        avatarCustomActiveId: activeId,
+    };
+}
+function defaultAvatarPhotoSlot(user) {
+    if (user.avatarUrl)
+        return 'primary';
+    if (user.avatarUrlAlt)
+        return 'alt';
+    if ((0, avatarCustomGallery_1.resolveAvatarCustomGallery)(user).length > 0 || user.avatarUrlCustom)
+        return 'custom';
+    return 'primary';
+}
+function parseCustomGalleryId(raw) {
+    const id = String(raw || '').trim();
+    return id || null;
+}
+const galleryUserSelect = {
+    avatarCustomGallery: true,
+    avatarCustomActiveId: true,
+    avatarUrlCustom: true,
+    avatarEditCustom: true,
+    avatarUrl: true,
+    avatarUrlAlt: true,
+};
 // Get all users (for teachers only)
 const getAllUsers = async (req, res) => {
     try {
@@ -214,6 +280,7 @@ const updateProfileAppearance = async (req, res) => {
     }
 };
 const uploadAvatarImage = async (req, res) => {
+    var _a, _b, _c, _d;
     try {
         if (req.user.id !== req.params.id && req.user.role !== 'TEACHER') {
             return res.status(403).json({ error: 'Nur das eigene Avatar-Bild kann hochgeladen werden' });
@@ -244,6 +311,76 @@ const uploadAvatarImage = async (req, res) => {
         const finalName = `${(0, uuid_1.v4)()}${finalExt}`;
         fs_1.default.writeFileSync(path_1.default.join(AVATAR_DIR, finalName), buffer);
         const avatarUrl = `${AVATAR_URL_PREFIX}/${finalName}`;
+        const isStudent = req.user.role === 'STUDENT' && req.user.id === req.params.id;
+        if (isStudent) {
+            const targetSlot = parseAvatarTargetSlot((_a = req.body) === null || _a === void 0 ? void 0 : _a.targetSlot);
+            const customMode = String(((_b = req.body) === null || _b === void 0 ? void 0 : _b.customMode) || 'edit').trim() === 'base' ? 'base' : 'edit';
+            const customGalleryId = parseCustomGalleryId((_c = req.body) === null || _c === void 0 ? void 0 : _c.customGalleryId);
+            const existing = await prisma.user.findUnique({
+                where: { id: req.params.id },
+                select: {
+                    ...galleryUserSelect,
+                    avatarEditPrimary: true,
+                    avatarEditAlt: true,
+                },
+            });
+            if (targetSlot === 'custom' && customMode === 'base') {
+                const gallery = (0, avatarCustomGallery_1.resolveAvatarCustomGallery)(existing !== null && existing !== void 0 ? existing : {});
+                if (gallery.length >= avatarCustomGallery_1.MAX_AVATAR_CUSTOM_PHOTOS) {
+                    return res.status(400).json({
+                        error: `Maximal ${avatarCustomGallery_1.MAX_AVATAR_CUSTOM_PHOTOS} eigene Fotos möglich.`,
+                    });
+                }
+                const { gallery: nextGallery, newId } = (0, avatarCustomGallery_1.appendCustomPhoto)(gallery, avatarUrl);
+                const legacy = (0, avatarCustomGallery_1.syncLegacyCustomFields)(nextGallery, newId);
+                const user = await prisma.user.update({
+                    where: { id: req.params.id },
+                    data: {
+                        avatarCustomGallery: (0, avatarCustomGallery_1.serializeAvatarCustomGallery)(nextGallery),
+                        avatarCustomActiveId: newId,
+                        avatarPhotoSlot: 'custom',
+                        avatarUrlCustom: legacy.avatarUrlCustom,
+                        avatarEditCustom: legacy.avatarEditCustom,
+                    },
+                    select: userSelect,
+                });
+                return res.json(withNormalizedAvatar(user));
+            }
+            if (targetSlot === 'custom' && customMode === 'edit') {
+                const gallery = (0, avatarCustomGallery_1.resolveAvatarCustomGallery)(existing !== null && existing !== void 0 ? existing : {});
+                const photoId = customGalleryId || (0, avatarCustomGallery_1.resolveAvatarCustomActiveId)(existing !== null && existing !== void 0 ? existing : {}, gallery);
+                if (!photoId || !gallery.some((p) => p.id === photoId)) {
+                    return res.status(400).json({ error: 'Eigenes Foto nicht gefunden' });
+                }
+                const prevEdit = (_d = gallery.find((p) => p.id === photoId)) === null || _d === void 0 ? void 0 : _d.edit;
+                deleteAvatarFileIfLocal(prevEdit);
+                const nextGallery = (0, avatarCustomGallery_1.updateCustomPhotoEdit)(gallery, photoId, avatarUrl);
+                const activeId = (0, avatarCustomGallery_1.resolveAvatarCustomActiveId)(existing !== null && existing !== void 0 ? existing : {}, nextGallery);
+                const legacy = (0, avatarCustomGallery_1.syncLegacyCustomFields)(nextGallery, activeId);
+                const user = await prisma.user.update({
+                    where: { id: req.params.id },
+                    data: {
+                        avatarCustomGallery: (0, avatarCustomGallery_1.serializeAvatarCustomGallery)(nextGallery),
+                        avatarCustomActiveId: activeId,
+                        avatarPhotoSlot: 'custom',
+                        avatarUrlCustom: legacy.avatarUrlCustom,
+                        avatarEditCustom: legacy.avatarEditCustom,
+                    },
+                    select: userSelect,
+                });
+                return res.json(withNormalizedAvatar(user));
+            }
+            const updateField = editFieldForSlot(targetSlot, customMode);
+            const data = { [updateField]: avatarUrl };
+            const prev = existing === null || existing === void 0 ? void 0 : existing[updateField];
+            deleteAvatarFileIfLocal(prev);
+            const user = await prisma.user.update({
+                where: { id: req.params.id },
+                data,
+                select: userSelect,
+            });
+            return res.json(withNormalizedAvatar(user));
+        }
         const existing = await prisma.user.findUnique({
             where: { id: req.params.id },
             select: { avatarUrl: true },
@@ -262,15 +399,72 @@ const uploadAvatarImage = async (req, res) => {
     }
 };
 const deleteAvatarImage = async (req, res) => {
+    var _a, _b, _c, _d, _e;
     try {
         if (req.user.id !== req.params.id && req.user.role !== 'TEACHER') {
             return res.status(403).json({ error: 'Nur das eigene Avatar-Bild kann entfernt werden' });
         }
+        const slot = parseAvatarTargetSlot((_b = (_a = req.body) === null || _a === void 0 ? void 0 : _a.slot) !== null && _b !== void 0 ? _b : (_c = req.query) === null || _c === void 0 ? void 0 : _c.slot);
+        const customGalleryId = parseCustomGalleryId((_d = req.body) === null || _d === void 0 ? void 0 : _d.customGalleryId);
         const existing = await prisma.user.findUnique({
             where: { id: req.params.id },
-            select: { avatarUrl: true },
+            select: {
+                ...galleryUserSelect,
+                role: true,
+            },
         });
-        deleteAvatarFileIfLocal(existing === null || existing === void 0 ? void 0 : existing.avatarUrl);
+        if (!existing)
+            return res.status(404).json({ error: 'User not found' });
+        if (req.user.role === 'STUDENT') {
+            if (slot === 'custom') {
+                const gallery = (0, avatarCustomGallery_1.resolveAvatarCustomGallery)(existing);
+                if (gallery.length === 0) {
+                    return res.status(400).json({ error: 'Kein eigenes Foto vorhanden' });
+                }
+                const removeId = customGalleryId || (0, avatarCustomGallery_1.resolveAvatarCustomActiveId)(existing, gallery) || gallery[0].id;
+                const photo = gallery.find((p) => p.id === removeId);
+                if (!photo)
+                    return res.status(404).json({ error: 'Eigenes Foto nicht gefunden' });
+                deleteAvatarFileIfLocal(photo.base);
+                deleteAvatarFileIfLocal(photo.edit);
+                const nextGallery = (0, avatarCustomGallery_1.removeCustomPhoto)(gallery, removeId);
+                const nextActiveId = nextGallery.length > 0
+                    ? ((_e = nextGallery.find((p) => p.id === existing.avatarCustomActiveId)) === null || _e === void 0 ? void 0 : _e.id) ||
+                        nextGallery[nextGallery.length - 1].id
+                    : null;
+                const legacy = (0, avatarCustomGallery_1.syncLegacyCustomFields)(nextGallery, nextActiveId);
+                const user = await prisma.user.update({
+                    where: { id: req.params.id },
+                    data: {
+                        avatarCustomGallery: nextGallery.length > 0 ? (0, avatarCustomGallery_1.serializeAvatarCustomGallery)(nextGallery) : null,
+                        avatarCustomActiveId: nextActiveId,
+                        avatarUrlCustom: legacy.avatarUrlCustom,
+                        avatarEditCustom: legacy.avatarEditCustom,
+                        avatarPhotoSlot: defaultAvatarPhotoSlot({
+                            avatarUrl: existing.avatarUrl,
+                            avatarUrlAlt: existing.avatarUrlAlt,
+                            avatarUrlCustom: legacy.avatarUrlCustom,
+                            avatarCustomGallery: nextGallery.length > 0 ? (0, avatarCustomGallery_1.serializeAvatarCustomGallery)(nextGallery) : null,
+                        }),
+                    },
+                    select: userSelect,
+                });
+                return res.json(withNormalizedAvatar(user));
+            }
+            if (slot === 'primary' && !existing.avatarUrlAlt && existing.avatarUrl) {
+                deleteAvatarFileIfLocal(existing.avatarUrl);
+                const user = await prisma.user.update({
+                    where: { id: req.params.id },
+                    data: { avatarUrl: null, avatarPhotoSlot: 'primary' },
+                    select: userSelect,
+                });
+                return res.json(withNormalizedAvatar(user));
+            }
+            return res.status(403).json({
+                error: 'Lehrer-Fotos können nicht entfernt werden. „Eigenes“ Foto kann entfernt werden.',
+            });
+        }
+        deleteAvatarFileIfLocal(existing.avatarUrl);
         const user = await prisma.user.update({
             where: { id: req.params.id },
             data: { avatarUrl: null },
@@ -280,6 +474,120 @@ const deleteAvatarImage = async (req, res) => {
     }
     catch (error) {
         console.error('Error deleting avatar image:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+const resetAvatarPhotoEdit = async (req, res) => {
+    var _a, _b;
+    try {
+        if (req.user.id !== req.params.id && req.user.role !== 'TEACHER') {
+            return res.status(403).json({ error: 'Nur das eigene Profilbild kann zurückgesetzt werden' });
+        }
+        const slot = parseAvatarTargetSlot((_a = req.body) === null || _a === void 0 ? void 0 : _a.slot);
+        const customGalleryId = parseCustomGalleryId((_b = req.body) === null || _b === void 0 ? void 0 : _b.customGalleryId);
+        const existing = await prisma.user.findUnique({
+            where: { id: req.params.id },
+            select: {
+                avatarEditPrimary: true,
+                avatarEditAlt: true,
+                avatarEditCustom: true,
+                ...galleryUserSelect,
+            },
+        });
+        if (!existing)
+            return res.status(404).json({ error: 'User not found' });
+        if (slot === 'custom') {
+            const gallery = (0, avatarCustomGallery_1.resolveAvatarCustomGallery)(existing);
+            const photoId = customGalleryId || (0, avatarCustomGallery_1.resolveAvatarCustomActiveId)(existing, gallery);
+            const photo = gallery.find((p) => p.id === photoId);
+            if (!(photo === null || photo === void 0 ? void 0 : photo.edit)) {
+                return res.status(400).json({ error: 'Keine Bearbeitung zum Zurücksetzen' });
+            }
+            deleteAvatarFileIfLocal(photo.edit);
+            const nextGallery = (0, avatarCustomGallery_1.clearCustomPhotoEdit)(gallery, photoId);
+            const activeId = (0, avatarCustomGallery_1.resolveAvatarCustomActiveId)(existing, nextGallery);
+            const legacy = (0, avatarCustomGallery_1.syncLegacyCustomFields)(nextGallery, activeId);
+            const user = await prisma.user.update({
+                where: { id: req.params.id },
+                data: {
+                    avatarCustomGallery: (0, avatarCustomGallery_1.serializeAvatarCustomGallery)(nextGallery),
+                    avatarUrlCustom: legacy.avatarUrlCustom,
+                    avatarEditCustom: legacy.avatarEditCustom,
+                },
+                select: userSelect,
+            });
+            return res.json(withNormalizedAvatar(user));
+        }
+        const editField = slot === 'primary' ? 'avatarEditPrimary' : 'avatarEditAlt';
+        const prev = existing[editField];
+        if (!prev) {
+            return res.status(400).json({ error: 'Keine Bearbeitung zum Zurücksetzen' });
+        }
+        deleteAvatarFileIfLocal(prev);
+        const user = await prisma.user.update({
+            where: { id: req.params.id },
+            data: { [editField]: null },
+            select: userSelect,
+        });
+        res.json(withNormalizedAvatar(user));
+    }
+    catch (error) {
+        console.error('Error resetting avatar edit:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+const updateAvatarPhotoSlot = async (req, res) => {
+    var _a, _b;
+    try {
+        if (req.user.id !== req.params.id && req.user.role !== 'TEACHER') {
+            return res.status(403).json({ error: 'Nur das eigene Profilbild kann gewählt werden' });
+        }
+        const slot = String(((_a = req.body) === null || _a === void 0 ? void 0 : _a.slot) || '').trim();
+        const customGalleryId = parseCustomGalleryId((_b = req.body) === null || _b === void 0 ? void 0 : _b.customGalleryId);
+        if (slot !== 'primary' && slot !== 'alt' && slot !== 'custom') {
+            return res.status(400).json({ error: 'slot muss primary, alt oder custom sein' });
+        }
+        const existing = await prisma.user.findUnique({
+            where: { id: req.params.id },
+            select: galleryUserSelect,
+        });
+        if (!existing)
+            return res.status(404).json({ error: 'User not found' });
+        if (slot === 'alt' && !existing.avatarUrlAlt) {
+            return res.status(400).json({ error: 'Kein zweites Foto vorhanden' });
+        }
+        if (slot === 'primary' && !existing.avatarUrl) {
+            return res.status(400).json({ error: 'Kein erstes Foto vorhanden' });
+        }
+        const gallery = (0, avatarCustomGallery_1.resolveAvatarCustomGallery)(existing);
+        if (slot === 'custom' && gallery.length === 0) {
+            return res.status(400).json({ error: 'Kein eigenes Foto vorhanden' });
+        }
+        const data = { avatarPhotoSlot: slot };
+        if (slot === 'custom') {
+            const activeId = (customGalleryId && gallery.some((p) => p.id === customGalleryId)
+                ? customGalleryId
+                : null) || (0, avatarCustomGallery_1.resolveAvatarCustomActiveId)(existing, gallery);
+            if (!activeId) {
+                return res.status(400).json({ error: 'Kein eigenes Foto vorhanden' });
+            }
+            const legacy = (0, avatarCustomGallery_1.syncLegacyCustomFields)(gallery, activeId);
+            data.avatarCustomActiveId = activeId;
+            data.avatarUrlCustom = legacy.avatarUrlCustom;
+            data.avatarEditCustom = legacy.avatarEditCustom;
+            if (gallery.length > 0 && !existing.avatarCustomGallery) {
+                data.avatarCustomGallery = (0, avatarCustomGallery_1.serializeAvatarCustomGallery)(gallery);
+            }
+        }
+        const user = await prisma.user.update({
+            where: { id: req.params.id },
+            data,
+            select: userSelect,
+        });
+        res.json(withNormalizedAvatar(user));
+    }
+    catch (error) {
+        console.error('Error updating avatar photo slot:', error);
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -339,6 +647,8 @@ router.get('/me', auth_1.authenticateUser, getCurrentUser);
 router.get('/:id', auth_1.authenticateUser, getUserById);
 router.put('/:id/credentials', auth_1.authenticateUser, auth_1.requireTeacher, updateStudentCredentials);
 router.put('/:id/avatar-emoji', auth_1.authenticateUser, updateUserAvatarEmoji);
+router.put('/:id/avatar-photo-slot', auth_1.authenticateUser, updateAvatarPhotoSlot);
+router.put('/:id/avatar-photo-edit-reset', auth_1.authenticateUser, resetAvatarPhotoEdit);
 router.put('/:id/profile-appearance', auth_1.authenticateUser, updateProfileAppearance);
 router.post('/:id/avatar-image', auth_1.authenticateUser, (req, res, next) => {
     avatarUpload.single('image')(req, res, (err) => {

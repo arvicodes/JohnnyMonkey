@@ -49,6 +49,7 @@ import {
   ContentCopy as ContentCopyIcon,
   ContentPaste as ContentPasteIcon,
   Logout as LogoutIcon,
+  Grade as GradeIcon,
 } from '@mui/icons-material';
 import {
   DndContext,
@@ -63,6 +64,20 @@ import { QuizResultsModal } from './QuizResultsModal';
 import EmojiSelector from './EmojiSelector';
 import DualStudentAvatars from './DualStudentAvatars';
 import AvatarPhotoDialog from './AvatarPhotoDialog';
+import {
+  parseAvatarPhotoSlot,
+  resolveActiveAvatarUrl,
+  resolveAvatarUrl,
+  resolveSlotPhotoUrl,
+  slotHasEdit,
+  type AvatarPhotoSlot,
+} from '../lib/avatarUrl';
+import {
+  parseAvatarCustomGalleryFromApi,
+  resolveCustomPhotoDisplayUrl,
+  type AvatarCustomPhoto,
+} from '../lib/avatarCustomGallery';
+import type { AvatarPhotoUploadMeta } from './AvatarPhotoDialog';
 import InboxModal from './InboxModal';
 import StudentQuizFileItem from './StudentQuizFileItem';
 import {
@@ -2026,10 +2041,19 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
   // Emoji-Auswahl States
   const [selectedEmoji, setSelectedEmoji] = useState<string>('🧙‍♂️');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUrlAlt, setAvatarUrlAlt] = useState<string | null>(null);
+  const [avatarUrlCustom, setAvatarUrlCustom] = useState<string | null>(null);
+  const [avatarEditPrimary, setAvatarEditPrimary] = useState<string | null>(null);
+  const [avatarEditAlt, setAvatarEditAlt] = useState<string | null>(null);
+  const [avatarEditCustom, setAvatarEditCustom] = useState<string | null>(null);
+  const [avatarCustomGallery, setAvatarCustomGallery] = useState<AvatarCustomPhoto[]>([]);
+  const [avatarCustomActiveId, setAvatarCustomActiveId] = useState<string | null>(null);
+  const [avatarPhotoSlot, setAvatarPhotoSlot] = useState<AvatarPhotoSlot>('primary');
   const [showEmojiSelector, setShowEmojiSelector] = useState(false);
   const [showPhotoDialog, setShowPhotoDialog] = useState(false);
   const [isUpdatingEmoji, setIsUpdatingEmoji] = useState(false);
   const [isUploadingAvatarImage, setIsUploadingAvatarImage] = useState(false);
+  const [savingAvatarSlot, setSavingAvatarSlot] = useState(false);
   
   // Noten-Sektion aufklappbar
   const [gradesExpanded, setGradesExpanded] = useState(false);
@@ -2364,12 +2388,38 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     }
   };
 
-  const handleAvatarImageUpload = async (file: File) => {
+  const applyAvatarUserPayload = (data: Record<string, unknown>) => {
+    if (data.avatarUrl !== undefined) setAvatarUrl((data.avatarUrl as string) || null);
+    if (data.avatarUrlAlt !== undefined) setAvatarUrlAlt((data.avatarUrlAlt as string) || null);
+    if (data.avatarUrlCustom !== undefined) setAvatarUrlCustom((data.avatarUrlCustom as string) || null);
+    if (data.avatarEditPrimary !== undefined) {
+      setAvatarEditPrimary((data.avatarEditPrimary as string) || null);
+    }
+    if (data.avatarEditAlt !== undefined) setAvatarEditAlt((data.avatarEditAlt as string) || null);
+    if (data.avatarEditCustom !== undefined) {
+      setAvatarEditCustom((data.avatarEditCustom as string) || null);
+    }
+    if (data.avatarCustomGallery !== undefined) {
+      setAvatarCustomGallery(parseAvatarCustomGalleryFromApi(data.avatarCustomGallery));
+    }
+    if (data.avatarCustomActiveId !== undefined) {
+      setAvatarCustomActiveId((data.avatarCustomActiveId as string) || null);
+    }
+    if (data.avatarPhotoSlot) setAvatarPhotoSlot(parseAvatarPhotoSlot(data.avatarPhotoSlot as string));
+    if (data.avatarEmoji) setSelectedEmoji(data.avatarEmoji as string);
+  };
+
+  const handleAvatarImageUpload = async (file: File, meta?: AvatarPhotoUploadMeta) => {
     setIsUploadingAvatarImage(true);
     try {
       const loginCode = localStorage.getItem('loginCode');
       const formData = new FormData();
       formData.append('image', file);
+      formData.append('targetSlot', meta?.targetSlot || 'custom');
+      formData.append('customMode', meta?.customMode || 'edit');
+      if (meta?.customGalleryId) {
+        formData.append('customGalleryId', meta.customGalleryId);
+      }
       const response = await fetch(`/api/users/${userId}/avatar-image`, {
         method: 'POST',
         headers: { 'x-login-code': loginCode || '' },
@@ -2384,8 +2434,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         throw new Error(message);
       }
       const data = await response.json();
-      setAvatarUrl(data.avatarUrl || null);
-      if (data.avatarEmoji) setSelectedEmoji(data.avatarEmoji);
+      applyAvatarUserPayload(data);
     } finally {
       setIsUploadingAvatarImage(false);
     }
@@ -2397,14 +2446,55 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       const loginCode = localStorage.getItem('loginCode');
       const response = await fetch(`/api/users/${userId}/avatar-image`, {
         method: 'DELETE',
-        headers: { 'x-login-code': loginCode || '' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode || '',
+        },
+        body: JSON.stringify({
+          slot: avatarPhotoSlot,
+          customGalleryId:
+            avatarPhotoSlot === 'custom' ? avatarCustomActiveId || undefined : undefined,
+        }),
       });
       if (!response.ok) {
-        throw new Error('Bild konnte nicht entfernt werden');
+        let message = 'Bild konnte nicht entfernt werden';
+        try {
+          const err = await response.json();
+          if (err?.error) message = err.error;
+        } catch { /* ignore */ }
+        throw new Error(message);
       }
       const data = await response.json();
-      setAvatarUrl(null);
-      if (data.avatarEmoji) setSelectedEmoji(data.avatarEmoji);
+      applyAvatarUserPayload(data);
+    } catch (error) {
+      console.error('Error removing avatar:', error);
+    } finally {
+      setIsUploadingAvatarImage(false);
+    }
+  };
+
+  const handleResetAvatarSlotEdit = async (slot: AvatarPhotoSlot, customGalleryId?: string) => {
+    setIsUploadingAvatarImage(true);
+    try {
+      const loginCode = localStorage.getItem('loginCode');
+      const response = await fetch(`/api/users/${userId}/avatar-photo-edit-reset`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode || '',
+        },
+        body: JSON.stringify({
+          slot,
+          customGalleryId: slot === 'custom' ? customGalleryId : undefined,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('Zurücksetzen fehlgeschlagen');
+      }
+      const data = await response.json();
+      applyAvatarUserPayload(data);
+    } catch (error) {
+      console.error('Error resetting avatar edit:', error);
     } finally {
       setIsUploadingAvatarImage(false);
     }
@@ -2418,9 +2508,73 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     setShowEmojiSelector(false);
   };
 
+  const handleSelectAvatarSlot = async (slot: AvatarPhotoSlot, customGalleryId?: string) => {
+    setSavingAvatarSlot(true);
+    try {
+      const loginCode = localStorage.getItem('loginCode');
+      const response = await fetch(`/api/users/${userId}/avatar-photo-slot`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-login-code': loginCode || '',
+        },
+        body: JSON.stringify({
+          slot,
+          customGalleryId: slot === 'custom' ? customGalleryId : undefined,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('Auswahl konnte nicht gespeichert werden');
+      }
+      const data = await response.json();
+      applyAvatarUserPayload(data);
+    } catch (error) {
+      console.error('Error saving avatar slot:', error);
+    } finally {
+      setSavingAvatarSlot(false);
+    }
+  };
+
   const handleOpenPhotoDialog = () => {
     setShowPhotoDialog(true);
   };
+
+  const avatarBases = {
+    primary: avatarUrl,
+    alt: avatarUrlAlt,
+    custom: avatarUrlCustom,
+  };
+  const avatarEdits = {
+    primary: avatarEditPrimary,
+    alt: avatarEditAlt,
+    custom: avatarEditCustom,
+  };
+  const activeAvatarDisplayUrl = resolveActiveAvatarUrl(
+    avatarUrl,
+    avatarUrlAlt,
+    avatarPhotoSlot,
+    avatarUrlCustom,
+    avatarEdits,
+    avatarCustomGallery,
+    avatarCustomActiveId,
+  );
+  const galleryPrimaryDisplay = resolveSlotPhotoUrl('primary', avatarBases, avatarEdits);
+  const galleryAltDisplay = resolveSlotPhotoUrl('alt', avatarBases, avatarEdits);
+  const galleryCustomItems = avatarCustomGallery.map((photo) => ({
+    id: photo.id,
+    url: resolveCustomPhotoDisplayUrl(photo, resolveAvatarUrl),
+    hasEdit: Boolean(resolveAvatarUrl(photo.edit)),
+  }));
+  const showAvatarGalleryPicker =
+    [avatarUrl, avatarUrlAlt, avatarCustomGallery.length > 0].filter(Boolean).length >= 2;
+  const avatarSlotHasEdit = {
+    primary: slotHasEdit('primary', avatarEdits),
+    alt: slotHasEdit('alt', avatarEdits),
+    custom: slotHasEdit('custom', avatarEdits),
+  };
+  const canRemoveActivePhoto =
+    (avatarPhotoSlot === 'custom' && avatarCustomGallery.length > 0) ||
+    (avatarPhotoSlot === 'primary' && !avatarUrlAlt && Boolean(avatarUrl));
 
   const handleClosePhotoDialog = () => {
     setShowPhotoDialog(false);
@@ -2908,6 +3062,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
           setSelectedEmoji(userData.avatarEmoji);
         }
         setAvatarUrl(userData.avatarUrl || null);
+        applyAvatarUserPayload(userData);
       } else {
         console.error('Failed to fetch student data:', response.status);
         setStudentName("Schüler"); // Fallback
@@ -5930,9 +6085,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                 <DualStudentAvatars
                   name={studentName}
                   avatarEmoji={selectedEmoji}
-                  avatarUrl={avatarUrl}
+                  avatarUrl={activeAvatarDisplayUrl}
                   emojiLoading={isUpdatingEmoji}
-                  photoLoading={isUploadingAvatarImage}
+                  photoLoading={isUploadingAvatarImage || savingAvatarSlot}
                   size={32}
                   onEmojiClick={handleOpenEmojiSelector}
                   onPhotoClick={handleOpenPhotoDialog}
@@ -6288,14 +6443,96 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                   }
                 }}
               >
+                {studentStatsSectionEnabled && lerngruppen.length > 0 ? (
+                  <Tooltip title={gradesExpanded ? 'Noten ausblenden' : 'Noten anzeigen'} placement="right">
+                    <IconButton
+                      size="small"
+                      aria-label={gradesExpanded ? 'Noten ausblenden' : 'Noten anzeigen'}
+                      aria-expanded={gradesExpanded}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setGradesExpanded((open) => !open);
+                      }}
+                      sx={{
+                        position: 'absolute',
+                        top: 8,
+                        left: 8,
+                        zIndex: 5,
+                        width: 32,
+                        height: 32,
+                        bgcolor: gradesExpanded
+                          ? 'rgba(227, 242, 253, 0.98)'
+                          : 'rgba(250, 236, 210, 0.95)',
+                        color: gradesExpanded ? '#1565c0' : '#8d6e3a',
+                        boxShadow: '0 1px 4px rgba(15, 23, 42, 0.12)',
+                        border: gradesExpanded
+                          ? '1px solid rgba(21, 101, 192, 0.35)'
+                          : '1px solid rgba(141, 110, 58, 0.25)',
+                        '&:hover': {
+                          bgcolor: gradesExpanded
+                            ? 'rgba(227, 242, 253, 1)'
+                            : 'rgba(255, 243, 224, 0.98)',
+                          color: '#1565c0',
+                        },
+                      }}
+                    >
+                      <GradeIcon sx={{ fontSize: 17 }} />
+                    </IconButton>
+                  </Tooltip>
+                ) : null}
+                {studentStatsSectionEnabled && lerngruppen.length > 0 ? (
+                  <Tooltip title="Weitere Bereiche — noch nicht aktiv" placement="left">
+                    <Box
+                      component="span"
+                      aria-label="Mehr (noch nicht aktiv)"
+                      aria-disabled
+                      sx={{
+                        position: 'absolute',
+                        right: 8,
+                        bottom: 8,
+                        zIndex: 4,
+                        display: 'inline-flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 0.1,
+                        minWidth: 34,
+                        px: 0.5,
+                        py: 0.35,
+                        borderRadius: 1,
+                        bgcolor: 'rgba(245, 245, 245, 0.9)',
+                        border: '1px solid rgba(158, 158, 158, 0.45)',
+                        opacity: 0.62,
+                        filter: 'grayscale(0.45)',
+                        pointerEvents: 'none',
+                        userSelect: 'none',
+                      }}
+                    >
+                      <ExpandMoreIcon sx={{ fontSize: 14, color: '#9e9e9e' }} />
+                      <Typography
+                        component="span"
+                        sx={{
+                          color: '#9e9e9e',
+                          fontSize: '0.48rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          lineHeight: 1,
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        Mehr
+                      </Typography>
+                    </Box>
+                  </Tooltip>
+                ) : null}
                 <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
                   <Box sx={{ position: 'relative', display: 'inline-flex' }}>
                     <DualStudentAvatars
                       name={studentName}
                       avatarEmoji={selectedEmoji}
-                      avatarUrl={avatarUrl}
+                      avatarUrl={activeAvatarDisplayUrl}
                       emojiLoading={isUpdatingEmoji}
-                      photoLoading={isUploadingAvatarImage}
+                      photoLoading={isUploadingAvatarImage || savingAvatarSlot}
                       large
                       onEmojiClick={handleOpenEmojiSelector}
                       onPhotoClick={handleOpenPhotoDialog}
@@ -6356,98 +6593,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
                     </Typography>
                   )}
                 </Box>
-
-                {studentStatsSectionEnabled && lerngruppen.length > 0 && (
-                  <Grid container spacing={1.4} sx={{ mb: 2.1 }}>
-                    <Grid item xs={6}>
-                      <Box
-                        sx={{
-                          bgcolor: gradesExpanded ? 'rgba(25, 118, 210, 0.08)' : '#f5f5f5',
-                          borderRadius: 1.4,
-                          p: 1.4,
-                          textAlign: 'center',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          border: gradesExpanded
-                            ? '1px solid rgba(25, 118, 210, 0.35)'
-                            : '1px solid transparent',
-                          '&:hover': {
-                            bgcolor: gradesExpanded ? 'rgba(25, 118, 210, 0.12)' : '#e0e0e0',
-                          },
-                        }}
-                        onClick={() => setGradesExpanded((open) => !open)}
-                      >
-                        <Typography
-                          variant="h4"
-                          sx={{
-                            color: '#424242',
-                            fontWeight: 'bold',
-                            fontSize: '1.8rem',
-                            mb: 0.35,
-                          }}
-                        >
-                          📝
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: '#424242',
-                            fontSize: '0.65rem',
-                            fontWeight: 600,
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          Noten
-                        </Typography>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Tooltip title="Weitere Bereiche — noch nicht aktiv">
-                        <Box
-                          component="span"
-                          aria-label="Mehr (noch nicht aktiv)"
-                          aria-disabled
-                          sx={{
-                            display: 'block',
-                            bgcolor: 'rgba(245, 245, 245, 0.95)',
-                            borderRadius: 1.4,
-                            p: 1.4,
-                            textAlign: 'center',
-                            cursor: 'default',
-                            userSelect: 'none',
-                            border: '1px solid rgba(158, 158, 158, 0.45)',
-                            opacity: 0.72,
-                            filter: 'grayscale(0.35)',
-                          }}
-                        >
-                          <Typography
-                            variant="h4"
-                            sx={{
-                              color: '#9e9e9e',
-                              fontWeight: 'bold',
-                              fontSize: '1.8rem',
-                              mb: 0.35,
-                              lineHeight: 1,
-                            }}
-                          >
-                            <ExpandMoreIcon sx={{ fontSize: '1.8rem' }} />
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              color: '#9e9e9e',
-                              fontSize: '0.65rem',
-                              fontWeight: 600,
-                              textTransform: 'uppercase',
-                            }}
-                          >
-                            Mehr
-                          </Typography>
-                        </Box>
-                      </Tooltip>
-                    </Grid>
-                  </Grid>
-                )}
 
                 {/* Noten Anzeige */}
                 {studentStatsSectionEnabled && lerngruppen.length > 0 && gradesExpanded && (
@@ -7124,10 +7269,19 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       <AvatarPhotoDialog
         open={showPhotoDialog}
         onClose={handleClosePhotoDialog}
-        currentImageUrl={avatarUrl}
+        currentImageUrl={activeAvatarDisplayUrl}
         onUpload={handleAvatarImageUpload}
-        onRemove={handleAvatarImageRemove}
-        isUploading={isUploadingAvatarImage}
+        isUploading={isUploadingAvatarImage || savingAvatarSlot}
+        galleryPrimaryUrl={galleryPrimaryDisplay}
+        galleryAltUrl={galleryAltDisplay}
+        galleryCustomItems={galleryCustomItems}
+        slotHasEdit={avatarSlotHasEdit}
+        onResetSlotEdit={handleResetAvatarSlotEdit}
+        activePhotoSlot={avatarPhotoSlot}
+        activeCustomGalleryId={avatarCustomActiveId}
+        onSelectGallerySlot={showAvatarGalleryPicker ? handleSelectAvatarSlot : undefined}
+        allowRemoveActive={canRemoveActivePhoto}
+        onRemoveActive={handleAvatarImageRemove}
       />
 
       {/* Flashcard Learning Modal */}

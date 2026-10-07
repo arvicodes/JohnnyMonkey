@@ -22,6 +22,8 @@ router.post('/:id/unpublish', EpoNotenController_1.EpoNotenController.unpublishB
 router.put('/:id/teacher/:studentId', EpoNotenController_1.EpoNotenController.saveTeacherEntry);
 router.post('/:id/release', EpoNotenController_1.EpoNotenController.releaseToStudents);
 router.post('/:id/reset-all', EpoNotenController_1.EpoNotenController.resetAllEntries);
+router.post('/:id/bulk-grade-only', EpoNotenController_1.EpoNotenController.bulkGradeOnlyForGroup);
+router.post('/:id/bulk-goals-waived', EpoNotenController_1.EpoNotenController.bulkGoalsWaivedForGroup);
 router.post('/submit-self', EpoNotenController_1.EpoNotenController.submitSelf);
 router.post('/submit-goals', EpoNotenController_1.EpoNotenController.submitGoals);
 router.delete('/:id', EpoNotenController_1.EpoNotenController.remove);

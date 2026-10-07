@@ -25,6 +25,7 @@ type ExamBeacon = {
   versionLetters?: string[];
   versionPaths?: Record<string, string>;
   baseFilePath?: string;
+  assignedVersionLetter?: string;
 };
 
 const POLL_MS = 1500;
@@ -122,10 +123,21 @@ export default function StudentLiveExamAlert({ userId }: { userId: string }) {
           }
         }
         if (cancelled) return;
-        const letters = meta?.letters?.length ? meta.letters : ['A'];
+        let letters = meta?.letters?.length ? meta.letters : ['A'];
+        if (beacon.versionLetters?.length) {
+          letters = beacon.versionLetters;
+        }
         setVersionLetters(letters);
-        setVersionPaths(meta?.paths || {});
-        setBaseFilePath(meta?.baseFilePath || beacon.filePath);
+        setVersionPaths(meta?.paths || beacon.versionPaths || {});
+        setBaseFilePath(meta?.baseFilePath || beacon.baseFilePath || beacon.filePath);
+
+        const assigned = beacon.assignedVersionLetter
+          ? normalizeVersionLetter(beacon.assignedVersionLetter)
+          : null;
+        if (assigned && letters.includes(assigned)) {
+          setChosenLetter(assigned);
+          return;
+        }
 
         const storageKey = examVersionStorageKey(beacon.beaconId, userId);
         const saved = localStorage.getItem(storageKey);

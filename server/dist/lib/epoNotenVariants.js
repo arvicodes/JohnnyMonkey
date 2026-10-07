@@ -112,7 +112,7 @@ function parseVariantsStore(raw) {
 }
 function resolveVariant(store, variantId) {
     var _a;
-    const id = (variantId === null || variantId === void 0 ? void 0 : variantId.trim()) || exports.DEFAULT_EPO_VARIANT_ID;
+    const id = (variantId === null || variantId === void 0 ? void 0 : variantId.trim()) || epoNotenVariantPresets_1.EPO_VARIANT2_ID;
     return (_a = store.variants.find((v) => v.id === id)) !== null && _a !== void 0 ? _a : store.variants[0];
 }
 function normalizeVariantSheet(v) {

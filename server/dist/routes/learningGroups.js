@@ -11,8 +11,11 @@ const webUntisStudentList_1 = require("../utils/webUntisStudentList");
 const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
 const folderPathMatch_1 = require("../utils/folderPathMatch");
 const examVersionPaths_1 = require("../lib/examVersionPaths");
+const examStartConfig_1 = require("../lib/examStartConfig");
+const examSessionHistory_1 = require("../lib/examSessionHistory");
 const storageManager_1 = require("../utils/storageManager");
 const learningGroupModerator_1 = require("../services/learningGroupModerator");
+const avatarCustomGallery_1 = require("../lib/avatarCustomGallery");
 const router = (0, express_1.Router)();
 const prisma = new client_1.PrismaClient();
 const webUntisUpload = (0, multer_1.default)({
@@ -30,12 +33,33 @@ const webUntisUpload = (0, multer_1.default)({
     },
 });
 function normalizeStudentAvatarUrl(student) {
-    var _a;
-    if (!((_a = student.avatarUrl) === null || _a === void 0 ? void 0 : _a.startsWith('/uploads/avatars/')))
-        return student;
+    const norm = (u) => {
+        if (!u)
+            return null;
+        if (u.startsWith('/uploads/avatars/'))
+            return u.replace('/uploads/avatars/', '/api/avatars/');
+        return u;
+    };
+    const primary = norm(student.avatarEditPrimary) || norm(student.avatarUrl);
+    const alt = norm(student.avatarEditAlt) || norm(student.avatarUrlAlt);
+    const gallery = (0, avatarCustomGallery_1.resolveAvatarCustomGallery)(student);
+    const customActiveId = (0, avatarCustomGallery_1.resolveAvatarCustomActiveId)(student, gallery);
+    const customPhoto = (customActiveId && gallery.find((p) => p.id === customActiveId)) || gallery[0];
+    const custom = customPhoto
+        ? norm((0, avatarCustomGallery_1.displayUrlForCustomPhoto)(customPhoto))
+        : norm(student.avatarEditCustom) || norm(student.avatarUrlCustom);
+    const slot = student.avatarPhotoSlot;
+    let active = primary || alt || custom;
+    if (slot === 'custom' && custom)
+        active = custom;
+    else if (slot === 'alt' && alt)
+        active = alt;
+    else if (slot === 'primary' && primary)
+        active = primary;
     return {
         ...student,
-        avatarUrl: student.avatarUrl.replace('/uploads/avatars/', '/api/avatars/'),
+        avatarUrl: active,
+        avatarUrlAlt: alt,
     };
 }
 function normalizeGroupStudents(group) {
@@ -511,8 +535,9 @@ router.get('/groups-for-path', async (req, res) => {
 });
 /** Lehrer: Prüfung für eine oder mehrere Lerngruppen starten (Vollbild bei SuS) */
 router.post('/exam-beacon/start', async (req, res) => {
+    var _a;
     try {
-        const { teacherId, groupId, groupIds, filePath, lessonPath } = req.body;
+        const { teacherId, groupId, groupIds, filePath, lessonPath, examConfig } = req.body;
         const ids = normalizeExamGroupIds(groupId, groupIds);
         if (!(teacherId === null || teacherId === void 0 ? void 0 : teacherId.trim()) || !ids.length || !(filePath === null || filePath === void 0 ? void 0 : filePath.trim())) {
             return res
@@ -529,7 +554,19 @@ router.post('/exam-beacon/start', async (req, res) => {
         const normalizedPath = String(filePath).replace(/\\/g, '/').trim();
         const beaconId = `exam-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
         const lessonPathNorm = String(lessonPath || '').trim();
+        const versionInfo = (0, examVersionPaths_1.buildExamVersionInfo)(normalizedPath, (p) => storageManager_1.StorageManager.resolveFilePath(p));
         for (const gid of ids) {
+            const rawGroupCfg = ((_a = examConfig === null || examConfig === void 0 ? void 0 : examConfig.byGroup) === null || _a === void 0 ? void 0 : _a[gid]) || {};
+            const versionCount = (0, examStartConfig_1.normalizeVersionCount)(rawGroupCfg.versionCount);
+            const groupConfigJson = JSON.stringify({
+                studentIds: Array.isArray(rawGroupCfg.studentIds)
+                    ? rawGroupCfg.studentIds.filter((x) => typeof x === 'string')
+                    : undefined,
+                versionCount,
+                versionAssignments: rawGroupCfg.versionAssignments && typeof rawGroupCfg.versionAssignments === 'object'
+                    ? rawGroupCfg.versionAssignments
+                    : undefined,
+            });
             await prisma.lessonExamBeacon.upsert({
                 where: { groupId: gid },
                 create: {
@@ -538,12 +575,14 @@ router.post('/exam-beacon/start', async (req, res) => {
                     lessonPath: lessonPathNorm,
                     beaconId,
                     active: true,
+                    configJson: groupConfigJson,
                 },
                 update: {
                     filePath: normalizedPath,
                     lessonPath: lessonPathNorm,
                     beaconId,
                     active: true,
+                    configJson: groupConfigJson,
                 },
             });
             await prisma.fileShare.upsert({
@@ -554,6 +593,12 @@ router.post('/exam-beacon/start', async (req, res) => {
                 update: {},
             });
         }
+        await (0, examSessionHistory_1.recordExamSessionStarts)(prisma, ids.map((gid) => ({
+            groupId: gid,
+            filePath: normalizedPath,
+            lessonPath: lessonPathNorm,
+            beaconId,
+        })));
         return res.json({ ok: true, beaconId, filePath: normalizedPath, active: true, groupIds: ids });
     }
     catch (e) {
@@ -587,11 +632,29 @@ router.post('/exam-beacon/stop', async (req, res) => {
                 });
             }
         }
+        await (0, examSessionHistory_1.closeOpenExamSessionsForGroups)(prisma, ids);
         return res.json({ ok: true, active: false, filePath: lastPath, groupIds: ids });
     }
     catch (e) {
         console.error('exam-beacon/stop:', e);
         return res.status(500).json({ error: (e === null || e === void 0 ? void 0 : e.message) || 'Serverfehler' });
+    }
+});
+/** Lehrer: Start-/Stop-Historie einer Prüfungsdatei (Lerngruppe, Dauer, Abgaben). */
+router.get('/exam-sessions/history', async (req, res) => {
+    try {
+        const teacherId = String(req.query.teacherId || '').trim();
+        const filePath = String(req.query.filePath || '').trim();
+        if (!teacherId || !filePath) {
+            return res.status(400).json({ error: 'teacherId und filePath sind erforderlich' });
+        }
+        const sessions = await (0, examSessionHistory_1.getExamSessionHistoryForTeacher)(prisma, teacherId, filePath);
+        return res.json({ sessions });
+    }
+    catch (e) {
+        console.error('exam-sessions/history:', e);
+        const message = e instanceof Error ? e.message : String(e);
+        return res.status(500).json({ error: message || 'Serverfehler' });
     }
 });
 /** Lehrer: Status der laufenden Prüfung für eine Gruppe */
@@ -635,26 +698,34 @@ router.get('/exam-beacon/student-poll', async (req, res) => {
                 lessonPath: true,
                 beaconId: true,
                 updatedAt: true,
+                configJson: true,
                 group: { select: { name: true } },
             },
             orderBy: { updatedAt: 'desc' },
         });
-        return res.json({
-            beacons: rows.map((r) => {
-                const versionInfo = (0, examVersionPaths_1.buildExamVersionInfo)(r.filePath, (p) => storageManager_1.StorageManager.resolveFilePath(p));
-                return {
-                    groupId: r.groupId,
-                    groupName: r.group.name,
-                    filePath: r.filePath,
-                    lessonPath: r.lessonPath,
-                    beaconId: r.beaconId,
-                    updatedAt: r.updatedAt,
-                    versionLetters: versionInfo.letters,
-                    versionPaths: versionInfo.paths,
-                    baseFilePath: versionInfo.baseFilePath,
-                };
-            }),
-        });
+        const beacons = [];
+        for (const r of rows) {
+            const cfg = (0, examStartConfig_1.parseExamBeaconGroupConfig)(r.configJson);
+            if (!(0, examStartConfig_1.studentAllowedInBeacon)(user.id, cfg))
+                continue;
+            const versionInfo = (0, examVersionPaths_1.buildExamVersionInfo)(r.filePath, (p) => storageManager_1.StorageManager.resolveFilePath(p));
+            const versionCount = (0, examStartConfig_1.normalizeVersionCount)(cfg.versionCount);
+            const sessionLetters = (0, examStartConfig_1.activeVersionLetters)(versionInfo.letters, versionCount);
+            const assignedVersionLetter = (0, examStartConfig_1.resolveStudentVersionLetter)(user.id, r.beaconId, sessionLetters, cfg.versionAssignments);
+            beacons.push({
+                groupId: r.groupId,
+                groupName: r.group.name,
+                filePath: r.filePath,
+                lessonPath: r.lessonPath,
+                beaconId: r.beaconId,
+                updatedAt: r.updatedAt,
+                versionLetters: sessionLetters,
+                versionPaths: versionInfo.paths,
+                baseFilePath: versionInfo.baseFilePath,
+                assignedVersionLetter,
+            });
+        }
+        return res.json({ beacons });
     }
     catch (e) {
         console.error('exam-beacon/student-poll:', e);

@@ -31,6 +31,8 @@ import {
   invalidateDirectoryReadCache,
   setDirectoryReadCache,
 } from '../utils/directoryReadCache';
+import { appendExamSubmissionAlias } from '../lib/examSubmissionAliases';
+import { migrateKaSubmissionsAfterExamRename } from '../lib/examSubmissionMigrate';
 import {
   applyVersionsToExamHtml,
   baseStemFromStem,
@@ -42,6 +44,9 @@ import {
   normalizeVersionLetter,
   parseExamVersionsMeta,
   patchKaKeyInHtml,
+  patchExamPresentationInHtml,
+  patchAllExamVersionPresentationFiles,
+  examDisplayTitleFromKaKey,
   readExamHtmlFullPath,
   variantStem,
   versionLetterFromStem,
@@ -1844,16 +1849,21 @@ export class FileSystemPathController {
       const baseGit = gitPathVariant(normalizedFp, 'A');
       let html = fs.readFileSync(fullPath, 'utf8');
       const { letters } = parseExamVersionsMeta(html);
-      const renames: Array<{ fromFull: string; toFull: string; toGit: string }> = [];
+      const renames: Array<{ fromFull: string; toFull: string; fromGit: string; toGit: string }> = [];
       const refStem = fileStemFromName(fileName);
       const refBaseStem = baseStemFromStem(refStem);
       let newBaseStem: string;
+      let displayTitle: string;
       try {
         newBaseStem = FileSystemPathController.buildExamBaseStemFromTypeAndTitle(
           refBaseStem,
           examType,
           examNameRaw,
         );
+        const nameTrim = examNameRaw == null ? '' : String(examNameRaw).trim();
+        displayTitle = nameTrim
+          ? FileSystemPathController.sanitizeExamTitleForFileName(nameTrim)
+          : examDisplayTitleFromKaKey(newBaseStem);
       } catch (nameErr: unknown) {
         const msg = nameErr instanceof Error ? nameErr.message : String(nameErr);
         return res.status(400).json({ error: msg });
@@ -1877,20 +1887,46 @@ export class FileSystemPathController {
         const slash = vGit.lastIndexOf('/');
         const toGit =
           slash >= 0 ? `${vGit.slice(0, slash + 1)}${newStem}.html` : `${newStem}.html`;
-        renames.push({ fromFull, toFull, toGit });
+        renames.push({ fromFull, toFull, fromGit: vGit, toGit });
       }
 
       if (renames.length === 0) {
         if (newBaseStem.toLowerCase() === refBaseStem.toLowerCase()) {
-          return res.json({ success: true, unchanged: true, filePath: normalizedFp });
+          const patched = patchAllExamVersionPresentationFiles(
+            baseGit,
+            letters,
+            resolveExamHtmlPath,
+            displayTitle,
+          );
+          if (patched > 0) {
+            const folderKey = baseGit.replace(/\/[^/]+$/, '');
+            if (folderKey) invalidateDirectoryReadCache(folderKey);
+          }
+          return res.json({
+            success: true,
+            unchanged: patched === 0,
+            presentationPatched: patched > 0,
+            filePath: normalizedFp,
+            displayTitle,
+          });
         }
         return res.status(404).json({ error: 'Keine Prüfungsversion zum Umbenennen gefunden' });
       }
 
       for (const r of renames) {
         let content = fs.readFileSync(r.fromFull, 'utf8');
-        content = patchKaKeyInHtml(content, fileStemFromName(path.basename(r.toFull)));
+        content = appendExamSubmissionAlias(content, r.fromGit);
+        content = appendExamSubmissionAlias(content, path.basename(r.fromFull));
+        content = patchExamPresentationInHtml(
+          content,
+          fileStemFromName(path.basename(r.toFull)),
+          displayTitle,
+        );
         fs.writeFileSync(r.toFull, content, 'utf8');
+        const migrated = await migrateKaSubmissionsAfterExamRename(prisma, r.fromGit, r.toGit);
+        if (migrated > 0) {
+          console.log(`Migrated ${migrated} submission(s) for exam rename → ${r.toGit}`);
+        }
         fs.unlinkSync(r.fromFull);
         console.log('Renamed examination:', r.fromFull, '→', r.toFull);
       }
@@ -1910,6 +1946,8 @@ export class FileSystemPathController {
         filePath: primary.toGit,
         fileName: path.basename(primary.toGit),
         renamed: renames.map((r) => path.basename(r.toFull)),
+        displayTitle,
+        presentationPatched: true,
       });
     } catch (error: unknown) {
       console.error('Error changing examination type:', error);

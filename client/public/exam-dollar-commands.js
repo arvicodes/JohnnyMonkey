@@ -23,6 +23,7 @@
  * Aussage … $wf$   Wahr/Falsch-Tabelle (|$wwf$| = Wahr richtig, |$wff$| = Falsch richtig)
  * Aussage … $wff $$wwf $$$wff   W/F mit Varianten (Standard/A1/A2 wie bei $L … $$ … $$$ …)
  * Zeilenanfang $$/$$$ vor WF-Aussage: eigene Aussage pro Variante (z. B. „$$ … $wff$“ nur in A1)
+ * $Zufall$     Zeilen/Teile dieser Aufgabe pro SuS mischen (MC, W/F, Umrechnungszeilen …)
  * $a1$ / $$7 $$$10   Varianten: Zeile $a1$ … oder in $L 5 $$7 $$$10 L$ ($$=A1, $$$=A2)
  * $Musterlösung$    ab dieser Zeile: Text für die grüne Musterlösungsbox
  * $Paare … Paare$   Zuordnung: Zeilen „Wert A ; Wert B“ (gleiche Werte aufeinanderziehen)
@@ -597,19 +598,32 @@
     return lines.join('\n');
   }
 
+  function isZufallMetaLine(t) {
+    return /^\$Zufall\s*\$?$/i.test(String(t || '').trim());
+  }
+
   function parseTaskSource(source) {
     var lines = String(source || '').split(/\r?\n/);
     var aufgabeLabel = null;
     var pointsVal = null;
+    var shufflePerStudent = false;
     var bodyLines = [];
     var i;
     for (i = 0; i < lines.length; i++) {
       var raw = lines[i];
       var t = raw.trim();
       if (!t && bodyLines.length === 0 && aufgabeLabel == null && pointsVal == null) continue;
+      if (bodyLines.length === 0 && isZufallMetaLine(t)) {
+        shufflePerStudent = true;
+        continue;
+      }
       var solo = t.match(/^\$([^$]+)\$$/);
       if (solo && bodyLines.length === 0) {
         var cmd = solo[1].trim();
+        if (/^Zufall$/i.test(cmd)) {
+          shufflePerStudent = true;
+          continue;
+        }
         var a = parseAufgabe(cmd);
         if (a) {
           aufgabeLabel = a;
@@ -627,6 +641,7 @@
     return {
       aufgabeLabel: aufgabeLabel,
       pointsVal: pointsVal,
+      shufflePerStudent: shufflePerStudent,
       body: split.body,
       solution: split.solution,
     };
@@ -636,10 +651,11 @@
     return splitBodyAndSolutionLines(String(text || '').split(/\r?\n/));
   }
 
-  function composeTaskSource(aufgabeLabel, pointsVal, body, solution) {
+  function composeTaskSource(aufgabeLabel, pointsVal, body, solution, shufflePerStudent) {
     var lines = [];
     if (aufgabeLabel) lines.push('$Aufgabe ' + aufgabeLabel + '$');
     if (pointsVal != null && pointsVal !== '') lines.push('$' + pointsVal + ' Punkte$');
+    if (shufflePerStudent) lines.push('$Zufall$');
     var b = String(body || '');
     if (b.length) lines.push(b);
     var sol = String(solution || '').trim();
@@ -694,6 +710,7 @@
       meta.pointsVal,
       liveParts.body,
       liveParts.solution,
+      meta.shufflePerStudent,
     );
     src.value = applyAutoPointsToSource(taskEl, src.value);
   }
@@ -712,7 +729,13 @@
         refreshLiveEditHighlight(live);
       }
       if (src) {
-        src.value = composeTaskSource(meta.aufgabeLabel, meta.pointsVal, meta.body, meta.solution);
+        src.value = composeTaskSource(
+          meta.aufgabeLabel,
+          meta.pointsVal,
+          meta.body,
+          meta.solution,
+          meta.shufflePerStudent,
+        );
       }
       applySourceToTask(taskEl, src ? src.value : '');
     });
@@ -4277,6 +4300,11 @@
     }
     if (parsed.pointsVal != null && pointsEl) {
       pointsEl.textContent = parsed.pointsVal + ' Punkte';
+    }
+    if (parsed.shufflePerStudent) {
+      taskEl.setAttribute('data-jm-task-shuffle', '1');
+    } else {
+      taskEl.removeAttribute('data-jm-task-shuffle');
     }
     var n = 0;
     function idGen() {

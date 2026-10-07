@@ -4,8 +4,11 @@ exports.EXAM_CHROME_SCRIPT_MARKER = exports.EXAM_DOLLAR_SCRIPT_MARKER = exports.
 exports.isDeliverableExamHtml = isDeliverableExamHtml;
 exports.patchExamChromeMarkup = patchExamChromeMarkup;
 exports.patchExamPaperComposeMarkup = patchExamPaperComposeMarkup;
+exports.taskDollarSourceHasZufall = taskDollarSourceHasZufall;
+exports.patchExamTaskShuffleMarkersFromDollarSource = patchExamTaskShuffleMarkersFromDollarSource;
 exports.transformExamHtmlForDelivery = transformExamHtmlForDelivery;
 const examTimerTeacherBridge_1 = require("./examTimerTeacherBridge");
+const examVersionPaths_1 = require("./examVersionPaths");
 const examDollarAuthoringSave_1 = require("./examDollarAuthoringSave");
 /**
  * Schüler: Teile innerhalb jeder Aufgabe (exam-subsection / Rasterzellen) pro SuS
@@ -59,8 +62,21 @@ exports.EXAM_SUBSECTION_SHUFFLE_FUNCTION = `
 
             var taskIndex = 0;
             document.querySelectorAll('.task').forEach(function (taskEl) {
+                if (!taskEl.getAttribute('data-jm-task-shuffle')) return;
                 taskIndex += 1;
                 var rng = mulberry32(hashSeed(seedStr + '|task-' + taskIndex));
+
+                taskEl.querySelectorAll('.exam-mc-options, .exam-multi-select').forEach(function (mcEl) {
+                    var opts = Array.prototype.slice.call(
+                        mcEl.querySelectorAll(':scope > label, :scope > .exam-mc-option, :scope > .exam-mc-row'),
+                    );
+                    if (opts.length > 1) {
+                        shuffleInPlace(opts, rng);
+                        opts.forEach(function (el) {
+                            mcEl.appendChild(el);
+                        });
+                    }
+                });
 
                 var wfTableBody = taskEl.querySelector('.exam-wf-table tbody');
                 if (wfTableBody) {
@@ -190,22 +206,31 @@ function injectHideLiveScoreForStudents(html) {
     return injectBeforeLastBodyClose(html, `${EXAM_HIDE_LIVE_SCORE_STYLE}\n${EXAM_HIDE_LIVE_SCORE_SCRIPT}`);
 }
 exports.EXAM_DOLLAR_SCRIPT_MARKER = 'data-jm-exam-dollar-script';
-const EXAM_DOLLAR_BOOT_SNIPPET = `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" ${exports.EXAM_DOLLAR_SCRIPT_MARKER}-katex="css">
+function examAssetUrl(assetBase, path) {
+    const p = path.startsWith('/') ? path : `/${path}`;
+    const base = String(assetBase || '').replace(/\/+$/, '');
+    return base ? `${base}${p}` : p;
+}
+function buildExamDollarBootSnippet(assetBase) {
+    const dollarJs = examAssetUrl(assetBase, '/exam-dollar-commands.js');
+    return `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" ${exports.EXAM_DOLLAR_SCRIPT_MARKER}-katex="css">
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js" ${exports.EXAM_DOLLAR_SCRIPT_MARKER}-katex="js"></script>
-<script src="/exam-dollar-commands.js" ${exports.EXAM_DOLLAR_SCRIPT_MARKER}="1"></script>
+<script src="${dollarJs}" ${exports.EXAM_DOLLAR_SCRIPT_MARKER}="1"></script>
 <script ${exports.EXAM_DOLLAR_SCRIPT_MARKER}-init="1">
 (function(){
   function boot(){
     if (typeof setupExamDollarAuthoring === 'function') setupExamDollarAuthoring();
+    else if (typeof jmBootstrapExamTasksFromSource === 'function') jmBootstrapExamTasksFromSource({});
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();
 </script>`;
-function injectExamDollarAuthoring(html) {
+}
+function injectExamDollarAuthoring(html, assetBase) {
     if (html.includes(exports.EXAM_DOLLAR_SCRIPT_MARKER))
         return html;
-    return injectBeforeLastBodyClose(html, EXAM_DOLLAR_BOOT_SNIPPET);
+    return injectBeforeLastBodyClose(html, buildExamDollarBootSnippet(assetBase));
 }
 exports.EXAM_CHROME_SCRIPT_MARKER = 'data-jm-exam-chrome-script';
 const EXAM_CHROME_CLOCK_BTN = '<button type="button" class="exam-chrome-clock-btn teacher-only" id="examTimerToggle" aria-expanded="false" title="Bearbeitungszeit ein- oder ausblenden">🕐</button>';
@@ -250,10 +275,43 @@ function injectExamChromeRuntime(html) {
         return html;
     return injectBeforeLastBodyClose(html, EXAM_CHROME_BOOT_SNIPPET);
 }
-function transformExamHtmlForDelivery(html, filePath) {
+function taskDollarSourceHasZufall(source) {
+    const lines = String(source || '').split(/\r?\n/);
+    for (const line of lines) {
+        const t = line.trim();
+        if (/^\$Zufall\s*\$?$/i.test(t))
+            return true;
+    }
+    return false;
+}
+/** $Zufall$ in Aufgabenquelle → data-jm-task-shuffle am .task-Element */
+function patchExamTaskShuffleMarkersFromDollarSource(html) {
+    return html.replace(/(<div class="task"[^>]*>)([\s\S]*?<textarea class="exam-dollar-source"[^>]*>)([\s\S]*?)(<\/textarea>)/gi, (full, taskOpen, before, src, closeTag) => {
+        if (!taskDollarSourceHasZufall(src))
+            return full;
+        let open = taskOpen;
+        if (!/data-jm-task-shuffle/i.test(open)) {
+            open = open.replace('<div class="task"', '<div class="task" data-jm-task-shuffle="1"');
+        }
+        return open + before + src + closeTag;
+    });
+}
+function patchLegacyInlineSubsectionShuffleGate(html) {
+    if (!html.includes('setupExamSubsectionShuffleForStudent'))
+        return html;
+    if (html.includes("getAttribute('data-jm-task-shuffle')"))
+        return html;
+    return html
+        .replace(/document\.querySelectorAll\(['"]\.task['"]\)\.forEach\(function \(taskEl\) \{/g, `document.querySelectorAll('.task').forEach(function (taskEl) {
+                if (!taskEl.getAttribute('data-jm-task-shuffle')) return;`)
+        .replace(/document\.querySelectorAll\(['"]\.task['"]\)\.forEach\(\(taskEl\) => \{/g, `document.querySelectorAll('.task').forEach((taskEl) => {
+                if (!taskEl.getAttribute('data-jm-task-shuffle')) return;`);
+}
+function transformExamHtmlForDelivery(html, filePath, assetBase) {
     if (!isDeliverableExamHtml(html, filePath))
         return html;
-    let out = html;
+    let out = patchExamTaskShuffleMarkersFromDollarSource(html);
+    out = patchLegacyInlineSubsectionShuffleGate(out);
     if (out.includes('setupExamSubsectionShuffleForStudent')) {
         if (!out.includes('setupExamSubsectionShuffleForStudent();')) {
             out = out.replace(/\battachInputListeners\(\);/, INIT_HOOK);
@@ -280,8 +338,9 @@ function transformExamHtmlForDelivery(html, filePath) {
     out = (0, examDollarAuthoringSave_1.patchAidsGeneralRulesListDisplay)(out);
     out = patchExamPaperComposeMarkup(out);
     out = injectExamChromeRuntime(out);
-    out = injectExamDollarAuthoring(out);
+    out = injectExamDollarAuthoring(out, assetBase);
     out = (0, examTimerTeacherBridge_1.injectExamTimerTeacherBridge)(out);
+    out = (0, examVersionPaths_1.syncExamPresentationForDelivery)(out, filePath);
     return injectHideLiveScoreForStudents(out);
 }
 //# sourceMappingURL=examSubsectionShuffle.js.map

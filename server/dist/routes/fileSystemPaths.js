@@ -14,6 +14,10 @@ const upload = (0, multer_1.default)({
         fileSize: 50 * 1024 * 1024 // 50MB limit for whiteboard files
     }
 });
+const examIconUpload = (0, multer_1.default)({
+    storage: multer_1.default.memoryStorage(),
+    limits: { fileSize: 8 * 1024 * 1024 },
+});
 // Alle Pfade abrufen (für die Ordner-Zuordnung)
 router.get('/', FileSystemPathController_1.FileSystemPathController.getAllPaths);
 // Pfad speichern
@@ -68,6 +72,14 @@ router.get('/static/*', FileSystemPathController_1.FileSystemPathController.serv
 router.post('/create-examination', FileSystemPathController_1.FileSystemPathController.createExamination);
 // Prüfung löschen (mit Varianten bei Basis-Datei A)
 router.post('/delete-examination', FileSystemPathController_1.FileSystemPathController.deleteExamination);
+router.post('/change-examination-type', FileSystemPathController_1.FileSystemPathController.changeExaminationType);
+router.post('/duplicate-examination', FileSystemPathController_1.FileSystemPathController.duplicateExamination);
+router.get('/exam-library-icons', FileSystemPathController_1.FileSystemPathController.getExamLibraryIcons);
+router.post('/exam-library-icons', FileSystemPathController_1.FileSystemPathController.saveExamLibraryIcon);
+router.post('/exam-library-icons/upload', examIconUpload.single('image'), FileSystemPathController_1.FileSystemPathController.uploadExamLibraryIconImage);
+router.post('/exam-library-icons/overwrite-asset', examIconUpload.single('image'), FileSystemPathController_1.FileSystemPathController.overwriteExamLibraryIconAsset);
+router.post('/exam-library-icons/white-bg-done', FileSystemPathController_1.FileSystemPathController.markExamLibraryWhiteBgDone);
+router.post('/exam-library-icons/save-template', FileSystemPathController_1.FileSystemPathController.saveExamLibraryIconTemplate);
 // Stunde erstellen (Ordner + Standardmaterialien)
 router.post('/create-lesson-folder', FileSystemPathController_1.FileSystemPathController.createLessonFolder);
 // Prüfungsinhalte generieren

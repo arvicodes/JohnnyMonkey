@@ -21,7 +21,12 @@ exports.examFamilyStemFromKaPath = examFamilyStemFromKaPath;
 exports.kaPathsMatchFamily = kaPathsMatchFamily;
 exports.versionLetterFromKaPath = versionLetterFromKaPath;
 exports.ensureVersionLetterMarkup = ensureVersionLetterMarkup;
+exports.examDisplayTitleFromKaKey = examDisplayTitleFromKaKey;
 exports.patchKaKeyInHtml = patchKaKeyInHtml;
+exports.patchExamPresentationInHtml = patchExamPresentationInHtml;
+exports.extractKaKeyFromExamHtml = extractKaKeyFromExamHtml;
+exports.syncExamPresentationForDelivery = syncExamPresentationForDelivery;
+exports.patchAllExamVersionPresentationFiles = patchAllExamVersionPresentationFiles;
 exports.applyVersionsToExamHtml = applyVersionsToExamHtml;
 exports.resolveFullPathFromGitIntern = resolveFullPathFromGitIntern;
 exports.readExamHtmlFullPath = readExamHtmlFullPath;
@@ -206,10 +211,84 @@ function ensureVersionLetterMarkup(html, letter) {
     }
     return out;
 }
+function examDisplayTitleFromKaKey(kaKey) {
+    const stem = String(kaKey || '').replace(/__([A-Z])$/i, '');
+    return stem.replace(/^(KA|KU|HU|HÜ|QZ)_/i, '');
+}
+function escapeHtmlText(text) {
+    return String(text || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
 function patchKaKeyInHtml(html, kaKey) {
     let out = html.replace(/const KA_KEY = ['"](.*?)['"]/g, `const KA_KEY = '${kaKey}'`);
     out = out.replace(/KA_KEY = ['"](.*?)['"]/g, `KA_KEY = '${kaKey}'`);
     return out;
+}
+/** KA_KEY, Browser-Tab (<title>) und Kopfzeile (.header-title) an Dateinamen anpassen */
+function patchExamPresentationInHtml(html, kaKey, displayTitle) {
+    const title = String(displayTitle || '').trim() || examDisplayTitleFromKaKey(kaKey);
+    const safe = escapeHtmlText(title);
+    let out = patchKaKeyInHtml(html, kaKey);
+    out = out.replace(/<title>[^<]*<\/title>/gi, `<title>${safe}</title>`);
+    out = out.replace(/<div class="header-title">([^<$][^<]*)<\/div>/gi, `<div class="header-title">${safe}</div>`);
+    return out;
+}
+function extractKaKeyFromExamHtml(html) {
+    var _a;
+    const m = html.match(/const\s+KA_KEY\s*=\s*['"]([^'"]*)['"]/);
+    return ((_a = m === null || m === void 0 ? void 0 : m[1]) === null || _a === void 0 ? void 0 : _a.trim()) || null;
+}
+function decodeHtmlTextEntities(text) {
+    return String(text || '')
+        .replace(/&quot;/g, '"')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&');
+}
+/** Tab- und Kopfzeilen-Titel an Dateiname bzw. KA_KEY anpassen (nur für read-html). */
+function syncExamPresentationForDelivery(html, filePath) {
+    var _a, _b;
+    const fp = String(filePath || '').replace(/\\/g, '/');
+    const base = fp.split('/').pop() || '';
+    const stem = base.replace(/\.html?$/i, '').replace(/__([A-Z])$/i, '');
+    const kaKey = extractKaKeyFromExamHtml(html);
+    let expected = '';
+    if (/^(KA|KU|HU|HÜ|QZ)_/i.test(stem)) {
+        expected = examDisplayTitleFromKaKey(stem);
+    }
+    else if (kaKey) {
+        expected = examDisplayTitleFromKaKey(kaKey);
+    }
+    if (!expected)
+        return html;
+    const titleM = html.match(/<title>([^<]*)<\/title>/i);
+    const headerM = html.match(/<div class="header-title">([^<$][^<]*)<\/div>/i);
+    const curTitle = decodeHtmlTextEntities(((_a = titleM === null || titleM === void 0 ? void 0 : titleM[1]) === null || _a === void 0 ? void 0 : _a.trim()) || '');
+    const curHeader = decodeHtmlTextEntities(((_b = headerM === null || headerM === void 0 ? void 0 : headerM[1]) === null || _b === void 0 ? void 0 : _b.trim()) || '');
+    if (curTitle === expected && curHeader === expected)
+        return html;
+    const keyForPatch = kaKey || stem;
+    return patchExamPresentationInHtml(html, keyForPatch, expected);
+}
+function patchAllExamVersionPresentationFiles(baseGit, letters, resolveFullPath, displayTitle) {
+    let patched = 0;
+    for (const L of letters) {
+        const vGit = gitPathVariant(baseGit, L);
+        const fromFull = resolveFullPath(vGit);
+        if (!fromFull || !fs_1.default.existsSync(fromFull) || !fs_1.default.statSync(fromFull).isFile())
+            continue;
+        const content = fs_1.default.readFileSync(fromFull, 'utf8');
+        const stemKey = fileStemFromName(path_1.default.basename(fromFull));
+        const next = patchExamPresentationInHtml(content, stemKey, displayTitle);
+        if (next !== content) {
+            fs_1.default.writeFileSync(fromFull, next, 'utf8');
+            patched += 1;
+        }
+    }
+    return patched;
 }
 function applyVersionsToExamHtml(html, letters, fileLetter) {
     let out = writeExamVersionsMeta(html, letters);

@@ -60,6 +60,12 @@ import {
   stopLessonExam,
   teacherIdFromStorage,
 } from '../../lib/lessonExamBeacon';
+import { buildExamStartPayload } from '../../lib/examStartConfig';
+import {
+  ExamStartAdvancedSection,
+  useExamStartAdvancedState,
+} from './ExamStartDialogContent';
+import { sortLearningGroups } from '../../lib/learningGroupSort';
 import {
   fetchExamSessionHistory,
   formatExamSessionDateTime,
@@ -131,6 +137,8 @@ type GroupLite = {
   name: string;
   color?: string | null;
   iconEmoji?: string | null;
+  displayOrder?: number | null;
+  isArchived?: boolean;
 };
 
 type LibraryGroupMeta = {
@@ -798,6 +806,19 @@ export const DashboardExamsPanel: React.FC<{
   >({});
   const [examStartDialogItem, setExamStartDialogItem] = useState<LibraryExamItem | null>(null);
   const [examStartGroupIds, setExamStartGroupIds] = useState<string[]>([]);
+  const examStartAdvanced = useExamStartAdvancedState(examStartGroupIds);
+  const examStartGroupsOrdered = useMemo(() => {
+    const active = sortLearningGroups(groups.filter((g) => !g.isArchived));
+    const archived = sortLearningGroups(groups.filter((g) => g.isArchived));
+    return [...active, ...archived];
+  }, [groups]);
+  const examStartSelectedGroupIdsOrdered = useMemo(
+    () =>
+      examStartGroupsOrdered
+        .filter((g) => examStartGroupIds.includes(g.id))
+        .map((g) => g.id),
+    [examStartGroupsOrdered, examStartGroupIds],
+  );
   const [examRunBusyPath, setExamRunBusyPath] = useState<string | null>(null);
   const [lastStartGroupIdsByExam, setLastStartGroupIdsByExam] = useState<Record<string, string[]>>(
     {},
@@ -978,11 +999,13 @@ export const DashboardExamsPanel: React.FC<{
     try {
       const teacherId = teacherIdFromStorage();
       if (!teacherId) throw new Error('Bitte zuerst anmelden.');
+      const examConfig = buildExamStartPayload(useIds, examStartAdvanced.buildConfigForStart());
       const started = await startLessonExam({
         teacherId,
         groupIds: useIds,
         filePath: item.path,
         lessonPath: item.lessonFolder,
+        examConfig,
       });
       const filePath = (started.filePath || item.path).replace(/\\/g, '/');
       const examKey = normalizeExamBeaconPath(item.path);
@@ -1005,7 +1028,7 @@ export const DashboardExamsPanel: React.FC<{
     } finally {
       setExamRunBusyPath(null);
     }
-  }, [examStartDialogItem, examStartGroupIds, onNotify]);
+  }, [examStartDialogItem, examStartGroupIds, examStartAdvanced, onNotify]);
 
   const openExamHistoryDialog = useCallback((item: LibraryExamItem) => {
     setExamHistoryItem(item);
@@ -1091,12 +1114,18 @@ export const DashboardExamsPanel: React.FC<{
         error?: string;
         fileName?: string;
         unchanged?: boolean;
+        presentationPatched?: boolean;
       };
       if (!res.ok) throw new Error(data.error || 'Typ konnte nicht geändert werden');
-      if (data.unchanged) {
-        onNotify?.('Prüfungstyp ist bereits ' + typeChoice, 'success');
+      if (data.presentationPatched && data.unchanged) {
+        onNotify?.('Titel in der Prüfung und im Tab wurden aktualisiert — bitte Tab neu laden', 'success');
+      } else if (data.unchanged) {
+        onNotify?.('Keine Änderung nötig', 'success');
       } else {
-        onNotify?.(`Umbenannt in ${data.fileName || typeChoice + '_…'}`, 'success');
+        onNotify?.(
+          `Umbenannt in ${data.fileName || typeChoice + '_…'} — alten Tab schließen und Datei neu öffnen`,
+          'success',
+        );
       }
       setTypeDialogItem(null);
       void load();
@@ -1322,27 +1351,27 @@ export const DashboardExamsPanel: React.FC<{
     <Dialog
       open={Boolean(examStartDialogItem)}
       onClose={() => setExamStartDialogItem(null)}
-      maxWidth="xs"
+      maxWidth="sm"
       fullWidth
     >
       <DialogTitle>Prüfung starten — Lerngruppe(n)</DialogTitle>
       <DialogContent sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-          {examStartDialogItem ? (
-            <>
-              <strong>{examStartDialogItem.name.replace(/\.html?$/i, '')}</strong>
-              {' — '}
-              SuS der gewählten Gruppe(n) sehen die Prüfung im Vollbild.
-            </>
-          ) : null}
-        </Typography>
         {groups.length === 0 ? (
           <Typography variant="body2">Keine Lerngruppe vorhanden — zuerst im Tab „Lerngruppen“ anlegen.</Typography>
         ) : (
           <FormGroup>
-            {groups.map((g) => (
+            {examStartGroupsOrdered.map((g) => (
               <FormControlLabel
                 key={g.id}
+                sx={{
+                  ml: 0,
+                  ...(g.isArchived
+                    ? {
+                        color: 'text.disabled',
+                        '& .MuiCheckbox-root': { color: 'action.disabled' },
+                      }
+                    : {}),
+                }}
                 control={
                   <Checkbox
                     size="small"
@@ -1354,11 +1383,28 @@ export const DashboardExamsPanel: React.FC<{
                     }}
                   />
                 }
-                label={g.name}
+                label={
+                  <Typography
+                    component="span"
+                    variant="body2"
+                    sx={{
+                      color: g.isArchived ? 'text.disabled' : 'text.primary',
+                      fontStyle: g.isArchived ? 'italic' : 'normal',
+                    }}
+                  >
+                    {g.name}
+                    {g.isArchived ? ' (Archiv)' : ''}
+                  </Typography>
+                }
               />
             ))}
           </FormGroup>
         )}
+        <ExamStartAdvancedSection
+          groups={examStartGroupsOrdered}
+          selectedGroupIds={examStartSelectedGroupIdsOrdered}
+          advanced={examStartAdvanced}
+        />
       </DialogContent>
       <DialogActions>
         <Button onClick={() => setExamStartDialogItem(null)}>Abbrechen</Button>

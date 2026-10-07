@@ -20,6 +20,10 @@ export declare class EpoNotenController {
     static submitGoals(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static saveTeacherEntry(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static releaseToStudents(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /** Lehrkraft: ganze Lerngruppe auf „Nur Note“ (oder zurück auf Standard) */
+    static bulkGradeOnlyForGroup(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /** Lehrkraft: ganze Lerngruppe „Keine Ziele nötig“ */
+    static bulkGoalsWaivedForGroup(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /** Lehrkraft: Einträge löschen (ganze Runde oder eine Lerngruppe) */
     static resetAllEntries(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
 }

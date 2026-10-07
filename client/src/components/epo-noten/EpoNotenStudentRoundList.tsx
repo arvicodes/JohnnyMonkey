@@ -2,7 +2,14 @@ import React from 'react';
 import { Box, Chip, List, ListItemButton, ListItemText } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import type { EpoNotenStudentSession } from '../../lib/epoNotenShared';
-import { epoNotenCardSx, epoNotenPalette, epoNotenStudentSurfaceSx, epoNotenBitteAusfuellenChipSx, epoNotenBitteAusfuellenRowSx } from './epoNotenUi';
+import {
+  epoNotenCardSx,
+  epoNotenPalette,
+  epoNotenStudentSurfaceSx,
+  epoNotenBitteAusfuellenRowSx,
+  epoNotenFertigRowSx,
+} from './epoNotenUi';
+import { EpoNotenPendingRoundChip } from './EpoNotenStudentStatusChip';
 
 function formatRoundDate(date: string): string {
   if (!date) return '—';
@@ -16,24 +23,10 @@ function statusChip(session: EpoNotenStudentSession) {
     return <Chip size="small" variant="outlined" label="Bearbeitet" sx={{ opacity: 0.85 }} />;
   }
   if (session.actionRequired && session.needsSelfAssessment) {
-    return (
-      <Chip
-        size="small"
-        color="warning"
-        label="Bitte ausfüllen"
-        sx={epoNotenBitteAusfuellenChipSx}
-      />
-    );
+    return <EpoNotenPendingRoundChip title="Bitte ausfüllen — Selbsteinschätzung" />;
   }
   if (session.actionRequired && session.needsGoals) {
-    return (
-      <Chip
-        size="small"
-        color="warning"
-        label="Bitte ausfüllen"
-        sx={epoNotenBitteAusfuellenChipSx}
-      />
-    );
+    return <EpoNotenPendingRoundChip title="Bitte ausfüllen — Ziele" />;
   }
   if (session.isActive && session.studentSubmitted && !session.teacherReleased) {
     return <Chip size="small" color="info" label="Warte auf Lehrkraft" />;
@@ -44,7 +37,7 @@ function statusChip(session: EpoNotenStudentSession) {
 
 type Props = {
   sessions: EpoNotenStudentSession[];
-  onSelect: (roundId: string) => void;
+  onSelect: (session: EpoNotenStudentSession) => void;
 };
 
 export function EpoNotenStudentRoundList({ sessions, onSelect }: Props) {
@@ -65,14 +58,19 @@ export function EpoNotenStudentRoundList({ sessions, onSelect }: Props) {
           return (
             <ListItemButton
               key={`${s.id}-${s.groupId}`}
-              onClick={() => onSelect(s.id)}
+              onClick={() => onSelect(s)}
               sx={{
                 py: 1.5,
                 px: 2,
                 borderBottom: `1px solid ${epoNotenPalette.border}`,
                 opacity: archived ? 0.52 : 1,
-                bgcolor: s.actionRequired ? 'rgba(245, 124, 0, 0.1)' : archived ? 'rgba(0,0,0,0.02)' : 'transparent',
+                bgcolor: s.actionRequired
+                  ? 'rgba(245, 124, 0, 0.1)'
+                  : archived
+                    ? 'rgba(0,0,0,0.02)'
+                    : epoNotenPalette.fertigBg,
                 ...(s.actionRequired ? epoNotenBitteAusfuellenRowSx : {}),
+                ...(!s.actionRequired && !archived ? epoNotenFertigRowSx : {}),
                 '&:last-child': { borderBottom: 0 },
                 '&:hover': { opacity: archived ? 0.65 : 1 },
               }}

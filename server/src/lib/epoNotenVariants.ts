@@ -130,7 +130,7 @@ export function resolveVariant(
   store: EpoNotenVariantsStore,
   variantId: string | null | undefined,
 ): EpoNotenVariantSheet {
-  const id = variantId?.trim() || DEFAULT_EPO_VARIANT_ID;
+  const id = variantId?.trim() || EPO_VARIANT2_ID;
   return store.variants.find((v) => v.id === id) ?? store.variants[0]!;
 }
 

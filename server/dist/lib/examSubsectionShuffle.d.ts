@@ -14,5 +14,8 @@ export declare const EXAM_CHROME_SCRIPT_MARKER = "data-jm-exam-chrome-script";
 export declare function patchExamChromeMarkup(html: string): string;
 /** „+ Aufgabe“-Eingabe unter den Aufgaben im Blatt, nicht in der Sidebar. */
 export declare function patchExamPaperComposeMarkup(html: string): string;
-export declare function transformExamHtmlForDelivery(html: string, filePath?: string): string;
+export declare function taskDollarSourceHasZufall(source: string): boolean;
+/** $Zufall$ in Aufgabenquelle → data-jm-task-shuffle am .task-Element */
+export declare function patchExamTaskShuffleMarkersFromDollarSource(html: string): string;
+export declare function transformExamHtmlForDelivery(html: string, filePath?: string, assetBase?: string): string;
 //# sourceMappingURL=examSubsectionShuffle.d.ts.map

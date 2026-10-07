@@ -17,6 +17,18 @@ model User {
   updatedAt                 DateTime                    @updatedAt
   avatarEmoji               String?
   avatarUrl                 String?
+  /** Zweites Lehrer-Foto (z. B. Schulporträt); SuS wählen aktiv über avatarPhotoSlot. */
+  avatarUrlAlt              String?
+  /** Eigenes SuS-Foto (Upload/Zuschnitt), unabhängig von Lehrer-Fotos. */
+  avatarUrlCustom           String?
+  /** SuS-Bearbeitung je Slot (Original bleibt in avatarUrl / avatarUrlAlt / avatarUrlCustom). */
+  avatarEditPrimary         String?
+  avatarEditAlt             String?
+  avatarEditCustom          String?
+  /** JSON-Liste eigener SuS-Fotos: [{ id, base, edit? }] */
+  avatarCustomGallery       String?
+  avatarCustomActiveId      String?
+  avatarPhotoSlot           String                      @default("primary")
   profileColor              String?
   teacherGroups             LearningGroup[]             @relation("TeacherGroups")
   notes                     Note[]
@@ -176,6 +188,8 @@ model LessonExamBeacon {
   lessonPath String        @default("")
   beaconId   String
   active     Boolean       @default(true)
+  /// JSON: ExamBeaconGroupConfig (SuS-Filter, Varianten)
+  configJson String        @default("{}")
   updatedAt  DateTime      @updatedAt
   group      LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
 }

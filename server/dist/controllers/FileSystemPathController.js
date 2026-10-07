@@ -51,8 +51,13 @@ const examDollarAuthoringSave_1 = require("../lib/examDollarAuthoringSave");
 const examSubsectionShuffle_1 = require("../lib/examSubsectionShuffle");
 const examEditorDetection_1 = require("../lib/examEditorDetection");
 const directoryReadCache_1 = require("../utils/directoryReadCache");
+const examSubmissionAliases_1 = require("../lib/examSubmissionAliases");
+const examSubmissionMigrate_1 = require("../lib/examSubmissionMigrate");
 const examVersionPaths_1 = require("../lib/examVersionPaths");
 const examAutoPoints_1 = require("../utils/examAutoPoints");
+const loginCodeCrypto_1 = require("../utils/loginCodeCrypto");
+const teacherScratchPadStore_1 = require("../utils/teacherScratchPadStore");
+const examLibraryIconsStore_1 = require("../lib/examLibraryIconsStore");
 const prisma = new client_1.PrismaClient();
 const DEV_PROJECT_ROOT = '/Users/verachrist/Documents/MEINE_APP/JohnnyMonkey';
 class FileSystemPathController {
@@ -219,7 +224,9 @@ class FileSystemPathController {
             }
             let htmlOut = fileContent.toString('utf-8');
             try {
-                htmlOut = (0, examSubsectionShuffle_1.transformExamHtmlForDelivery)(htmlOut, String(filePath));
+                const host = req.get('host');
+                const assetBase = host ? `${req.protocol}://${host}` : undefined;
+                htmlOut = (0, examSubsectionShuffle_1.transformExamHtmlForDelivery)(htmlOut, String(filePath), assetBase);
             }
             catch (transformErr) {
                 console.warn('exam shuffle transform skipped:', transformErr);
@@ -1523,9 +1530,14 @@ class FileSystemPathController {
                     error: 'Nur Prüfungsdateien (KA_, KU_, HU_, QZ_) können gelöscht werden.',
                 });
             }
-            const fullPath = storageManager_1.StorageManager.resolveFilePath(normalizedFp);
-            if (!fullPath) {
-                return res.status(404).json({ error: 'Datei nicht gefunden' });
+            const fullPath = (0, examAutoPoints_1.resolveExamHtmlPath)(normalizedFp);
+            if (!fs_1.default.existsSync(fullPath) || !fs_1.default.statSync(fullPath).isFile()) {
+                const folderKey = normalizedFp.replace(/\/[^/]+$/, '');
+                if (folderKey) {
+                    (0, directoryReadCache_1.invalidateDirectoryReadCache)(folderKey);
+                    (0, directoryReadCache_1.invalidateDirectoryReadCache)();
+                }
+                return res.json({ success: true, deleted: [], alreadyMissing: true });
             }
             const rootErr = FileSystemPathController.assertDeletableUnderJmRoot(fullPath);
             if (rootErr) {
@@ -1549,20 +1561,30 @@ class FileSystemPathController {
             }
             const deleted = [];
             for (const gp of [...new Set(gitPathsToDelete)]) {
-                const resolved = storageManager_1.StorageManager.resolveFilePath(gp);
-                if (!resolved)
+                const resolved = (0, examAutoPoints_1.resolveExamHtmlPath)(gp);
+                if (!resolved || !fs_1.default.existsSync(resolved))
                     continue;
                 const rootCheck = FileSystemPathController.assertDeletableUnderJmRoot(resolved);
                 if (rootCheck)
                     continue;
-                if (!fs_1.default.existsSync(resolved) || !fs_1.default.statSync(resolved).isFile())
+                if (!fs_1.default.statSync(resolved).isFile())
                     continue;
                 fs_1.default.unlinkSync(resolved);
                 deleted.push(path_1.default.basename(resolved));
                 console.log('Deleted examination file:', resolved);
             }
             if (deleted.length === 0) {
-                return res.status(404).json({ error: 'Datei nicht gefunden' });
+                const folderKey = normalizedFp.replace(/\/[^/]+$/, '');
+                if (folderKey) {
+                    (0, directoryReadCache_1.invalidateDirectoryReadCache)(folderKey);
+                    (0, directoryReadCache_1.invalidateDirectoryReadCache)();
+                }
+                return res.json({ success: true, deleted: [], alreadyMissing: true });
+            }
+            const folderKey = normalizedFp.replace(/\/[^/]+$/, '');
+            if (folderKey) {
+                (0, directoryReadCache_1.invalidateDirectoryReadCache)(folderKey);
+                (0, directoryReadCache_1.invalidateDirectoryReadCache)();
             }
             res.json({ success: true, deleted });
         }
@@ -1571,6 +1593,269 @@ class FileSystemPathController {
             res.status(500).json({
                 error: 'Prüfung konnte nicht gelöscht werden: ' + (error.message || ''),
             });
+        }
+    }
+    static examTypeFilePrefix(examType) {
+        const map = { KA: 'KA_', KU: 'KU_', HU: 'HU_', QZ: 'QZ_' };
+        return map[examType] || '';
+    }
+    static replaceExamTypeInBaseStem(baseStem, examType) {
+        const rest = baseStem.replace(/^(KA|KU|HU|HÜ|QZ)_/i, '');
+        return `${FileSystemPathController.examTypeFilePrefix(examType)}${rest}`;
+    }
+    static sanitizeExamTitleForFileName(raw) {
+        return String(raw || '')
+            .trim()
+            .replace(/[/\\?%*:|"<>]/g, '')
+            .replace(/\s+/g, ' ')
+            .slice(0, 180);
+    }
+    static buildExamBaseStemFromTypeAndTitle(baseStem, examType, examNameRaw) {
+        const nameTrim = examNameRaw == null ? '' : String(examNameRaw).trim();
+        if (nameTrim) {
+            const namePart = FileSystemPathController.sanitizeExamTitleForFileName(nameTrim);
+            if (!namePart) {
+                throw new Error('Ungültiger Prüfungsname');
+            }
+            return `${FileSystemPathController.examTypeFilePrefix(examType)}${namePart}`;
+        }
+        return FileSystemPathController.replaceExamTypeInBaseStem(baseStem, examType);
+    }
+    /**
+     * Prüfungspräfix nachträglich ändern (QZ_ → HU_ …), inkl. aller Versionen A/B/C.
+     */
+    static async changeExaminationType(req, res) {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+        try {
+            const filePathRaw = (((_a = req.body) === null || _a === void 0 ? void 0 : _a.filePath) || ((_b = req.query) === null || _b === void 0 ? void 0 : _b.filePath));
+            const examType = String(((_c = req.body) === null || _c === void 0 ? void 0 : _c.examType) || ((_d = req.query) === null || _d === void 0 ? void 0 : _d.examType) || '').trim().toUpperCase();
+            const examNameRaw = (_h = (_f = (_e = req.body) === null || _e === void 0 ? void 0 : _e.examName) !== null && _f !== void 0 ? _f : (_g = req.body) === null || _g === void 0 ? void 0 : _g.title) !== null && _h !== void 0 ? _h : (_j = req.query) === null || _j === void 0 ? void 0 : _j.examName;
+            if (!filePathRaw || typeof filePathRaw !== 'string') {
+                return res.status(400).json({ error: 'filePath ist erforderlich' });
+            }
+            const validTypes = ['KA', 'KU', 'HU', 'QZ'];
+            if (!validTypes.includes(examType)) {
+                return res.status(400).json({ error: 'examType muss KA, KU, HU oder QZ sein' });
+            }
+            const fp = FileSystemPathController.normalizeDeleteFilePath(filePathRaw);
+            const normalizedFp = fp.startsWith('J-M-Reihen/')
+                ? `git-intern/${fp.slice('J-M-Reihen/'.length)}`
+                : fp.startsWith('J-M-Reihen')
+                    ? 'git-intern'
+                    : fp;
+            const fileName = path_1.default.basename(normalizedFp);
+            if (!/\.html?$/i.test(fileName) || !FileSystemPathController.isExamCorrectionHtmlFileName(fileName)) {
+                return res.status(403).json({ error: 'Nur Prüfungsdateien (KA_, KU_, HU_, QZ_) sind erlaubt.' });
+            }
+            const fullPath = (0, examAutoPoints_1.resolveExamHtmlPath)(normalizedFp);
+            if (!fs_1.default.existsSync(fullPath) || !fs_1.default.statSync(fullPath).isFile()) {
+                return res.status(404).json({ error: 'Datei nicht gefunden' });
+            }
+            const rootErr = FileSystemPathController.assertDeletableUnderJmRoot(fullPath);
+            if (rootErr) {
+                return res.status(403).json({ error: rootErr });
+            }
+            const baseGit = (0, examVersionPaths_1.gitPathVariant)(normalizedFp, 'A');
+            let html = fs_1.default.readFileSync(fullPath, 'utf8');
+            const { letters } = (0, examVersionPaths_1.parseExamVersionsMeta)(html);
+            const renames = [];
+            const refStem = (0, examVersionPaths_1.fileStemFromName)(fileName);
+            const refBaseStem = (0, examVersionPaths_1.baseStemFromStem)(refStem);
+            let newBaseStem;
+            let displayTitle;
+            try {
+                newBaseStem = FileSystemPathController.buildExamBaseStemFromTypeAndTitle(refBaseStem, examType, examNameRaw);
+                const nameTrim = examNameRaw == null ? '' : String(examNameRaw).trim();
+                displayTitle = nameTrim
+                    ? FileSystemPathController.sanitizeExamTitleForFileName(nameTrim)
+                    : (0, examVersionPaths_1.examDisplayTitleFromKaKey)(newBaseStem);
+            }
+            catch (nameErr) {
+                const msg = nameErr instanceof Error ? nameErr.message : String(nameErr);
+                return res.status(400).json({ error: msg });
+            }
+            for (const L of letters) {
+                const vGit = (0, examVersionPaths_1.gitPathVariant)(baseGit, L);
+                const fromFull = (0, examAutoPoints_1.resolveExamHtmlPath)(vGit);
+                if (!fromFull || !fs_1.default.existsSync(fromFull) || !fs_1.default.statSync(fromFull).isFile())
+                    continue;
+                const stem = (0, examVersionPaths_1.fileStemFromName)(path_1.default.basename(fromFull));
+                const baseStem = (0, examVersionPaths_1.baseStemFromStem)(stem);
+                if (newBaseStem.toLowerCase() === baseStem.toLowerCase())
+                    continue;
+                const newStem = (0, examVersionPaths_1.variantStem)(newBaseStem, L);
+                const toFull = path_1.default.join(path_1.default.dirname(fromFull), `${newStem}.html`);
+                if (path_1.default.resolve(fromFull) === path_1.default.resolve(toFull))
+                    continue;
+                if (fs_1.default.existsSync(toFull)) {
+                    return res.status(409).json({
+                        error: `Es existiert bereits: ${path_1.default.basename(toFull)}`,
+                    });
+                }
+                const slash = vGit.lastIndexOf('/');
+                const toGit = slash >= 0 ? `${vGit.slice(0, slash + 1)}${newStem}.html` : `${newStem}.html`;
+                renames.push({ fromFull, toFull, fromGit: vGit, toGit });
+            }
+            if (renames.length === 0) {
+                if (newBaseStem.toLowerCase() === refBaseStem.toLowerCase()) {
+                    const patched = (0, examVersionPaths_1.patchAllExamVersionPresentationFiles)(baseGit, letters, examAutoPoints_1.resolveExamHtmlPath, displayTitle);
+                    if (patched > 0) {
+                        const folderKey = baseGit.replace(/\/[^/]+$/, '');
+                        if (folderKey)
+                            (0, directoryReadCache_1.invalidateDirectoryReadCache)(folderKey);
+                    }
+                    return res.json({
+                        success: true,
+                        unchanged: patched === 0,
+                        presentationPatched: patched > 0,
+                        filePath: normalizedFp,
+                        displayTitle,
+                    });
+                }
+                return res.status(404).json({ error: 'Keine Prüfungsversion zum Umbenennen gefunden' });
+            }
+            for (const r of renames) {
+                let content = fs_1.default.readFileSync(r.fromFull, 'utf8');
+                content = (0, examSubmissionAliases_1.appendExamSubmissionAlias)(content, r.fromGit);
+                content = (0, examSubmissionAliases_1.appendExamSubmissionAlias)(content, path_1.default.basename(r.fromFull));
+                content = (0, examVersionPaths_1.patchExamPresentationInHtml)(content, (0, examVersionPaths_1.fileStemFromName)(path_1.default.basename(r.toFull)), displayTitle);
+                fs_1.default.writeFileSync(r.toFull, content, 'utf8');
+                const migrated = await (0, examSubmissionMigrate_1.migrateKaSubmissionsAfterExamRename)(prisma, r.fromGit, r.toGit);
+                if (migrated > 0) {
+                    console.log(`Migrated ${migrated} submission(s) for exam rename → ${r.toGit}`);
+                }
+                fs_1.default.unlinkSync(r.fromFull);
+                console.log('Renamed examination:', r.fromFull, '→', r.toFull);
+            }
+            const primary = renames.find((r) => r.toGit.endsWith('.html')) || renames[0];
+            const folderKey = primary.toGit.replace(/\/[^/]+$/, '');
+            if (folderKey)
+                (0, directoryReadCache_1.invalidateDirectoryReadCache)(folderKey);
+            const teacher = await FileSystemPathController.requireTeacherUser(req);
+            if (teacher && renames.length > 0) {
+                const tKey = (0, teacherScratchPadStore_1.scratchPadUserFolderKey)(teacher.id, teacher.name);
+                (0, examLibraryIconsStore_1.migrateTeacherExamLibraryIconKey)(tKey, normalizedFp, primary.toGit);
+            }
+            res.json({
+                success: true,
+                filePath: primary.toGit,
+                fileName: path_1.default.basename(primary.toGit),
+                renamed: renames.map((r) => path_1.default.basename(r.toFull)),
+                displayTitle,
+                presentationPatched: true,
+            });
+        }
+        catch (error) {
+            console.error('Error changing examination type:', error);
+            const message = error instanceof Error ? error.message : String(error);
+            res.status(500).json({ error: 'Prüfungstyp konnte nicht geändert werden: ' + message });
+        }
+    }
+    static allocateExamDuplicateBaseStem(dirFull, sourceBaseStem) {
+        const baseAFree = (stem) => {
+            const aName = `${(0, examVersionPaths_1.variantStem)(stem, 'A')}.html`;
+            return !fs_1.default.existsSync(path_1.default.join(dirFull, aName));
+        };
+        const first = `${sourceBaseStem} Kopie`;
+        if (baseAFree(first))
+            return first;
+        for (let n = 2; n < 500; n++) {
+            const candidate = `${sourceBaseStem} Kopie ${n}`;
+            if (baseAFree(candidate))
+                return candidate;
+        }
+        throw new Error('Kein freier Dateiname für die Kopie');
+    }
+    /** Prüfung duplizieren (alle Versionen A/B/C), neuer Name „… Kopie“. */
+    static async duplicateExamination(req, res) {
+        var _a, _b;
+        try {
+            const filePathRaw = (((_a = req.body) === null || _a === void 0 ? void 0 : _a.filePath) || ((_b = req.query) === null || _b === void 0 ? void 0 : _b.filePath));
+            if (!filePathRaw || typeof filePathRaw !== 'string') {
+                return res.status(400).json({ error: 'filePath ist erforderlich' });
+            }
+            const fp = FileSystemPathController.normalizeDeleteFilePath(filePathRaw);
+            const normalizedFp = fp.startsWith('J-M-Reihen/')
+                ? `git-intern/${fp.slice('J-M-Reihen/'.length)}`
+                : fp.startsWith('J-M-Reihen')
+                    ? 'git-intern'
+                    : fp;
+            const fileName = path_1.default.basename(normalizedFp);
+            if (!/\.html?$/i.test(fileName) || !FileSystemPathController.isExamCorrectionHtmlFileName(fileName)) {
+                return res.status(403).json({ error: 'Nur Prüfungsdateien (KA_, KU_, HU_, QZ_) dürfen dupliziert werden.' });
+            }
+            const fullPath = (0, examAutoPoints_1.resolveExamHtmlPath)(normalizedFp);
+            if (!fullPath || !fs_1.default.existsSync(fullPath) || !fs_1.default.statSync(fullPath).isFile()) {
+                return res.status(404).json({ error: 'Datei nicht gefunden' });
+            }
+            const rootErr = FileSystemPathController.assertDeletableUnderJmRoot(fullPath);
+            if (rootErr) {
+                return res.status(403).json({ error: rootErr });
+            }
+            const baseGit = (0, examVersionPaths_1.gitPathVariant)(normalizedFp, 'A');
+            const baseFull = (0, examAutoPoints_1.resolveExamHtmlPath)(baseGit);
+            if (!baseFull || !fs_1.default.existsSync(baseFull)) {
+                return res.status(404).json({ error: 'Basis-Prüfung (Version A) nicht gefunden' });
+            }
+            const baseHtml = fs_1.default.readFileSync(baseFull, 'utf8');
+            const { letters: metaLetters } = (0, examVersionPaths_1.parseExamVersionsMeta)(baseHtml);
+            const letters = (0, examVersionPaths_1.mergeExamVersionLetters)(metaLetters, baseFull);
+            const sourceBaseStem = (0, examVersionPaths_1.baseStemFromStem)((0, examVersionPaths_1.fileStemFromName)(path_1.default.basename(baseFull)));
+            const dirFull = path_1.default.dirname(baseFull);
+            const newBaseStem = FileSystemPathController.allocateExamDuplicateBaseStem(dirFull, sourceBaseStem);
+            const created = [];
+            let primaryGit = '';
+            for (const L of letters) {
+                const srcGit = (0, examVersionPaths_1.gitPathVariant)(baseGit, L);
+                const srcFull = (0, examAutoPoints_1.resolveExamHtmlPath)(srcGit);
+                if (!srcFull || !fs_1.default.existsSync(srcFull) || !fs_1.default.statSync(srcFull).isFile())
+                    continue;
+                const newStem = (0, examVersionPaths_1.variantStem)(newBaseStem, L);
+                const destFull = path_1.default.join(dirFull, `${newStem}.html`);
+                if (fs_1.default.existsSync(destFull)) {
+                    return res.status(409).json({ error: `Es existiert bereits: ${path_1.default.basename(destFull)}` });
+                }
+                let content = fs_1.default.readFileSync(srcFull, 'utf8');
+                const kaKey = newStem;
+                content = (0, examVersionPaths_1.patchKaKeyInHtml)(content, kaKey);
+                content = (0, examVersionPaths_1.applyVersionsToExamHtml)(content, letters, L);
+                fs_1.default.writeFileSync(destFull, content, 'utf8');
+                created.push(path_1.default.basename(destFull));
+                const slash = srcGit.lastIndexOf('/');
+                const destGit = slash >= 0
+                    ? `${srcGit.slice(0, slash + 1)}${newStem}.html`
+                    : `${newStem}.html`;
+                if (L === 'A' || !primaryGit)
+                    primaryGit = destGit;
+            }
+            if (!created.length || !primaryGit) {
+                return res.status(500).json({ error: 'Kopie konnte nicht erstellt werden' });
+            }
+            const folderKey = primaryGit.replace(/\/[^/]+$/, '');
+            (0, directoryReadCache_1.invalidateDirectoryReadCache)(folderKey);
+            (0, directoryReadCache_1.invalidateDirectoryReadCache)(baseGit.replace(/\/[^/]+$/, ''));
+            (0, directoryReadCache_1.invalidateDirectoryReadCache)();
+            const teacher = await FileSystemPathController.requireTeacherUser(req);
+            if (teacher) {
+                const tKey = (0, teacherScratchPadStore_1.scratchPadUserFolderKey)(teacher.id, teacher.name);
+                const map = (0, examLibraryIconsStore_1.readTeacherExamLibraryIcons)(tKey);
+                const oldKey = (0, examLibraryIconsStore_1.canonicalExamLibraryIconKey)(normalizedFp);
+                const iconVal = map[oldKey];
+                if (iconVal) {
+                    (0, examLibraryIconsStore_1.setTeacherExamLibraryIcon)(tKey, primaryGit, iconVal);
+                }
+            }
+            res.json({
+                success: true,
+                filePath: primaryGit,
+                fileName: path_1.default.basename(primaryGit),
+                created,
+            });
+        }
+        catch (error) {
+            console.error('duplicateExamination:', error);
+            const message = error instanceof Error ? error.message : String(error);
+            res.status(500).json({ error: 'Prüfung konnte nicht dupliziert werden: ' + message });
         }
     }
     /**
@@ -3329,6 +3614,152 @@ ${aiContent.optionsHTML}
         catch (error) {
             console.error('removeExaminationVersion:', error);
             res.status(500).json({ error: 'Fehler beim Entfernen der Version' });
+        }
+    }
+    static async requireTeacherUser(req) {
+        var _a;
+        const raw = req.headers['x-login-code'];
+        const loginCode = typeof raw === 'string' ? raw.trim() : Array.isArray(raw) ? (_a = raw[0]) === null || _a === void 0 ? void 0 : _a.trim() : '';
+        if (!loginCode)
+            return null;
+        const user = await (0, loginCodeCrypto_1.findUserByLoginCode)(prisma, loginCode);
+        if (!user || user.role !== 'TEACHER')
+            return null;
+        return user;
+    }
+    static async getExamLibraryIcons(req, res) {
+        try {
+            const user = await FileSystemPathController.requireTeacherUser(req);
+            if (!user) {
+                return res.status(401).json({ error: 'Lehrer-Login erforderlich' });
+            }
+            const key = (0, teacherScratchPadStore_1.scratchPadUserFolderKey)(user.id, user.name);
+            res.json({
+                icons: (0, examLibraryIconsStore_1.readTeacherExamLibraryIcons)(key),
+                whiteBgVersion: (0, examLibraryIconsStore_1.readTeacherExamLibraryWhiteBgVersion)(key),
+                iconTemplate: (0, examLibraryIconsStore_1.readTeacherExamLibraryIconTemplate)(key),
+                customIconChoices: (0, examLibraryIconsStore_1.listTeacherExamLibraryCustomIconChoices)(key),
+            });
+        }
+        catch (error) {
+            console.error('getExamLibraryIcons:', error);
+            res.status(500).json({ error: 'Icons konnten nicht geladen werden' });
+        }
+    }
+    static async saveExamLibraryIcon(req, res) {
+        try {
+            const user = await FileSystemPathController.requireTeacherUser(req);
+            if (!user) {
+                return res.status(401).json({ error: 'Lehrer-Login erforderlich' });
+            }
+            const { filePath, emoji } = req.body;
+            if (!filePath || typeof filePath !== 'string') {
+                return res.status(400).json({ error: 'filePath ist erforderlich' });
+            }
+            const key = (0, teacherScratchPadStore_1.scratchPadUserFolderKey)(user.id, user.name);
+            const icons = (0, examLibraryIconsStore_1.setTeacherExamLibraryIcon)(key, filePath, emoji);
+            res.json({
+                success: true,
+                icons,
+                customIconChoices: (0, examLibraryIconsStore_1.listTeacherExamLibraryCustomIconChoices)(key),
+            });
+        }
+        catch (error) {
+            console.error('saveExamLibraryIcon:', error);
+            res.status(500).json({ error: 'Icon konnte nicht gespeichert werden' });
+        }
+    }
+    static async uploadExamLibraryIconImage(req, res) {
+        var _a, _b;
+        try {
+            const user = await FileSystemPathController.requireTeacherUser(req);
+            if (!user) {
+                return res.status(401).json({ error: 'Lehrer-Login erforderlich' });
+            }
+            const filePath = typeof ((_a = req.body) === null || _a === void 0 ? void 0 : _a.filePath) === 'string' ? req.body.filePath : '';
+            if (!filePath.trim()) {
+                return res.status(400).json({ error: 'filePath ist erforderlich' });
+            }
+            const file = req.file;
+            if (!((_b = file === null || file === void 0 ? void 0 : file.buffer) === null || _b === void 0 ? void 0 : _b.length)) {
+                return res.status(400).json({ error: 'Bilddatei fehlt' });
+            }
+            const mime = (file.mimetype || '').toLowerCase();
+            if (!mime.startsWith('image/')) {
+                return res.status(400).json({ error: 'Nur Bilddateien erlaubt' });
+            }
+            const originalName = (0, multerFilename_1.decodeMulterFilename)(file.originalname) || 'icon.png';
+            const key = (0, teacherScratchPadStore_1.scratchPadUserFolderKey)(user.id, user.name);
+            const { icons, iconValue } = await (0, examLibraryIconsStore_1.saveTeacherExamLibraryIconFromUpload)(key, filePath, file.buffer, originalName);
+            res.json({
+                success: true,
+                icons,
+                icon: iconValue,
+                customIconChoices: (0, examLibraryIconsStore_1.listTeacherExamLibraryCustomIconChoices)(key),
+            });
+        }
+        catch (error) {
+            console.error('uploadExamLibraryIconImage:', error);
+            res.status(500).json({ error: 'Bild-Icon konnte nicht gespeichert werden' });
+        }
+    }
+    static async overwriteExamLibraryIconAsset(req, res) {
+        var _a, _b, _c;
+        try {
+            const user = await FileSystemPathController.requireTeacherUser(req);
+            if (!user) {
+                return res.status(401).json({ error: 'Lehrer-Login erforderlich' });
+            }
+            const examIconKey = typeof ((_a = req.body) === null || _a === void 0 ? void 0 : _a.examIconKey) === 'string' ? req.body.examIconKey.trim().toLowerCase() : '';
+            const assetPath = typeof ((_b = req.body) === null || _b === void 0 ? void 0 : _b.assetPath) === 'string' ? req.body.assetPath.trim() : '';
+            if (!examIconKey || !assetPath) {
+                return res.status(400).json({ error: 'examIconKey und assetPath sind erforderlich' });
+            }
+            const file = req.file;
+            if (!((_c = file === null || file === void 0 ? void 0 : file.buffer) === null || _c === void 0 ? void 0 : _c.length)) {
+                return res.status(400).json({ error: 'Bilddatei fehlt' });
+            }
+            const key = (0, teacherScratchPadStore_1.scratchPadUserFolderKey)(user.id, user.name);
+            const { icons } = await (0, examLibraryIconsStore_1.overwriteTeacherExamLibraryIconAsset)(key, examIconKey, assetPath, file.buffer);
+            res.json({ success: true, icons });
+        }
+        catch (error) {
+            console.error('overwriteExamLibraryIconAsset:', error);
+            res.status(500).json({
+                error: error instanceof Error ? error.message : 'Icon-Datei konnte nicht ersetzt werden',
+            });
+        }
+    }
+    static async markExamLibraryWhiteBgDone(req, res) {
+        var _a;
+        try {
+            const user = await FileSystemPathController.requireTeacherUser(req);
+            if (!user) {
+                return res.status(401).json({ error: 'Lehrer-Login erforderlich' });
+            }
+            const version = Number((_a = req.body) === null || _a === void 0 ? void 0 : _a.version);
+            const key = (0, teacherScratchPadStore_1.scratchPadUserFolderKey)(user.id, user.name);
+            const icons = (0, examLibraryIconsStore_1.setTeacherExamLibraryWhiteBgVersion)(key, Number.isFinite(version) ? version : 1);
+            res.json({ success: true, icons, whiteBgVersion: version });
+        }
+        catch (error) {
+            console.error('markExamLibraryWhiteBgDone:', error);
+            res.status(500).json({ error: 'Konnte nicht gespeichert werden' });
+        }
+    }
+    static async saveExamLibraryIconTemplate(req, res) {
+        try {
+            const user = await FileSystemPathController.requireTeacherUser(req);
+            if (!user) {
+                return res.status(401).json({ error: 'Lehrer-Login erforderlich' });
+            }
+            const key = (0, teacherScratchPadStore_1.scratchPadUserFolderKey)(user.id, user.name);
+            const { icons, iconTemplate } = (0, examLibraryIconsStore_1.saveTeacherExamLibraryIconTemplate)(key);
+            res.json({ success: true, icons, iconTemplate });
+        }
+        catch (error) {
+            console.error('saveExamLibraryIconTemplate:', error);
+            res.status(500).json({ error: 'Icon-Vorlage konnte nicht gespeichert werden' });
         }
     }
 }

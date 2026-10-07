@@ -1,4 +1,5 @@
 import { injectExamTimerTeacherBridge } from './examTimerTeacherBridge';
+import { syncExamPresentationForDelivery } from './examVersionPaths';
 import {
   patchExamAidsGeneralRulesMarkup,
   patchAidsGeneralRulesListDisplay,
@@ -57,8 +58,21 @@ export const EXAM_SUBSECTION_SHUFFLE_FUNCTION = `
 
             var taskIndex = 0;
             document.querySelectorAll('.task').forEach(function (taskEl) {
+                if (!taskEl.getAttribute('data-jm-task-shuffle')) return;
                 taskIndex += 1;
                 var rng = mulberry32(hashSeed(seedStr + '|task-' + taskIndex));
+
+                taskEl.querySelectorAll('.exam-mc-options, .exam-multi-select').forEach(function (mcEl) {
+                    var opts = Array.prototype.slice.call(
+                        mcEl.querySelectorAll(':scope > label, :scope > .exam-mc-option, :scope > .exam-mc-row'),
+                    );
+                    if (opts.length > 1) {
+                        shuffleInPlace(opts, rng);
+                        opts.forEach(function (el) {
+                            mcEl.appendChild(el);
+                        });
+                    }
+                });
 
                 var wfTableBody = taskEl.querySelector('.exam-wf-table tbody');
                 if (wfTableBody) {
@@ -285,6 +299,46 @@ function injectExamChromeRuntime(html: string): string {
   return injectBeforeLastBodyClose(html, EXAM_CHROME_BOOT_SNIPPET);
 }
 
+export function taskDollarSourceHasZufall(source: string): boolean {
+  const lines = String(source || '').split(/\r?\n/);
+  for (const line of lines) {
+    const t = line.trim();
+    if (/^\$Zufall\s*\$?$/i.test(t)) return true;
+  }
+  return false;
+}
+
+/** $Zufall$ in Aufgabenquelle → data-jm-task-shuffle am .task-Element */
+export function patchExamTaskShuffleMarkersFromDollarSource(html: string): string {
+  return html.replace(
+    /(<div class="task"[^>]*>)([\s\S]*?<textarea class="exam-dollar-source"[^>]*>)([\s\S]*?)(<\/textarea>)/gi,
+    (full, taskOpen, before, src, closeTag) => {
+      if (!taskDollarSourceHasZufall(src)) return full;
+      let open = taskOpen;
+      if (!/data-jm-task-shuffle/i.test(open)) {
+        open = open.replace('<div class="task"', '<div class="task" data-jm-task-shuffle="1"');
+      }
+      return open + before + src + closeTag;
+    },
+  );
+}
+
+function patchLegacyInlineSubsectionShuffleGate(html: string): string {
+  if (!html.includes('setupExamSubsectionShuffleForStudent')) return html;
+  if (html.includes("getAttribute('data-jm-task-shuffle')")) return html;
+  return html
+    .replace(
+      /document\.querySelectorAll\(['"]\.task['"]\)\.forEach\(function \(taskEl\) \{/g,
+      `document.querySelectorAll('.task').forEach(function (taskEl) {
+                if (!taskEl.getAttribute('data-jm-task-shuffle')) return;`,
+    )
+    .replace(
+      /document\.querySelectorAll\(['"]\.task['"]\)\.forEach\(\(taskEl\) => \{/g,
+      `document.querySelectorAll('.task').forEach((taskEl) => {
+                if (!taskEl.getAttribute('data-jm-task-shuffle')) return;`,
+    );
+}
+
 export function transformExamHtmlForDelivery(
   html: string,
   filePath?: string,
@@ -292,7 +346,8 @@ export function transformExamHtmlForDelivery(
 ): string {
   if (!isDeliverableExamHtml(html, filePath)) return html;
 
-  let out = html;
+  let out = patchExamTaskShuffleMarkersFromDollarSource(html);
+  out = patchLegacyInlineSubsectionShuffleGate(out);
   if (out.includes('setupExamSubsectionShuffleForStudent')) {
     if (!out.includes('setupExamSubsectionShuffleForStudent();')) {
       out = out.replace(/\battachInputListeners\(\);/, INIT_HOOK);
@@ -323,5 +378,6 @@ export function transformExamHtmlForDelivery(
   out = injectExamChromeRuntime(out);
   out = injectExamDollarAuthoring(out, assetBase);
   out = injectExamTimerTeacherBridge(out);
+  out = syncExamPresentationForDelivery(out, filePath);
   return injectHideLiveScoreForStudents(out);
 }

@@ -77,6 +77,17 @@ export declare class FileSystemPathController {
      * Prüfungs-HTML löschen (KA/KU/HU/QZ). Basis-Datei (A) löscht alle Varianten laut EXAM_VERSIONS.
      */
     static deleteExamination(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    private static examTypeFilePrefix;
+    private static replaceExamTypeInBaseStem;
+    private static sanitizeExamTitleForFileName;
+    private static buildExamBaseStemFromTypeAndTitle;
+    /**
+     * Prüfungspräfix nachträglich ändern (QZ_ → HU_ …), inkl. aller Versionen A/B/C.
+     */
+    static changeExaminationType(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    private static allocateExamDuplicateBaseStem;
+    /** Prüfung duplizieren (alle Versionen A/B/C), neuer Name „… Kopie“. */
+    static duplicateExamination(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /**
      * Load whiteboard file (.wb) as JSON
      */
@@ -157,5 +168,12 @@ export declare class FileSystemPathController {
     static getExaminationVersions(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static addExaminationVersion(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     static removeExaminationVersion(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    private static requireTeacherUser;
+    static getExamLibraryIcons(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    static saveExamLibraryIcon(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    static uploadExamLibraryIconImage(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    static overwriteExamLibraryIconAsset(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    static markExamLibraryWhiteBgDone(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    static saveExamLibraryIconTemplate(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
 }
 //# sourceMappingURL=FileSystemPathController.d.ts.map
