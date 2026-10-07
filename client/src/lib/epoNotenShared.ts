@@ -5,7 +5,7 @@ import {
   minPointsThresholdForTotalOnScale,
   pointsOnScaleToGradeTendency,
 } from './gradeScale';
-import { EPO_VARIANT2_ID } from './epoNotenVariantPresets';
+import { EPO_NO_VARIANT_ID } from './epoNotenVariantPresets';
 
 export const EPO_NOTEN_CATEGORY_COUNT = 5;
 export const EPO_NOTEN_MAX_POINTS = 15;
@@ -244,6 +244,7 @@ export function compareEpoStudentListOrder(
   roundPublished: boolean,
   passiveStudentIds: ReadonlySet<string> | string[],
   liveForStudent?: (entry: EpoNotenEntry) => boolean,
+  usesRasterForStudent?: (entry: EpoNotenEntry) => boolean,
 ): number {
   const passive = (id: string) => {
     if (Array.isArray(passiveStudentIds)) return passiveStudentIds.includes(id);
@@ -255,16 +256,15 @@ export function compareEpoStudentListOrder(
 
   const liveA = liveForStudent ? liveForStudent(a) : roundPublished;
   const liveB = liveForStudent ? liveForStudent(b) : roundPublished;
+  const rasterA = usesRasterForStudent ? usesRasterForStudent(a) : true;
+  const rasterB = usesRasterForStudent ? usesRasterForStudent(b) : true;
   const pendA =
-    !pa &&
-    !a.withoutSelfAssessment &&
-    !a.teacherGradeOnly &&
-    Boolean(studentEpoPendingKind(a, liveA));
+    !pa && liveA && Boolean(studentEpoPendingKind(a, liveA, { usesRaster: rasterA }));
   const pendB =
-    !pb &&
-    !b.withoutSelfAssessment &&
-    !b.teacherGradeOnly &&
-    Boolean(studentEpoPendingKind(b, liveB));
+    !pb && liveB && Boolean(studentEpoPendingKind(b, liveB, { usesRaster: rasterB }));
+  const fertA = !pa && liveA && !pendA;
+  const fertB = !pb && liveB && !pendB;
+  if (fertA !== fertB) return fertA ? -1 : 1;
   if (pendA !== pendB) return pendA ? -1 : 1;
 
   return a.studentName.localeCompare(b.studentName, 'de');
@@ -312,12 +312,40 @@ export function studentEpoPendingKind(
     | 'goalsWaived'
   >,
   roundPublished: boolean,
+  options?: { usesRaster?: boolean },
 ): StudentEpoPendingKind | null {
   if (!roundPublished) return null;
   if (entry.goalsWaived) return null;
-  if (!entry.studentSubmittedAt && !entry.withoutSelfAssessment && !entry.teacherGradeOnly) return 'self';
+  const usesRaster = options?.usesRaster !== false;
+  if (
+    usesRaster &&
+    !entry.studentSubmittedAt &&
+    !entry.withoutSelfAssessment &&
+    !entry.teacherGradeOnly
+  ) {
+    return 'self';
+  }
   if (entry.teacherReleasedAt && !entry.goalsSubmittedAt && !entry.goalsWaived) return 'goals';
   return null;
+}
+
+export function epoEffectiveVariantIdForGroup(
+  round: { variantId?: string | null; variantIdByGroup?: Record<string, string> },
+  groupId: string,
+): string | null {
+  const per = round.variantIdByGroup?.[groupId];
+  if (per === EPO_NO_VARIANT_ID || per === '') return null;
+  if (per && String(per).trim()) return String(per).trim();
+  const roundDefault = round.variantId?.trim();
+  if (!roundDefault || roundDefault === 'default' || roundDefault === EPO_NO_VARIANT_ID) return null;
+  return roundDefault;
+}
+
+export function epoGroupUsesRaster(
+  round: { variantId?: string | null; variantIdByGroup?: Record<string, string> },
+  groupId: string,
+): boolean {
+  return epoEffectiveVariantIdForGroup(round, groupId) !== null;
 }
 
 export function studentEpoPendingDetail(kind: StudentEpoPendingKind): string {
@@ -333,6 +361,17 @@ export function teacherRasterIsUnset(entry: {
   if (t.every((s) => s < 0)) return true;
   if (t.every((s) => s === 0) && !entry.teacherGrade?.trim()) return true;
   return false;
+}
+
+/** SuS hat eine Selbsteinschätzung abgegeben (nicht oS / nur Note). */
+export function studentHasSubmittedSelfAssessment(
+  entry: Pick<EpoNotenEntry, 'studentSubmittedAt' | 'withoutSelfAssessment' | 'teacherGradeOnly'>,
+): boolean {
+  return (
+    Boolean(entry.studentSubmittedAt) &&
+    !entry.withoutSelfAssessment &&
+    !entry.teacherGradeOnly
+  );
 }
 
 export function selfScoresForTeacherDefault(entry: EpoNotenEntry): number[] | null {
@@ -388,16 +427,12 @@ export type EpoNotenGroupMeta = {
   completedAt?: string | null;
 };
 
-/** Pro Lerngruppe eigener EPO-Zettel (sonst round.variantId). */
+/** Wert für das Varianten-Dropdown (inkl. „Kein Zettel“). */
 export function epoVariantIdForGroup(
   round: { variantId?: string | null; variantIdByGroup?: Record<string, string> },
   groupId: string,
 ): string {
-  const per = round.variantIdByGroup?.[groupId];
-  if (per && String(per).trim()) return String(per).trim();
-  const roundDefault = round.variantId && String(round.variantId).trim();
-  if (roundDefault && roundDefault !== 'default') return roundDefault;
-  return EPO_VARIANT2_ID;
+  return epoEffectiveVariantIdForGroup(round, groupId) ?? EPO_NO_VARIANT_ID;
 }
 
 export type EpoNotenVariantSheet = {

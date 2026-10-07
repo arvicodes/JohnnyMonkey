@@ -42,7 +42,7 @@ import {
   epoSummaryHeadline,
   epoGroupUsesMssPoints,
   studentSelfSummaryHeadline,
-  epoSummarySubline,
+  studentHasSubmittedSelfAssessment,
   minPointsThresholdForTotal,
   normalizeCategoryScores,
   epoRoundedPoints,
@@ -91,6 +91,7 @@ export default function EpoNotenPage() {
   const [teacherCategoriesView, setTeacherCategoriesView] = useState<string[]>(EPO_NOTEN_TEACHER_CATEGORIES);
   const [categoryTitles, setCategoryTitles] = useState<string[]>([]);
   const [categoryWeightsPercent, setCategoryWeightsPercent] = useState<number[] | undefined>();
+  const [usesRaster, setUsesRaster] = useState(true);
 
   const [suggestedGrade, setSuggestedGrade] = useState('');
   const [assessmentMode, setAssessmentMode] = useState<EpoNotenAssessmentMode>('note');
@@ -172,7 +173,9 @@ export default function EpoNotenPage() {
             teacherCategories?: string[];
             categoryTitles?: string[];
             categoryWeightsPercent?: number[];
+            useRaster?: boolean;
           };
+          setUsesRaster(r.useRaster !== false);
           setRoundMeta({
             id: r.id,
             title: r.title,
@@ -180,15 +183,15 @@ export default function EpoNotenPage() {
             groupId: r.groupId,
             groupName: r.groupName,
           });
-          if (Array.isArray(r.studentCategories) && r.studentCategories.length > 0) {
+          if (r.useRaster !== false && Array.isArray(r.studentCategories) && r.studentCategories.length > 0) {
             setStudentCategories(r.studentCategories);
           } else {
-            setStudentCategories(EPO_NOTEN_STUDENT_CATEGORIES);
+            setStudentCategories([]);
           }
-          if (Array.isArray(r.teacherCategories) && r.teacherCategories.length > 0) {
+          if (r.useRaster !== false && Array.isArray(r.teacherCategories) && r.teacherCategories.length > 0) {
             setTeacherCategoriesView(r.teacherCategories);
           } else {
-            setTeacherCategoriesView(EPO_NOTEN_TEACHER_CATEGORIES);
+            setTeacherCategoriesView([]);
           }
           setCategoryTitles(Array.isArray(r.categoryTitles) ? r.categoryTitles : []);
           weightsForRound = Array.isArray(r.categoryWeightsPercent) ? r.categoryWeightsPercent : undefined;
@@ -309,8 +312,12 @@ export default function EpoNotenPage() {
     }
   };
 
+  const noteOnlyFlow =
+    !usesRaster || Boolean(myEntry?.withoutSelfAssessment || myEntry?.teacherGradeOnly);
+
   const phase = useMemo(() => {
     if (
+      usesRaster &&
       !myEntry?.studentSubmittedAt &&
       !myEntry?.withoutSelfAssessment &&
       !myEntry?.teacherGradeOnly &&
@@ -320,12 +327,9 @@ export default function EpoNotenPage() {
     if (!myEntry?.teacherReleasedAt) return 'wait';
     if (!myEntry?.goalsSubmittedAt && !myEntry?.goalsWaived) return 'goals';
     return 'done';
-  }, [myEntry]);
+  }, [myEntry, usesRaster]);
 
-  const osWaitOnly =
-    Boolean(myEntry?.withoutSelfAssessment || myEntry?.teacherGradeOnly) &&
-    !myEntry?.studentSubmittedAt &&
-    phase === 'wait';
+  const osWaitOnly = noteOnlyFlow && !myEntry?.studentSubmittedAt && phase === 'wait';
 
   return (
     <Box sx={{ ...epoNotenPageBgSx, py: isTeacher ? 0 : epoNotenPageBgSx.py }}>
@@ -344,23 +348,7 @@ export default function EpoNotenPage() {
             ) : (
               <Box sx={{ width: 28 }} />
             )}
-            <Typography
-              variant="body2"
-              sx={{
-                fontWeight: 800,
-                color: epoNotenPalette.primary,
-                fontSize: '0.88rem',
-                flex: 1,
-                textAlign: 'center',
-                minWidth: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                px: 0.5,
-              }}
-            >
-              EPO-Noten
-            </Typography>
+            <Box sx={{ flex: 1, minWidth: 0 }} />
             <IconButton
               onClick={() => navigate('/')}
               aria-label="Schließen"
@@ -389,24 +377,6 @@ export default function EpoNotenPage() {
               <EpoNotenStudentRoundList sessions={sessions} onSelect={openRound} />
             ) : (
               <>
-                {sessions.find(
-                  (s) =>
-                    s.id === (roundMeta?.id || selectedRoundId) &&
-                    (!selectedGroupId || s.groupId === (roundMeta?.groupId || selectedGroupId)),
-                )?.isArchived && (
-                  <Alert severity="info" sx={{ py: 0.75 }}>
-                    Diese ältere Runde ist abgeschlossen — nur noch ansehen.
-                  </Alert>
-                )}
-                {roundMeta && (
-                  <Typography
-                    variant="body2"
-                    sx={{ fontWeight: 600, color: 'text.secondary', width: '100%', textAlign: 'center' }}
-                  >
-                    {roundMeta.title} · {roundMeta.date} · {roundMeta.groupName}
-                  </Typography>
-                )}
-
                 {phase === 'self' && canEditSelf && (
                   <Alert severity="warning" sx={epoNotenBitteAusfuellenAlertSx}>
                     <strong>Bitte ausfüllen</strong> — EPO-Selbsteinschätzung abgeben.
@@ -420,11 +390,13 @@ export default function EpoNotenPage() {
 
                 {osWaitOnly && (
                   <Alert severity="info" sx={{ py: 0.85 }}>
-                    Deine Lehrkraft bewertet ohne Selbsteinschätzung. Du siehst das Ergebnis, sobald es freigegeben ist.
+                    {noteOnlyFlow && !usesRaster
+                      ? 'Für diese EPO-Runde gibt es keinen Bewertungszettel — deine Lehrkraft trägt die Note ein. Du siehst das Ergebnis nach der Freigabe.'
+                      : 'Deine Lehrkraft bewertet ohne Selbsteinschätzung. Du siehst das Ergebnis, sobald es freigegeben ist.'}
                   </Alert>
                 )}
 
-                {(phase === 'self' || (phase === 'wait' && myEntry?.studentSubmittedAt)) && (
+                {usesRaster && (phase === 'self' || (phase === 'wait' && myEntry?.studentSubmittedAt)) && (
                   <EpoNotenStudentSelfWizard
                     key={`${selectedRoundId}-${assessmentMode}`}
                     locked={phase === 'wait' || !canEditSelf}
@@ -458,20 +430,22 @@ export default function EpoNotenPage() {
                 {(phase === 'goals' || phase === 'done') && myEntry && (
                   <Stack spacing={1.5} sx={{ width: '100%' }}>
                     {(() => {
-                      const selfPts = epoRoundedPoints(myEntry.selfScores, categoryWeightsPercent);
                       const teacherPts = epoRoundedPoints(myEntry.teacherScores, categoryWeightsPercent);
+                      const hasSelfAssessment = studentHasSubmittedSelfAssessment(myEntry);
+                      const showSelfColumn = usesRaster && !noteOnlyFlow && hasSelfAssessment;
                       const selfHeadline = studentSelfSummaryHeadline(myEntry, assessmentMode);
                       const teacherHeadline = epoSummaryHeadline(
                         assessmentMode,
                         myEntry.teacherGrade || '',
                         teacherPts,
                       );
-                      const selfSub = epoSummarySubline(assessmentMode, selfPts);
-                      const teacherSub = epoSummarySubline(assessmentMode, teacherPts);
+                      const workGradeTitle = roundMeta?.date
+                        ? `Dein Mitarbeitsnote (${roundMeta.date})`
+                        : 'Dein Mitarbeitsnote';
                       return (
                         <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx, p: 1.5 }}>
                           <Typography sx={{ ...epoNotenSectionTitleSx, fontSize: '1.05rem', mb: 1.25 }}>
-                            Dein EPO-Ergebnis
+                            {workGradeTitle}
                           </Typography>
                           <Stack
                             direction={{ xs: 'column', sm: 'row' }}
@@ -480,6 +454,7 @@ export default function EpoNotenPage() {
                               '& > *': { flex: 1, minWidth: 0 },
                             }}
                           >
+                            {showSelfColumn ? (
                             <Box
                               sx={{
                                 p: 1,
@@ -494,12 +469,8 @@ export default function EpoNotenPage() {
                               <Typography sx={{ ...epoNotenBigNumberSx, fontSize: { xs: '1.75rem', sm: '2rem' } }}>
                                 {selfHeadline}
                               </Typography>
-                              {selfSub && (
-                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                                  {selfSub}
-                                </Typography>
-                              )}
                             </Box>
+                            ) : null}
                             <Box
                               sx={{
                                 p: 1,
@@ -509,9 +480,6 @@ export default function EpoNotenPage() {
                                 boxShadow: '0 2px 8px rgba(46, 125, 50, 0.12)',
                               }}
                             >
-                              <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-                                Lehrkraft
-                              </Typography>
                               <Typography
                                 sx={{
                                   ...epoNotenBigNumberSx,
@@ -521,11 +489,6 @@ export default function EpoNotenPage() {
                               >
                                 {teacherHeadline}
                               </Typography>
-                              {teacherSub && (
-                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                                  {teacherSub}
-                                </Typography>
-                              )}
                               {myEntry.teacherJustification?.trim() ? (
                                 <Typography
                                   variant="body2"
@@ -543,6 +506,7 @@ export default function EpoNotenPage() {
                             </Box>
                           </Stack>
 
+                          {usesRaster && !noteOnlyFlow ? (
                           <Accordion
                             disableGutters
                             elevation={0}
@@ -562,24 +526,26 @@ export default function EpoNotenPage() {
                             </AccordionSummary>
                             <AccordionDetails sx={{ pt: 0, px: 1, pb: 1 }}>
                               <Stack spacing={1.25}>
-                                <Box>
-                                  <EpoNotenCategoryGrid
-                                    compact
-                                    studentGhost
-                                    label="Deine Selbsteinschätzung"
-                                    radioGroupId={`sus-self-${selectedRoundId}`}
-                                    categories={studentCategories}
-                                    categoryTitles={categoryTitles}
-                                    categoryWeightsPercent={categoryWeightsPercent}
-                                    scores={normalizeCategoryScores(myEntry.selfScores)}
-                                    readOnly
-                                  />
-                                </Box>
+                                {hasSelfAssessment ? (
+                                  <Box>
+                                    <EpoNotenCategoryGrid
+                                      compact
+                                      studentGhost
+                                      label="Deine Selbsteinschätzung"
+                                      radioGroupId={`sus-self-${selectedRoundId}`}
+                                      categories={studentCategories}
+                                      categoryTitles={categoryTitles}
+                                      categoryWeightsPercent={categoryWeightsPercent}
+                                      scores={normalizeCategoryScores(myEntry.selfScores)}
+                                      readOnly
+                                    />
+                                  </Box>
+                                ) : null}
                                 <Box>
                                   <EpoNotenCategoryGrid
                                     compact
                                     teacherEmphasis
-                                    label="Lehrkraft"
+                                    label="Bewertung"
                                     radioGroupId={`sus-teacher-${selectedRoundId}`}
                                     categories={teacherCategoriesView}
                                     categoryTitles={categoryTitles}
@@ -591,10 +557,12 @@ export default function EpoNotenPage() {
                               </Stack>
                             </AccordionDetails>
                           </Accordion>
+                          ) : null}
                         </Box>
                       );
                     })()}
 
+                    {!myEntry.goalsWaived ? (
                     <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx, p: 1.35 }}>
                       <Typography sx={{ ...epoNotenSectionTitleSx, fontSize: '1.05rem', mb: 1.25 }}>
                         Mein Ziel für den nächsten Zeitraum
@@ -631,10 +599,6 @@ export default function EpoNotenPage() {
                             </Button>
                           </Box>
                         </Stack>
-                      ) : myEntry?.goalsWaived ? (
-                        <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.45 }}>
-                          Für dich sind in dieser Runde keine Ziele vorgesehen.
-                        </Typography>
                       ) : (
                         <Stack spacing={1.25}>
                           <Box>
@@ -652,6 +616,7 @@ export default function EpoNotenPage() {
                         </Stack>
                       )}
                     </Box>
+                    ) : null}
                   </Stack>
                 )}
               </>

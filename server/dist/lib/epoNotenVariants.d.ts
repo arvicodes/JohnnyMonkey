@@ -20,6 +20,11 @@ export declare function ensureBuiltInVariants(store: EpoNotenVariantsStore): Epo
 export declare function defaultVariantsStore(): EpoNotenVariantsStore;
 export declare function parseVariantsStore(raw: string | null | undefined): EpoNotenVariantsStore;
 export declare function resolveVariant(store: EpoNotenVariantsStore, variantId: string | null | undefined): EpoNotenVariantSheet;
+/** Gewählter EPO-Zettel pro Lerngruppe — ohne Fallback auf Variante 2. */
+export declare function effectiveEpoVariantIdForGroup(payload: {
+    variantId?: string | null;
+    variantIdByGroup?: Record<string, string>;
+}, groupId?: string | null): string | null;
 export declare function normalizeVariantSheet(v: {
     id: string;
     name: string;

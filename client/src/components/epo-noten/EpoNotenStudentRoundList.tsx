@@ -63,16 +63,12 @@ export function EpoNotenStudentRoundList({ sessions, onSelect }: Props) {
                 py: 1.5,
                 px: 2,
                 borderBottom: `1px solid ${epoNotenPalette.border}`,
-                opacity: archived ? 0.52 : 1,
                 bgcolor: s.actionRequired
                   ? 'rgba(245, 124, 0, 0.1)'
-                  : archived
-                    ? 'rgba(0,0,0,0.02)'
-                    : epoNotenPalette.fertigBg,
+                  : epoNotenPalette.fertigBg,
                 ...(s.actionRequired ? epoNotenBitteAusfuellenRowSx : {}),
-                ...(!s.actionRequired && !archived ? epoNotenFertigRowSx : {}),
+                ...(!s.actionRequired ? epoNotenFertigRowSx : {}),
                 '&:last-child': { borderBottom: 0 },
-                '&:hover': { opacity: archived ? 0.65 : 1 },
               }}
             >
               <ListItemText
@@ -80,10 +76,13 @@ export function EpoNotenStudentRoundList({ sessions, onSelect }: Props) {
                 secondary={`${formatRoundDate(s.date)} · ${s.groupName}`}
                 primaryTypographyProps={{
                   fontWeight: 700,
-                  fontSize: archived ? '0.9rem' : '1.05rem',
-                  color: archived ? epoNotenPalette.textSecondary : epoNotenPalette.textPrimary,
+                  fontSize: '1.05rem',
+                  color: archived ? 'rgba(44, 62, 80, 0.78)' : epoNotenPalette.textPrimary,
                 }}
-                secondaryTypographyProps={{ fontSize: '0.82rem' }}
+                secondaryTypographyProps={{
+                  fontSize: '0.82rem',
+                  color: archived ? 'rgba(127, 140, 141, 0.88)' : undefined,
+                }}
               />
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
                 {statusChip(s)}

@@ -1,5 +1,8 @@
 export const EPO_VARIANT2_ID = 'variant-2';
 
+/** Kein EPO-Raster / kein Zettel für diese Lerngruppe */
+export const EPO_NO_VARIANT_ID = 'none';
+
 /** Vorlage „Variante 2“ — gewichtete Bereiche (Summe 100 %). */
 export const EPO_VARIANT2_WEIGHTED_PRESET = {
   name: 'Variante 2 (gewichtet)',

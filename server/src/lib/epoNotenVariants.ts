@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { EPO_VARIANT2_ID, EPO_VARIANT2_WEIGHTED_PRESET } from './epoNotenVariantPresets';
+import { EPO_NO_VARIANT_ID, EPO_VARIANT2_ID, EPO_VARIANT2_WEIGHTED_PRESET } from './epoNotenVariantPresets';
 
 export const EPO_VARIANTS_PATH = '__epo_noten_variants__';
 export const DEFAULT_EPO_VARIANT_ID = 'default';
@@ -132,6 +132,23 @@ export function resolveVariant(
 ): EpoNotenVariantSheet {
   const id = variantId?.trim() || EPO_VARIANT2_ID;
   return store.variants.find((v) => v.id === id) ?? store.variants[0]!;
+}
+
+/** Gewählter EPO-Zettel pro Lerngruppe — ohne Fallback auf Variante 2. */
+export function effectiveEpoVariantIdForGroup(
+  payload: { variantId?: string | null; variantIdByGroup?: Record<string, string> },
+  groupId?: string | null,
+): string | null {
+  if (groupId) {
+    const per = payload.variantIdByGroup?.[groupId];
+    if (per === EPO_NO_VARIANT_ID || per === '') return null;
+    if (per && String(per).trim()) return String(per).trim();
+  }
+  const roundDefault = payload.variantId?.trim();
+  if (!roundDefault || roundDefault === DEFAULT_EPO_VARIANT_ID || roundDefault === EPO_NO_VARIANT_ID) {
+    return null;
+  }
+  return roundDefault;
 }
 
 export function normalizeVariantSheet(v: {

@@ -1,5 +1,8 @@
 export const EPO_VARIANT2_ID = 'variant-2';
 
+/** Kein EPO-Raster / kein Zettel für diese Lerngruppe */
+export const EPO_NO_VARIANT_ID = 'none';
+
 /** Gleiche Vorlage wie client/src/lib/epoNotenVariantPresets.ts */
 export const EPO_VARIANT2_WEIGHTED_PRESET = {
   name: 'Variante 2 (gewichtet)',

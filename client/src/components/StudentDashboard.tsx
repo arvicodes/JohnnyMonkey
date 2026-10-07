@@ -78,6 +78,7 @@ import {
   type AvatarCustomPhoto,
 } from '../lib/avatarCustomGallery';
 import type { AvatarPhotoUploadMeta } from './AvatarPhotoDialog';
+import { formatStudentName } from '../utils/nameFormatter';
 import InboxModal from './InboxModal';
 import StudentQuizFileItem from './StudentQuizFileItem';
 import {
@@ -3056,7 +3057,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
       });
       if (response.ok) {
         const userData = await response.json();
-        setStudentName(userData.name);
+        setStudentName(formatStudentName(userData.name) || userData.name);
         // Lade gespeichertes Emoji oder verwende Standard
         if (userData.avatarEmoji) {
           setSelectedEmoji(userData.avatarEmoji);
@@ -5211,14 +5212,23 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     // Prüfe, welche EPO-Noten freigegeben sind
     // Erstelle ein Set mit verschiedenen Schreibweisen für case-insensitive Vergleich
     const releasedEpoGrades = new Set<string>();
+    const addReleasedEpoKey = (name: string) => {
+      const key = name.toLowerCase().trim();
+      releasedEpoGrades.add(key);
+      releasedEpoGrades.add(key.replace(/\s+/g, ''));
+    };
+
     epoGrades.forEach((epo: any) => {
       if ((epo.groupId === groupId || epo.group?.id === groupId) && epo.isReleased) {
-        const epoKey = `epo ${epo.period}`;
-        releasedEpoGrades.add(epoKey.toLowerCase().trim());
-        // Füge auch Varianten hinzu für besseren Abgleich
-        releasedEpoGrades.add(`epo${epo.period}`);
-        releasedEpoGrades.add(`EPO ${epo.period}`);
-        releasedEpoGrades.add(`Epo ${epo.period}`);
+        addReleasedEpoKey(`epo ${epo.period}`);
+        addReleasedEpoKey(`EPO ${epo.period}`);
+      }
+    });
+
+    // EPO-Noten aus dem Notenschema (digitale EPO-Runde) gelten als freigegeben
+    grades.forEach((g) => {
+      if (g.categoryName?.toLowerCase().includes('epo')) {
+        addReleasedEpoKey(g.categoryName);
       }
     });
     
@@ -5309,10 +5319,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
         const isReleased = epoKeyVariants.some(variant => 
           releasedEpoGrades.has(variant.toLowerCase().trim())
         );
-        // Wenn nicht freigegeben, setze grade auf undefined (wird grau angezeigt)
-        // Aber der Knoten wird trotzdem angezeigt
-        if (!isReleased) {
-          grade = undefined; // Nicht freigegeben, wird grau angezeigt
+        // Ohne Freigabe (altes Mitarbeitssystem) ausblenden — Schema-Note bleibt sichtbar
+        if (!isReleased && !grade) {
+          grade = undefined;
         }
       }
       
@@ -5373,7 +5382,24 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
     const isLeafNode = !hasChildren;
     const calculatedGrade = hasChildren ? calculateWeightedGrade(node) : null;
     const isGesamtnote = node.name.toLowerCase().includes("unter") && node.name.toLowerCase().includes("mittelstufe");
+    const isRootAggregate = level === 0 && hasChildren;
     const isGradeReleased = gradeReleases[schema.id] || false;
+    const hideRootFinalGrade = isRootAggregate && !isGradeReleased;
+
+    const emptyGradeBadgeSx = (bg: string, dimmed = false) => ({
+      bgcolor: bg,
+      color: 'white',
+      px: level === 0 ? 1 : level === 1 ? 0.8 : 0.6,
+      py: level === 0 ? 0.3 : level === 1 ? 0.25 : 0.2,
+      borderRadius: 1,
+      fontSize: level === 0 ? '0.7rem' : level === 1 ? '0.65rem' : '0.55rem',
+      fontWeight: 'bold',
+      minWidth: level === 0 ? '32px' : level === 1 ? '28px' : '24px',
+      minHeight: level === 0 ? '22px' : level === 1 ? '20px' : '18px',
+      textAlign: 'center' as const,
+      opacity: dimmed ? 0.6 : 0.9,
+      boxShadow: dimmed ? undefined : `0 2px 4px ${bg}40`,
+    });
     
     // Kategorien mit EPO-Noten werden immer angezeigt (auch wenn nicht freigegeben)
     // Sie zeigen dann einen grauen Platzhalter
@@ -5460,15 +5486,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, onLogout })
               })()}
             </Box>
           ) : (node.grade !== undefined || calculatedGrade !== null || node.hasEpoButNoneReleased) ? (
-            // Wenn es die Gesamtnote ist und nicht freigegeben, zeige nichts im Feld
-            isGesamtnote && !isGradeReleased ? (
-              <Typography variant="caption" sx={{ 
-                color: colors.textSecondary,
-                fontSize: level === 0 ? '0.6rem' : level === 1 ? '0.55rem' : '0.5rem',
-                fontStyle: 'italic'
-              }}>
-                {/* Feld bleibt leer */}
-              </Typography>
+            // Gesamtnote / Kurswurzel: Zahl erst nach Freigabe (leere Box als Platzhalter)
+            (isGesamtnote || hideRootFinalGrade) && !isGradeReleased ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Box
+                  sx={emptyGradeBadgeSx(getLevelColor(level, node.name, isLeafNode))}
+                  aria-label="Gesamtnote noch nicht freigegeben"
+                />
+              </Box>
             ) : node.hasEpoButNoneReleased ? (
               // Wenn keine EPO-Noten freigegeben sind, zeige grauen Platzhalter
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>

@@ -6,6 +6,7 @@ exports.ensureBuiltInVariants = ensureBuiltInVariants;
 exports.defaultVariantsStore = defaultVariantsStore;
 exports.parseVariantsStore = parseVariantsStore;
 exports.resolveVariant = resolveVariant;
+exports.effectiveEpoVariantIdForGroup = effectiveEpoVariantIdForGroup;
 exports.normalizeVariantSheet = normalizeVariantSheet;
 exports.createVariantFromBase = createVariantFromBase;
 const crypto_1 = require("crypto");
@@ -114,6 +115,22 @@ function resolveVariant(store, variantId) {
     var _a;
     const id = (variantId === null || variantId === void 0 ? void 0 : variantId.trim()) || epoNotenVariantPresets_1.EPO_VARIANT2_ID;
     return (_a = store.variants.find((v) => v.id === id)) !== null && _a !== void 0 ? _a : store.variants[0];
+}
+/** Gewählter EPO-Zettel pro Lerngruppe — ohne Fallback auf Variante 2. */
+function effectiveEpoVariantIdForGroup(payload, groupId) {
+    var _a, _b;
+    if (groupId) {
+        const per = (_a = payload.variantIdByGroup) === null || _a === void 0 ? void 0 : _a[groupId];
+        if (per === epoNotenVariantPresets_1.EPO_NO_VARIANT_ID || per === '')
+            return null;
+        if (per && String(per).trim())
+            return String(per).trim();
+    }
+    const roundDefault = (_b = payload.variantId) === null || _b === void 0 ? void 0 : _b.trim();
+    if (!roundDefault || roundDefault === exports.DEFAULT_EPO_VARIANT_ID || roundDefault === epoNotenVariantPresets_1.EPO_NO_VARIANT_ID) {
+        return null;
+    }
+    return roundDefault;
 }
 function normalizeVariantSheet(v) {
     const studentCategories = normalizeLines(v.studentCategories, DEFAULT_STUDENT);

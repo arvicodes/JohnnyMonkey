@@ -1,7 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EPO_VARIANT2_WEIGHTED_PRESET = exports.EPO_VARIANT2_ID = void 0;
+exports.EPO_VARIANT2_WEIGHTED_PRESET = exports.EPO_NO_VARIANT_ID = exports.EPO_VARIANT2_ID = void 0;
 exports.EPO_VARIANT2_ID = 'variant-2';
+/** Kein EPO-Raster / kein Zettel für diese Lerngruppe */
+exports.EPO_NO_VARIANT_ID = 'none';
 /** Gleiche Vorlage wie client/src/lib/epoNotenVariantPresets.ts */
 exports.EPO_VARIANT2_WEIGHTED_PRESET = {
     name: 'Variante 2 (gewichtet)',

@@ -24,6 +24,8 @@ export declare class EpoNotenController {
     static bulkGradeOnlyForGroup(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /** Lehrkraft: ganze Lerngruppe „Keine Ziele nötig“ */
     static bulkGoalsWaivedForGroup(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    /** Freigegebene EPO-Noten einer Lerngruppe ins Notenschema übernehmen (Kategorie = Rundentitel). */
+    static integrateGradingSchema(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /** Lehrkraft: Einträge löschen (ganze Runde oder eine Lerngruppe) */
     static resetAllEntries(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
 }

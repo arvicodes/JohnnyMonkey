@@ -62,6 +62,7 @@ import {
   shouldPrefillTeacherFromSelf,
   epoRoundedPoints,
   epoVariantIdForGroup,
+  epoGroupUsesRaster,
   formatEpoPointsDisplay,
   teacherFormGradeFromEntry,
   teacherFormScoresFromEntry,
@@ -72,7 +73,8 @@ import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-ic
 import DualStudentAvatars from '../DualStudentAvatars';
 import { EpoNotenCategoryGrid } from './EpoNotenCategoryGrid';
 import { EpoNotenTeacherStudentStatusChip } from './EpoNotenStudentStatusChip';
-import { EPO_VARIANT2_ID } from '../../lib/epoNotenVariantPresets';
+import { EPO_NO_VARIANT_ID, EPO_VARIANT2_ID } from '../../lib/epoNotenVariantPresets';
+import ImportExportIcon from '@mui/icons-material/ImportExport';
 import {
   epoNotenCardSx,
   epoNotenCompactBtnSx,
@@ -137,6 +139,7 @@ export function EpoNotenTeacherView() {
 
   const [passiveSaving, setPassiveSaving] = useState(false);
   const [variants, setVariants] = useState<EpoNotenVariantSheet[]>([]);
+  const [groupUsesRaster, setGroupUsesRaster] = useState(true);
   const [teacherCategories, setTeacherCategories] = useState<string[]>(EPO_NOTEN_TEACHER_CATEGORIES);
   const [categoryTitles, setCategoryTitles] = useState<string[]>([]);
   const [categoryWeightsPercent, setCategoryWeightsPercent] = useState<number[] | undefined>();
@@ -180,7 +183,8 @@ export function EpoNotenTeacherView() {
     const data = await res.json();
     setRound(data.round as EpoNotenRound);
     setStudents(Array.isArray(data.students) ? data.students : []);
-    if (Array.isArray(data.teacherCategories) && data.teacherCategories.length > 0) {
+    setGroupUsesRaster(data.useRaster !== false);
+    if (data.useRaster !== false && Array.isArray(data.teacherCategories) && data.teacherCategories.length > 0) {
       setTeacherCategories(data.teacherCategories as string[]);
     } else {
       setTeacherCategories(EPO_NOTEN_TEACHER_CATEGORIES);
@@ -268,14 +272,27 @@ export function EpoNotenTeacherView() {
     return s;
   }, [passiveIdsForGroup, round?.groupIds]);
 
+  const usesRasterForEntry = useCallback(
+    (e: EpoNotenEntry) => {
+      if (!round || !e.groupId) return groupUsesRaster;
+      return epoGroupUsesRaster(round, e.groupId);
+    },
+    [groupUsesRaster, round],
+  );
+
   const sortStudentsForGroup = useCallback(
     (list: EpoNotenEntry[]) =>
       [...list].sort((a, b) =>
-        compareEpoStudentListOrder(a, b, Boolean(round?.publishedAt), allPassiveStudentIds, (e) =>
-          isStudentGroupLive(e),
+        compareEpoStudentListOrder(
+          a,
+          b,
+          Boolean(round?.publishedAt),
+          allPassiveStudentIds,
+          (e) => isStudentGroupLive(e),
+          usesRasterForEntry,
         ),
       ),
-    [allPassiveStudentIds, isStudentGroupLive, round?.publishedAt],
+    [allPassiveStudentIds, isStudentGroupLive, round?.publishedAt, usesRasterForEntry],
   );
 
   const updatePassiveStudentsForGroup = async (groupId: string, studentIds: string[]) => {
@@ -866,8 +883,30 @@ export function EpoNotenTeacherView() {
           `Kein SuS geändert — ${skipped} bereits abgegeben oder freigegeben.`,
         );
       }
-      await loadDetail(round.id);
+      await loadDetail(round.id, studentListGroupFilter ?? activeCourseGroupId);
       await loadList();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Fehler');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const transferGradesToSchema = async () => {
+    if (!round || !activeCourseGroupId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await apiPost(`/api/epo-noten/${round.id}/integrate-grading-schema`, {
+        groupId: activeCourseGroupId,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res?.ok) {
+        throw new Error(typeof data.error === 'string' ? data.error : 'Übertragen fehlgeschlagen');
+      }
+      const count = typeof data.count === 'number' ? data.count : 0;
+      const cat = typeof data.categoryName === 'string' ? data.categoryName : round.title;
+      window.alert(`${count} Noten ins Notenschema übernommen (Kategorie „${cat}“).`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
     } finally {
@@ -1256,7 +1295,7 @@ export function EpoNotenTeacherView() {
                               }}
                             >
                               <Box sx={{ minWidth: 0, pr: 0.25 }}>
-                                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, lineHeight: 1.25 }} noWrap>
+                                <Typography sx={{ fontSize: '0.88rem', fontWeight: 700, lineHeight: 1.25 }} noWrap>
                                   {g?.name || gid}
                                 </Typography>
                                 <Typography sx={{ fontSize: '0.58rem', color: 'text.secondary', mt: 0.15 }}>
@@ -1460,6 +1499,9 @@ export function EpoNotenTeacherView() {
                       '& .MuiSelect-select': { py: 0.25, pr: '28px !important', pl: 0.75 },
                     }}
                   >
+                    <MenuItem value={EPO_NO_VARIANT_ID} sx={{ fontSize: '0.82rem', fontWeight: 700 }}>
+                      Kein Zettel (nur Note)
+                    </MenuItem>
                     {variantOptions.map((v) => (
                       <MenuItem key={v.id} value={v.id} sx={{ fontSize: '0.82rem' }}>
                         {v.name}
@@ -1515,6 +1557,24 @@ export function EpoNotenTeacherView() {
                     }}
                   >
                     <BackHandOutlinedIcon sx={{ fontSize: '1rem' }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Freigegebene Noten ins Notenschema (Kategorie = Rundentitel)">
+                <span>
+                  <IconButton
+                    size="small"
+                    aria-label="EPO-Noten ins Notenschema übertragen"
+                    disabled={saving || !activeCourseGroupId}
+                    onClick={() => void transferGradesToSchema()}
+                    sx={{
+                      ...epoNotenCompactIconBtnSx,
+                      color: epoNotenPalette.primary,
+                      borderColor: 'rgba(25, 118, 210, 0.35)',
+                      '&:hover': { bgcolor: epoNotenPalette.primaryTint },
+                    }}
+                  >
+                    <ImportExportIcon sx={{ fontSize: '1rem' }} />
                   </IconButton>
                 </span>
               </Tooltip>
@@ -1656,7 +1716,7 @@ export function EpoNotenTeacherView() {
                                 lineHeight: 1.25,
                                 py: 0.45,
                                 px: 0.75,
-                                fontSize: '0.68rem',
+                                fontSize: '0.82rem',
                                 fontWeight: 800,
                                 color: epoNotenPalette.heading,
                                 bgcolor: epoNotenPalette.sand,
@@ -1686,10 +1746,16 @@ export function EpoNotenTeacherView() {
                                 : [...allPassiveStudentIds],
                             );
                             const live = isStudentGroupLive(s);
+                            const sectionUsesRaster =
+                              round && section.groupId !== '__other__'
+                                ? epoGroupUsesRaster(round, section.groupId)
+                                : groupUsesRaster;
                             const pendingKind =
-                              !passive && live && !s.withoutSelfAssessment && !s.teacherGradeOnly
-                                ? studentEpoPendingKind(s, true)
-                                : null;
+                              !passive && live && sectionUsesRaster && !s.withoutSelfAssessment && !s.teacherGradeOnly
+                                ? studentEpoPendingKind(s, true, { usesRaster: sectionUsesRaster })
+                                : !passive && live
+                                  ? studentEpoPendingKind(s, true, { usesRaster: false })
+                                  : null;
                             const suFertig = !passive && live && !pendingKind;
                             const rowMode =
                               s.groupId && round ? groupMode(s.groupId) : selectedAssessmentMode;
@@ -1743,13 +1809,13 @@ export function EpoNotenTeacherView() {
                                   {gradeLabel ? (
                                     <Typography
                                       sx={{
-                                        fontSize: '1.05rem',
+                                        fontSize: '1.28rem',
                                         fontWeight: 900,
                                         fontVariantNumeric: 'tabular-nums',
                                         lineHeight: 1,
                                         color: s.teacherReleasedAt ? epoNotenPalette.fertigAccent : 'primary.main',
                                         flexShrink: 0,
-                                        minWidth: '1.75rem',
+                                        minWidth: '2rem',
                                         textAlign: 'right',
                                       }}
                                     >
@@ -1799,8 +1865,10 @@ export function EpoNotenTeacherView() {
                               const modeLocked =
                                 saving ||
                                 passiveSaving ||
-                                Boolean(selectedStudent.studentSubmittedAt) ||
                                 Boolean(selectedStudent.teacherReleasedAt);
+                              const modeLockHint = selectedStudent.teacherReleasedAt
+                                ? 'Nach Freigabe nicht änderbar — ggf. Kurs zurücksetzen'
+                                : '';
                               return (
                                 <ToggleButtonGroup
                                   exclusive
@@ -1839,21 +1907,43 @@ export function EpoNotenTeacherView() {
                                     },
                                   }}
                                 >
-                                  <ToggleButton
-                                    value="absent"
-                                    disabled={passiveSaving || saving || modeLocked}
+                                  <Tooltip title={modeLockHint || 'Länger abwesend (kein EPO-Zettel nötig)'}>
+                                    <span>
+                                      <ToggleButton
+                                        value="absent"
+                                        disabled={passiveSaving || saving || modeLocked}
+                                      >
+                                        <EventBusyOutlinedIcon sx={{ fontSize: 14 }} />
+                                        Länger abwesend
+                                      </ToggleButton>
+                                    </span>
+                                  </Tooltip>
+                                  <Tooltip
+                                    title={
+                                      modeLockHint ||
+                                      'oS = ohne Selbsteinschätzung (SuS füllt keinen Zettel). Nochmal klicken → Standard mit Zettel.'
+                                    }
                                   >
-                                    <EventBusyOutlinedIcon sx={{ fontSize: 14 }} />
-                                    Länger abwesend
-                                  </ToggleButton>
-                                  <ToggleButton value="os" disabled={modeLocked}>
-                                    <PersonOffOutlinedIcon sx={{ fontSize: 14 }} />
-                                    oS
-                                  </ToggleButton>
-                                  <ToggleButton value="note" disabled={modeLocked}>
-                                    <LooksOneOutlinedIcon sx={{ fontSize: 14 }} />
-                                    Note
-                                  </ToggleButton>
+                                    <span>
+                                      <ToggleButton value="os" disabled={modeLocked}>
+                                        <PersonOffOutlinedIcon sx={{ fontSize: 14 }} />
+                                        oS
+                                      </ToggleButton>
+                                    </span>
+                                  </Tooltip>
+                                  <Tooltip
+                                    title={
+                                      modeLockHint ||
+                                      'Nur Note für diesen SuS (ohne Raster). Nochmal klicken → Standard mit Zettel.'
+                                    }
+                                  >
+                                    <span>
+                                      <ToggleButton value="note" disabled={modeLocked}>
+                                        <LooksOneOutlinedIcon sx={{ fontSize: 14 }} />
+                                        Note
+                                      </ToggleButton>
+                                    </span>
+                                  </Tooltip>
                                 </ToggleButtonGroup>
                               );
                             })()}
@@ -1911,19 +2001,6 @@ export function EpoNotenTeacherView() {
                           </Typography>
                         )}
 
-                        {selectedStudent.teacherGradeOnly && !selectedStudent.studentSubmittedAt ? (
-                          <Alert severity="info" sx={{ py: 0.35, fontSize: '0.72rem' }}>
-                            <strong>Note</strong> — nur Note/Punkte und Begründung, kein Raster, keine Selbsteinschätzung.
-                          </Alert>
-                        ) : null}
-                        {selectedStudent.withoutSelfAssessment &&
-                        !selectedStudent.teacherGradeOnly &&
-                        !selectedStudent.studentSubmittedAt ? (
-                          <Alert severity="info" sx={{ py: 0.35, fontSize: '0.72rem' }}>
-                            <strong>oS</strong> — keine Selbsteinschätzung vom SuS, nur dein Lehrer-Raster.
-                          </Alert>
-                        ) : null}
-
                         {selectedStudent.studentSubmittedAt ? (
                           <Typography
                             sx={{
@@ -1960,13 +2037,7 @@ export function EpoNotenTeacherView() {
                         ) : null}
 
                         <Box sx={{ position: 'relative', width: '100%' }}>
-                            {selectedStudent.teacherReleasedAt && (
-                              <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mb: 0.35 }}>
-                                Freigegeben — Änderungen sieht der SuS beim nächsten Öffnen.
-                              </Typography>
-                            )}
-
-                            {selectedStudent.teacherGradeOnly ? (
+                            {selectedStudent.teacherGradeOnly || !groupUsesRaster ? (
                               <Stack spacing={1} sx={{ mt: 0.5 }}>
                                 <TextField
                                   size="small"
@@ -1977,17 +2048,38 @@ export function EpoNotenTeacherView() {
                                   disabled={Boolean(selectedStudent.teacherReleasedAt)}
                                   sx={{ '& .MuiInputBase-root': { fontSize: '0.9rem', fontWeight: 700 } }}
                                 />
-                                <TextField
-                                  size="small"
-                                  fullWidth
-                                  label="Bemerkung für den SuS (optional)"
-                                  value={teacherJustification}
-                                  onChange={(e) => handleTeacherJustificationChange(e.target.value)}
-                                  disabled={Boolean(selectedStudent.teacherReleasedAt)}
-                                  multiline
-                                  minRows={2}
-                                  sx={{ '& .MuiInputBase-root': { fontSize: '0.82rem' } }}
-                                />
+                                <Stack direction="row" spacing={1} alignItems="flex-start">
+                                  <TextField
+                                    size="small"
+                                    fullWidth
+                                    label="Bemerkung (optional)"
+                                    value={teacherJustification}
+                                    onChange={(e) => handleTeacherJustificationChange(e.target.value)}
+                                    disabled={Boolean(selectedStudent.teacherReleasedAt)}
+                                    multiline
+                                    minRows={2}
+                                    sx={{ flex: 1, minWidth: 0, '& .MuiInputBase-root': { fontSize: '0.82rem' } }}
+                                  />
+                                  <FormControlLabel
+                                    sx={{
+                                      m: 0,
+                                      mt: 0.25,
+                                      flexShrink: 0,
+                                      alignSelf: 'flex-start',
+                                      '& .MuiFormControlLabel-label': { fontSize: '0.72rem', lineHeight: 1.25 },
+                                    }}
+                                    control={
+                                      <Checkbox
+                                        size="small"
+                                        checked={Boolean(selectedStudent.goalsWaived)}
+                                        disabled={Boolean(selectedStudent.goalsSubmittedAt) || saving}
+                                        onChange={(_, checked) => void applyGoalsWaived(checked)}
+                                        sx={{ p: 0.35 }}
+                                      />
+                                    }
+                                    label="Keine Ziele nötig"
+                                  />
+                                </Stack>
                               </Stack>
                             ) : (
                               <>
@@ -2038,17 +2130,38 @@ export function EpoNotenTeacherView() {
                                       (allCategoriesSelected(teacherScores) ? computedRasterResult : '—')}
                                   </Typography>
                                 </Stack>
-                                <TextField
-                                  size="small"
-                                  fullWidth
-                                  label="Bemerkung für den SuS (optional)"
-                                  value={teacherJustification}
-                                  onChange={(e) => handleTeacherJustificationChange(e.target.value)}
-                                  disabled={Boolean(selectedStudent.teacherReleasedAt)}
-                                  multiline
-                                  minRows={2}
-                                  sx={{ mt: 1, '& .MuiInputBase-root': { fontSize: '0.82rem' } }}
-                                />
+                                <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mt: 1 }}>
+                                  <TextField
+                                    size="small"
+                                    fullWidth
+                                    label="Bemerkung (optional)"
+                                    value={teacherJustification}
+                                    onChange={(e) => handleTeacherJustificationChange(e.target.value)}
+                                    disabled={Boolean(selectedStudent.teacherReleasedAt)}
+                                    multiline
+                                    minRows={2}
+                                    sx={{ flex: 1, minWidth: 0, '& .MuiInputBase-root': { fontSize: '0.82rem' } }}
+                                  />
+                                  <FormControlLabel
+                                    sx={{
+                                      m: 0,
+                                      mt: 0.25,
+                                      flexShrink: 0,
+                                      alignSelf: 'flex-start',
+                                      '& .MuiFormControlLabel-label': { fontSize: '0.72rem', lineHeight: 1.25 },
+                                    }}
+                                    control={
+                                      <Checkbox
+                                        size="small"
+                                        checked={Boolean(selectedStudent.goalsWaived)}
+                                        disabled={Boolean(selectedStudent.goalsSubmittedAt) || saving}
+                                        onChange={(_, checked) => void applyGoalsWaived(checked)}
+                                        sx={{ p: 0.35 }}
+                                      />
+                                    }
+                                    label="Keine Ziele nötig"
+                                  />
+                                </Stack>
                               </>
                             )}
 
@@ -2087,37 +2200,22 @@ export function EpoNotenTeacherView() {
                             mt: 0.5,
                           }}
                         >
-                          <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={0.25}>
-                            <Typography sx={{ fontWeight: 800, fontSize: '0.78rem', color: epoNotenPalette.heading }}>
-                              Ziele (SuS)
-                              {selectedStudent.goalsSubmittedAt ? (
-                                <Typography component="span" sx={{ fontWeight: 600, fontSize: '0.65rem', ml: 0.5, color: 'success.main' }}>
-                                  abgeschickt
-                                </Typography>
-                              ) : selectedStudent.goalsWaived ? (
-                                <Typography component="span" sx={{ fontWeight: 600, fontSize: '0.65rem', ml: 0.5, color: 'text.secondary' }}>
-                                  · nicht erforderlich
-                                </Typography>
-                              ) : selectedStudent.teacherReleasedAt ? (
-                                <Typography component="span" sx={{ fontWeight: 600, fontSize: '0.65rem', ml: 0.5, color: 'text.secondary' }}>
-                                  · noch offen
-                                </Typography>
-                              ) : null}
-                            </Typography>
-                            <FormControlLabel
-                              sx={{ m: 0, '& .MuiFormControlLabel-label': { fontSize: '0.72rem' } }}
-                              control={
-                                <Checkbox
-                                  size="small"
-                                  checked={Boolean(selectedStudent.goalsWaived)}
-                                  disabled={Boolean(selectedStudent.goalsSubmittedAt) || saving}
-                                  onChange={(_, checked) => void applyGoalsWaived(checked)}
-                                  sx={{ p: 0.35 }}
-                                />
-                              }
-                              label="Keine Ziele nötig"
-                            />
-                          </Stack>
+                          <Typography sx={{ fontWeight: 800, fontSize: '0.78rem', color: epoNotenPalette.heading }}>
+                            Ziele (SuS)
+                            {selectedStudent.goalsSubmittedAt ? (
+                              <Typography component="span" sx={{ fontWeight: 600, fontSize: '0.65rem', ml: 0.5, color: 'success.main' }}>
+                                abgeschickt
+                              </Typography>
+                            ) : selectedStudent.goalsWaived ? (
+                              <Typography component="span" sx={{ fontWeight: 600, fontSize: '0.65rem', ml: 0.5, color: 'text.secondary' }}>
+                                · nicht erforderlich
+                              </Typography>
+                            ) : selectedStudent.teacherReleasedAt ? (
+                              <Typography component="span" sx={{ fontWeight: 600, fontSize: '0.65rem', ml: 0.5, color: 'text.secondary' }}>
+                                · noch offen
+                              </Typography>
+                            ) : null}
+                          </Typography>
                           {!selectedStudent.teacherReleasedAt
                             ? null
                             : selectedStudent.goalsSubmittedAt ||
@@ -2141,11 +2239,7 @@ export function EpoNotenTeacherView() {
                                 </Box>
                               </Box>
                             </Stack>
-                          ) : (
-                            <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.4 }}>
-                              Der SuS hat noch keine Ziele eingetragen.
-                            </Typography>
-                          )}
+                          ) : null}
                         </Box>
                       </Stack>
                     )}

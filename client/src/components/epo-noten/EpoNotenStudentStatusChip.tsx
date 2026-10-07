@@ -63,7 +63,7 @@ export function EpoNotenTeacherStudentStatusChip({
 
   if (withoutSelfAssessment) {
     return (
-      <Tooltip title="Ohne Selbsteinschätzung">
+      <Tooltip title="Ohne Selbsteinschätzung (oS) — SuS ohne EPO-Zettel; nicht das Klassen-Notenschema">
         <Chip
           size="small"
           color="info"

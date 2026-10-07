@@ -146,7 +146,7 @@ Mitglieder: **23**
 | Name | Login-Code |
 | --- | --- |
 | Duy Anh Trân | `AnhDuy07` |
-| Martin Bindewald | `BinMar07` |
+| Gabriel Martin Bindewald | `BinMar07` |
 | Laureen Budka | `BudLau07` |
 | Benjamin Clos | `CloBen07` |
 | Justus Damm | `DamJus07` |

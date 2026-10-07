@@ -52,7 +52,7 @@ SCHEMA:
  38. Lukas Wetzlar                       | WetLuk07     | Gruppen: Informatik GK 12
  39. Marlene Geis                        | GeiMar13     | Gruppen: Klasse 7a
  40. Marlene Krall                       | KraMar13     | Gruppen: Klasse 7a
- 41. Martin Bindewald                    | BinMar07     | Gruppen: Informatik GK 12
+ 41. Gabriel Martin Bindewald                    | BinMar07     | Gruppen: Informatik GK 12
  42. Miró Mohr                           | MohMir13     | Gruppen: Klasse 7a
  43. Nikita Kling                        | KliNik07     | Gruppen: Informatik GK 12
  44. Niklas Schmitz                      | SchNik13     | Gruppen: Klasse 7a
@@ -111,7 +111,7 @@ ALPHABETISCHE SORTIERUNG:
  38. Lukas Wetzlar                       | WetLuk07
  39. Marlene Geis                        | GeiMar13
  40. Marlene Krall                       | KraMar13
- 41. Martin Bindewald                    | BinMar07
+ 41. Gabriel Martin Bindewald                    | BinMar07
  42. Miró Mohr                           | MohMir13
  43. Nikita Kling                        | KliNik07
  44. Niklas Schmitz                      | SchNik13
