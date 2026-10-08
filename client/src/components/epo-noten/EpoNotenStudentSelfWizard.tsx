@@ -53,6 +53,8 @@ type Props = {
   onSelfGradeFromTableChange: (v: string) => void;
   onSubmit: () => Promise<void>;
   startAtDone?: boolean;
+  /** false = nur Vorgabe-Note + Text, kein Raster */
+  selfRaster?: boolean;
 };
 
 export function EpoNotenStudentSelfWizard({
@@ -71,6 +73,7 @@ export function EpoNotenStudentSelfWizard({
   onSelfGradeFromTableChange,
   onSubmit,
   startAtDone,
+  selfRaster = true,
 }: Props) {
   const [step, setStep] = useState<WizardStep>(startAtDone ? 'done' : 1);
   const [showCategories, setShowCategories] = useState(false);
@@ -109,8 +112,14 @@ export function EpoNotenStudentSelfWizard({
       setStep('done');
       setShowCategories(true);
       submitStarted.current = true;
+      return;
     }
-  }, [startAtDone]);
+    if (!locked && step === 'done' && !submitStarted.current) {
+      setStep(1);
+      setShowCategories(false);
+      setEvaluationReady(false);
+    }
+  }, [locked, startAtDone, step]);
 
   useEffect(() => {
     if (!evaluationReady) return;
@@ -127,12 +136,33 @@ export function EpoNotenStudentSelfWizard({
     setStep(3);
     if (!submitStarted.current) {
       submitStarted.current = true;
-      await onSubmit();
+      try {
+        await onSubmit();
+      } catch {
+        submitStarted.current = false;
+        setStep(2);
+        setEvaluationReady(false);
+        return;
+      }
     }
     setStep('done');
   }, [applyDoneEvaluation, categoryWeightsPercent, locked, onSubmit, selfScores]);
 
   const goNext = async () => {
+    if (step === 1 && !selfRaster) {
+      onSelfGradeFromTableChange(suggestedGrade.trim());
+      if (!submitStarted.current) {
+        submitStarted.current = true;
+        try {
+          await onSubmit();
+        } catch {
+          submitStarted.current = false;
+          return;
+        }
+      }
+      setStep('done');
+      return;
+    }
     if (step === 1) {
       setShowCategories(true);
       setStep(2);
@@ -164,7 +194,7 @@ export function EpoNotenStudentSelfWizard({
             Deine Selbsteinschätzung
             {step !== 'done' && step !== 3 && (
               <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                Schritt {step} von 3
+                {selfRaster ? `Schritt ${step} von 3` : 'Nur deine Einschätzung'}
               </Typography>
             )}
           </Typography>
@@ -221,6 +251,7 @@ export function EpoNotenStudentSelfWizard({
             </Stack>
           )}
 
+          {selfRaster ? (
           <Collapse in={showCategories || step === 2 || step === 3 || step === 'done'} unmountOnExit={false}>
             <Box sx={{ pt: 1 }}>
               {(step === 2 || step === 3 || step === 'done') && (
@@ -308,6 +339,7 @@ export function EpoNotenStudentSelfWizard({
               )}
             </Box>
           </Collapse>
+          ) : null}
 
           {step === 'done' && (
             <Alert severity="success" sx={{ py: 0.5 }}>
@@ -333,7 +365,7 @@ export function EpoNotenStudentSelfWizard({
                 }
                 sx={epoNotenCompactBtnSx}
               >
-                {step === 2 ? 'Weiter zur Auswertung' : 'Weiter'}
+                {step === 2 ? 'Weiter zur Auswertung' : selfRaster ? 'Weiter' : 'Abgeben'}
               </Button>
             </Stack>
           )}

@@ -2,7 +2,6 @@ import React from 'react';
 import { Chip, Tooltip } from '@mui/material';
 import CheckIcon from '@mui/icons-material/Check';
 import EditNoteIcon from '@mui/icons-material/EditNote';
-import LooksOneOutlinedIcon from '@mui/icons-material/LooksOneOutlined';
 import {
   epoNotenBitteAusfuellenChipSx,
   epoNotenFertigChipSx,
@@ -42,49 +41,8 @@ export function EpoNotenTeacherStudentStatusChip({
     );
   }
 
-  if (teacherGradeOnly) {
-    return (
-      <Tooltip title="Nur Note (ohne Raster)">
-        <Chip
-          size="small"
-          color="secondary"
-          variant="filled"
-          icon={<LooksOneOutlinedIcon sx={teacherListIconSx} />}
-          label=" "
-          aria-label="Nur Note"
-          sx={{
-            ...teacherListChipSx,
-            '& .MuiChip-icon': { margin: 0, color: '#fff' },
-          }}
-        />
-      </Tooltip>
-    );
-  }
-
-  if (withoutSelfAssessment) {
-    return (
-      <Tooltip title="Ohne Selbsteinschätzung (oS) — SuS ohne EPO-Zettel; nicht das Klassen-Notenschema">
-        <Chip
-          size="small"
-          color="info"
-          variant="filled"
-          label="oS"
-          aria-label="Ohne Selbsteinschätzung (oS)"
-          sx={{
-            ...teacherListChipSx,
-            '& .MuiChip-label': {
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              px: 0,
-              fontSize: '0.5rem',
-              fontWeight: 800,
-              lineHeight: 1,
-            },
-          }}
-        />
-      </Tooltip>
-    );
+  if (teacherGradeOnly || withoutSelfAssessment) {
+    return null;
   }
 
   if (pendingKind) {

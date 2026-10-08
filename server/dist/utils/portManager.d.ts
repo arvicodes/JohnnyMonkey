@@ -10,6 +10,7 @@ export declare class PortManager {
      * Überprüft, ob ein Port verfügbar ist
      */
     private static isPortAvailable;
+    private static listenOnce;
     /**
      * Startet den Server mit automatischer Port-Findung
      */
@@ -24,6 +25,6 @@ export declare class PortManager {
     /**
      * Überprüft und bereinigt Ports vor dem Start
      */
-    static cleanupPorts(): Promise<void>;
+    static cleanupPorts(port?: number): Promise<void>;
 }
 //# sourceMappingURL=portManager.d.ts.map

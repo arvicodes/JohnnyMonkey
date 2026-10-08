@@ -53,18 +53,6 @@ const rasterResultFromTotal = (mode: AssessmentMode, total: number): string => {
   return gradeFromTotalPoints(t);
 };
 
-const effectiveTeacherGrade = (
-  entry: EpoNotenEntry,
-  mode: AssessmentMode,
-  weightsPercent?: number[] | null,
-): string => {
-  const trimmed = entry.teacherGrade?.trim();
-  if (trimmed) return trimmed;
-  const scores = normalizeCategoryScores(entry.teacherScores);
-  if (!allCategoriesSelected(scores)) return '';
-  return rasterResultFromTotal(mode, epoRoundedPoints(scores, weightsPercent));
-};
-
 type EpoNotenEntry = {
   studentId: string;
   /** Lerngruppe innerhalb der Runde (getrennte Einträge pro Kurs) */
@@ -92,14 +80,205 @@ type EpoNotenEntry = {
   /** Lehrkraft: nur Note/Punkte + Begründung */
   teacherGradeOnly?: boolean;
   teacherJustification?: string;
+  selfUsesRaster?: boolean;
 };
 
 type AssessmentMode = 'note' | 'mss';
 
+type EpoGroupWorkflow = 'standard' | 'teacher_raster' | 'self_no_raster' | 'teacher_only';
+
 type EpoNotenGroupMeta = {
   publishedAt?: string | null;
   completedAt?: string | null;
+  schemaIntegratedAt?: string | null;
+  selfAssessmentEnabled?: boolean;
+  teacherRasterEnabled?: boolean;
+  goalsEnabled?: boolean;
+  selfAssessmentOnly?: boolean;
+  workflow?: EpoGroupWorkflow;
 };
+
+const groupWorkflow = (payload: EpoNotenRoundPayload, groupId: string): EpoGroupWorkflow => {
+  const w = payload.groupMeta?.[groupId]?.workflow;
+  if (w === 'teacher_raster' || w === 'self_no_raster' || w === 'teacher_only') return w;
+  if (payload.groupMeta?.[groupId]?.selfAssessmentOnly) return 'self_no_raster';
+  return 'standard';
+};
+
+const groupSelfAssessmentOnly = (payload: EpoNotenRoundPayload, groupId: string): boolean =>
+  groupWorkflow(payload, groupId) === 'self_no_raster';
+
+const groupTeacherUsesRaster = (payload: EpoNotenRoundPayload, groupId: string): boolean => {
+  const m = payload.groupMeta?.[groupId];
+  if (m?.teacherRasterEnabled === false) return false;
+  if (m?.selfAssessmentEnabled === false && m?.teacherRasterEnabled !== true) return false;
+  if (groupWorkflow(payload, groupId) === 'teacher_only') return false;
+  const variantId = payload.variantIdByGroup?.[groupId] ?? payload.variantId;
+  return variantId != null && variantId !== EPO_NO_VARIANT_ID;
+};
+
+const effectiveTeacherGrade = (
+  payload: EpoNotenRoundPayload,
+  groupId: string,
+  entry: EpoNotenEntry,
+  mode: AssessmentMode,
+  weightsPercent?: number[] | null,
+): string => {
+  const trimmed = entry.teacherGrade?.trim();
+  if (trimmed) return trimmed;
+  if (!groupTeacherUsesRaster(payload, groupId)) return '';
+  const scores = normalizeCategoryScores(entry.teacherScores);
+  if (!allCategoriesSelected(scores)) return '';
+  return rasterResultFromTotal(mode, epoRoundedPoints(scores, weightsPercent));
+};
+
+const entryRequiresStudentSelf = (
+  payload: EpoNotenRoundPayload,
+  groupId: string,
+  entry: EpoNotenEntry | null,
+): boolean => {
+  if (entry?.withoutSelfAssessment || entry?.teacherGradeOnly) return false;
+  const gm = payload.groupMeta?.[groupId];
+  if (gm?.selfAssessmentEnabled === false) return false;
+  if (groupWorkflow(payload, groupId) === 'teacher_only') return false;
+  return true;
+};
+
+const entryStudentUsesSelfRaster = (
+  payload: EpoNotenRoundPayload,
+  groupId: string,
+  entry: EpoNotenEntry | null,
+  useRaster: boolean,
+): boolean => {
+  if (!entryRequiresStudentSelf(payload, groupId, entry)) return false;
+  if (!useRaster) return false;
+  if (entry?.selfUsesRaster === false) return false;
+  if (entry?.selfUsesRaster === true) return true;
+  const gm = payload.groupMeta?.[groupId];
+  const wf = groupWorkflow(payload, groupId);
+  if (wf === 'self_no_raster' || wf === 'teacher_only') return false;
+  if (gm?.teacherRasterEnabled === false) return false;
+  return true;
+};
+
+type EpoJaFlags = { self: boolean; raster: boolean; goals: boolean };
+
+const applyGroupEpoFeaturesToStudents = (
+  payload: EpoNotenRoundPayload,
+  groupId: string,
+  flags: EpoJaFlags,
+  groups: { id: string; students: { id: string; name: string }[] }[],
+) => {
+  const group = groups.find((g) => g.id === groupId);
+  if (!group) return;
+  if (!payload.variantIdByGroup || typeof payload.variantIdByGroup !== 'object') {
+    payload.variantIdByGroup = {};
+  }
+  if (!flags.self && !flags.raster) {
+    payload.variantIdByGroup[groupId] = EPO_NO_VARIANT_ID;
+  } else if (flags.raster) {
+    const cur = payload.variantIdByGroup[groupId];
+    if (!cur || cur === EPO_NO_VARIANT_ID) {
+      payload.variantIdByGroup[groupId] = EPO_VARIANT2_ID;
+    }
+  } else {
+    payload.variantIdByGroup[groupId] = EPO_NO_VARIANT_ID;
+  }
+  const fields = {
+    withoutSelfAssessment: !flags.self,
+    teacherGradeOnly: !flags.self && !flags.raster,
+    goalsWaived: !flags.goals,
+    selfUsesRaster: flags.self && flags.raster ? true : flags.self && !flags.raster ? false : undefined,
+  };
+  for (const s of group.students) {
+    const gidsInRound = groupIdsForStudentInRound(payload, s.id, groups);
+    const existing = findEntry(payload, s.id, groupId, gidsInRound);
+    if (existing?.goalsSubmittedAt) continue;
+    const keepRasterGrades = flags.raster || Boolean(existing?.teacherReleasedAt);
+    const entry: EpoNotenEntry = {
+      studentId: s.id,
+      groupId,
+      studentName: stripMiddleNames(s.name),
+      suggestedGrade: existing?.suggestedGrade,
+      suggestedGradeMode: existing?.suggestedGradeMode,
+      justification: existing?.justification,
+      selfScores: existing?.selfScores,
+      selfGradeFromTable: existing?.selfGradeFromTable,
+      studentSubmittedAt: existing?.studentSubmittedAt ?? null,
+      teacherScores: keepRasterGrades ? existing?.teacherScores : undefined,
+      teacherGrade: keepRasterGrades ? existing?.teacherGrade : '',
+      teacherReleasedAt: existing?.teacherReleasedAt ?? null,
+      goal: existing?.goal,
+      goalAction: existing?.goalAction,
+      goalsSubmittedAt: existing?.goalsSubmittedAt ?? null,
+      teacherJustification: existing?.teacherJustification,
+      ...fields,
+    };
+    upsertEntry(payload, entry);
+  }
+};
+
+const applyGroupWorkflowToStudents = (
+  payload: EpoNotenRoundPayload,
+  groupId: string,
+  workflow: EpoGroupWorkflow,
+  groups: { id: string; students: { id: string; name: string }[] }[],
+) => {
+  const group = groups.find((g) => g.id === groupId);
+  if (!group) return;
+  if (!payload.variantIdByGroup || typeof payload.variantIdByGroup !== 'object') {
+    payload.variantIdByGroup = {};
+  }
+  if (workflow === 'teacher_only') {
+    payload.variantIdByGroup[groupId] = EPO_NO_VARIANT_ID;
+  } else {
+    const cur = payload.variantIdByGroup[groupId];
+    if (!cur || cur === EPO_NO_VARIANT_ID) {
+      payload.variantIdByGroup[groupId] = EPO_VARIANT2_ID;
+    }
+  }
+  for (const s of group.students) {
+    const gidsInRound = groupIdsForStudentInRound(payload, s.id, groups);
+    const existing = findEntry(payload, s.id, groupId, gidsInRound);
+    if (existing?.goalsSubmittedAt) continue;
+    const entry: EpoNotenEntry = {
+      studentId: s.id,
+      groupId,
+      studentName: stripMiddleNames(s.name),
+      suggestedGrade: existing?.suggestedGrade,
+      suggestedGradeMode: existing?.suggestedGradeMode,
+      justification: existing?.justification,
+      selfScores: existing?.selfScores,
+      selfGradeFromTable: existing?.selfGradeFromTable,
+      studentSubmittedAt: existing?.studentSubmittedAt ?? null,
+      teacherScores: existing?.teacherScores,
+      teacherGrade: existing?.teacherGrade,
+      teacherReleasedAt: existing?.teacherReleasedAt ?? null,
+      goal: existing?.goal,
+      goalAction: existing?.goalAction,
+      goalsSubmittedAt: existing?.goalsSubmittedAt ?? null,
+      withoutSelfAssessment: workflow === 'teacher_raster',
+      teacherGradeOnly: workflow === 'teacher_only',
+      goalsWaived: workflow === 'self_no_raster' || workflow === 'teacher_only',
+      teacherJustification: existing?.teacherJustification,
+    };
+    if (workflow === 'standard') {
+      entry.withoutSelfAssessment = false;
+      entry.teacherGradeOnly = false;
+      entry.goalsWaived = Boolean(existing?.goalsWaived);
+    }
+    upsertEntry(payload, entry);
+  }
+};
+
+const entryGoalsWaived = (
+  payload: EpoNotenRoundPayload,
+  groupId: string,
+  entry: EpoNotenEntry | null | undefined,
+): boolean =>
+  Boolean(entry?.goalsWaived) ||
+  groupSelfAssessmentOnly(payload, groupId) ||
+  payload.groupMeta?.[groupId]?.goalsEnabled === false;
 
 type EpoNotenRoundPayload = {
   id: string;
@@ -599,27 +778,27 @@ const studentSessionDto = (
   const studentSubmitted = Boolean(entry?.studentSubmittedAt);
   const goalsSubmitted = Boolean(entry?.goalsSubmittedAt);
   const usesRaster = effectiveEpoVariantIdForGroup(resolved.payload, resolved.groupId) !== null;
+  const goalsWaived = entryGoalsWaived(resolved.payload, resolved.groupId, entry);
   const noteOnlyFlow = Boolean(entry?.teacherGradeOnly || !usesRaster);
-  const workflowComplete =
-    Boolean(entry?.teacherReleasedAt) &&
-    (Boolean(entry?.goalsSubmittedAt) ||
-      Boolean(entry?.goalsWaived) ||
-      noteOnlyFlow);
+  const selfPartDone =
+    Boolean(entry?.teacherGradeOnly) ||
+    Boolean(entry?.withoutSelfAssessment) ||
+    !usesRaster ||
+    studentSubmitted;
+  const goalsPartDone = noteOnlyFlow || goalsWaived || goalsSubmitted;
+  const workflowComplete = teacherReleased && selfPartDone && goalsPartDone;
   const needsSelfAssessment =
     isActive &&
     published &&
-    !workflowComplete &&
+    !teacherReleased &&
     usesRaster &&
     !studentSubmitted &&
     !entry?.withoutSelfAssessment &&
-    !entry?.teacherGradeOnly &&
-    !entry?.goalsWaived;
+    !entry?.teacherGradeOnly;
   const needsGoals =
     isActive &&
-    !workflowComplete &&
     teacherReleased &&
-    !goalsSubmitted &&
-    !entry?.goalsWaived &&
+    !goalsPartDone &&
     !noteOnlyFlow;
   const actionRequired = needsSelfAssessment || needsGoals;
   return {
@@ -712,10 +891,12 @@ export class EpoNotenController {
         for (const s of g.students) {
           const gidsInRound = groupIdsForStudentInRound(round, s.id, groups);
           const existing = findEntry(round, s.id, g.id, gidsInRound);
+          const selfOnlyDefault = groupSelfAssessmentOnly(round, g.id);
           const row = existing ?? {
             studentId: s.id,
             studentName: stripMiddleNames(s.name),
             groupId: g.id,
+            ...(selfOnlyDefault ? { goalsWaived: true } : {}),
           };
           students.push({
             ...row,
@@ -744,11 +925,11 @@ export class EpoNotenController {
           const groupLive = gid ? isGroupPublishedForStudents(round, gid) : Boolean(round.publishedAt);
           if (passive || !groupLive) return false;
           const usesRaster = gid ? effectiveEpoVariantIdForGroup(round, gid) !== null : false;
-          if (e.goalsWaived) return false;
+          const waived = entryGoalsWaived(round, gid ?? '', e);
           if (usesRaster && !e.studentSubmittedAt && !e.withoutSelfAssessment && !e.teacherGradeOnly) {
             return true;
           }
-          if (e.teacherReleasedAt && !e.goalsSubmittedAt) return true;
+          if (e.teacherReleasedAt && !e.goalsSubmittedAt && !waived) return true;
           return false;
         };
         const liveA = ea.groupId
@@ -804,9 +985,11 @@ export class EpoNotenController {
       const variantIdRaw =
         typeof req.body?.variantId === 'string' ? req.body.variantId.trim() : '';
       const store = await loadVariantsStore(user.id);
-      let roundVariantId: string | null = null;
+      let roundVariantId: string | null = EPO_VARIANT2_ID;
       if (variantIdRaw && variantIdRaw !== EPO_NO_VARIANT_ID) {
         roundVariantId = resolveVariant(store, variantIdRaw).id;
+      } else if (variantIdRaw === EPO_NO_VARIANT_ID) {
+        roundVariantId = null;
       }
 
       const data: EpoNotenRoundPayload = {
@@ -1038,6 +1221,43 @@ export class EpoNotenController {
           existing.variantIdByGroup[groupId] = resolveVariant(store, raw).id;
         }
       }
+      if (typeof req.body?.workflow === 'string') {
+        const wf = req.body.workflow as EpoGroupWorkflow;
+        const allowed: EpoGroupWorkflow[] = [
+          'standard',
+          'teacher_raster',
+          'self_no_raster',
+          'teacher_only',
+        ];
+        if (!allowed.includes(wf)) {
+          return res.status(400).json({ error: 'Ungültiger workflow' });
+        }
+        meta[groupId] = {
+          ...meta[groupId] ?? prev,
+          workflow: wf === 'standard' ? undefined : wf,
+          selfAssessmentOnly: wf === 'self_no_raster',
+        };
+        const groups = await loadTeacherGroupsWithStudents(user.id);
+        applyGroupWorkflowToStudents(existing, groupId, wf, groups);
+      }
+      const bodyFeatures = req.body?.epoFeatures;
+      if (bodyFeatures && typeof bodyFeatures === 'object') {
+        const flags: EpoJaFlags = {
+          self: bodyFeatures.self !== false,
+          raster: bodyFeatures.raster !== false,
+          goals: bodyFeatures.goals !== false,
+        };
+        meta[groupId] = {
+          ...meta[groupId] ?? prev,
+          selfAssessmentEnabled: flags.self,
+          teacherRasterEnabled: flags.raster,
+          goalsEnabled: flags.goals,
+          workflow: undefined,
+          selfAssessmentOnly: flags.self && !flags.raster && !flags.goals,
+        };
+        const groups = await loadTeacherGroupsWithStudents(user.id);
+        applyGroupEpoFeaturesToStudents(existing, groupId, flags, groups);
+      }
       if (typeof req.body?.active === 'boolean') {
         if (req.body.active) {
           if (meta[groupId]?.completedAt || prev.completedAt) {
@@ -1267,10 +1487,11 @@ export class EpoNotenController {
         }
 
         const resolved = roundIdQ
-          ? all.find(
-              (r) =>
-                r.roundId === roundIdQ && (!groupIdQ || r.groupId === groupIdQ),
-            ) || all.find((r) => r.roundId === roundIdQ) || all[0]
+          ? groupIdQ
+            ? all.find((r) => r.roundId === roundIdQ && r.groupId === groupIdQ) ||
+              all.find((r) => r.roundId === roundIdQ && (!groupIdQ || r.groupId === groupIdQ)) ||
+              all[0]
+            : all.find((r) => r.roundId === roundIdQ) || all[0]
           : all[0];
 
         const myEntry = findEntry(
@@ -1285,19 +1506,22 @@ export class EpoNotenController {
           resolved.groupId,
         );
         const groupPublished = isGroupPublishedForStudents(resolved.payload, resolved.groupId);
+        const studentSelfRaster = entryStudentUsesSelfRaster(
+          resolved.payload,
+          resolved.groupId,
+          myEntry,
+          categories.useRaster,
+        );
+        const selfRequired = entryRequiresStudentSelf(resolved.payload, resolved.groupId, myEntry);
         const canEditSelf =
-          resolved.isActiveForGroup &&
           groupPublished &&
-          categories.useRaster &&
-          !myEntry?.teacherReleasedAt &&
-          !myEntry?.withoutSelfAssessment &&
-          !myEntry?.teacherGradeOnly &&
-          !myEntry?.goalsWaived;
+          selfRequired &&
+          !myEntry?.studentSubmittedAt;
         const canEditGoals =
           resolved.isActiveForGroup &&
           Boolean(myEntry?.teacherReleasedAt) &&
           !myEntry?.goalsSubmittedAt &&
-          !myEntry?.goalsWaived;
+          !entryGoalsWaived(resolved.payload, resolved.groupId, myEntry);
 
         return res.json({
           sessions: all.map((r) => studentSessionDto(r, user.id, r.studentGroupIdsInRound)),
@@ -1315,6 +1539,9 @@ export class EpoNotenController {
             categoryWeightsPercent: categories.categoryWeightsPercent,
             variantId: categories.variantId,
             useRaster: categories.useRaster,
+            selfAssessmentOnly: groupSelfAssessmentOnly(resolved.payload, resolved.groupId),
+            workflow: groupWorkflow(resolved.payload, resolved.groupId),
+            studentUsesSelfRaster: studentSelfRaster,
           },
           myEntry,
           canEditSelf,
@@ -1370,41 +1597,45 @@ export class EpoNotenController {
           r.teacherId === teacherId &&
           (!groupId || r.groupId === groupId),
       );
-      if (!resolvedRound?.isActiveForGroup) {
-        return res.status(403).json({ error: 'Diese EPO-Runde ist nicht mehr aktiv' });
-      }
-
       const payload = await loadRound(teacherId, roundId);
       if (!payload) {
         return res.status(404).json({ error: 'Runde nicht gefunden' });
       }
-      const submitGroupId = resolvedRound.groupId;
-      if (!isGroupPublishedForStudents(payload, submitGroupId)) {
+      const submitGroupId = resolvedRound?.groupId ?? groupId;
+      if (!submitGroupId || !isGroupPublishedForStudents(payload, submitGroupId)) {
         return res.status(403).json({ error: 'EPO-Runde ist nicht freigegeben' });
       }
 
       const groups = await loadTeacherGroupsWithStudents(teacherId);
       const gidsInRound = groupIdsForStudentInRound(payload, user.id, groups);
       const existing = findEntry(payload, user.id, submitGroupId, gidsInRound);
-      if (existing?.teacherReleasedAt) {
-        return res.status(403).json({ error: 'Bewertung bereits freigegeben — keine Änderung mehr möglich' });
+      if (existing?.studentSubmittedAt) {
+        return res.status(403).json({ error: 'Selbsteinschätzung bereits abgegeben — keine Änderung mehr möglich' });
       }
       if (existing?.withoutSelfAssessment || existing?.teacherGradeOnly) {
         return res.status(403).json({ error: 'Für dich ist keine Selbsteinschätzung vorgesehen' });
       }
 
       const variantCats = await roundCategoryTexts(teacherId, payload, submitGroupId);
-      if (!variantCats.useRaster) {
-        return res.status(403).json({ error: 'Für diese Runde ist kein EPO-Zettel vorgesehen' });
+      const selfRequired = entryRequiresStudentSelf(payload, submitGroupId, existing);
+      if (!selfRequired) {
+        return res.status(403).json({ error: 'Für diese Runde ist keine Selbsteinschätzung vorgesehen' });
       }
+      const studentSelfRaster = entryStudentUsesSelfRaster(
+        payload,
+        submitGroupId,
+        existing,
+        variantCats.useRaster,
+      );
 
       const selfScores = normalizeCategoryScores(req.body?.selfScores);
       const total = epoRoundedPoints(selfScores, variantCats.categoryWeightsPercent);
 
+      const submitGroup = groups.find((g) => g.id === submitGroupId);
       const mode = assessmentModeForGroup(
         payload,
-        resolvedRound.groupId,
-        resolvedRound.groupName,
+        submitGroupId,
+        resolvedRound?.groupName ?? submitGroup?.name,
       );
       const selfGradeFromTable =
         typeof req.body?.selfGradeFromTable === 'string' && req.body.selfGradeFromTable.trim()
@@ -1554,10 +1785,15 @@ export class EpoNotenController {
       if (typeof req.body?.goalsWaived === 'boolean') {
         goalsWaived = req.body.goalsWaived;
       }
+      let selfUsesRaster = existing?.selfUsesRaster;
+      if (typeof req.body?.selfUsesRaster === 'boolean') {
+        selfUsesRaster = req.body.selfUsesRaster;
+      }
       const teacherJustification =
         typeof req.body?.teacherJustification === 'string'
           ? req.body.teacherJustification.trim()
           : existing?.teacherJustification ?? '';
+      const revokeRelease = req.body?.revokeRelease === true;
 
       const entry: EpoNotenEntry = {
         studentId,
@@ -1571,7 +1807,7 @@ export class EpoNotenController {
         studentSubmittedAt: existing?.studentSubmittedAt ?? null,
         teacherScores,
         teacherGrade,
-        teacherReleasedAt: existing?.teacherReleasedAt ?? null,
+        teacherReleasedAt: revokeRelease ? null : existing?.teacherReleasedAt ?? null,
         goal: existing?.goal,
         goalAction: existing?.goalAction,
         goalsSubmittedAt: existing?.goalsSubmittedAt ?? null,
@@ -1579,6 +1815,7 @@ export class EpoNotenController {
         withoutSelfAssessment: teacherGradeOnly ? false : withoutSelfAssessment,
         teacherGradeOnly,
         teacherJustification,
+        selfUsesRaster,
       };
 
       upsertEntry(payload, entry);
@@ -1644,8 +1881,14 @@ export class EpoNotenController {
         const mode = entryGroupId
           ? assessmentModeForGroup(payload, entryGroupId, groupNameById.get(entryGroupId))
           : 'note';
-        const grade = effectiveTeacherGrade(entry, mode, variantCats.categoryWeightsPercent);
+        const grade = effectiveTeacherGrade(payload, entryGroupId, entry, mode, variantCats.categoryWeightsPercent);
         if (!grade) continue;
+        if (
+          entryRequiresStudentSelf(payload, entryGroupId, entry) &&
+          !entry.studentSubmittedAt
+        ) {
+          continue;
+        }
         entry.teacherGrade = grade;
         entry.teacherReleasedAt = now;
         count += 1;
@@ -1817,6 +2060,73 @@ export class EpoNotenController {
     }
   }
 
+  /** Lehrkraft: ganze Lerngruppe „Nur Einschätzung“ (Teil 1, keine Ziele) */
+  static async bulkSelfAssessmentOnlyForGroup(req: Request, res: Response) {
+    try {
+      const user = await getUserByLoginCode(req);
+      if (!user) return res.status(401).json({ error: 'Nicht angemeldet' });
+      if (user.role !== 'TEACHER') return res.status(403).json({ error: 'Nur Lehrkräfte' });
+
+      const roundId = String(req.params.id || '').trim();
+      const groupId = typeof req.body?.groupId === 'string' ? req.body.groupId.trim() : '';
+      if (!groupId) return res.status(400).json({ error: 'groupId erforderlich' });
+
+      const payload = await loadRound(user.id, roundId);
+      if (!payload) return res.status(404).json({ error: 'Runde nicht gefunden' });
+      if (!payload.groupIds.includes(groupId)) {
+        return res.status(400).json({ error: 'Diese Lerngruppe gehört nicht zu dieser Runde' });
+      }
+
+      const meta = ensureGroupMeta(payload);
+      meta[groupId] = { ...meta[groupId], selfAssessmentOnly: true };
+
+      const groups = await loadTeacherGroupsWithStudents(user.id);
+      const group = groups.find((g) => g.id === groupId);
+      if (!group) return res.status(400).json({ error: 'Lerngruppe nicht gefunden' });
+
+      let updatedCount = 0;
+      let skippedCount = 0;
+
+      for (const s of group.students) {
+        const gidsInRound = groupIdsForStudentInRound(payload, s.id, groups);
+        const existing = findEntry(payload, s.id, groupId, gidsInRound);
+        if (existing?.goalsSubmittedAt) {
+          skippedCount += 1;
+          continue;
+        }
+        const entry: EpoNotenEntry = {
+          studentId: s.id,
+          groupId,
+          studentName: stripMiddleNames(s.name),
+          suggestedGrade: existing?.suggestedGrade,
+          suggestedGradeMode: existing?.suggestedGradeMode,
+          justification: existing?.justification,
+          selfScores: existing?.selfScores,
+          selfGradeFromTable: existing?.selfGradeFromTable,
+          studentSubmittedAt: existing?.studentSubmittedAt ?? null,
+          teacherScores: existing?.teacherScores,
+          teacherGrade: existing?.teacherGrade,
+          teacherReleasedAt: existing?.teacherReleasedAt ?? null,
+          goal: existing?.goal,
+          goalAction: existing?.goalAction,
+          goalsSubmittedAt: existing?.goalsSubmittedAt ?? null,
+          goalsWaived: true,
+          withoutSelfAssessment: false,
+          teacherGradeOnly: false,
+          teacherJustification: existing?.teacherJustification,
+        };
+        upsertEntry(payload, entry);
+        updatedCount += 1;
+      }
+
+      await saveRound(user.id, payload);
+      return res.json({ success: true, updatedCount, skippedCount, selfAssessmentOnly: true });
+    } catch (error) {
+      console.error('EpoNoten bulkSelfAssessmentOnlyForGroup error:', error);
+      return res.status(500).json({ error: 'Fehler beim Setzen' });
+    }
+  }
+
   /** Freigegebene EPO-Noten einer Lerngruppe ins Notenschema übernehmen (Kategorie = Rundentitel). */
   static async integrateGradingSchema(req: Request, res: Response) {
     try {
@@ -1855,6 +2165,14 @@ export class EpoNotenController {
           error: 'Keine freigegebenen Noten zum Übertragen (Note eintragen und freigeben).',
         });
       }
+
+      const meta = ensureGroupMeta(payload);
+      meta[groupId] = {
+        ...meta[groupId],
+        schemaIntegratedAt: new Date().toISOString(),
+      };
+      payload.groupMeta = meta;
+      await saveRound(user.id, payload);
 
       return res.json({
         success: true,

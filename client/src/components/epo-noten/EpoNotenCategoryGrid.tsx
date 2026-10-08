@@ -32,6 +32,8 @@ type Props = {
   teacherEmphasis?: boolean;
   /** Eindeutige Radio-Gruppen pro Zeile (z. B. Schüler-ID) */
   radioGroupId?: string;
+  /** Aktion oben rechts in der Raster-Kopfzeile */
+  headerAction?: React.ReactNode;
 };
 
 export function EpoNotenCategoryGrid({
@@ -47,6 +49,7 @@ export function EpoNotenCategoryGrid({
   studentOverlayScores,
   teacherEmphasis,
   radioGroupId = 'default',
+  headerAction,
 }: Props) {
   const isTeacherOwn = teacherEmphasis && !studentGhost;
   const setScore = (index: number, value: number) => {
@@ -76,24 +79,34 @@ export function EpoNotenCategoryGrid({
       }}
     >
       {label && (
-        <Typography
-          variant="subtitle2"
+        <Box
           sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 0.5,
             mb: 0,
             px: compact ? 1 : 1.25,
-            py: compact ? 0.45 : 0.75,
-            fontWeight: 800,
-            fontSize: compact ? '0.78rem' : undefined,
+            py: compact ? 0.35 : 0.55,
             bgcolor: studentGhost
               ? 'rgba(156, 39, 176, 0.07)'
               : isTeacherOwn
                 ? 'rgba(25, 118, 210, 0.22)'
                 : epoNotenPalette.primaryTint,
-            color: studentGhost ? 'rgba(106, 27, 154, 0.75)' : isTeacherOwn ? '#0d47a1' : epoNotenPalette.heading,
           }}
         >
-          {label}
-        </Typography>
+          <Typography
+            variant="subtitle2"
+            sx={{
+              fontWeight: 800,
+              fontSize: compact ? '0.78rem' : undefined,
+              color: studentGhost ? 'rgba(106, 27, 154, 0.75)' : isTeacherOwn ? '#0d47a1' : epoNotenPalette.heading,
+            }}
+          >
+            {label}
+          </Typography>
+          {headerAction ?? null}
+        </Box>
       )}
       <Table
         size={compact ? 'small' : 'medium'}

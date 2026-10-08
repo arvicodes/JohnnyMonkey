@@ -50,7 +50,8 @@ kill_port() {
 }
 
 # Check and free default ports if needed
-DEFAULT_PORTS=(3000 3001 3002 3003)
+# 3003 = API — nicht vom Client beenden
+DEFAULT_PORTS=(3000 3001 3002)
 for port in "${DEFAULT_PORTS[@]}"; do
     if check_port $port; then
         echo -e "${YELLOW}⚠️  Port $port is busy${NC}"

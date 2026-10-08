@@ -35,15 +35,179 @@ const rasterResultFromTotal = (mode, total) => {
         return String(t);
     return gradeFromTotalPoints(t);
 };
-const effectiveTeacherGrade = (entry, mode, weightsPercent) => {
+const groupWorkflow = (payload, groupId) => {
+    var _a, _b, _c, _d;
+    const w = (_b = (_a = payload.groupMeta) === null || _a === void 0 ? void 0 : _a[groupId]) === null || _b === void 0 ? void 0 : _b.workflow;
+    if (w === 'teacher_raster' || w === 'self_no_raster' || w === 'teacher_only')
+        return w;
+    if ((_d = (_c = payload.groupMeta) === null || _c === void 0 ? void 0 : _c[groupId]) === null || _d === void 0 ? void 0 : _d.selfAssessmentOnly)
+        return 'self_no_raster';
+    return 'standard';
+};
+const groupSelfAssessmentOnly = (payload, groupId) => groupWorkflow(payload, groupId) === 'self_no_raster';
+const groupTeacherUsesRaster = (payload, groupId) => {
+    var _a, _b, _c;
+    const m = (_a = payload.groupMeta) === null || _a === void 0 ? void 0 : _a[groupId];
+    if ((m === null || m === void 0 ? void 0 : m.teacherRasterEnabled) === false)
+        return false;
+    if ((m === null || m === void 0 ? void 0 : m.selfAssessmentEnabled) === false && (m === null || m === void 0 ? void 0 : m.teacherRasterEnabled) !== true)
+        return false;
+    if (groupWorkflow(payload, groupId) === 'teacher_only')
+        return false;
+    const variantId = (_c = (_b = payload.variantIdByGroup) === null || _b === void 0 ? void 0 : _b[groupId]) !== null && _c !== void 0 ? _c : payload.variantId;
+    return variantId != null && variantId !== epoNotenVariantPresets_1.EPO_NO_VARIANT_ID;
+};
+const effectiveTeacherGrade = (payload, groupId, entry, mode, weightsPercent) => {
     var _a;
     const trimmed = (_a = entry.teacherGrade) === null || _a === void 0 ? void 0 : _a.trim();
     if (trimmed)
         return trimmed;
+    if (!groupTeacherUsesRaster(payload, groupId))
+        return '';
     const scores = normalizeCategoryScores(entry.teacherScores);
     if (!allCategoriesSelected(scores))
         return '';
     return rasterResultFromTotal(mode, (0, epoNotenScoring_1.epoRoundedPoints)(scores, weightsPercent));
+};
+const entryRequiresStudentSelf = (payload, groupId, entry) => {
+    var _a;
+    if ((entry === null || entry === void 0 ? void 0 : entry.withoutSelfAssessment) || (entry === null || entry === void 0 ? void 0 : entry.teacherGradeOnly))
+        return false;
+    const gm = (_a = payload.groupMeta) === null || _a === void 0 ? void 0 : _a[groupId];
+    if ((gm === null || gm === void 0 ? void 0 : gm.selfAssessmentEnabled) === false)
+        return false;
+    if (groupWorkflow(payload, groupId) === 'teacher_only')
+        return false;
+    return true;
+};
+const entryStudentUsesSelfRaster = (payload, groupId, entry, useRaster) => {
+    var _a;
+    if (!entryRequiresStudentSelf(payload, groupId, entry))
+        return false;
+    if (!useRaster)
+        return false;
+    if ((entry === null || entry === void 0 ? void 0 : entry.selfUsesRaster) === false)
+        return false;
+    if ((entry === null || entry === void 0 ? void 0 : entry.selfUsesRaster) === true)
+        return true;
+    const gm = (_a = payload.groupMeta) === null || _a === void 0 ? void 0 : _a[groupId];
+    const wf = groupWorkflow(payload, groupId);
+    if (wf === 'self_no_raster' || wf === 'teacher_only')
+        return false;
+    if ((gm === null || gm === void 0 ? void 0 : gm.teacherRasterEnabled) === false)
+        return false;
+    return true;
+};
+const applyGroupEpoFeaturesToStudents = (payload, groupId, flags, groups) => {
+    var _a, _b, _c;
+    const group = groups.find((g) => g.id === groupId);
+    if (!group)
+        return;
+    if (!payload.variantIdByGroup || typeof payload.variantIdByGroup !== 'object') {
+        payload.variantIdByGroup = {};
+    }
+    if (!flags.self && !flags.raster) {
+        payload.variantIdByGroup[groupId] = epoNotenVariantPresets_1.EPO_NO_VARIANT_ID;
+    }
+    else if (flags.raster) {
+        const cur = payload.variantIdByGroup[groupId];
+        if (!cur || cur === epoNotenVariantPresets_1.EPO_NO_VARIANT_ID) {
+            payload.variantIdByGroup[groupId] = epoNotenVariantPresets_1.EPO_VARIANT2_ID;
+        }
+    }
+    else {
+        payload.variantIdByGroup[groupId] = epoNotenVariantPresets_1.EPO_NO_VARIANT_ID;
+    }
+    const fields = {
+        withoutSelfAssessment: !flags.self,
+        teacherGradeOnly: !flags.self && !flags.raster,
+        goalsWaived: !flags.goals,
+        selfUsesRaster: flags.self && flags.raster ? true : flags.self && !flags.raster ? false : undefined,
+    };
+    for (const s of group.students) {
+        const gidsInRound = groupIdsForStudentInRound(payload, s.id, groups);
+        const existing = findEntry(payload, s.id, groupId, gidsInRound);
+        if (existing === null || existing === void 0 ? void 0 : existing.goalsSubmittedAt)
+            continue;
+        const keepRasterGrades = flags.raster || Boolean(existing === null || existing === void 0 ? void 0 : existing.teacherReleasedAt);
+        const entry = {
+            studentId: s.id,
+            groupId,
+            studentName: (0, webUntisStudentList_1.stripMiddleNames)(s.name),
+            suggestedGrade: existing === null || existing === void 0 ? void 0 : existing.suggestedGrade,
+            suggestedGradeMode: existing === null || existing === void 0 ? void 0 : existing.suggestedGradeMode,
+            justification: existing === null || existing === void 0 ? void 0 : existing.justification,
+            selfScores: existing === null || existing === void 0 ? void 0 : existing.selfScores,
+            selfGradeFromTable: existing === null || existing === void 0 ? void 0 : existing.selfGradeFromTable,
+            studentSubmittedAt: (_a = existing === null || existing === void 0 ? void 0 : existing.studentSubmittedAt) !== null && _a !== void 0 ? _a : null,
+            teacherScores: keepRasterGrades ? existing === null || existing === void 0 ? void 0 : existing.teacherScores : undefined,
+            teacherGrade: keepRasterGrades ? existing === null || existing === void 0 ? void 0 : existing.teacherGrade : '',
+            teacherReleasedAt: (_b = existing === null || existing === void 0 ? void 0 : existing.teacherReleasedAt) !== null && _b !== void 0 ? _b : null,
+            goal: existing === null || existing === void 0 ? void 0 : existing.goal,
+            goalAction: existing === null || existing === void 0 ? void 0 : existing.goalAction,
+            goalsSubmittedAt: (_c = existing === null || existing === void 0 ? void 0 : existing.goalsSubmittedAt) !== null && _c !== void 0 ? _c : null,
+            teacherJustification: existing === null || existing === void 0 ? void 0 : existing.teacherJustification,
+            ...fields,
+        };
+        upsertEntry(payload, entry);
+    }
+};
+const applyGroupWorkflowToStudents = (payload, groupId, workflow, groups) => {
+    var _a, _b, _c;
+    const group = groups.find((g) => g.id === groupId);
+    if (!group)
+        return;
+    if (!payload.variantIdByGroup || typeof payload.variantIdByGroup !== 'object') {
+        payload.variantIdByGroup = {};
+    }
+    if (workflow === 'teacher_only') {
+        payload.variantIdByGroup[groupId] = epoNotenVariantPresets_1.EPO_NO_VARIANT_ID;
+    }
+    else {
+        const cur = payload.variantIdByGroup[groupId];
+        if (!cur || cur === epoNotenVariantPresets_1.EPO_NO_VARIANT_ID) {
+            payload.variantIdByGroup[groupId] = epoNotenVariantPresets_1.EPO_VARIANT2_ID;
+        }
+    }
+    for (const s of group.students) {
+        const gidsInRound = groupIdsForStudentInRound(payload, s.id, groups);
+        const existing = findEntry(payload, s.id, groupId, gidsInRound);
+        if (existing === null || existing === void 0 ? void 0 : existing.goalsSubmittedAt)
+            continue;
+        const entry = {
+            studentId: s.id,
+            groupId,
+            studentName: (0, webUntisStudentList_1.stripMiddleNames)(s.name),
+            suggestedGrade: existing === null || existing === void 0 ? void 0 : existing.suggestedGrade,
+            suggestedGradeMode: existing === null || existing === void 0 ? void 0 : existing.suggestedGradeMode,
+            justification: existing === null || existing === void 0 ? void 0 : existing.justification,
+            selfScores: existing === null || existing === void 0 ? void 0 : existing.selfScores,
+            selfGradeFromTable: existing === null || existing === void 0 ? void 0 : existing.selfGradeFromTable,
+            studentSubmittedAt: (_a = existing === null || existing === void 0 ? void 0 : existing.studentSubmittedAt) !== null && _a !== void 0 ? _a : null,
+            teacherScores: existing === null || existing === void 0 ? void 0 : existing.teacherScores,
+            teacherGrade: existing === null || existing === void 0 ? void 0 : existing.teacherGrade,
+            teacherReleasedAt: (_b = existing === null || existing === void 0 ? void 0 : existing.teacherReleasedAt) !== null && _b !== void 0 ? _b : null,
+            goal: existing === null || existing === void 0 ? void 0 : existing.goal,
+            goalAction: existing === null || existing === void 0 ? void 0 : existing.goalAction,
+            goalsSubmittedAt: (_c = existing === null || existing === void 0 ? void 0 : existing.goalsSubmittedAt) !== null && _c !== void 0 ? _c : null,
+            withoutSelfAssessment: workflow === 'teacher_raster',
+            teacherGradeOnly: workflow === 'teacher_only',
+            goalsWaived: workflow === 'self_no_raster' || workflow === 'teacher_only',
+            teacherJustification: existing === null || existing === void 0 ? void 0 : existing.teacherJustification,
+        };
+        if (workflow === 'standard') {
+            entry.withoutSelfAssessment = false;
+            entry.teacherGradeOnly = false;
+            entry.goalsWaived = Boolean(existing === null || existing === void 0 ? void 0 : existing.goalsWaived);
+        }
+        upsertEntry(payload, entry);
+    }
+};
+const entryGoalsWaived = (payload, groupId, entry) => {
+    var _a, _b;
+    return Boolean(entry === null || entry === void 0 ? void 0 : entry.goalsWaived) ||
+        groupSelfAssessmentOnly(payload, groupId) ||
+        ((_b = (_a = payload.groupMeta) === null || _a === void 0 ? void 0 : _a[groupId]) === null || _b === void 0 ? void 0 : _b.goalsEnabled) === false;
 };
 const usesPerGroupPublish = (payload) => {
     const meta = payload.groupMeta;
@@ -449,24 +613,24 @@ const studentSessionDto = (resolved, studentId, studentGroupIdsInRound) => {
     const studentSubmitted = Boolean(entry === null || entry === void 0 ? void 0 : entry.studentSubmittedAt);
     const goalsSubmitted = Boolean(entry === null || entry === void 0 ? void 0 : entry.goalsSubmittedAt);
     const usesRaster = (0, epoNotenVariants_1.effectiveEpoVariantIdForGroup)(resolved.payload, resolved.groupId) !== null;
+    const goalsWaived = entryGoalsWaived(resolved.payload, resolved.groupId, entry);
     const noteOnlyFlow = Boolean((entry === null || entry === void 0 ? void 0 : entry.teacherGradeOnly) || !usesRaster);
-    const workflowComplete = Boolean(entry === null || entry === void 0 ? void 0 : entry.teacherReleasedAt) &&
-        (Boolean(entry === null || entry === void 0 ? void 0 : entry.goalsSubmittedAt) ||
-            Boolean(entry === null || entry === void 0 ? void 0 : entry.goalsWaived) ||
-            noteOnlyFlow);
+    const selfPartDone = Boolean(entry === null || entry === void 0 ? void 0 : entry.teacherGradeOnly) ||
+        Boolean(entry === null || entry === void 0 ? void 0 : entry.withoutSelfAssessment) ||
+        !usesRaster ||
+        studentSubmitted;
+    const goalsPartDone = noteOnlyFlow || goalsWaived || goalsSubmitted;
+    const workflowComplete = teacherReleased && selfPartDone && goalsPartDone;
     const needsSelfAssessment = isActive &&
         published &&
-        !workflowComplete &&
+        !teacherReleased &&
         usesRaster &&
         !studentSubmitted &&
         !(entry === null || entry === void 0 ? void 0 : entry.withoutSelfAssessment) &&
-        !(entry === null || entry === void 0 ? void 0 : entry.teacherGradeOnly) &&
-        !(entry === null || entry === void 0 ? void 0 : entry.goalsWaived);
+        !(entry === null || entry === void 0 ? void 0 : entry.teacherGradeOnly);
     const needsGoals = isActive &&
-        !workflowComplete &&
         teacherReleased &&
-        !goalsSubmitted &&
-        !(entry === null || entry === void 0 ? void 0 : entry.goalsWaived) &&
+        !goalsPartDone &&
         !noteOnlyFlow;
     const actionRequired = needsSelfAssessment || needsGoals;
     return {
@@ -554,10 +718,12 @@ class EpoNotenController {
                 for (const s of g.students) {
                     const gidsInRound = groupIdsForStudentInRound(round, s.id, groups);
                     const existing = findEntry(round, s.id, g.id, gidsInRound);
+                    const selfOnlyDefault = groupSelfAssessmentOnly(round, g.id);
                     const row = existing !== null && existing !== void 0 ? existing : {
                         studentId: s.id,
                         studentName: (0, webUntisStudentList_1.stripMiddleNames)(s.name),
                         groupId: g.id,
+                        ...(selfOnlyDefault ? { goalsWaived: true } : {}),
                     };
                     students.push({
                         ...row,
@@ -588,12 +754,11 @@ class EpoNotenController {
                     if (passive || !groupLive)
                         return false;
                     const usesRaster = gid ? (0, epoNotenVariants_1.effectiveEpoVariantIdForGroup)(round, gid) !== null : false;
-                    if (e.goalsWaived)
-                        return false;
+                    const waived = entryGoalsWaived(round, gid !== null && gid !== void 0 ? gid : '', e);
                     if (usesRaster && !e.studentSubmittedAt && !e.withoutSelfAssessment && !e.teacherGradeOnly) {
                         return true;
                     }
-                    if (e.teacherReleasedAt && !e.goalsSubmittedAt)
+                    if (e.teacherReleasedAt && !e.goalsSubmittedAt && !waived)
                         return true;
                     return false;
                 };
@@ -651,9 +816,12 @@ class EpoNotenController {
             const id = (0, crypto_1.randomUUID)();
             const variantIdRaw = typeof ((_c = req.body) === null || _c === void 0 ? void 0 : _c.variantId) === 'string' ? req.body.variantId.trim() : '';
             const store = await loadVariantsStore(user.id);
-            let roundVariantId = null;
+            let roundVariantId = epoNotenVariantPresets_1.EPO_VARIANT2_ID;
             if (variantIdRaw && variantIdRaw !== epoNotenVariantPresets_1.EPO_NO_VARIANT_ID) {
                 roundVariantId = (0, epoNotenVariants_1.resolveVariant)(store, variantIdRaw).id;
+            }
+            else if (variantIdRaw === epoNotenVariantPresets_1.EPO_NO_VARIANT_ID) {
+                roundVariantId = null;
             }
             const data = {
                 id,
@@ -839,7 +1007,7 @@ class EpoNotenController {
     }
     /** Kurs als „fertig“ markieren (Lehrkraft) */
     static async patchGroupMeta(req, res) {
-        var _a, _b, _c, _d, _e, _f, _g;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
         try {
             const user = await getUserByLoginCode(req);
             if (!user)
@@ -879,13 +1047,50 @@ class EpoNotenController {
                     existing.variantIdByGroup[groupId] = (0, epoNotenVariants_1.resolveVariant)(store, raw).id;
                 }
             }
-            if (typeof ((_e = req.body) === null || _e === void 0 ? void 0 : _e.active) === 'boolean') {
+            if (typeof ((_e = req.body) === null || _e === void 0 ? void 0 : _e.workflow) === 'string') {
+                const wf = req.body.workflow;
+                const allowed = [
+                    'standard',
+                    'teacher_raster',
+                    'self_no_raster',
+                    'teacher_only',
+                ];
+                if (!allowed.includes(wf)) {
+                    return res.status(400).json({ error: 'Ungültiger workflow' });
+                }
+                meta[groupId] = {
+                    ...(_f = meta[groupId]) !== null && _f !== void 0 ? _f : prev,
+                    workflow: wf === 'standard' ? undefined : wf,
+                    selfAssessmentOnly: wf === 'self_no_raster',
+                };
+                const groups = await loadTeacherGroupsWithStudents(user.id);
+                applyGroupWorkflowToStudents(existing, groupId, wf, groups);
+            }
+            const bodyFeatures = (_g = req.body) === null || _g === void 0 ? void 0 : _g.epoFeatures;
+            if (bodyFeatures && typeof bodyFeatures === 'object') {
+                const flags = {
+                    self: bodyFeatures.self !== false,
+                    raster: bodyFeatures.raster !== false,
+                    goals: bodyFeatures.goals !== false,
+                };
+                meta[groupId] = {
+                    ...(_h = meta[groupId]) !== null && _h !== void 0 ? _h : prev,
+                    selfAssessmentEnabled: flags.self,
+                    teacherRasterEnabled: flags.raster,
+                    goalsEnabled: flags.goals,
+                    workflow: undefined,
+                    selfAssessmentOnly: flags.self && !flags.raster && !flags.goals,
+                };
+                const groups = await loadTeacherGroupsWithStudents(user.id);
+                applyGroupEpoFeaturesToStudents(existing, groupId, flags, groups);
+            }
+            if (typeof ((_j = req.body) === null || _j === void 0 ? void 0 : _j.active) === 'boolean') {
                 if (req.body.active) {
-                    if (((_f = meta[groupId]) === null || _f === void 0 ? void 0 : _f.completedAt) || prev.completedAt) {
+                    if (((_k = meta[groupId]) === null || _k === void 0 ? void 0 : _k.completedAt) || prev.completedAt) {
                         return res.status(400).json({ error: 'Kurs ist fertig — „aktiv“ ist deaktiviert.' });
                     }
                     const publishedAt = new Date().toISOString();
-                    meta[groupId] = { ...(_g = meta[groupId]) !== null && _g !== void 0 ? _g : prev, publishedAt };
+                    meta[groupId] = { ...(_l = meta[groupId]) !== null && _l !== void 0 ? _l : prev, publishedAt };
                     markGroupsPublished(existing, [groupId], publishedAt);
                     const owned = await loadTeacherGroupsWithStudents(user.id);
                     const index = await loadTeacherIndex(user.id);
@@ -1108,22 +1313,24 @@ class EpoNotenController {
                     });
                 }
                 const resolved = roundIdQ
-                    ? all.find((r) => r.roundId === roundIdQ && (!groupIdQ || r.groupId === groupIdQ)) || all.find((r) => r.roundId === roundIdQ) || all[0]
+                    ? groupIdQ
+                        ? all.find((r) => r.roundId === roundIdQ && r.groupId === groupIdQ) ||
+                            all.find((r) => r.roundId === roundIdQ && (!groupIdQ || r.groupId === groupIdQ)) ||
+                            all[0]
+                        : all.find((r) => r.roundId === roundIdQ) || all[0]
                     : all[0];
-                const myEntry = findEntry(resolved.payload, user.id, resolved.groupId);
+                const myEntry = findEntry(resolved.payload, user.id, resolved.groupId, resolved.studentGroupIdsInRound);
                 const categories = await roundCategoryTexts(resolved.teacherId, resolved.payload, resolved.groupId);
                 const groupPublished = isGroupPublishedForStudents(resolved.payload, resolved.groupId);
-                const canEditSelf = resolved.isActiveForGroup &&
-                    groupPublished &&
-                    categories.useRaster &&
-                    !(myEntry === null || myEntry === void 0 ? void 0 : myEntry.teacherReleasedAt) &&
-                    !(myEntry === null || myEntry === void 0 ? void 0 : myEntry.withoutSelfAssessment) &&
-                    !(myEntry === null || myEntry === void 0 ? void 0 : myEntry.teacherGradeOnly) &&
-                    !(myEntry === null || myEntry === void 0 ? void 0 : myEntry.goalsWaived);
+                const studentSelfRaster = entryStudentUsesSelfRaster(resolved.payload, resolved.groupId, myEntry, categories.useRaster);
+                const selfRequired = entryRequiresStudentSelf(resolved.payload, resolved.groupId, myEntry);
+                const canEditSelf = groupPublished &&
+                    selfRequired &&
+                    !(myEntry === null || myEntry === void 0 ? void 0 : myEntry.studentSubmittedAt);
                 const canEditGoals = resolved.isActiveForGroup &&
                     Boolean(myEntry === null || myEntry === void 0 ? void 0 : myEntry.teacherReleasedAt) &&
                     !(myEntry === null || myEntry === void 0 ? void 0 : myEntry.goalsSubmittedAt) &&
-                    !(myEntry === null || myEntry === void 0 ? void 0 : myEntry.goalsWaived);
+                    !entryGoalsWaived(resolved.payload, resolved.groupId, myEntry);
                 return res.json({
                     sessions: all.map((r) => studentSessionDto(r, user.id, r.studentGroupIdsInRound)),
                     round: {
@@ -1140,6 +1347,9 @@ class EpoNotenController {
                         categoryWeightsPercent: categories.categoryWeightsPercent,
                         variantId: categories.variantId,
                         useRaster: categories.useRaster,
+                        selfAssessmentOnly: groupSelfAssessmentOnly(resolved.payload, resolved.groupId),
+                        workflow: groupWorkflow(resolved.payload, resolved.groupId),
+                        studentUsesSelfRaster: studentSelfRaster,
                     },
                     myEntry,
                     canEditSelf,
@@ -1164,7 +1374,7 @@ class EpoNotenController {
         }
     }
     static async submitSelf(req, res) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
         try {
             const user = await getUserByLoginCode(req);
             if (!user)
@@ -1189,34 +1399,34 @@ class EpoNotenController {
             const resolvedRound = allRounds.find((r) => r.roundId === roundId &&
                 r.teacherId === teacherId &&
                 (!groupId || r.groupId === groupId));
-            if (!(resolvedRound === null || resolvedRound === void 0 ? void 0 : resolvedRound.isActiveForGroup)) {
-                return res.status(403).json({ error: 'Diese EPO-Runde ist nicht mehr aktiv' });
-            }
             const payload = await loadRound(teacherId, roundId);
             if (!payload) {
                 return res.status(404).json({ error: 'Runde nicht gefunden' });
             }
-            const submitGroupId = resolvedRound.groupId;
-            if (!isGroupPublishedForStudents(payload, submitGroupId)) {
+            const submitGroupId = (_d = resolvedRound === null || resolvedRound === void 0 ? void 0 : resolvedRound.groupId) !== null && _d !== void 0 ? _d : groupId;
+            if (!submitGroupId || !isGroupPublishedForStudents(payload, submitGroupId)) {
                 return res.status(403).json({ error: 'EPO-Runde ist nicht freigegeben' });
             }
             const groups = await loadTeacherGroupsWithStudents(teacherId);
             const gidsInRound = groupIdsForStudentInRound(payload, user.id, groups);
             const existing = findEntry(payload, user.id, submitGroupId, gidsInRound);
-            if (existing === null || existing === void 0 ? void 0 : existing.teacherReleasedAt) {
-                return res.status(403).json({ error: 'Bewertung bereits freigegeben — keine Änderung mehr möglich' });
+            if (existing === null || existing === void 0 ? void 0 : existing.studentSubmittedAt) {
+                return res.status(403).json({ error: 'Selbsteinschätzung bereits abgegeben — keine Änderung mehr möglich' });
             }
             if ((existing === null || existing === void 0 ? void 0 : existing.withoutSelfAssessment) || (existing === null || existing === void 0 ? void 0 : existing.teacherGradeOnly)) {
                 return res.status(403).json({ error: 'Für dich ist keine Selbsteinschätzung vorgesehen' });
             }
             const variantCats = await roundCategoryTexts(teacherId, payload, submitGroupId);
-            if (!variantCats.useRaster) {
-                return res.status(403).json({ error: 'Für diese Runde ist kein EPO-Zettel vorgesehen' });
+            const selfRequired = entryRequiresStudentSelf(payload, submitGroupId, existing);
+            if (!selfRequired) {
+                return res.status(403).json({ error: 'Für diese Runde ist keine Selbsteinschätzung vorgesehen' });
             }
-            const selfScores = normalizeCategoryScores((_d = req.body) === null || _d === void 0 ? void 0 : _d.selfScores);
+            const studentSelfRaster = entryStudentUsesSelfRaster(payload, submitGroupId, existing, variantCats.useRaster);
+            const selfScores = normalizeCategoryScores((_e = req.body) === null || _e === void 0 ? void 0 : _e.selfScores);
             const total = (0, epoNotenScoring_1.epoRoundedPoints)(selfScores, variantCats.categoryWeightsPercent);
-            const mode = assessmentModeForGroup(payload, resolvedRound.groupId, resolvedRound.groupName);
-            const selfGradeFromTable = typeof ((_e = req.body) === null || _e === void 0 ? void 0 : _e.selfGradeFromTable) === 'string' && req.body.selfGradeFromTable.trim()
+            const submitGroup = groups.find((g) => g.id === submitGroupId);
+            const mode = assessmentModeForGroup(payload, submitGroupId, (_f = resolvedRound === null || resolvedRound === void 0 ? void 0 : resolvedRound.groupName) !== null && _f !== void 0 ? _f : submitGroup === null || submitGroup === void 0 ? void 0 : submitGroup.name);
+            const selfGradeFromTable = typeof ((_g = req.body) === null || _g === void 0 ? void 0 : _g.selfGradeFromTable) === 'string' && req.body.selfGradeFromTable.trim()
                 ? req.body.selfGradeFromTable.trim()
                 : rasterResultFromTotal(mode, total);
             const suggestedGradeMode = mode;
@@ -1224,18 +1434,18 @@ class EpoNotenController {
                 studentId: user.id,
                 groupId: submitGroupId,
                 studentName: (0, webUntisStudentList_1.stripMiddleNames)(user.name),
-                suggestedGrade: typeof ((_f = req.body) === null || _f === void 0 ? void 0 : _f.suggestedGrade) === 'string' ? req.body.suggestedGrade.trim() : '',
+                suggestedGrade: typeof ((_h = req.body) === null || _h === void 0 ? void 0 : _h.suggestedGrade) === 'string' ? req.body.suggestedGrade.trim() : '',
                 suggestedGradeMode,
-                justification: typeof ((_g = req.body) === null || _g === void 0 ? void 0 : _g.justification) === 'string' ? req.body.justification.trim() : '',
+                justification: typeof ((_j = req.body) === null || _j === void 0 ? void 0 : _j.justification) === 'string' ? req.body.justification.trim() : '',
                 selfScores,
                 selfGradeFromTable,
                 studentSubmittedAt: new Date().toISOString(),
                 teacherScores: existing === null || existing === void 0 ? void 0 : existing.teacherScores,
                 teacherGrade: existing === null || existing === void 0 ? void 0 : existing.teacherGrade,
-                teacherReleasedAt: (_h = existing === null || existing === void 0 ? void 0 : existing.teacherReleasedAt) !== null && _h !== void 0 ? _h : null,
+                teacherReleasedAt: (_k = existing === null || existing === void 0 ? void 0 : existing.teacherReleasedAt) !== null && _k !== void 0 ? _k : null,
                 goal: existing === null || existing === void 0 ? void 0 : existing.goal,
                 goalAction: existing === null || existing === void 0 ? void 0 : existing.goalAction,
-                goalsSubmittedAt: (_j = existing === null || existing === void 0 ? void 0 : existing.goalsSubmittedAt) !== null && _j !== void 0 ? _j : null,
+                goalsSubmittedAt: (_l = existing === null || existing === void 0 ? void 0 : existing.goalsSubmittedAt) !== null && _l !== void 0 ? _l : null,
                 goalsWaived: existing === null || existing === void 0 ? void 0 : existing.goalsWaived,
                 withoutSelfAssessment: existing === null || existing === void 0 ? void 0 : existing.withoutSelfAssessment,
                 teacherGradeOnly: existing === null || existing === void 0 ? void 0 : existing.teacherGradeOnly,
@@ -1310,7 +1520,7 @@ class EpoNotenController {
         }
     }
     static async saveTeacherEntry(req, res) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p;
         try {
             const user = await getUserByLoginCode(req);
             if (!user)
@@ -1354,9 +1564,14 @@ class EpoNotenController {
             if (typeof ((_g = req.body) === null || _g === void 0 ? void 0 : _g.goalsWaived) === 'boolean') {
                 goalsWaived = req.body.goalsWaived;
             }
-            const teacherJustification = typeof ((_h = req.body) === null || _h === void 0 ? void 0 : _h.teacherJustification) === 'string'
+            let selfUsesRaster = existing === null || existing === void 0 ? void 0 : existing.selfUsesRaster;
+            if (typeof ((_h = req.body) === null || _h === void 0 ? void 0 : _h.selfUsesRaster) === 'boolean') {
+                selfUsesRaster = req.body.selfUsesRaster;
+            }
+            const teacherJustification = typeof ((_j = req.body) === null || _j === void 0 ? void 0 : _j.teacherJustification) === 'string'
                 ? req.body.teacherJustification.trim()
-                : (_j = existing === null || existing === void 0 ? void 0 : existing.teacherJustification) !== null && _j !== void 0 ? _j : '';
+                : (_k = existing === null || existing === void 0 ? void 0 : existing.teacherJustification) !== null && _k !== void 0 ? _k : '';
+            const revokeRelease = ((_l = req.body) === null || _l === void 0 ? void 0 : _l.revokeRelease) === true;
             const entry = {
                 studentId,
                 groupId: entryGroupId,
@@ -1366,17 +1581,18 @@ class EpoNotenController {
                 justification: existing === null || existing === void 0 ? void 0 : existing.justification,
                 selfScores: existing === null || existing === void 0 ? void 0 : existing.selfScores,
                 selfGradeFromTable: existing === null || existing === void 0 ? void 0 : existing.selfGradeFromTable,
-                studentSubmittedAt: (_k = existing === null || existing === void 0 ? void 0 : existing.studentSubmittedAt) !== null && _k !== void 0 ? _k : null,
+                studentSubmittedAt: (_m = existing === null || existing === void 0 ? void 0 : existing.studentSubmittedAt) !== null && _m !== void 0 ? _m : null,
                 teacherScores,
                 teacherGrade,
-                teacherReleasedAt: (_l = existing === null || existing === void 0 ? void 0 : existing.teacherReleasedAt) !== null && _l !== void 0 ? _l : null,
+                teacherReleasedAt: revokeRelease ? null : (_o = existing === null || existing === void 0 ? void 0 : existing.teacherReleasedAt) !== null && _o !== void 0 ? _o : null,
                 goal: existing === null || existing === void 0 ? void 0 : existing.goal,
                 goalAction: existing === null || existing === void 0 ? void 0 : existing.goalAction,
-                goalsSubmittedAt: (_m = existing === null || existing === void 0 ? void 0 : existing.goalsSubmittedAt) !== null && _m !== void 0 ? _m : null,
+                goalsSubmittedAt: (_p = existing === null || existing === void 0 ? void 0 : existing.goalsSubmittedAt) !== null && _p !== void 0 ? _p : null,
                 goalsWaived,
                 withoutSelfAssessment: teacherGradeOnly ? false : withoutSelfAssessment,
                 teacherGradeOnly,
                 teacherJustification,
+                selfUsesRaster,
             };
             upsertEntry(payload, entry);
             await saveRound(user.id, payload);
@@ -1440,9 +1656,13 @@ class EpoNotenController {
                 const mode = entryGroupId
                     ? assessmentModeForGroup(payload, entryGroupId, groupNameById.get(entryGroupId))
                     : 'note';
-                const grade = effectiveTeacherGrade(entry, mode, variantCats.categoryWeightsPercent);
+                const grade = effectiveTeacherGrade(payload, entryGroupId, entry, mode, variantCats.categoryWeightsPercent);
                 if (!grade)
                     continue;
+                if (entryRequiresStudentSelf(payload, entryGroupId, entry) &&
+                    !entry.studentSubmittedAt) {
+                    continue;
+                }
                 entry.teacherGrade = grade;
                 entry.teacherReleasedAt = now;
                 count += 1;
@@ -1610,6 +1830,72 @@ class EpoNotenController {
             return res.status(500).json({ error: 'Fehler beim Setzen' });
         }
     }
+    /** Lehrkraft: ganze Lerngruppe „Nur Einschätzung“ (Teil 1, keine Ziele) */
+    static async bulkSelfAssessmentOnlyForGroup(req, res) {
+        var _a, _b, _c, _d;
+        try {
+            const user = await getUserByLoginCode(req);
+            if (!user)
+                return res.status(401).json({ error: 'Nicht angemeldet' });
+            if (user.role !== 'TEACHER')
+                return res.status(403).json({ error: 'Nur Lehrkräfte' });
+            const roundId = String(req.params.id || '').trim();
+            const groupId = typeof ((_a = req.body) === null || _a === void 0 ? void 0 : _a.groupId) === 'string' ? req.body.groupId.trim() : '';
+            if (!groupId)
+                return res.status(400).json({ error: 'groupId erforderlich' });
+            const payload = await loadRound(user.id, roundId);
+            if (!payload)
+                return res.status(404).json({ error: 'Runde nicht gefunden' });
+            if (!payload.groupIds.includes(groupId)) {
+                return res.status(400).json({ error: 'Diese Lerngruppe gehört nicht zu dieser Runde' });
+            }
+            const meta = ensureGroupMeta(payload);
+            meta[groupId] = { ...meta[groupId], selfAssessmentOnly: true };
+            const groups = await loadTeacherGroupsWithStudents(user.id);
+            const group = groups.find((g) => g.id === groupId);
+            if (!group)
+                return res.status(400).json({ error: 'Lerngruppe nicht gefunden' });
+            let updatedCount = 0;
+            let skippedCount = 0;
+            for (const s of group.students) {
+                const gidsInRound = groupIdsForStudentInRound(payload, s.id, groups);
+                const existing = findEntry(payload, s.id, groupId, gidsInRound);
+                if (existing === null || existing === void 0 ? void 0 : existing.goalsSubmittedAt) {
+                    skippedCount += 1;
+                    continue;
+                }
+                const entry = {
+                    studentId: s.id,
+                    groupId,
+                    studentName: (0, webUntisStudentList_1.stripMiddleNames)(s.name),
+                    suggestedGrade: existing === null || existing === void 0 ? void 0 : existing.suggestedGrade,
+                    suggestedGradeMode: existing === null || existing === void 0 ? void 0 : existing.suggestedGradeMode,
+                    justification: existing === null || existing === void 0 ? void 0 : existing.justification,
+                    selfScores: existing === null || existing === void 0 ? void 0 : existing.selfScores,
+                    selfGradeFromTable: existing === null || existing === void 0 ? void 0 : existing.selfGradeFromTable,
+                    studentSubmittedAt: (_b = existing === null || existing === void 0 ? void 0 : existing.studentSubmittedAt) !== null && _b !== void 0 ? _b : null,
+                    teacherScores: existing === null || existing === void 0 ? void 0 : existing.teacherScores,
+                    teacherGrade: existing === null || existing === void 0 ? void 0 : existing.teacherGrade,
+                    teacherReleasedAt: (_c = existing === null || existing === void 0 ? void 0 : existing.teacherReleasedAt) !== null && _c !== void 0 ? _c : null,
+                    goal: existing === null || existing === void 0 ? void 0 : existing.goal,
+                    goalAction: existing === null || existing === void 0 ? void 0 : existing.goalAction,
+                    goalsSubmittedAt: (_d = existing === null || existing === void 0 ? void 0 : existing.goalsSubmittedAt) !== null && _d !== void 0 ? _d : null,
+                    goalsWaived: true,
+                    withoutSelfAssessment: false,
+                    teacherGradeOnly: false,
+                    teacherJustification: existing === null || existing === void 0 ? void 0 : existing.teacherJustification,
+                };
+                upsertEntry(payload, entry);
+                updatedCount += 1;
+            }
+            await saveRound(user.id, payload);
+            return res.json({ success: true, updatedCount, skippedCount, selfAssessmentOnly: true });
+        }
+        catch (error) {
+            console.error('EpoNoten bulkSelfAssessmentOnlyForGroup error:', error);
+            return res.status(500).json({ error: 'Fehler beim Setzen' });
+        }
+    }
     /** Freigegebene EPO-Noten einer Lerngruppe ins Notenschema übernehmen (Kategorie = Rundentitel). */
     static async integrateGradingSchema(req, res) {
         var _a;
@@ -1649,6 +1935,13 @@ class EpoNotenController {
                     error: 'Keine freigegebenen Noten zum Übertragen (Note eintragen und freigeben).',
                 });
             }
+            const meta = ensureGroupMeta(payload);
+            meta[groupId] = {
+                ...meta[groupId],
+                schemaIntegratedAt: new Date().toISOString(),
+            };
+            payload.groupMeta = meta;
+            await saveRound(user.id, payload);
             return res.json({
                 success: true,
                 count: result.count,

@@ -42,12 +42,14 @@ import {
   epoSummaryHeadline,
   epoGroupUsesMssPoints,
   studentSelfSummaryHeadline,
+  epoStudentSelfFormEditable,
   studentHasSubmittedSelfAssessment,
   minPointsThresholdForTotal,
   normalizeCategoryScores,
   epoRoundedPoints,
   formatEpoPointsDisplay,
   rasterResultFromTotal,
+  epoStudentShowsTeacherRasterDetail,
   type EpoNotenAssessmentMode,
 } from '../lib/epoNotenShared';
 
@@ -92,6 +94,8 @@ export default function EpoNotenPage() {
   const [categoryTitles, setCategoryTitles] = useState<string[]>([]);
   const [categoryWeightsPercent, setCategoryWeightsPercent] = useState<number[] | undefined>();
   const [usesRaster, setUsesRaster] = useState(true);
+  const [selfAssessmentOnlyGroup, setSelfAssessmentOnlyGroup] = useState(false);
+  const [studentUsesSelfRaster, setStudentUsesSelfRaster] = useState(true);
 
   const [suggestedGrade, setSuggestedGrade] = useState('');
   const [assessmentMode, setAssessmentMode] = useState<EpoNotenAssessmentMode>('note');
@@ -174,8 +178,12 @@ export default function EpoNotenPage() {
             categoryTitles?: string[];
             categoryWeightsPercent?: number[];
             useRaster?: boolean;
+            selfAssessmentOnly?: boolean;
+            studentUsesSelfRaster?: boolean;
           };
           setUsesRaster(r.useRaster !== false);
+          setSelfAssessmentOnlyGroup(Boolean(r.selfAssessmentOnly));
+          setStudentUsesSelfRaster(r.studentUsesSelfRaster !== false);
           setRoundMeta({
             id: r.id,
             title: r.title,
@@ -312,24 +320,26 @@ export default function EpoNotenPage() {
     }
   };
 
-  const noteOnlyFlow =
-    !usesRaster || Boolean(myEntry?.withoutSelfAssessment || myEntry?.teacherGradeOnly);
+  const noteOnlyFlow = Boolean(myEntry?.withoutSelfAssessment || myEntry?.teacherGradeOnly);
+  const showRasterAccordion = epoStudentShowsTeacherRasterDetail(usesRaster, myEntry);
+
+  const goalsWaivedEffective = Boolean(myEntry?.goalsWaived || selfAssessmentOnlyGroup);
 
   const phase = useMemo(() => {
     if (
-      usesRaster &&
       !myEntry?.studentSubmittedAt &&
       !myEntry?.withoutSelfAssessment &&
-      !myEntry?.teacherGradeOnly &&
-      !myEntry?.goalsWaived
+      !myEntry?.teacherGradeOnly
     )
       return 'self';
     if (!myEntry?.teacherReleasedAt) return 'wait';
-    if (!myEntry?.goalsSubmittedAt && !myEntry?.goalsWaived) return 'goals';
+    if (!myEntry?.goalsSubmittedAt && !goalsWaivedEffective) return 'goals';
     return 'done';
-  }, [myEntry, usesRaster]);
+  }, [myEntry, goalsWaivedEffective]);
 
   const osWaitOnly = noteOnlyFlow && !myEntry?.studentSubmittedAt && phase === 'wait';
+
+  const selfFormEditable = epoStudentSelfFormEditable(myEntry, noteOnlyFlow, canEditSelf);
 
   return (
     <Box sx={{ ...epoNotenPageBgSx, py: isTeacher ? 0 : epoNotenPageBgSx.py }}>
@@ -377,7 +387,7 @@ export default function EpoNotenPage() {
               <EpoNotenStudentRoundList sessions={sessions} onSelect={openRound} />
             ) : (
               <>
-                {phase === 'self' && canEditSelf && (
+                {phase === 'self' && selfFormEditable && (
                   <Alert severity="warning" sx={epoNotenBitteAusfuellenAlertSx}>
                     <strong>Bitte ausfüllen</strong> — EPO-Selbsteinschätzung abgeben.
                   </Alert>
@@ -396,11 +406,13 @@ export default function EpoNotenPage() {
                   </Alert>
                 )}
 
-                {usesRaster && (phase === 'self' || (phase === 'wait' && myEntry?.studentSubmittedAt)) && (
+                {(phase === 'self' || (phase === 'wait' && myEntry?.studentSubmittedAt)) &&
+                  !noteOnlyFlow && (
                   <EpoNotenStudentSelfWizard
-                    key={`${selectedRoundId}-${assessmentMode}`}
-                    locked={phase === 'wait' || !canEditSelf}
+                    key={`${selectedRoundId}-${assessmentMode}-${studentUsesSelfRaster}`}
+                    locked={phase === 'wait' || !selfFormEditable}
                     submitting={submitting}
+                    selfRaster={studentUsesSelfRaster}
                     assessmentMode={assessmentMode}
                     studentCategories={studentCategories}
                     categoryTitles={categoryTitles}
@@ -432,7 +444,7 @@ export default function EpoNotenPage() {
                     {(() => {
                       const teacherPts = epoRoundedPoints(myEntry.teacherScores, categoryWeightsPercent);
                       const hasSelfAssessment = studentHasSubmittedSelfAssessment(myEntry);
-                      const showSelfColumn = usesRaster && !noteOnlyFlow && hasSelfAssessment;
+                      const showSelfColumn = !noteOnlyFlow && hasSelfAssessment;
                       const selfHeadline = studentSelfSummaryHeadline(myEntry, assessmentMode);
                       const teacherHeadline = epoSummaryHeadline(
                         assessmentMode,
@@ -469,6 +481,20 @@ export default function EpoNotenPage() {
                               <Typography sx={{ ...epoNotenBigNumberSx, fontSize: { xs: '1.75rem', sm: '2rem' } }}>
                                 {selfHeadline}
                               </Typography>
+                              {myEntry.justification?.trim() ? (
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                  sx={{ mt: 0.5, lineHeight: 1.45 }}
+                                >
+                                  <Typography component="span" sx={{ fontWeight: 700, fontStyle: 'normal' }}>
+                                    Deine Begründung:{' '}
+                                  </Typography>
+                                  <Typography component="span" sx={{ fontStyle: 'italic' }}>
+                                    {myEntry.justification.trim()}
+                                  </Typography>
+                                </Typography>
+                              ) : null}
                             </Box>
                             ) : null}
                             <Box
@@ -506,7 +532,7 @@ export default function EpoNotenPage() {
                             </Box>
                           </Stack>
 
-                          {usesRaster && !noteOnlyFlow ? (
+                          {showRasterAccordion ? (
                           <Accordion
                             disableGutters
                             elevation={0}
@@ -562,7 +588,7 @@ export default function EpoNotenPage() {
                       );
                     })()}
 
-                    {!myEntry.goalsWaived ? (
+                    {!goalsWaivedEffective ? (
                     <Box sx={{ ...epoNotenCardSx, ...epoNotenStudentSurfaceSx, p: 1.35 }}>
                       <Typography sx={{ ...epoNotenSectionTitleSx, fontSize: '1.05rem', mb: 1.25 }}>
                         Mein Ziel für den nächsten Zeitraum

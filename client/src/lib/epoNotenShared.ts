@@ -5,7 +5,7 @@ import {
   minPointsThresholdForTotalOnScale,
   pointsOnScaleToGradeTendency,
 } from './gradeScale';
-import { EPO_NO_VARIANT_ID } from './epoNotenVariantPresets';
+import { EPO_NO_VARIANT_ID, EPO_VARIANT2_ID } from './epoNotenVariantPresets';
 
 export const EPO_NOTEN_CATEGORY_COUNT = 5;
 export const EPO_NOTEN_MAX_POINTS = 15;
@@ -296,6 +296,8 @@ export type EpoNotenEntry = {
   goalsSubmittedAt?: string | null;
   /** Lehrkraft: SuS muss keine Ziele eintragen */
   goalsWaived?: boolean;
+  /** SuS-Raster bei Selbsteinschätzung (false = nur Note/Text) */
+  selfUsesRaster?: boolean;
 };
 
 /** SuS muss noch etwas in einer freigeschalteten Runde erledigen. */
@@ -312,11 +314,11 @@ export function studentEpoPendingKind(
     | 'goalsWaived'
   >,
   roundPublished: boolean,
-  options?: { usesRaster?: boolean },
+  options?: { usesRaster?: boolean; goalsWaived?: boolean },
 ): StudentEpoPendingKind | null {
   if (!roundPublished) return null;
-  if (entry.goalsWaived) return null;
   const usesRaster = options?.usesRaster !== false;
+  const goalsWaived = options?.goalsWaived ?? Boolean(entry.goalsWaived);
   if (
     usesRaster &&
     !entry.studentSubmittedAt &&
@@ -325,8 +327,20 @@ export function studentEpoPendingKind(
   ) {
     return 'self';
   }
-  if (entry.teacherReleasedAt && !entry.goalsSubmittedAt && !entry.goalsWaived) return 'goals';
+  if (entry.teacherReleasedAt && !entry.goalsSubmittedAt && !goalsWaived) return 'goals';
   return null;
+}
+
+export type EpoGroupWorkflow = 'standard' | 'teacher_raster' | 'self_no_raster' | 'teacher_only';
+
+export function epoGroupWorkflow(
+  round: { groupMeta?: Record<string, EpoNotenGroupMeta> },
+  groupId: string,
+): EpoGroupWorkflow {
+  const w = round.groupMeta?.[groupId]?.workflow;
+  if (w === 'teacher_raster' || w === 'self_no_raster' || w === 'teacher_only') return w;
+  if (round.groupMeta?.[groupId]?.selfAssessmentOnly) return 'self_no_raster';
+  return 'standard';
 }
 
 export function epoEffectiveVariantIdForGroup(
@@ -337,15 +351,78 @@ export function epoEffectiveVariantIdForGroup(
   if (per === EPO_NO_VARIANT_ID || per === '') return null;
   if (per && String(per).trim()) return String(per).trim();
   const roundDefault = round.variantId?.trim();
-  if (!roundDefault || roundDefault === 'default' || roundDefault === EPO_NO_VARIANT_ID) return null;
-  return roundDefault;
+  if (roundDefault === EPO_NO_VARIANT_ID) return null;
+  if (roundDefault && roundDefault !== 'default') return roundDefault;
+  return EPO_VARIANT2_ID;
+}
+
+/** SuS: Raster im Selbst-Wizard (nicht Vorgabe-Note allein). */
+/** SuS: Lehrer-Raster nach Freigabe anzeigen (auch „Nur Lehrerraster“ / oS). */
+export function epoStudentShowsTeacherRasterDetail(
+  usesRaster: boolean,
+  entry: Pick<EpoNotenEntry, 'teacherReleasedAt' | 'teacherGradeOnly'> | null | undefined,
+): boolean {
+  if (!usesRaster || !entry) return false;
+  if (entry.teacherGradeOnly) return false;
+  return Boolean(entry.teacherReleasedAt);
+}
+
+export function epoStudentUsesSelfRaster(
+  round: {
+    variantId?: string | null;
+    variantIdByGroup?: Record<string, string>;
+    groupMeta?: Record<string, EpoNotenGroupMeta>;
+  },
+  groupId: string,
+  entry?: Pick<EpoNotenEntry, 'withoutSelfAssessment' | 'teacherGradeOnly' | 'selfUsesRaster'> | null,
+): boolean {
+  if (entry?.withoutSelfAssessment || entry?.teacherGradeOnly) return false;
+  if (entry?.selfUsesRaster === false) return false;
+  if (!epoGroupUsesRaster(round, groupId)) return false;
+  const m = round.groupMeta?.[groupId];
+  if (m?.selfAssessmentEnabled === false) return false;
+  if (entry?.selfUsesRaster === true) return true;
+  const workflow = epoGroupWorkflow(round, groupId);
+  if (workflow === 'self_no_raster' || workflow === 'teacher_only') return false;
+  if (m?.teacherRasterEnabled === false) return false;
+  return true;
+}
+
+/** Lehrkraft: Bewertungsraster anzeigen. */
+export function epoTeacherUsesRaster(
+  round: {
+    variantId?: string | null;
+    variantIdByGroup?: Record<string, string>;
+    groupMeta?: Record<string, EpoNotenGroupMeta>;
+  },
+  groupId: string,
+): boolean {
+  const m = round.groupMeta?.[groupId];
+  if (m?.teacherRasterEnabled === false) return false;
+  if (m?.selfAssessmentEnabled === false && m?.teacherRasterEnabled !== true) return false;
+  if (epoGroupWorkflow(round, groupId) === 'teacher_only') return false;
+  return epoGroupUsesRaster(round, groupId);
 }
 
 export function epoGroupUsesRaster(
-  round: { variantId?: string | null; variantIdByGroup?: Record<string, string> },
+  round: {
+    variantId?: string | null;
+    variantIdByGroup?: Record<string, string>;
+    groupMeta?: Record<string, EpoNotenGroupMeta>;
+  },
   groupId: string,
 ): boolean {
+  const m = round.groupMeta?.[groupId];
+  if (m?.teacherRasterEnabled === false && m?.selfAssessmentEnabled !== true) return false;
+  if (m?.teacherRasterEnabled === false && m?.selfAssessmentEnabled === false) return false;
   return epoEffectiveVariantIdForGroup(round, groupId) !== null;
+}
+
+export function epoGroupSelfAssessmentOnly(
+  round: { groupMeta?: Record<string, EpoNotenGroupMeta> },
+  groupId: string,
+): boolean {
+  return epoGroupWorkflow(round, groupId) === 'self_no_raster';
 }
 
 export function studentEpoPendingDetail(kind: StudentEpoPendingKind): string {
@@ -364,6 +441,22 @@ export function teacherRasterIsUnset(entry: {
 }
 
 /** SuS hat eine Selbsteinschätzung abgegeben (nicht oS / nur Note). */
+/** SuS: Selbsteinschätzungsformular bearbeitbar (unabhängig von versehentlicher Lehrer-Freigabe). */
+export function epoStudentSelfFormEditable(
+  entry: Pick<
+    EpoNotenEntry,
+    'studentSubmittedAt' | 'withoutSelfAssessment' | 'teacherGradeOnly' | 'teacherReleasedAt'
+  > | null | undefined,
+  noteOnlyFlow: boolean,
+  canEditSelfFromApi: boolean,
+): boolean {
+  if (canEditSelfFromApi) return true;
+  if (noteOnlyFlow || !entry) return false;
+  if (entry.studentSubmittedAt) return false;
+  if (entry.withoutSelfAssessment || entry.teacherGradeOnly) return false;
+  return true;
+}
+
 export function studentHasSubmittedSelfAssessment(
   entry: Pick<EpoNotenEntry, 'studentSubmittedAt' | 'withoutSelfAssessment' | 'teacherGradeOnly'>,
 ): boolean {
@@ -382,7 +475,11 @@ export function selfScoresForTeacherDefault(entry: EpoNotenEntry): number[] | nu
 }
 
 /** Lehrer-Raster: gespeicherte Werte oder — wenn leer — SuS-Selbsteinschätzung. */
-export function teacherFormScoresFromEntry(entry: EpoNotenEntry | undefined): number[] {
+export function teacherFormScoresFromEntry(
+  entry: EpoNotenEntry | undefined,
+  usesTeacherRaster = true,
+): number[] {
+  if (!usesTeacherRaster) return emptyCategoryScores();
   if (!entry) return emptyCategoryScores();
   const fromSelf = selfScoresForTeacherDefault(entry);
   const saved = normalizeCategoryScores(entry.teacherScores);
@@ -408,11 +505,15 @@ export function teacherFormGradeFromEntry(
   entry: EpoNotenEntry | undefined,
   mode: EpoNotenAssessmentMode,
   weightsPercent?: number[] | null,
+  usesTeacherRaster = true,
 ): string {
   if (!entry) return '';
+  if (!usesTeacherRaster) {
+    return entry.teacherGrade?.trim() ?? '';
+  }
   if (entry.teacherGrade?.trim()) return entry.teacherGrade.trim();
   if (entry.teacherGradeOnly) return '';
-  const scores = teacherFormScoresFromEntry(entry);
+  const scores = teacherFormScoresFromEntry(entry, true);
   if (allCategoriesSelected(scores)) {
     return rasterResultFromTotal(mode, epoRoundedPoints(scores, weightsPercent));
   }
@@ -425,6 +526,13 @@ export function teacherFormGradeFromEntry(
 export type EpoNotenGroupMeta = {
   publishedAt?: string | null;
   completedAt?: string | null;
+  schemaIntegratedAt?: string | null;
+  selfAssessmentEnabled?: boolean;
+  teacherRasterEnabled?: boolean;
+  goalsEnabled?: boolean;
+  /** @deprecated — nutze workflow: self_no_raster */
+  selfAssessmentOnly?: boolean;
+  workflow?: EpoGroupWorkflow;
 };
 
 /** Wert für das Varianten-Dropdown (inkl. „Kein Zettel“). */

@@ -127,10 +127,11 @@ function effectiveEpoVariantIdForGroup(payload, groupId) {
             return String(per).trim();
     }
     const roundDefault = (_b = payload.variantId) === null || _b === void 0 ? void 0 : _b.trim();
-    if (!roundDefault || roundDefault === exports.DEFAULT_EPO_VARIANT_ID || roundDefault === epoNotenVariantPresets_1.EPO_NO_VARIANT_ID) {
+    if (roundDefault === epoNotenVariantPresets_1.EPO_NO_VARIANT_ID)
         return null;
-    }
-    return roundDefault;
+    if (roundDefault && roundDefault !== exports.DEFAULT_EPO_VARIANT_ID)
+        return roundDefault;
+    return epoNotenVariantPresets_1.EPO_VARIANT2_ID;
 }
 function normalizeVariantSheet(v) {
     const studentCategories = normalizeLines(v.studentCategories, DEFAULT_STUDENT);

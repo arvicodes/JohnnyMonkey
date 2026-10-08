@@ -145,10 +145,9 @@ export function effectiveEpoVariantIdForGroup(
     if (per && String(per).trim()) return String(per).trim();
   }
   const roundDefault = payload.variantId?.trim();
-  if (!roundDefault || roundDefault === DEFAULT_EPO_VARIANT_ID || roundDefault === EPO_NO_VARIANT_ID) {
-    return null;
-  }
-  return roundDefault;
+  if (roundDefault === EPO_NO_VARIANT_ID) return null;
+  if (roundDefault && roundDefault !== DEFAULT_EPO_VARIANT_ID) return roundDefault;
+  return EPO_VARIANT2_ID;
 }
 
 export function normalizeVariantSheet(v: {

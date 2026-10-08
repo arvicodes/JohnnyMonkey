@@ -99,7 +99,7 @@
     "start": "cross-env PORT=3000 HOST=0.0.0.0 react-scripts start",
     "start:smart": "./scripts/start-dev.sh",
     "start:clean": "npm run cleanup && npm start",
-    "cleanup": "node -e \"const { exec } = require('child_process'); exec('lsof -ti:3000,3001,3002,3003 | xargs kill -9 2>/dev/null || echo \\\"No processes on ports 3000-3003\\\"', console.log);\"",
+    "cleanup": "node -e \"const { exec } = require('child_process'); exec('lsof -ti:3000,3001,3002 | xargs kill -9 2>/dev/null || echo \\\"No processes on ports 3000-3002\\\"', console.log);\"",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

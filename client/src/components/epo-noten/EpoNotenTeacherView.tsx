@@ -9,7 +9,6 @@ import {
   Card,
   Checkbox,
   Chip,
-  FormControlLabel,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -27,9 +26,6 @@ import {
   Typography,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import PersonOffOutlinedIcon from '@mui/icons-material/PersonOffOutlined';
-import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined';
-import LooksOneOutlinedIcon from '@mui/icons-material/LooksOneOutlined';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PublishIcon from '@mui/icons-material/Publish';
@@ -39,16 +35,27 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import UnpublishedIcon from '@mui/icons-material/Unpublished';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
-import BackHandOutlinedIcon from '@mui/icons-material/BackHandOutlined';
-import CheckBoxOutlinedIcon from '@mui/icons-material/CheckBoxOutlined';
-import LockOpenIcon from '@mui/icons-material/LockOpen';
+import PanoramaFishEyeIcon from '@mui/icons-material/PanoramaFishEye';
+import { EpoJaFeatureButtons } from './EpoJaFeatureButtons';
+import { EpoCourseGroupIconActions } from './EpoCourseGroupIconActions';
+import {
+  epoEntryJaFlags,
+  epoGroupJaFlags,
+  epoJaFlagsToEntryFields,
+  epoJaFeatureGroupShellSx,
+  type EpoJaFlags,
+} from '../../lib/epoGroupJaFlags';
 import { apiDelete, apiGetSafe, apiPost, apiPut } from '../../lib/api';
+import {
+  EPO_ROUND2_REMINDER,
+  epoReminderDismissStorageKey,
+  shouldShowEpoRound2Reminder,
+} from '../../lib/epoNotenTeacherReminders';
 import { isPassiveStudentId, parsePassiveStudentIds } from '../../lib/passiveStudents';
 import {
   EPO_NOTEN_TEACHER_CATEGORIES,
   type EpoNotenEntry,
   type EpoNotenRound,
-  type EpoNotenVariantSheet,
   allCategoriesSelected,
   isEpoGroupCompleted,
   isEpoGroupPublished,
@@ -61,9 +68,12 @@ import {
   normalizeCategoryScores,
   shouldPrefillTeacherFromSelf,
   epoRoundedPoints,
-  epoVariantIdForGroup,
+  epoEffectiveVariantIdForGroup,
   epoGroupUsesRaster,
+  epoGroupSelfAssessmentOnly,
+  epoTeacherUsesRaster,
   formatEpoPointsDisplay,
+  emptyCategoryScores,
   teacherFormGradeFromEntry,
   teacherFormScoresFromEntry,
   studentEpoPendingKind,
@@ -73,11 +83,11 @@ import { DialogCloseIconButton, dialogCloseTitleSx } from '../ui/dialog-close-ic
 import DualStudentAvatars from '../DualStudentAvatars';
 import { EpoNotenCategoryGrid } from './EpoNotenCategoryGrid';
 import { EpoNotenTeacherStudentStatusChip } from './EpoNotenStudentStatusChip';
-import { EPO_NO_VARIANT_ID, EPO_VARIANT2_ID } from '../../lib/epoNotenVariantPresets';
-import ImportExportIcon from '@mui/icons-material/ImportExport';
+import { EPO_VARIANT2_ID } from '../../lib/epoNotenVariantPresets';
 import {
   epoNotenCardSx,
   epoNotenCompactBtnSx,
+  epoNotenToolbarOutlinedBtnSx,
   epoNotenCompactIconBtnSx,
   epoNotenCompactIconSx,
   epoNotenInsetBoxSx,
@@ -117,6 +127,7 @@ export function EpoNotenTeacherView() {
   const [round, setRound] = useState<EpoNotenRound | null>(null);
   const [students, setStudents] = useState<EpoNotenEntry[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [selectedStudentGroupId, setSelectedStudentGroupId] = useState('');
   const [teacherScores, setTeacherScores] = useState<number[]>(normalizeCategoryScores([]));
   const [teacherGrade, setTeacherGrade] = useState('');
   const [teacherJustification, setTeacherJustification] = useState('');
@@ -131,37 +142,41 @@ export function EpoNotenTeacherView() {
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   /** null = ganze Runde, sonst nur diese Lerngruppe */
   const [resetGroupId, setResetGroupId] = useState<string | null>(null);
-  const [gradeOnlyGroupConfirmOpen, setGradeOnlyGroupConfirmOpen] = useState(false);
-  const [goalsWaivedGroupConfirmOpen, setGoalsWaivedGroupConfirmOpen] = useState(false);
+  const [deleteRoundConfirmOpen, setDeleteRoundConfirmOpen] = useState(false);
+  const [deleteRoundConfirmText, setDeleteRoundConfirmText] = useState('');
+  const DELETE_ROUND_CONFIRM_PHRASE = 'LÖSCHEN';
   const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   /** null = alle Gruppen in der SuS-Liste, sonst nur diese Lerngruppe */
   const [studentListGroupFilter, setStudentListGroupFilter] = useState<string | null>(null);
 
   const [passiveSaving, setPassiveSaving] = useState(false);
-  const [variants, setVariants] = useState<EpoNotenVariantSheet[]>([]);
   const [groupUsesRaster, setGroupUsesRaster] = useState(true);
   const [teacherCategories, setTeacherCategories] = useState<string[]>(EPO_NOTEN_TEACHER_CATEGORIES);
   const [categoryTitles, setCategoryTitles] = useState<string[]>([]);
   const [categoryWeightsPercent, setCategoryWeightsPercent] = useState<number[] | undefined>();
   const [courseToAdd, setCourseToAdd] = useState('');
   const [expandedRoundIds, setExpandedRoundIds] = useState<Record<string, boolean>>({});
+  const [epoRound2ReminderDismissed, setEpoRound2ReminderDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(epoReminderDismissStorageKey(EPO_ROUND2_REMINDER.id)) === '1';
+    } catch {
+      return false;
+    }
+  });
 
-  const variantOptions = useMemo(() => {
-    const builtIn = [
-      { id: EPO_VARIANT2_ID, name: 'Variante 2 (gewichtet)' },
-      { id: 'default', name: 'Variante 1 (klassisch)' },
-    ];
-    if (variants.length === 0) return builtIn;
-    const byId = new Map(variants.map((v) => [v.id, v]));
-    return builtIn.map((b) => ({ id: b.id, name: byId.get(b.id)?.name ?? b.name }));
-  }, [variants]);
+  const showEpoRound2Reminder = useMemo(
+    () => shouldShowEpoRound2Reminder(rounds, epoRound2ReminderDismissed),
+    [rounds, epoRound2ReminderDismissed],
+  );
 
-  const loadVariants = useCallback(async () => {
-    const res = await apiGetSafe('/api/epo-noten/variants');
-    if (!res?.ok) return;
-    const data = await res.json();
-    setVariants(Array.isArray(data.variants) ? data.variants : []);
-  }, []);
+  const dismissEpoRound2Reminder = () => {
+    setEpoRound2ReminderDismissed(true);
+    try {
+      localStorage.setItem(epoReminderDismissStorageKey(EPO_ROUND2_REMINDER.id), '1');
+    } catch {
+      /* ignore */
+    }
+  };
 
   const loadList = useCallback(async () => {
     const res = await apiGetSafe('/api/epo-noten/list');
@@ -183,7 +198,13 @@ export function EpoNotenTeacherView() {
     const data = await res.json();
     setRound(data.round as EpoNotenRound);
     setStudents(Array.isArray(data.students) ? data.students : []);
-    setGroupUsesRaster(data.useRaster !== false);
+    const loadedRound = data.round as EpoNotenRound;
+    const rasterGroupId = groupId?.trim() || undefined;
+    setGroupUsesRaster(
+      rasterGroupId && loadedRound
+        ? epoTeacherUsesRaster(loadedRound, rasterGroupId)
+        : data.useRaster !== false,
+    );
     if (data.useRaster !== false && Array.isArray(data.teacherCategories) && data.teacherCategories.length > 0) {
       setTeacherCategories(data.teacherCategories as string[]);
     } else {
@@ -210,7 +231,6 @@ export function EpoNotenTeacherView() {
 
   useEffect(() => {
     refresh();
-    loadVariants();
   }, []);
 
   useEffect(() => {
@@ -239,7 +259,20 @@ export function EpoNotenTeacherView() {
     setCourseToAdd('');
   }, [round?.id, round?.groupIds.join('|')]);
 
-  const selectedStudent = students.find((s) => s.studentId === selectedStudentId) ?? null;
+  const findStudentRow = useCallback(
+    (studentId: string, groupId?: string | null) => {
+      if (!studentId) return null;
+      const gid = groupId || selectedStudentGroupId || studentListGroupFilter;
+      if (gid) {
+        const exact = students.find((s) => s.studentId === studentId && s.groupId === gid);
+        if (exact) return exact;
+      }
+      return students.find((s) => s.studentId === studentId) ?? null;
+    },
+    [students, selectedStudentGroupId, studentListGroupFilter],
+  );
+
+  const selectedStudent = findStudentRow(selectedStudentId);
 
   const groupMode = useCallback(
     (groupId: string): EpoNotenAssessmentMode => {
@@ -275,7 +308,8 @@ export function EpoNotenTeacherView() {
   const usesRasterForEntry = useCallback(
     (e: EpoNotenEntry) => {
       if (!round || !e.groupId) return groupUsesRaster;
-      return epoGroupUsesRaster(round, e.groupId);
+      if (e.teacherGradeOnly) return false;
+      return epoTeacherUsesRaster(round, e.groupId);
     },
     [groupUsesRaster, round],
   );
@@ -339,18 +373,23 @@ export function EpoNotenTeacherView() {
   };
 
   useEffect(() => {
-    if (
-      studentListGroupFilter &&
-      selectedStudent?.groupId &&
-      selectedStudent.groupId !== studentListGroupFilter
-    ) {
-      setSelectedStudentId('');
+    if (!studentListGroupFilter || !selectedStudentId) return;
+    const row = students.find(
+      (s) => s.studentId === selectedStudentId && s.groupId === studentListGroupFilter,
+    );
+    if (row) {
+      if (selectedStudentGroupId !== studentListGroupFilter) {
+        setSelectedStudentGroupId(studentListGroupFilter);
+      }
+      return;
     }
-  }, [studentListGroupFilter, selectedStudent?.groupId]);
+    setSelectedStudentId('');
+    setSelectedStudentGroupId('');
+  }, [studentListGroupFilter, selectedStudentId, selectedStudentGroupId, students]);
 
   const skipRasterGradeSyncRef = useRef(false);
   const teacherScoresDirtyRef = useRef(false);
-  const prevSelectedStudentIdRef = useRef('');
+  const prevSelectionKeyRef = useRef('');
   const teacherScoresRef = useRef(teacherScores);
   teacherScoresRef.current = teacherScores;
   const teacherGradeRef = useRef(teacherGrade);
@@ -361,8 +400,8 @@ export function EpoNotenTeacherView() {
 
   useEffect(() => {
     if (!selectedStudentId) {
-      if (prevSelectedStudentIdRef.current !== '') {
-        prevSelectedStudentIdRef.current = '';
+      if (prevSelectionKeyRef.current !== '') {
+        prevSelectionKeyRef.current = '';
         teacherScoresDirtyRef.current = false;
       }
       teacherScoresRef.current = normalizeCategoryScores([]);
@@ -374,16 +413,18 @@ export function EpoNotenTeacherView() {
       return;
     }
 
-    const entry = students.find((s) => s.studentId === selectedStudentId);
+    const entry = findStudentRow(selectedStudentId);
+    const selectionKey = `${entry?.groupId ?? selectedStudentGroupId}:${selectedStudentId}`;
 
-    if (selectedStudentId !== prevSelectedStudentIdRef.current) {
-      prevSelectedStudentIdRef.current = selectedStudentId;
+    if (selectionKey !== prevSelectionKeyRef.current) {
+      prevSelectionKeyRef.current = selectionKey;
       teacherScoresDirtyRef.current = false;
       const mode = entry?.groupId ? groupMode(entry.groupId) : 'note';
-      const scores = teacherFormScoresFromEntry(entry);
+      const usesRaster = entry ? usesRasterForEntry(entry) : groupUsesRaster;
+      const scores = teacherFormScoresFromEntry(entry ?? undefined, usesRaster);
       teacherScoresRef.current = scores;
       setTeacherScores(scores);
-      const grade = teacherFormGradeFromEntry(entry, mode, categoryWeightsPercent);
+      const grade = teacherFormGradeFromEntry(entry ?? undefined, mode, categoryWeightsPercent, usesRaster);
       teacherGradeRef.current = grade;
       setTeacherGrade(grade);
       const just = entry?.teacherJustification?.trim() ?? '';
@@ -394,33 +435,41 @@ export function EpoNotenTeacherView() {
     }
 
     if (teacherScoresDirtyRef.current || !entry) return;
+    if (skipServerScoreSyncRef.current) {
+      skipServerScoreSyncRef.current = false;
+      return;
+    }
     const mode = entry.groupId ? groupMode(entry.groupId) : 'note';
-    const server = teacherFormScoresFromEntry(entry);
+    const usesRaster = usesRasterForEntry(entry);
+    const server = teacherFormScoresFromEntry(entry, usesRaster);
     const local = teacherScoresRef.current;
     if (local.every((s) => s < 0) && server.some((s) => s >= 0)) {
       teacherScoresRef.current = server;
       setTeacherScores(server);
-      const grade = teacherFormGradeFromEntry(entry, mode, categoryWeightsPercent);
+      const grade = teacherFormGradeFromEntry(entry, mode, categoryWeightsPercent, usesRaster);
       teacherGradeRef.current = grade;
       setTeacherGrade(grade);
       skipRasterGradeSyncRef.current = true;
     }
-  }, [categoryWeightsPercent, selectedStudentId, students, round]);
+  }, [categoryWeightsPercent, findStudentRow, groupUsesRaster, selectedStudentGroupId, selectedStudentId, students, round, usesRasterForEntry]);
 
   const totalTeacher = epoRoundedPoints(teacherScores, categoryWeightsPercent);
   const selectedAssessmentMode: EpoNotenAssessmentMode =
     selectedStudent?.groupId ? groupMode(selectedStudent.groupId) : 'note';
   const computedRasterResult = rasterResultFromTotal(selectedAssessmentMode, totalTeacher);
 
+  const skipServerScoreSyncRef = useRef(false);
+
   const persistTeacherEntry = useCallback(
-    async (grade: string, scoresSnapshot: number[]) => {
+    async (grade: string, scoresSnapshot: number[], options?: { revokeRelease?: boolean }) => {
       if (!round || !selectedStudentId) {
         throw new Error('Kein Schüler ausgewählt');
       }
       const scores = normalizeCategoryScores(scoresSnapshot);
-      const row = students.find((s) => s.studentId === selectedStudentId);
+      const row = findStudentRow(selectedStudentId);
       const mode = row?.groupId ? groupMode(row.groupId) : selectedAssessmentMode;
-      const resolvedGrade = row?.teacherGradeOnly
+      const usesRaster = row ? usesRasterForEntry(row) : false;
+      const resolvedGrade = row?.teacherGradeOnly || !usesRaster
         ? grade.trim()
         : grade.trim() ||
           (allCategoriesSelected(scores)
@@ -431,6 +480,7 @@ export function EpoNotenTeacherView() {
         teacherScores: scores,
         teacherGrade: resolvedGrade,
         teacherJustification: teacherJustificationRef.current,
+        ...(options?.revokeRelease ? { revokeRelease: true } : {}),
       });
       if (!res?.ok) {
         const err = await res.json().catch(() => ({}));
@@ -441,10 +491,12 @@ export function EpoNotenTeacherView() {
       if (entry?.studentId) {
         setStudents((prev) =>
           prev.map((s) =>
-            s.studentId === entry.studentId ? { ...s, ...entry, groupId: (s as { groupId?: string }).groupId } : s,
+            s.studentId === entry.studentId && s.groupId === row?.groupId
+              ? { ...s, ...entry, groupId: (s as { groupId?: string }).groupId }
+              : s,
           ),
         );
-        if (entry.studentId === selectedStudentId) {
+        if (entry.studentId === selectedStudentId && row?.groupId === selectedStudentGroupId) {
           const savedScores = normalizeCategoryScores(entry.teacherScores ?? scores);
           teacherScoresRef.current = savedScores;
           skipRasterGradeSyncRef.current = true;
@@ -456,7 +508,7 @@ export function EpoNotenTeacherView() {
       }
       return entry;
     },
-    [round, selectedStudentId, students, selectedAssessmentMode],
+    [categoryWeightsPercent, findStudentRow, groupMode, round, selectedStudentGroupId, selectedStudentId, usesRasterForEntry],
   );
 
   const saveTeacherDraftNow = useCallback((): Promise<void> => {
@@ -486,12 +538,39 @@ export function EpoNotenTeacherView() {
     return teacherSaveChainRef.current;
   }, [loadList, persistTeacherEntry, round, selectedStudentId, students]);
 
+  const clearTeacherAssessment = useCallback(async () => {
+    const row = findStudentRow(selectedStudentId);
+    if (!round || !selectedStudentId || !row?.groupId) return;
+    const empty = emptyCategoryScores();
+    teacherScoresRef.current = empty;
+    setTeacherScores(empty);
+    teacherGradeRef.current = '';
+    setTeacherGrade('');
+    teacherScoresDirtyRef.current = true;
+    skipRasterGradeSyncRef.current = true;
+    skipServerScoreSyncRef.current = true;
+    setDraftStatus('saving');
+    setError(null);
+    try {
+      await persistTeacherEntry('', empty, { revokeRelease: true });
+      teacherScoresDirtyRef.current = false;
+      setDraftStatus('saved');
+      await loadList();
+      if (round.id) await loadDetail(round.id, row.groupId);
+    } catch (e) {
+      teacherScoresDirtyRef.current = true;
+      setDraftStatus('error');
+      setError(e instanceof Error ? e.message : 'Leeren fehlgeschlagen');
+    }
+  }, [findStudentRow, loadDetail, loadList, persistTeacherEntry, round, selectedStudentId]);
+
   const prefillFromSelfKeyRef = useRef('');
 
   useEffect(() => {
     if (!round || !selectedStudentId) return;
-    const entry = students.find((s) => s.studentId === selectedStudentId);
+    const entry = findStudentRow(selectedStudentId);
     if (!entry || entry.teacherReleasedAt || entry.teacherGradeOnly) return;
+    if (!usesRasterForEntry(entry)) return;
     if (!shouldPrefillTeacherFromSelf(entry)) {
       prefillFromSelfKeyRef.current = '';
       return;
@@ -501,10 +580,11 @@ export function EpoNotenTeacherView() {
     prefillFromSelfKeyRef.current = key;
     teacherScoresDirtyRef.current = true;
     void saveTeacherDraftNow().catch(() => undefined);
-  }, [round, saveTeacherDraftNow, selectedStudentId, students]);
+  }, [findStudentRow, round, saveTeacherDraftNow, selectedStudentId, students, usesRasterForEntry]);
 
   useEffect(() => {
     if (!selectedStudent || selectedStudent.teacherGradeOnly) return;
+    if (!selectedStudent.groupId || !round || !usesRasterForEntry(selectedStudent)) return;
     if (skipRasterGradeSyncRef.current) {
       skipRasterGradeSyncRef.current = false;
       return;
@@ -516,15 +596,16 @@ export function EpoNotenTeacherView() {
         void saveTeacherDraftNow();
       }
     }
-  }, [computedRasterResult, saveTeacherDraftNow, selectedStudent, teacherScores]);
+  }, [computedRasterResult, round, saveTeacherDraftNow, selectedStudent, teacherScores, usesRasterForEntry]);
 
-  const selectStudent = async (studentId: string) => {
-    if (studentId === selectedStudentId) return;
+  const selectStudent = async (studentId: string, groupId: string) => {
+    if (studentId === selectedStudentId && groupId === selectedStudentGroupId) return;
     setError(null);
     try {
       await saveTeacherDraftNow();
       await teacherSaveChainRef.current;
       setSelectedStudentId(studentId);
+      setSelectedStudentGroupId(groupId);
       setDraftStatus('idle');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Speichern vor Schülerwechsel fehlgeschlagen');
@@ -538,6 +619,7 @@ export function EpoNotenTeacherView() {
       await saveTeacherDraftNow();
       await teacherSaveChainRef.current;
       setSelectedStudentId('');
+      setSelectedStudentGroupId('');
       setSelectedId(roundId);
       setExpandedRoundIds((prev) => ({ ...prev, [roundId]: true }));
       setDraftStatus('idle');
@@ -546,21 +628,21 @@ export function EpoNotenTeacherView() {
     }
   };
 
-  const applyEntryAssessmentMode = async (mode: 'standard' | 'os' | 'note') => {
-    if (!round || !selectedStudent) return;
+  const applyStudentEpoFeatures = async (flags: EpoJaFlags) => {
+    if (!round || !selectedStudent?.groupId) return;
     if (selectedStudent.studentSubmittedAt || selectedStudent.teacherReleasedAt) return;
     setSaving(true);
     setError(null);
     try {
       await saveTeacherDraftNow();
       await teacherSaveChainRef.current;
+      const fields = epoJaFlagsToEntryFields(flags);
       const res = await apiPut(`/api/epo-noten/${round.id}/teacher/${selectedStudent.studentId}`, {
         groupId: selectedStudent.groupId,
         teacherScores: teacherScoresRef.current,
         teacherGrade: teacherGradeRef.current,
         teacherJustification: teacherJustificationRef.current,
-        withoutSelfAssessment: mode === 'os',
-        teacherGradeOnly: mode === 'note',
+        ...fields,
       });
       if (!res?.ok) {
         const err = await res.json().catch(() => ({}));
@@ -571,59 +653,13 @@ export function EpoNotenTeacherView() {
       if (entry?.studentId) {
         setStudents((prev) =>
           prev.map((s) =>
-            s.studentId === entry.studentId
-              ? { ...s, ...entry, groupId: (s as { groupId?: string }).groupId }
+            s.studentId === entry.studentId && s.groupId === selectedStudent.groupId
+              ? { ...s, ...entry, groupId: s.groupId }
               : s,
           ),
         );
       }
-      await loadList();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const applyGoalsWaived = async (waived: boolean) => {
-    if (!round || !selectedStudent) return;
-    if (selectedStudent.goalsSubmittedAt) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await saveTeacherDraftNow();
-      await teacherSaveChainRef.current;
-      const res = await apiPut(`/api/epo-noten/${round.id}/teacher/${selectedStudent.studentId}`, {
-        groupId: selectedStudent.groupId,
-        teacherScores: teacherScoresRef.current,
-        teacherGrade: teacherGradeRef.current,
-        teacherJustification: teacherJustificationRef.current,
-        goalsWaived: waived,
-      });
-      if (!res?.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(typeof err.error === 'string' ? err.error : 'Speichern fehlgeschlagen');
-      }
-      const data = await res.json();
-      const entry = data.entry as EpoNotenEntry | undefined;
-      if (entry?.studentId) {
-        setStudents((prev) =>
-          prev.map((s) =>
-            s.studentId === entry.studentId
-              ? {
-                  ...s,
-                  ...entry,
-                  groupId: s.groupId,
-                  studentSubmittedAt: entry.studentSubmittedAt ?? s.studentSubmittedAt,
-                  withoutSelfAssessment: entry.withoutSelfAssessment ?? s.withoutSelfAssessment,
-                  teacherGradeOnly: entry.teacherGradeOnly ?? s.teacherGradeOnly,
-                  goalsWaived: entry.goalsWaived ?? waived,
-                }
-              : s,
-          ),
-        );
-      }
-      await loadDetail(round.id, studentListGroupFilter ?? selectedStudent.groupId ?? undefined);
+      await loadDetail(round.id, studentListGroupFilter ?? selectedStudent.groupId);
       await loadList();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
@@ -748,6 +784,30 @@ export function EpoNotenTeacherView() {
     }
   };
 
+  const updateGroupEpoFeatures = async (groupId: string, flags: EpoJaFlags) => {
+    if (!round || !groupId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await apiPut(`/api/epo-noten/${round.id}/group-meta`, {
+        groupId,
+        epoFeatures: { self: flags.self, raster: flags.raster, goals: flags.goals },
+      });
+      if (!res?.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(typeof err.error === 'string' ? err.error : 'Einstellung konnte nicht gespeichert werden');
+      }
+      const data = await res.json();
+      if (data.round) setRound(data.round as EpoNotenRound);
+      await loadDetail(round.id, groupId);
+      await loadList();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Einstellung konnte nicht gespeichert werden');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const updateGroupVariant = async (groupId: string, variantId: string) => {
     if (!round || !groupId) return;
     setSaving(true);
@@ -832,73 +892,13 @@ export function EpoNotenTeacherView() {
   const resetGroupName =
     resetGroupId ? groups.find((g) => g.id === resetGroupId)?.name || resetGroupId : '';
 
-  const confirmBulkGoalsWaivedForGroup = async () => {
-    if (!round || !activeCourseGroupId) return;
-    setGoalsWaivedGroupConfirmOpen(false);
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await apiPost(`/api/epo-noten/${round.id}/bulk-goals-waived`, {
-        groupId: activeCourseGroupId,
-        waived: true,
-      });
-      if (!res?.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(typeof err.error === 'string' ? err.error : 'Setzen fehlgeschlagen');
-      }
-      const data = await res.json().catch(() => ({}));
-      const updated = typeof data.updatedCount === 'number' ? data.updatedCount : 0;
-      const skipped = typeof data.skippedCount === 'number' ? data.skippedCount : 0;
-      if (updated === 0 && skipped > 0) {
-        setError(`Kein SuS geändert — ${skipped} haben Ziele bereits abgeschickt.`);
-      }
-      await loadDetail(round.id, studentListGroupFilter ?? activeCourseGroupId);
-      await loadList();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const confirmBulkGradeOnlyForGroup = async () => {
-    if (!round || !activeCourseGroupId) return;
-    setGradeOnlyGroupConfirmOpen(false);
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await apiPost(`/api/epo-noten/${round.id}/bulk-grade-only`, {
-        groupId: activeCourseGroupId,
-        enabled: true,
-      });
-      if (!res?.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(typeof err.error === 'string' ? err.error : 'Setzen fehlgeschlagen');
-      }
-      const data = await res.json().catch(() => ({}));
-      const updated = typeof data.updatedCount === 'number' ? data.updatedCount : 0;
-      const skipped = typeof data.skippedCount === 'number' ? data.skippedCount : 0;
-      if (updated === 0 && skipped > 0) {
-        setError(
-          `Kein SuS geändert — ${skipped} bereits abgegeben oder freigegeben.`,
-        );
-      }
-      await loadDetail(round.id, studentListGroupFilter ?? activeCourseGroupId);
-      await loadList();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const transferGradesToSchema = async () => {
-    if (!round || !activeCourseGroupId) return;
+  const transferGradesToSchema = async (groupId: string) => {
+    if (!round || !groupId) return;
     setSaving(true);
     setError(null);
     try {
       const res = await apiPost(`/api/epo-noten/${round.id}/integrate-grading-schema`, {
-        groupId: activeCourseGroupId,
+        groupId,
       });
       const data = await res.json().catch(() => ({}));
       if (!res?.ok) {
@@ -907,6 +907,8 @@ export function EpoNotenTeacherView() {
       const count = typeof data.count === 'number' ? data.count : 0;
       const cat = typeof data.categoryName === 'string' ? data.categoryName : round.title;
       window.alert(`${count} Noten ins Notenschema übernommen (Kategorie „${cat}“).`);
+      await loadDetail(round.id, studentListGroupFilter ?? groupId);
+      await loadList();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler');
     } finally {
@@ -932,9 +934,11 @@ export function EpoNotenTeacherView() {
         selectedStudent.groupId === resetGroupId
       ) {
         setSelectedStudentId('');
+        setSelectedStudentGroupId('');
       }
       if (!resetGroupId) {
         setSelectedStudentId('');
+        setSelectedStudentGroupId('');
       }
       setResetGroupId(null);
       await loadDetail(round.id);
@@ -946,12 +950,31 @@ export function EpoNotenTeacherView() {
     }
   };
 
+  const openDeleteRoundConfirm = () => {
+    setDeleteRoundConfirmText('');
+    setDeleteRoundConfirmOpen(true);
+  };
+
   const removeRound = async () => {
-    if (!round || !window.confirm('Diese EPO-Runde wirklich löschen?')) return;
-    await apiPost(`/api/epo-noten/${round.id}/unpublish`, {});
-    await apiDelete(`/api/epo-noten/${round.id}`);
-    setSelectedId('');
-    await loadList();
+    if (!round || deleteRoundConfirmText.trim() !== DELETE_ROUND_CONFIRM_PHRASE) return;
+    setDeleteRoundConfirmOpen(false);
+    setDeleteRoundConfirmText('');
+    setSaving(true);
+    setError(null);
+    try {
+      await apiPost(`/api/epo-noten/${round.id}/unpublish`, {});
+      const res = await apiDelete(`/api/epo-noten/${round.id}`);
+      if (!res?.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(typeof err.error === 'string' ? err.error : 'Löschen fehlgeschlagen');
+      }
+      setSelectedId('');
+      await loadList();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Fehler beim Löschen');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const studentsForList = useMemo(() => {
@@ -1014,10 +1037,12 @@ export function EpoNotenTeacherView() {
       return students.filter((s) => {
         if (s.groupId !== groupId || s.teacherReleasedAt) return false;
         if (isPassiveStudentId(s.studentId, passive)) return false;
-        return Boolean(teacherFormGradeFromEntry(s, mode, categoryWeightsPercent).trim());
+        return Boolean(
+          teacherFormGradeFromEntry(s, mode, categoryWeightsPercent, usesRasterForEntry(s)).trim(),
+        );
       }).length;
     },
-    [categoryWeightsPercent, groupMode, passiveIdsForGroup, round, students],
+    [categoryWeightsPercent, groupMode, passiveIdsForGroup, round, students, usesRasterForEntry],
   );
 
   const releaseAllInGroup = async (groupId: string) => {
@@ -1085,6 +1110,15 @@ export function EpoNotenTeacherView() {
         overflow: 'hidden',
       }}
     >
+      {showEpoRound2Reminder ? (
+        <Alert
+          severity="warning"
+          onClose={dismissEpoRound2Reminder}
+          sx={{ py: 0.35, fontSize: '0.78rem', flexShrink: 0, alignItems: 'center' }}
+        >
+          <strong>{EPO_ROUND2_REMINDER.title}</strong> — {EPO_ROUND2_REMINDER.body}
+        </Alert>
+      ) : null}
       {error && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ py: 0, fontSize: '0.72rem', flexShrink: 0 }}>
           {error}
@@ -1235,7 +1269,7 @@ export function EpoNotenTeacherView() {
                           </Tooltip>
                         )}
                         <Tooltip title="Runde löschen">
-                          <IconButton size="small" onClick={() => void removeRound()} sx={{ ...epoNotenCompactIconBtnSx, color: '#c62828' }}>
+                          <IconButton size="small" onClick={() => openDeleteRoundConfirm()} sx={{ ...epoNotenCompactIconBtnSx, color: '#c62828' }}>
                             <DeleteOutlineIcon sx={epoNotenCompactIconSx} />
                           </IconButton>
                         </Tooltip>
@@ -1279,8 +1313,8 @@ export function EpoNotenTeacherView() {
                                 mb: 0.35,
                                 alignItems: 'center',
                                 display: 'grid',
-                                gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 3.5rem)',
-                                columnGap: 0.35,
+                                gridTemplateColumns: 'auto minmax(0, 1fr) minmax(0, 3.5rem)',
+                                columnGap: 0.4,
                                 borderRadius: 1,
                                 border: '1px solid',
                                 borderColor: rowBorder,
@@ -1294,58 +1328,33 @@ export function EpoNotenTeacherView() {
                                 },
                               }}
                             >
+                              <Box onClick={(e) => e.stopPropagation()}>
+                                <EpoCourseGroupIconActions
+                                  saving={saving}
+                                  completed={completed}
+                                  releasableCount={releasableCountInGroup(gid)}
+                                  schemaIntegrated={Boolean(
+                                    roundForCourses.groupMeta?.[gid]?.schemaIntegratedAt,
+                                  )}
+                                  onRelease={() => void releaseAllInGroup(gid)}
+                                  onSchema={() => void transferGradesToSchema(gid)}
+                                />
+                              </Box>
                               <Box sx={{ minWidth: 0, pr: 0.25 }}>
                                 <Typography sx={{ fontSize: '0.88rem', fontWeight: 700, lineHeight: 1.25 }} noWrap>
                                   {g?.name || gid}
                                 </Typography>
                                 <Typography sx={{ fontSize: '0.58rem', color: 'text.secondary', mt: 0.15 }}>
+                                  {starting ? 'startet noch · ' : ''}
                                   {st.submitted}/{st.total} abgegeben
                                 </Typography>
                               </Box>
                               <Stack
                                 alignItems="flex-end"
                                 spacing={0}
-                                sx={{ minWidth: 0, width: '100%', maxWidth: '3.5rem' }}
                                 onClick={(e) => e.stopPropagation()}
+                                sx={{ minWidth: 0, width: '100%', maxWidth: '3.5rem' }}
                               >
-                                {starting && (
-                                  <Typography
-                                    sx={{
-                                      fontSize: '0.55rem',
-                                      fontWeight: 800,
-                                      color: 'text.secondary',
-                                      lineHeight: 1.2,
-                                      mb: 0.15,
-                                      textAlign: 'right',
-                                    }}
-                                  >
-                                    startet noch
-                                  </Typography>
-                                )}
-                                <Stack direction="row" alignItems="center" spacing={0.1} justifyContent="flex-end">
-                                  <Checkbox
-                                    size="small"
-                                    checked={published && !completed}
-                                    disabled={saving || completed}
-                                    onChange={(_, checked) => void setGroupActive(gid, checked)}
-                                    sx={{
-                                      p: 0,
-                                      color: published ? '#f9a825' : 'action.disabled',
-                                      '&.Mui-checked': { color: '#f57f17' },
-                                    }}
-                                    inputProps={{ 'aria-label': `${g?.name || gid} aktiv` }}
-                                  />
-                                  <Typography
-                                    sx={{
-                                      fontSize: '0.58rem',
-                                      fontWeight: 700,
-                                      minWidth: 25,
-                                      color: published ? '#e65100' : 'text.primary',
-                                    }}
-                                  >
-                                    aktiv
-                                  </Typography>
-                                </Stack>
                                 <Stack direction="row" alignItems="center" spacing={0.1} justifyContent="flex-end">
                                   <Checkbox
                                     size="small"
@@ -1466,154 +1475,111 @@ export function EpoNotenTeacherView() {
               sx={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 1,
-                flexWrap: 'wrap',
+                gap: 0.65,
+                flexWrap: 'nowrap',
                 px: 1.25,
                 py: 0.65,
                 bgcolor: '#fff',
                 borderBottom: `1px solid ${epoNotenPalette.border}`,
+                overflowX: 'auto',
               }}
             >
-              <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: epoNotenPalette.heading, flex: 1, minWidth: 0 }} noWrap>
+              <Typography
+                sx={{
+                  fontWeight: 800,
+                  fontSize: '0.9rem',
+                  color: epoNotenPalette.heading,
+                  flex: '0 1 auto',
+                  minWidth: 48,
+                  maxWidth: '28%',
+                }}
+                noWrap
+              >
                 {activeCourseName}
               </Typography>
               {activeCourseGroupId ? (
-                <Tooltip title="EPO-Zettel (Variante)">
-                  <Select
-                    id="epo-round-variant-select"
-                    size="small"
-                    value={epoVariantIdForGroup(round, activeCourseGroupId)}
-                    onChange={(e) => void updateGroupVariant(activeCourseGroupId, String(e.target.value))}
-                    disabled={saving}
-                    aria-label="EPO-Zettel (Variante)"
-                    sx={{
-                      fontSize: '0.72rem',
-                      fontWeight: 600,
-                      bgcolor: '#fff',
-                      flexShrink: 0,
-                      minWidth: { xs: 118, sm: 148 },
-                      maxWidth: 200,
-                      height: 28,
-                      borderRadius: 1,
-                      '& .MuiOutlinedInput-notchedOutline': { borderColor: epoNotenPalette.border },
-                      '& .MuiSelect-select': { py: 0.25, pr: '28px !important', pl: 0.75 },
-                    }}
-                  >
-                    <MenuItem value={EPO_NO_VARIANT_ID} sx={{ fontSize: '0.82rem', fontWeight: 700 }}>
-                      Kein Zettel (nur Note)
-                    </MenuItem>
-                    {variantOptions.map((v) => (
-                      <MenuItem key={v.id} value={v.id} sx={{ fontSize: '0.82rem' }}>
-                        {v.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </Tooltip>
-              ) : null}
-              {activeCourseGroupId ? (
-                <Tooltip
-                  title={
-                    releasableCountInGroup(activeCourseGroupId) > 0
-                      ? `Lerngruppe freigeben (${releasableCountInGroup(activeCourseGroupId)})`
-                      : 'Keine fertigen Bewertungen zum Freigeben'
-                  }
-                >
-                  <span>
-                    <IconButton
+                <Box sx={{ ...epoJaFeatureGroupShellSx, flexShrink: 1, minWidth: 0, gap: 0.35 }}>
+                  <Tooltip title="Raster-Variante (Standard: Variante 2)">
+                    <Select
+                      id="epo-round-variant-select"
                       size="small"
-                      aria-label="Lerngruppe freigeben"
+                      value={
+                        epoEffectiveVariantIdForGroup(round, activeCourseGroupId) === 'default'
+                          ? 'default'
+                          : EPO_VARIANT2_ID
+                      }
+                      onChange={(e) => void updateGroupVariant(activeCourseGroupId, String(e.target.value))}
                       disabled={
                         saving ||
-                        releasableCountInGroup(activeCourseGroupId) === 0
+                        (() => {
+                          const f = epoGroupJaFlags(round, activeCourseGroupId);
+                          return !f.self && !f.raster;
+                        })()
                       }
-                      onClick={() => void releaseAllInGroup(activeCourseGroupId)}
+                      renderValue={(v) => {
+                        const isLegacy = v === 'default';
+                        return (
+                          <Typography
+                            component="span"
+                            sx={{
+                              fontSize: '0.72rem',
+                              fontWeight: isLegacy ? 600 : 700,
+                              color: isLegacy ? 'text.disabled' : 'text.primary',
+                              fontStyle: isLegacy ? 'italic' : 'normal',
+                            }}
+                          >
+                            {isLegacy ? 'Variante 1 (alt)' : 'Variante 2'}
+                          </Typography>
+                        );
+                      }}
+                      aria-label="EPO-Zettel (Variante)"
                       sx={{
-                        ...epoNotenCompactIconBtnSx,
-                        color: epoNotenPalette.accent,
-                        borderColor: 'rgba(46, 125, 50, 0.45)',
-                        bgcolor: releasableCountInGroup(activeCourseGroupId) > 0
-                          ? 'rgba(46, 125, 50, 0.12)'
-                          : undefined,
-                        '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.2)' },
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        bgcolor: '#fff',
+                        flexShrink: 0,
+                        minWidth: 0,
+                        width: 'auto',
+                        height: 28,
+                        borderRadius: 1,
+                        '& .MuiOutlinedInput-notchedOutline': { borderColor: epoNotenPalette.border },
+                        '& .MuiSelect-select': { py: 0.25, pr: '28px !important', pl: 0.75 },
                       }}
                     >
-                      <LockOpenIcon sx={{ fontSize: '1rem' }} />
-                    </IconButton>
-                  </span>
-                </Tooltip>
+                      <MenuItem value={EPO_VARIANT2_ID} sx={{ fontSize: '0.82rem', fontWeight: 700 }}>
+                        Variante 2 (gewichtet)
+                      </MenuItem>
+                      <MenuItem
+                        value="default"
+                        sx={{ fontSize: '0.82rem', color: 'text.secondary', fontStyle: 'italic' }}
+                      >
+                        Variante 1 (klassisch, alt)
+                      </MenuItem>
+                    </Select>
+                  </Tooltip>
+                  <EpoJaFeatureButtons
+                    size="course"
+                    disabled={saving}
+                    value={epoGroupJaFlags(round, activeCourseGroupId)}
+                    onChange={(flags) => void updateGroupEpoFeatures(activeCourseGroupId, flags)}
+                  />
+                </Box>
               ) : null}
-              <Tooltip title="Ganze Lerngruppe: Nur Note (manuell, ohne Raster)">
-                <span>
-                  <IconButton
-                    size="small"
-                    aria-label="Ganze Lerngruppe auf Nur Note setzen"
-                    disabled={saving || !activeCourseGroupId}
-                    onClick={() => setGradeOnlyGroupConfirmOpen(true)}
-                    sx={{
-                      ...epoNotenCompactIconBtnSx,
-                      color: '#6a1b9a',
-                      borderColor: 'rgba(106, 27, 154, 0.35)',
-                      '&:hover': { bgcolor: 'rgba(106, 27, 154, 0.08)' },
-                    }}
-                  >
-                    <BackHandOutlinedIcon sx={{ fontSize: '1rem' }} />
-                  </IconButton>
-                </span>
-              </Tooltip>
-              <Tooltip title="Freigegebene Noten ins Notenschema (Kategorie = Rundentitel)">
-                <span>
-                  <IconButton
-                    size="small"
-                    aria-label="EPO-Noten ins Notenschema übertragen"
-                    disabled={saving || !activeCourseGroupId}
-                    onClick={() => void transferGradesToSchema()}
-                    sx={{
-                      ...epoNotenCompactIconBtnSx,
-                      color: epoNotenPalette.primary,
-                      borderColor: 'rgba(25, 118, 210, 0.35)',
-                      '&:hover': { bgcolor: epoNotenPalette.primaryTint },
-                    }}
-                  >
-                    <ImportExportIcon sx={{ fontSize: '1rem' }} />
-                  </IconButton>
-                </span>
-              </Tooltip>
-              <Tooltip title="Ganze Lerngruppe: Keine Ziele nötig">
-                <span>
-                  <IconButton
-                    size="small"
-                    aria-label="Ganze Lerngruppe auf Keine Ziele nötig setzen"
-                    disabled={saving || !activeCourseGroupId}
-                    onClick={() => setGoalsWaivedGroupConfirmOpen(true)}
-                    sx={{
-                      ...epoNotenCompactIconBtnSx,
-                      color: '#2e7d32',
-                      borderColor: 'rgba(46, 125, 50, 0.45)',
-                      '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.1)' },
-                    }}
-                  >
-                    <CheckBoxOutlinedIcon sx={{ fontSize: '1rem' }} />
-                  </IconButton>
-                </span>
-              </Tooltip>
-              <Tooltip title="Kurs zurücksetzen">
-                <span>
-                  <IconButton
-                    size="small"
-                    aria-label="Kurs zurücksetzen"
-                    disabled={saving || !activeCourseGroupId}
-                    onClick={() => requestReset(activeCourseGroupId)}
-                    sx={{
-                      ...epoNotenCompactIconBtnSx,
-                      color: '#e65100',
-                      borderColor: 'rgba(230, 81, 0, 0.4)',
-                      '&:hover': { bgcolor: 'rgba(245, 124, 0, 0.1)' },
-                    }}
-                  >
-                    <RestartAltIcon sx={{ fontSize: '1rem' }} />
-                  </IconButton>
-                </span>
-              </Tooltip>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={saving || !activeCourseGroupId}
+                onClick={() => requestReset(activeCourseGroupId)}
+                startIcon={<RestartAltIcon />}
+                sx={{
+                  ...epoNotenToolbarOutlinedBtnSx,
+                  color: '#e65100',
+                  borderColor: 'rgba(230, 81, 0, 0.45)',
+                  '&:hover': { bgcolor: 'rgba(245, 124, 0, 0.08)', borderColor: '#e65100' },
+                }}
+              >
+                Kurs zurücksetzen
+              </Button>
               {(() => {
                 const mssLocked = epoGroupUsesMssPoints(activeCourseName);
                 const modeValue = groupMode(activeCourseGroupId);
@@ -1736,7 +1702,10 @@ export function EpoNotenTeacherView() {
                             </ListItemButton>
                           ) : null}
                           {section.students.map((s, studentIndex) => {
-                            const active = s.studentId === selectedStudentId;
+                            const rowGroupId =
+                              section.groupId === '__other__' ? s.groupId || '' : section.groupId;
+                            const active =
+                              s.studentId === selectedStudentId && rowGroupId === selectedStudentGroupId;
                             const isLastInSection = studentIndex === section.students.length - 1;
                             const isLastSection = sectionIndex === visibleStudentSections.length - 1;
                             const passive = isPassiveStudentId(
@@ -1750,12 +1719,17 @@ export function EpoNotenTeacherView() {
                               round && section.groupId !== '__other__'
                                 ? epoGroupUsesRaster(round, section.groupId)
                                 : groupUsesRaster;
-                            const pendingKind =
-                              !passive && live && sectionUsesRaster && !s.withoutSelfAssessment && !s.teacherGradeOnly
-                                ? studentEpoPendingKind(s, true, { usesRaster: sectionUsesRaster })
-                                : !passive && live
-                                  ? studentEpoPendingKind(s, true, { usesRaster: false })
-                                  : null;
+                            const goalsWaivedForRow =
+                              Boolean(s.goalsWaived) ||
+                              (round && section.groupId !== '__other__'
+                                ? epoGroupSelfAssessmentOnly(round, section.groupId)
+                                : false);
+                            const pendingKind = !passive && live
+                              ? studentEpoPendingKind(s, true, {
+                                  usesRaster: sectionUsesRaster,
+                                  goalsWaived: goalsWaivedForRow,
+                                })
+                              : null;
                             const suFertig = !passive && live && !pendingKind;
                             const rowMode =
                               s.groupId && round ? groupMode(s.groupId) : selectedAssessmentMode;
@@ -1768,7 +1742,7 @@ export function EpoNotenTeacherView() {
                               <ListItemButton
                                 key={`${section.groupId}-${s.studentId}`}
                                 selected={active}
-                                onClick={() => void selectStudent(s.studentId)}
+                                onClick={() => void selectStudent(s.studentId, rowGroupId)}
                                 sx={{
                                   py: 0.5,
                                   px: 0.5,
@@ -1839,14 +1813,7 @@ export function EpoNotenTeacherView() {
                     ) : (
                       <Stack spacing={0.45}>
                         {selectedStudent.groupId ? (
-                          <Stack
-                            direction="row"
-                            alignItems="center"
-                            justifyContent="space-between"
-                            gap={0.75}
-                            flexWrap="wrap"
-                            sx={{ mb: 0.25 }}
-                          >
+                          <Stack spacing={0.35} sx={{ mb: 0.25 }}>
                             <Typography sx={{ fontWeight: 800, fontSize: '0.82rem' }}>
                               {selectedStudent.studentName}
                             </Typography>
@@ -1855,96 +1822,25 @@ export function EpoNotenTeacherView() {
                                 selectedStudent.studentId,
                                 passiveIdsForGroup(selectedStudent.groupId),
                               );
-                              const segmentValue: false | 'absent' | 'os' | 'note' = passive
-                                ? 'absent'
-                                : selectedStudent.teacherGradeOnly
-                                  ? 'note'
-                                  : selectedStudent.withoutSelfAssessment
-                                    ? 'os'
-                                    : false;
                               const modeLocked =
                                 saving ||
                                 passiveSaving ||
                                 Boolean(selectedStudent.teacherReleasedAt);
-                              const modeLockHint = selectedStudent.teacherReleasedAt
-                                ? 'Nach Freigabe nicht änderbar — ggf. Kurs zurücksetzen'
-                                : '';
+                              const groupFlags = round
+                                ? epoGroupJaFlags(round, selectedStudent.groupId)
+                                : { self: true, raster: true, goals: true };
                               return (
-                                <ToggleButtonGroup
-                                  exclusive
-                                  size="small"
-                                  value={segmentValue}
-                                  onChange={(_, next: false | 'absent' | 'os' | 'note' | null) => {
-                                    if (next === null) {
-                                      if (segmentValue === 'absent') void toggleSelectedStudentPassive();
-                                      else if (segmentValue === 'os' || segmentValue === 'note') {
-                                        void applyEntryAssessmentMode('standard');
-                                      }
-                                      return;
-                                    }
-                                    if (next === segmentValue) {
-                                      if (next === 'absent') void toggleSelectedStudentPassive();
-                                      else void applyEntryAssessmentMode('standard');
-                                      return;
-                                    }
-                                    if (next === 'absent') {
-                                      if (!passive) void toggleSelectedStudentPassive();
-                                      if (segmentValue === 'os' || segmentValue === 'note') {
-                                        void applyEntryAssessmentMode('standard');
-                                      }
-                                      return;
-                                    }
-                                    if (passive) void toggleSelectedStudentPassive();
-                                    void applyEntryAssessmentMode(next === 'os' ? 'os' : 'note');
+                                <EpoJaFeatureButtons
+                                  size="student"
+                                  disabled={modeLocked || passive}
+                                  value={epoEntryJaFlags(selectedStudent, groupFlags)}
+                                  onChange={(flags) => void applyStudentEpoFeatures(flags)}
+                                  absent={{
+                                    active: passive,
+                                    disabled: passiveSaving || saving || modeLocked,
+                                    onToggle: () => void toggleSelectedStudentPassive(),
                                   }}
-                                  sx={{
-                                    flexShrink: 0,
-                                    '& .MuiToggleButton-root': {
-                                      ...epoNotenCompactBtnSx,
-                                      px: 0.55,
-                                      minHeight: 26,
-                                      gap: 0.25,
-                                    },
-                                  }}
-                                >
-                                  <Tooltip title={modeLockHint || 'Länger abwesend (kein EPO-Zettel nötig)'}>
-                                    <span>
-                                      <ToggleButton
-                                        value="absent"
-                                        disabled={passiveSaving || saving || modeLocked}
-                                      >
-                                        <EventBusyOutlinedIcon sx={{ fontSize: 14 }} />
-                                        Länger abwesend
-                                      </ToggleButton>
-                                    </span>
-                                  </Tooltip>
-                                  <Tooltip
-                                    title={
-                                      modeLockHint ||
-                                      'oS = ohne Selbsteinschätzung (SuS füllt keinen Zettel). Nochmal klicken → Standard mit Zettel.'
-                                    }
-                                  >
-                                    <span>
-                                      <ToggleButton value="os" disabled={modeLocked}>
-                                        <PersonOffOutlinedIcon sx={{ fontSize: 14 }} />
-                                        oS
-                                      </ToggleButton>
-                                    </span>
-                                  </Tooltip>
-                                  <Tooltip
-                                    title={
-                                      modeLockHint ||
-                                      'Nur Note für diesen SuS (ohne Raster). Nochmal klicken → Standard mit Zettel.'
-                                    }
-                                  >
-                                    <span>
-                                      <ToggleButton value="note" disabled={modeLocked}>
-                                        <LooksOneOutlinedIcon sx={{ fontSize: 14 }} />
-                                        Note
-                                      </ToggleButton>
-                                    </span>
-                                  </Tooltip>
-                                </ToggleButtonGroup>
+                                />
                               );
                             })()}
                           </Stack>
@@ -2037,8 +1933,36 @@ export function EpoNotenTeacherView() {
                         ) : null}
 
                         <Box sx={{ position: 'relative', width: '100%' }}>
-                            {selectedStudent.teacherGradeOnly || !groupUsesRaster ? (
+                            {selectedStudent.teacherGradeOnly ||
+                            !(selectedStudent.groupId && round && epoTeacherUsesRaster(round, selectedStudent.groupId)) ? (
                               <Stack spacing={1} sx={{ mt: 0.5 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                  <Tooltip
+                                    title={
+                                      selectedStudent.teacherReleasedAt
+                                        ? 'Bewertung leeren und Freigabe zurücknehmen'
+                                        : 'Bewertung leeren'
+                                    }
+                                  >
+                                    <span>
+                                      <IconButton
+                                        size="small"
+                                        aria-label="Bewertung leeren"
+                                        disabled={saving}
+                                        onClick={() => void clearTeacherAssessment()}
+                                        sx={{
+                                          p: 0.25,
+                                          width: 26,
+                                          height: 26,
+                                          color: 'text.secondary',
+                                          '&:hover': { color: 'text.primary', bgcolor: 'rgba(0,0,0,0.04)' },
+                                        }}
+                                      >
+                                        <PanoramaFishEyeIcon sx={{ fontSize: '1.05rem' }} />
+                                      </IconButton>
+                                    </span>
+                                  </Tooltip>
+                                </Box>
                                 <TextField
                                   size="small"
                                   fullWidth
@@ -2048,38 +1972,21 @@ export function EpoNotenTeacherView() {
                                   disabled={Boolean(selectedStudent.teacherReleasedAt)}
                                   sx={{ '& .MuiInputBase-root': { fontSize: '0.9rem', fontWeight: 700 } }}
                                 />
-                                <Stack direction="row" spacing={1} alignItems="flex-start">
-                                  <TextField
-                                    size="small"
-                                    fullWidth
-                                    label="Bemerkung (optional)"
-                                    value={teacherJustification}
-                                    onChange={(e) => handleTeacherJustificationChange(e.target.value)}
-                                    disabled={Boolean(selectedStudent.teacherReleasedAt)}
-                                    multiline
-                                    minRows={2}
-                                    sx={{ flex: 1, minWidth: 0, '& .MuiInputBase-root': { fontSize: '0.82rem' } }}
-                                  />
-                                  <FormControlLabel
-                                    sx={{
-                                      m: 0,
-                                      mt: 0.25,
-                                      flexShrink: 0,
-                                      alignSelf: 'flex-start',
-                                      '& .MuiFormControlLabel-label': { fontSize: '0.72rem', lineHeight: 1.25 },
-                                    }}
-                                    control={
-                                      <Checkbox
-                                        size="small"
-                                        checked={Boolean(selectedStudent.goalsWaived)}
-                                        disabled={Boolean(selectedStudent.goalsSubmittedAt) || saving}
-                                        onChange={(_, checked) => void applyGoalsWaived(checked)}
-                                        sx={{ p: 0.35 }}
-                                      />
-                                    }
-                                    label="Keine Ziele nötig"
-                                  />
-                                </Stack>
+                                <TextField
+                                  size="small"
+                                  fullWidth
+                                  label="Bemerkung (optional)"
+                                  value={teacherJustification}
+                                  onChange={(e) => handleTeacherJustificationChange(e.target.value)}
+                                  multiline
+                                  minRows={2}
+                                  helperText={
+                                    selectedStudent.teacherReleasedAt
+                                      ? 'Auch nach Freigabe bearbeitbar — SuS sieht die Bemerkung.'
+                                      : undefined
+                                  }
+                                  sx={{ mt: 0.5, '& .MuiInputBase-root': { fontSize: '0.82rem' } }}
+                                />
                               </Stack>
                             ) : (
                               <>
@@ -2093,12 +2000,40 @@ export function EpoNotenTeacherView() {
                                         ? 'Deine Bewertung (oS)'
                                         : 'Deine Bewertung'
                                   }
+                                  headerAction={
+                                    <Tooltip
+                                      title={
+                                        selectedStudent.teacherReleasedAt
+                                          ? 'Raster leeren und Freigabe zurücknehmen'
+                                          : 'Raster leeren'
+                                      }
+                                    >
+                                      <span>
+                                        <IconButton
+                                          size="small"
+                                          aria-label="Raster leeren"
+                                          disabled={saving}
+                                          onClick={() => void clearTeacherAssessment()}
+                                          sx={{
+                                            p: 0.25,
+                                            width: 26,
+                                            height: 26,
+                                            color: '#0d47a1',
+                                            opacity: 0.85,
+                                            '&:hover': { opacity: 1, bgcolor: 'rgba(255,255,255,0.35)' },
+                                          }}
+                                        >
+                                          <PanoramaFishEyeIcon sx={{ fontSize: '1.05rem' }} />
+                                        </IconButton>
+                                      </span>
+                                    </Tooltip>
+                                  }
                                   categories={teacherCategories}
                                   categoryTitles={categoryTitles}
                                   categoryWeightsPercent={categoryWeightsPercent}
                                   scores={teacherScores}
                                   onChange={handleTeacherScoresChange}
-                                  radioGroupId={selectedStudentId}
+                                  radioGroupId={`${selectedStudentGroupId}-${selectedStudentId}`}
                                   studentOverlayScores={
                                     selectedStudent.studentSubmittedAt
                                       ? normalizeCategoryScores(selectedStudent.selfScores)
@@ -2130,38 +2065,21 @@ export function EpoNotenTeacherView() {
                                       (allCategoriesSelected(teacherScores) ? computedRasterResult : '—')}
                                   </Typography>
                                 </Stack>
-                                <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mt: 1 }}>
-                                  <TextField
-                                    size="small"
-                                    fullWidth
-                                    label="Bemerkung (optional)"
-                                    value={teacherJustification}
-                                    onChange={(e) => handleTeacherJustificationChange(e.target.value)}
-                                    disabled={Boolean(selectedStudent.teacherReleasedAt)}
-                                    multiline
-                                    minRows={2}
-                                    sx={{ flex: 1, minWidth: 0, '& .MuiInputBase-root': { fontSize: '0.82rem' } }}
-                                  />
-                                  <FormControlLabel
-                                    sx={{
-                                      m: 0,
-                                      mt: 0.25,
-                                      flexShrink: 0,
-                                      alignSelf: 'flex-start',
-                                      '& .MuiFormControlLabel-label': { fontSize: '0.72rem', lineHeight: 1.25 },
-                                    }}
-                                    control={
-                                      <Checkbox
-                                        size="small"
-                                        checked={Boolean(selectedStudent.goalsWaived)}
-                                        disabled={Boolean(selectedStudent.goalsSubmittedAt) || saving}
-                                        onChange={(_, checked) => void applyGoalsWaived(checked)}
-                                        sx={{ p: 0.35 }}
-                                      />
-                                    }
-                                    label="Keine Ziele nötig"
-                                  />
-                                </Stack>
+                                <TextField
+                                  size="small"
+                                  fullWidth
+                                  label="Bemerkung (optional)"
+                                  value={teacherJustification}
+                                  onChange={(e) => handleTeacherJustificationChange(e.target.value)}
+                                  multiline
+                                  minRows={2}
+                                  helperText={
+                                    selectedStudent.teacherReleasedAt
+                                      ? 'Auch nach Freigabe bearbeitbar — SuS sieht die Bemerkung.'
+                                      : undefined
+                                  }
+                                  sx={{ mt: 1, '& .MuiInputBase-root': { fontSize: '0.82rem' } }}
+                                />
                               </>
                             )}
 
@@ -2266,36 +2184,60 @@ export function EpoNotenTeacherView() {
       </Box>
 
       <Dialog
-        open={gradeOnlyGroupConfirmOpen}
+        open={deleteRoundConfirmOpen}
         onClose={() => {
-          if (!saving) setGradeOnlyGroupConfirmOpen(false);
+          if (!saving) {
+            setDeleteRoundConfirmOpen(false);
+            setDeleteRoundConfirmText('');
+          }
         }}
         maxWidth="xs"
         fullWidth
       >
         <DialogTitle sx={dialogCloseTitleSx}>
-          Nur Note für ganze Lerngruppe?
+          EPO-Runde endgültig löschen?
           <DialogCloseIconButton
             onClose={() => {
-              if (!saving) setGradeOnlyGroupConfirmOpen(false);
+              if (!saving) {
+                setDeleteRoundConfirmOpen(false);
+                setDeleteRoundConfirmText('');
+              }
             }}
             disabled={saving}
           />
         </DialogTitle>
         <DialogContent>
-          <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
-            Für <strong>{activeCourseName}</strong> in <strong>{round?.title}</strong> wird bei allen SuS der Modus{' '}
-            <strong>Nur Note</strong> gesetzt (keine Selbsteinschätzung, kein Raster — nur Note und Begründung durch
-            dich).
-          </Typography>
-          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: 'text.secondary', mt: 1 }}>
-            SuS mit bereits abgegebener Selbsteinschätzung oder freigegebener Bewertung werden übersprungen.
-          </Typography>
+          <Stack spacing={1.25} sx={{ pt: 0.25 }}>
+            <Alert severity="error" sx={{ py: 0.55, fontSize: '0.8rem', fontWeight: 600 }}>
+              Alle Daten dieser Runde werden unwiderruflich gelöscht.
+            </Alert>
+            <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+              Runde: <strong>{round?.title}</strong>
+              {round?.date ? ` · ${round.date}` : ''}
+            </Typography>
+            <Typography variant="body2" sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
+              Einträge aller Kurse und SuS in dieser Runde (Selbsteinschätzungen, Bewertungen, Freigaben, Ziele) gehen
+              verloren.
+            </Typography>
+            <TextField
+              size="small"
+              fullWidth
+              autoComplete="off"
+              label={`Zum Bestätigen „${DELETE_ROUND_CONFIRM_PHRASE}“ eingeben`}
+              value={deleteRoundConfirmText}
+              onChange={(e) => setDeleteRoundConfirmText(e.target.value)}
+              disabled={saving}
+              sx={{ mt: 0.5, '& .MuiInputBase-root': { fontSize: '0.88rem' } }}
+            />
+          </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 2, pb: 1.5 }}>
           <Button
             size="small"
-            onClick={() => setGradeOnlyGroupConfirmOpen(false)}
+            onClick={() => {
+              setDeleteRoundConfirmOpen(false);
+              setDeleteRoundConfirmText('');
+            }}
             disabled={saving}
             sx={epoNotenCompactBtnSx}
           >
@@ -2304,62 +2246,13 @@ export function EpoNotenTeacherView() {
           <Button
             size="small"
             variant="contained"
-            color="secondary"
-            startIcon={<BackHandOutlinedIcon sx={{ fontSize: 14 }} />}
-            onClick={() => void confirmBulkGradeOnlyForGroup()}
-            disabled={saving}
+            color="error"
+            startIcon={<DeleteOutlineIcon sx={{ fontSize: 14 }} />}
+            onClick={() => void removeRound()}
+            disabled={saving || deleteRoundConfirmText.trim() !== DELETE_ROUND_CONFIRM_PHRASE}
             sx={epoNotenCompactBtnSx}
           >
-            Ja, Nur Note setzen
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
-        open={goalsWaivedGroupConfirmOpen}
-        onClose={() => {
-          if (!saving) setGoalsWaivedGroupConfirmOpen(false);
-        }}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle sx={dialogCloseTitleSx}>
-          Keine Ziele nötig für ganze Lerngruppe?
-          <DialogCloseIconButton
-            onClose={() => {
-              if (!saving) setGoalsWaivedGroupConfirmOpen(false);
-            }}
-            disabled={saving}
-          />
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
-            Für <strong>{activeCourseName}</strong> in <strong>{round?.title}</strong> wird bei allen SuS{' '}
-            <strong>Keine Ziele nötig</strong> gesetzt.
-          </Typography>
-          <Typography variant="body2" sx={{ fontSize: '0.8rem', color: 'text.secondary', mt: 1 }}>
-            SuS, die Ziele bereits abgeschickt haben, werden übersprungen.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 2, pb: 1.5 }}>
-          <Button
-            size="small"
-            onClick={() => setGoalsWaivedGroupConfirmOpen(false)}
-            disabled={saving}
-            sx={epoNotenCompactBtnSx}
-          >
-            Abbrechen
-          </Button>
-          <Button
-            size="small"
-            variant="contained"
-            color="success"
-            startIcon={<CheckBoxOutlinedIcon sx={{ fontSize: 14 }} />}
-            onClick={() => void confirmBulkGoalsWaivedForGroup()}
-            disabled={saving}
-            sx={epoNotenCompactBtnSx}
-          >
-            Ja, setzen
+            Runde löschen
           </Button>
         </DialogActions>
       </Dialog>

@@ -391,7 +391,6 @@ async function startServer() {
       });
     } else {
       // Development mode with PortManager
-      await PortManager.cleanupPorts();
       const { server, port: managedPort } = await PortManager.startServer(app, port);
       console.log(`🎯 Server is running on port ${managedPort}`);
       console.log(`📊 Monitoring: http://localhost:${managedPort}/api/monitoring/stats`);

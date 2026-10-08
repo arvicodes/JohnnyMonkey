@@ -453,8 +453,21 @@ else:
         str(merged_db),
       ]
     )
-    if chosen.resolve() == local_db.resolve():
-      shutil.copy2(merged_db, local_db)
+  merge_ka = root / "scripts/merge-ka-school-into-local.py"
+  if merge_ka.is_file() and school_db.is_file() and merged_db.is_file():
+    print("==> Prüfungs-Abgaben (KA/HU/QZ) Schul → Ziel-DB mergen")
+    subprocess.check_call(
+      [
+        sys.executable,
+        str(merge_ka),
+        "--school-db",
+        str(school_db),
+        "--local-db",
+        str(merged_db),
+      ]
+    )
+  if chosen.resolve() == local_db.resolve() and merged_db.is_file():
+    shutil.copy2(merged_db, local_db)
 
   local_pepper = read_local_pepper()
   print("Pepper Laptop:", "vorhanden" if local_pepper else "fehlt")

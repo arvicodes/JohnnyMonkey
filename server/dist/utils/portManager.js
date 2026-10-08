@@ -32,14 +32,9 @@ class PortManager {
             });
         });
     }
-    /**
-     * Startet den Server mit automatischer Port-Findung
-     */
-    static async startServer(app, preferredPort) {
-        // Force the preferred port if specified
-        const port = preferredPort || await this.findFreePort();
+    static listenOnce(app, port) {
         return new Promise((resolve, reject) => {
-            const server = app.listen(port, () => {
+            const server = app.listen(port, '127.0.0.1', () => {
                 var _a;
                 const actualPort = ((_a = server.address()) === null || _a === void 0 ? void 0 : _a.port) || port;
                 server.timeout = 600000;
@@ -51,7 +46,6 @@ class PortManager {
             });
             server.on('error', (error) => {
                 if (error.code === 'EADDRINUSE') {
-                    console.error(`❌ Port ${port} is already in use`);
                     reject(new Error(`Port ${port} is already in use. Please try again.`));
                 }
                 else {
@@ -62,13 +56,37 @@ class PortManager {
         });
     }
     /**
+     * Startet den Server mit automatischer Port-Findung
+     */
+    static async startServer(app, preferredPort) {
+        const port = preferredPort || await this.findFreePort();
+        const maxAttempts = 3;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                return await this.listenOnce(app, port);
+            }
+            catch (error) {
+                const busy = String((error === null || error === void 0 ? void 0 : error.message) || '').includes('already in use');
+                if (!busy || attempt >= maxAttempts) {
+                    if (busy)
+                        console.error(`❌ Port ${port} is already in use`);
+                    throw error;
+                }
+                console.warn(`⚠️ Port ${port} noch belegt — warte auf Freigabe (${attempt}/${maxAttempts})…`);
+                await new Promise((r) => setTimeout(r, 800));
+            }
+        }
+        throw new Error(`Port ${port} is already in use. Please try again.`);
+    }
+    /**
      * Beendet alle laufenden Server-Prozesse auf einem bestimmten Port
      */
     static async killProcessOnPort(port) {
         return new Promise((resolve, reject) => {
             const { exec } = require('child_process');
             // Für macOS/Linux
-            const command = `lsof -ti:${port} | xargs kill -9 2>/dev/null || echo "No process found on port ${port}"`;
+            const myPid = process.pid;
+            const command = `lsof -ti:${port} 2>/dev/null | grep -v '^${myPid}$' | xargs kill -9 2>/dev/null || true`;
             exec(command, (error, stdout, stderr) => {
                 if (error) {
                     console.log(`ℹ️  ${stdout}`);
@@ -80,10 +98,10 @@ class PortManager {
     /**
      * Überprüft und bereinigt Ports vor dem Start
      */
-    static async cleanupPorts() {
-        console.log('🧹 Checking for port conflicts...');
+    static async cleanupPorts(port = this.DEFAULT_PORT) {
+        console.log(`🧹 Checking for port conflicts on ${port}...`);
         try {
-            await this.killProcessOnPort(this.DEFAULT_PORT);
+            await this.killProcessOnPort(port);
             console.log('✅ Port cleanup completed');
         }
         catch (error) {

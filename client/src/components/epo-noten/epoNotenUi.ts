@@ -228,6 +228,40 @@ export const epoNotenCompactBtnSx = {
   },
 } as const;
 
+/** Outlined-Buttons in EPO-Kopfzeilen (JA-Toggles, Kurs zurücksetzen): nur Inhaltsbreite, gleiches Padding */
+export const epoNotenToolbarOutlinedBtnSx = {
+  ...epoNotenCompactBtnSx,
+  minWidth: 0,
+  width: 'max-content',
+  minHeight: 27,
+  py: 0.28,
+  px: 0.75,
+  fontSize: '0.6rem',
+  fontWeight: 800,
+  lineHeight: 1.08,
+  flexShrink: 0,
+  borderWidth: 1,
+  '& .MuiButton-startIcon': {
+    marginRight: 0.25,
+    marginLeft: 0,
+    '& > *:nth-of-type(1)': { fontSize: 13 },
+  },
+} as const;
+
+/** Wie Toolbar, etwas kleiner (SuS-Zeile) */
+export const epoNotenToolbarOutlinedBtnCompactSx = {
+  ...epoNotenToolbarOutlinedBtnSx,
+  minHeight: 24,
+  py: 0.22,
+  px: 0.65,
+  fontSize: '0.55rem',
+  '& .MuiButton-startIcon': {
+    marginRight: 0.25,
+    marginLeft: 0,
+    '& > *:nth-of-type(1)': { fontSize: 12 },
+  },
+} as const;
+
 export const epoNotenStudentGhostPanelSx = {
   borderRadius: 1.25,
   border: '1px solid rgba(156, 39, 176, 0.22)',
