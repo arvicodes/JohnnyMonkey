@@ -77,6 +77,7 @@ import {
   formatExamClassAverageDecimal,
 } from '../lib/examGradeLabel';
 import { gradePercentDisplayRanges, scoreToGradeTendency, tendencyToAsciiLabel } from '../lib/gradeScale';
+import { filterLearningGroupsForExamFile } from '../lib/examLearningGroupFilter';
 import { examBaseGitPath, normalizeVersionLetter, versionLetterFromKaPath } from '../lib/examVersionPaths';
 import { resetExamSession } from '../lib/examSessionReset';
 import ExamFullResetConfirmDialog from './exam/ExamFullResetConfirmDialog';
@@ -397,6 +398,29 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
         const subIds = new Set(submissions.map((s) => s.student?.id).filter(Boolean));
         matched = allGroups.filter((g) => g.students?.some((s) => subIds.has(s.id)));
       }
+
+      if (teacherId && kaFilePath) {
+        try {
+          const histRes = await fetch(
+            `/api/learning-groups/exam-sessions/history?teacherId=${encodeURIComponent(teacherId)}&filePath=${encodeURIComponent(kaFilePath)}`,
+            { headers: { 'x-login-code': loginCode } },
+          );
+          if (histRes.ok) {
+            const hist = (await histRes.json()) as { sessions?: Array<{ groupId?: string }> };
+            const histIds = [
+              ...new Set((hist.sessions || []).map((s) => s.groupId).filter(Boolean) as string[]),
+            ];
+            if (histIds.length > 0) {
+              const byHistory = matched.filter((g) => histIds.includes(g.id));
+              if (byHistory.length > 0) matched = byHistory;
+            }
+          }
+        } catch {
+          /* Historie optional */
+        }
+      }
+
+      matched = filterLearningGroupsForExamFile(matched, kaFilePath);
 
       const tabs: ExamGroupTab[] = matched
         .map((g) => ({
