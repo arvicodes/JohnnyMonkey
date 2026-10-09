@@ -34,6 +34,8 @@ export type ExamReviewedViewOpts = {
   studentName?: string;
   /** z. B. Lerngruppe „5a“ — wird im Kopf angezeigt */
   learningGroupName?: string;
+  /** Lehrer-Korrekturmodus: Punkte-Badges klickbar (postMessage an Parent). */
+  teacherCorrectionMode?: boolean;
 };
 
 function formatPointsBadge(achieved: number, maxPts: number): string {
@@ -85,11 +87,27 @@ function persistInputValue(
   el.setAttribute('value', value);
 }
 
+function attachPointsBadge(
+  badge: HTMLSpanElement,
+  taskId: string,
+  teacherCorrectionMode: boolean,
+  anchor: Element,
+  insertAfterFn: (anchor: Element, node: HTMLElement) => void,
+) {
+  badge.setAttribute('data-jm-task-id', taskId);
+  if (teacherCorrectionMode) {
+    badge.classList.add('jm-points-badge-editable');
+    badge.setAttribute('title', 'Klicken: Punkte und Kommentar bearbeiten');
+  }
+  insertAfterFn(anchor, badge);
+}
+
 function fillAndMark(
   doc: Document,
   answers: Record<string, unknown>,
   key: ReturnType<typeof parseExamAnswerKey>,
   corrections: ExamReviewCorrection[],
+  teacherCorrectionMode = false,
 ) {
   const corrByTask: Record<string, number> = {};
   corrections.forEach((c) => {
@@ -192,7 +210,7 @@ function fillAndMark(
       }`;
       badge.textContent = formatPointsBadge(achieved, maxPts);
       const anchor = anchorAfterField(byId);
-      insertAfter(anchor, badge);
+      attachPointsBadge(badge, taskId, teacherCorrectionMode, anchor, insertAfter);
       insertSolutionHint(badge);
       return;
     }
@@ -234,11 +252,19 @@ function fillAndMark(
           isPartial ? 'points-partial' : achieved > 0 ? 'points-correct' : 'points-incorrect'
         }`;
         badge.textContent = formatPointsBadge(achieved, maxPts);
-        wrap.appendChild(badge);
+        attachPointsBadge(badge, taskId, teacherCorrectionMode, wrap, (a, n) => a.appendChild(n));
         insertSolutionHint(badge);
       }
       return;
     }
+  });
+
+  Object.entries(answers || {}).forEach(([fieldId, raw]) => {
+    if (!fieldId.startsWith('examDollar_')) return;
+    const el = doc.getElementById(fieldId) as HTMLInputElement | HTMLTextAreaElement | null;
+    if (!el) return;
+    persistInputValue(el, normAnswer(raw));
+    el.classList.add('answer-correct');
   });
 }
 
@@ -435,6 +461,14 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       top: auto !important;
     }
     input, textarea, select, button { pointer-events: none !important; }
+    .jm-points-badge-editable {
+      pointer-events: auto !important;
+      cursor: pointer !important;
+      box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.35);
+    }
+    .jm-points-badge-editable:hover {
+      filter: brightness(1.05);
+    }
     html, body {
       margin: 0 !important;
       padding: 0 !important;
@@ -625,8 +659,24 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   doc.querySelectorAll('.footer-luck, .footer-clover').forEach((el) => el.remove());
   doc.querySelectorAll('.footer, .footer-note').forEach((el) => el.remove());
 
-  fillAndMark(doc, answers, key, opts.corrections || []);
+  const teacherCorrectionMode = Boolean(opts.teacherCorrectionMode);
+  if (teacherCorrectionMode) {
+    doc.documentElement.classList.add('teacher-correction-mode');
+  }
+
+  fillAndMark(doc, answers, key, opts.corrections || [], teacherCorrectionMode);
   injectPerTaskTeacherComments(doc, opts.corrections || []);
+
+  if (teacherCorrectionMode) {
+    const boot = doc.createElement('script');
+    boot.textContent = `(function(){
+  function send(taskId){ try { parent.postMessage({ type: 'jm-exam-correction-field', taskId: taskId }, '*'); } catch(e) {} }
+  document.querySelectorAll('.jm-points-badge-editable[data-jm-task-id]').forEach(function(b){
+    b.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); send(b.getAttribute('data-jm-task-id')); });
+  });
+})();`;
+    doc.body.appendChild(boot);
+  }
 
   doc.querySelectorAll('input, textarea, select, button').forEach((el) => {
     (el as HTMLInputElement).disabled = true;
