@@ -151,30 +151,45 @@ const REVIEW_COMPLETE_TASK = '__review_complete__';
 const GENERAL_COMMENT_TASK = '__general_comment__';
 const PURPLE_REVIEW = '#7b1fa2';
 
+const kaCorrectionToolbarBtnSx = {
+  ...epoNotenToolbarOutlinedBtnSx,
+  minHeight: 30,
+  py: 0.35,
+  px: 0.85,
+  fontSize: '0.7rem',
+  '& .MuiButton-startIcon': {
+    marginRight: 0.3,
+    marginLeft: 0,
+    '& > *:nth-of-type(1)': { fontSize: 14 },
+  },
+} as const;
+
 const kaCorrectionToolbarGroupSx = {
   flexShrink: 0,
   maxWidth: '100%',
   '& .MuiButtonGroup-grouped': {
-    ...epoNotenToolbarOutlinedBtnSx,
+    ...kaCorrectionToolbarBtnSx,
     minWidth: 0,
     width: 'max-content',
   },
 } as const;
 
 const kaWorkflowCheckboxSx = {
-  p: 0.15,
-  '& .MuiSvgIcon-root': { fontSize: 15 },
+  p: 0.25,
+  '& .MuiSvgIcon-root': { fontSize: 17 },
 } as const;
 
 const kaWorkflowControlSx = {
   m: 0,
-  mr: 0.1,
+  mr: 0.2,
   '& .MuiFormControlLabel-label': {
-    fontSize: '0.62rem',
+    fontSize: '0.7rem',
     fontWeight: 700,
-    lineHeight: 1.1,
+    lineHeight: 1.15,
   },
 } as const;
+
+const kaNavIconBtnSx = { p: 0.35, width: 28, height: 28 } as const;
 const PARTIAL_CREDIT_BG = '#fff9c4';
 const PARTIAL_CREDIT_BORDER = '#fff176';
 const PARTIAL_CREDIT_TEXT = '#f57f17';
@@ -1271,7 +1286,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
       title: reviewFilePath.split('/').pop() || 'Prüfung',
       answers,
       corrections: previewCorrections,
-      gradeLabel: calculateGrade(totalForPreview, maxPts),
+      gradeLabel: submission.markedSick
+        ? 'K'
+        : calculateGrade(totalForPreview, maxPts),
       totalPoints: totalForPreview,
       maxPoints: maxPts,
       classAverageText: classAverageLabelForGroup,
@@ -1342,6 +1359,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
   const calculateGrade = (achieved: number, total: number): string =>
     examGradeLabelForCorrection(achieved, total);
+
+  const gradeForSubmission = (
+    submission: KASubmission | null | undefined,
+    achieved: number,
+    max: number,
+  ): string => (submission?.markedSick ? 'K' : calculateGrade(achieved, max));
 
   const groupAnswerFieldIdsByTask = (answerIds: string[]) => {
     const grouped: Record<string, string[]> = {};
@@ -2424,7 +2447,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
           ...(embedded ? { position: 'sticky', top: 0, zIndex: 30 } : {}),
         }}
       >
-        <CardContent sx={{ p: 0.85, '&:last-child': { pb: 0.85 } }}>
+        <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
           <Box
             display="flex"
             alignItems="center"
@@ -2435,7 +2458,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             <Box sx={{ minWidth: 0, flexShrink: 0, maxWidth: { xs: '100%', sm: 140 } }}>
               <Typography
                 variant="subtitle2"
-                sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.8rem', lineHeight: 1.15 }}
+                sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.88rem', lineHeight: 1.2 }}
               >
                 📝 Korrekturmodus
               </Typography>
@@ -2444,7 +2467,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                 color="text.secondary"
                 noWrap
                 title={kaFilePath}
-                sx={{ fontSize: '0.62rem', display: 'block' }}
+                sx={{ fontSize: '0.68rem', display: 'block' }}
               >
                 {kaFilePath.split('/').pop() || kaFilePath}
                 {submissions.length > 0
@@ -2603,7 +2626,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                       <span style={{ display: 'inline-flex' }}>
                         <Button
                           onClick={() => void openStudentPreview()}
-                          startIcon={<Visibility sx={{ fontSize: 13 }} />}
+                          startIcon={<Visibility sx={{ fontSize: 14 }} />}
                           disabled={
                             previewLoading ||
                             !selectedSubmission ||
@@ -2611,6 +2634,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                           }
                           tabIndex={-1}
                           sx={{
+                            ...kaCorrectionToolbarBtnSx,
                             borderColor: `${PURPLE_REVIEW} !important`,
                             color: PURPLE_REVIEW,
                             '&:hover': {
@@ -2624,13 +2648,30 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                       </span>
                     </Tooltip>
                     <Button
+                      onClick={() => void downloadAllCorrectedReviewsPdf()}
+                      startIcon={<FileDownload sx={{ fontSize: 14 }} />}
+                      disabled={reviewPdfBusy || groupSubmissions.length === 0}
+                      tabIndex={-1}
+                      sx={{
+                        ...kaCorrectionToolbarBtnSx,
+                        borderColor: `${PURPLE_REVIEW} !important`,
+                        color: PURPLE_REVIEW,
+                        '&:hover': {
+                          borderColor: `${PURPLE_REVIEW} !important`,
+                          bgcolor: 'rgba(123, 31, 162, 0.06)',
+                        },
+                      }}
+                    >
+                      {reviewPdfBusy ? 'PDF…' : 'Alle als PDF'}
+                    </Button>
+                    <Button
                       onClick={() => setShowDreierprobe(true)}
                       variant="contained"
                       color="primary"
-                      startIcon={<BarChart sx={{ fontSize: 13 }} />}
+                      startIcon={<BarChart sx={{ fontSize: 14 }} />}
                       tabIndex={-1}
                       sx={{
-                        ...epoNotenToolbarOutlinedBtnSx,
+                        ...kaCorrectionToolbarBtnSx,
                         minWidth: 0,
                         width: 'max-content',
                         boxShadow: 'none',
@@ -2675,13 +2716,13 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
               onClick={onClose}
               tabIndex={-1}
               sx={{
-                p: 0.35,
-                minWidth: 26,
-                width: 26,
-                height: 26,
+                p: 0.4,
+                minWidth: 30,
+                width: 30,
+                height: 30,
                 flexShrink: 0,
                 ml: 'auto',
-                '& .MuiSvgIcon-root': { fontSize: 17 },
+                '& .MuiSvgIcon-root': { fontSize: 19 },
               }}
             >
               <Close sx={{ width: '100%', height: '100%' }} />
@@ -2832,11 +2873,16 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             
             // Berechne Note
             const grade = submission
-              ? calculateGrade(liveAchievedTotal(submission), maxTotalPoints)
+              ? gradeForSubmission(
+                  submission,
+                  liveAchievedTotal(submission),
+                  maxTotalPoints,
+                )
               : '–';
             
             // Bestimme Farbe basierend auf Note
             const getGradeColor = (gradeStr: string): string => {
+              if (gradeStr === 'K') return '#f9a825';
               if (gradeStr === '-' || !gradeStr) return '#666';
               const gradeNum = parseFloat(gradeStr.replace(/[+-]/g, ''));
               if (gradeNum <= 1.3) return '#2e7d32'; // Grün für 1, 1+, 1-
@@ -2868,7 +2914,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                     {hasSubmission ? (
                       <span
                         style={{
-                          fontSize: '0.82rem',
+                          fontSize: '0.78rem',
                           fontWeight: 800,
                           lineHeight: 1.1,
                           padding: '1px 7px',
@@ -2994,7 +3040,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
         <Box>
           {!selectedSubmission ? (
             <Card sx={{ mb: 0.75, bgcolor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-              <CardContent sx={{ py: 0.55, px: 0.75, '&:last-child': { pb: 0.55 } }}>
+              <CardContent sx={{ py: 0.7, px: 0.85, '&:last-child': { pb: 0.7 } }}>
                 {(() => {
                   const student = learningGroupStudents[currentStudentIndex];
                   const placeholderSub = student
@@ -3004,22 +3050,22 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                     <Box
                       display="flex"
                       alignItems="center"
-                      gap={0.5}
+                      gap={0.55}
                       flexWrap="wrap"
-                      sx={{ rowGap: 0.35 }}
+                      sx={{ rowGap: 0.4 }}
                     >
                       <IconButton
                         onClick={handlePreviousStudent}
                         disabled={currentStudentIndex === 0}
                         size="small"
                         tabIndex={-1}
-                        sx={{ p: 0.25, width: 24, height: 24 }}
+                        sx={kaNavIconBtnSx}
                       >
-                        <ArrowBack sx={{ fontSize: 15 }} />
+                        <ArrowBack sx={{ fontSize: 16 }} />
                       </IconButton>
                       <Typography
                         variant="caption"
-                        sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.68rem', minWidth: 36 }}
+                        sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.72rem', minWidth: 40 }}
                       >
                         {currentStudentIndex + 1}/{learningGroupStudents.length}
                       </Typography>
@@ -3028,18 +3074,18 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                         disabled={currentStudentIndex === learningGroupStudents.length - 1}
                         size="small"
                         tabIndex={-1}
-                        sx={{ p: 0.25, width: 24, height: 24 }}
+                        sx={kaNavIconBtnSx}
                       >
-                        <ArrowForward sx={{ fontSize: 15 }} />
+                        <ArrowForward sx={{ fontSize: 16 }} />
                       </IconButton>
                       <Typography
                         variant="caption"
-                        sx={{ fontWeight: 700, fontSize: '0.75rem', flex: '1 1 120px', minWidth: 0 }}
+                        sx={{ fontWeight: 700, fontSize: '0.8rem', flex: '1 1 120px', minWidth: 0 }}
                         noWrap
                       >
                         {student?.name || 'Schüler/in'}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.62rem' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>
                         keine Abgabe
                       </Typography>
                       <FormControlLabel
@@ -3055,8 +3101,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                         }
                         label={
                           <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.2 }}>
-                            <LocalHospital sx={{ fontSize: 14, color: '#f9a825' }} />
-                            <Typography component="span" sx={{ fontSize: '0.62rem', fontWeight: 700 }}>
+                            <LocalHospital sx={{ fontSize: 15, color: '#f9a825' }} />
+                            <Typography component="span" sx={{ fontSize: '0.68rem', fontWeight: 700 }}>
                               Krank
                             </Typography>
                           </Box>
@@ -3070,18 +3116,15 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                         onClick={() => void createManualSubmissionForCurrentStudent()}
                         startIcon={
                           creatingManualSubmission ? (
-                            <CircularProgress size={12} color="inherit" />
+                            <CircularProgress size={13} color="inherit" />
                           ) : (
-                            <Edit sx={{ fontSize: 13 }} />
+                            <Edit sx={{ fontSize: 14 }} />
                           )
                         }
                         tabIndex={-1}
                         sx={{
-                          ...epoNotenToolbarOutlinedBtnSx,
-                          minHeight: 24,
-                          py: 0.2,
-                          px: 0.65,
-                          fontSize: '0.62rem',
+                          ...kaCorrectionToolbarBtnSx,
+                          minHeight: 28,
                           boxShadow: 'none',
                           ml: { xs: 0, sm: 'auto' },
                         }}
@@ -3096,26 +3139,26 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
           ) : (
           <>
           <Card sx={{ mb: 0.75, bgcolor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-            <CardContent sx={{ py: 0.55, px: 0.75, '&:last-child': { pb: 0.55 } }}>
+            <CardContent sx={{ py: 0.7, px: 0.85, '&:last-child': { pb: 0.7 } }}>
               <Box
                 display="flex"
                 alignItems="center"
-                gap={0.45}
+                gap={0.55}
                 flexWrap="wrap"
-                sx={{ rowGap: 0.35 }}
+                sx={{ rowGap: 0.4 }}
               >
                 <IconButton
                   onClick={handlePreviousStudent}
                   disabled={currentStudentIndex === 0}
                   size="small"
                   tabIndex={-1}
-                  sx={{ p: 0.25, width: 24, height: 24 }}
+                  sx={kaNavIconBtnSx}
                 >
-                  <ArrowBack sx={{ fontSize: 15 }} />
+                  <ArrowBack sx={{ fontSize: 16 }} />
                 </IconButton>
                 <Typography
                   variant="caption"
-                  sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.68rem', minWidth: 36 }}
+                  sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.72rem', minWidth: 40 }}
                 >
                   {currentStudentIndex + 1}/{learningGroupStudents.length}
                 </Typography>
@@ -3124,13 +3167,13 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                   disabled={currentStudentIndex === learningGroupStudents.length - 1}
                   size="small"
                   tabIndex={-1}
-                  sx={{ p: 0.25, width: 24, height: 24 }}
+                  sx={kaNavIconBtnSx}
                 >
-                  <ArrowForward sx={{ fontSize: 15 }} />
+                  <ArrowForward sx={{ fontSize: 16 }} />
                 </IconButton>
                 <Typography
                   variant="caption"
-                  sx={{ fontWeight: 700, fontSize: '0.75rem', flex: '1 1 100px', minWidth: 0 }}
+                  sx={{ fontWeight: 700, fontSize: '0.8rem', flex: '1 1 100px', minWidth: 0 }}
                   noWrap
                 >
                   {submissionStudentName(selectedSubmission)}
@@ -3142,14 +3185,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                     onClick={openVersionDialog}
                     sx={{
                       fontWeight: 800,
-                      fontSize: '0.68rem',
-                      height: 22,
-                      minWidth: 26,
+                      fontSize: '0.72rem',
+                      height: 24,
+                      minWidth: 28,
                       bgcolor: '#e3f2fd',
                       color: '#1565c0',
                       border: '1px solid #1565c0',
                       cursor: 'pointer',
-                      '& .MuiChip-label': { px: 0.6 },
+                      '& .MuiChip-label': { px: 0.65 },
                     }}
                   />
                 </Tooltip>
@@ -3160,9 +3203,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                       disabled={resetStudentBusy}
                       onClick={() => setResetStudentOpen(true)}
                       tabIndex={-1}
-                      sx={{ p: 0.25, width: 24, height: 24, color: '#ed6c02' }}
+                      sx={{ ...kaNavIconBtnSx, color: '#ed6c02' }}
                     >
-                      <RestartAlt sx={{ fontSize: 16 }} />
+                      <RestartAlt sx={{ fontSize: 17 }} />
                     </IconButton>
                   </span>
                 </Tooltip>
@@ -3181,8 +3224,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                   }
                   label={
                     <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.2 }}>
-                      <LocalHospital sx={{ fontSize: 14, color: '#f9a825' }} />
-                      <Typography component="span" sx={{ fontSize: '0.62rem', fontWeight: 700 }}>
+                      <LocalHospital sx={{ fontSize: 15, color: '#f9a825' }} />
+                      <Typography component="span" sx={{ fontSize: '0.68rem', fontWeight: 700 }}>
                         Krank
                       </Typography>
                     </Box>
@@ -3193,34 +3236,43 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                   size="small"
                   label={`${formatExamPointsDisplay(selectedLiveTotal)}/${formatExamPointsDisplay(maxTotalPoints)}`}
                   sx={{
-                    height: 22,
-                    fontSize: '0.62rem',
+                    height: 24,
+                    fontSize: '0.68rem',
                     fontWeight: 700,
                     bgcolor: '#c8e6c9',
                     color: '#2e7d32',
-                    '& .MuiChip-label': { px: 0.6 },
+                    '& .MuiChip-label': { px: 0.65 },
                   }}
                 />
                 <Tooltip
                   title={
-                    <Box component="div" sx={{ fontSize: '0.72rem', lineHeight: 1.5 }}>
-                      {getGradeScale(maxTotalPoints, selectedLiveTotal)}
-                    </Box>
+                    selectedSubmission.markedSick
+                      ? 'Krank — keine Note'
+                      : (
+                        <Box component="div" sx={{ fontSize: '0.75rem', lineHeight: 1.5 }}>
+                          {getGradeScale(maxTotalPoints, selectedLiveTotal)}
+                        </Box>
+                      )
                   }
                   arrow
                   placement="top"
                 >
                   <Chip
                     size="small"
-                    label={calculateGrade(selectedLiveTotal, maxTotalPoints)}
+                    label={gradeForSubmission(
+                      selectedSubmission,
+                      selectedLiveTotal,
+                      maxTotalPoints,
+                    )}
                     sx={{
-                      height: 22,
-                      fontSize: '0.68rem',
+                      height: 24,
+                      fontSize: '0.72rem',
                       fontWeight: 800,
-                      bgcolor: '#1976d2',
-                      color: '#fff',
+                      bgcolor: selectedSubmission.markedSick ? '#fff8e1' : '#1976d2',
+                      color: selectedSubmission.markedSick ? '#f57f17' : '#fff',
+                      border: selectedSubmission.markedSick ? '1px solid #fbc02d' : undefined,
                       cursor: 'help',
-                      '& .MuiChip-label': { px: 0.65 },
+                      '& .MuiChip-label': { px: 0.7 },
                     }}
                   />
                 </Tooltip>
@@ -3233,7 +3285,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                     />
                   }
                   label={
-                    <Typography sx={{ fontSize: '0.6rem', fontWeight: 600 }}>Tab Felder</Typography>
+                    <Typography sx={{ fontSize: '0.68rem', fontWeight: 600 }}>Tab Felder</Typography>
                   }
                   sx={{
                     m: 0,
@@ -3275,9 +3327,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                       );
                     }}
                     sx={{
-                      mt: 0.45,
-                      '& .MuiInputBase-root': { py: 0.35, fontSize: '0.68rem' },
-                      '& .MuiInputBase-input': { py: 0.35 },
+                      mt: 0.5,
+                      '& .MuiInputBase-root': { py: 0.4, fontSize: '0.72rem' },
+                      '& .MuiInputBase-input': { py: 0.4 },
                     }}
                     placeholder="Allgemeiner Kommentar (Freigabe)"
                     inputProps={{ tabIndex: tabIndexSkipWhenAnswersOnly }}
