@@ -26,15 +26,16 @@ export const EXAM_STATUS_COLOR: Record<ExamCorrectionListStatus, string> = {
   fertig: '#43a047',
 };
 
+/** Status in der Prüfungsliste — „Zur Korrektur frei“ nur wenn Lehrer:in es manuell gesetzt hat. */
 export function deriveExamCorrectionListStatus(
   finished: boolean,
   draft: boolean,
   isRunning: boolean,
-  session: ExamSessionMeta | undefined,
+  releasedForCorrection: boolean,
 ): ExamCorrectionListStatus {
   if (finished) return 'fertig';
   if (isRunning) return 'aktiv';
-  if (session?.hasEndedSession || (session?.everStarted && !isRunning)) return 'zur-korrektur';
+  if (releasedForCorrection) return 'zur-korrektur';
   if (draft) return 'entwurf';
   return 'vorbereitung';
 }

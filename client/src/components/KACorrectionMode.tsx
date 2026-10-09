@@ -38,6 +38,10 @@ import {
   isExamCorrectionFinished,
   setExamCorrectionFinished,
 } from '../lib/examCorrectionFinished';
+import {
+  isExamCorrectionReleased,
+  setExamCorrectionReleased,
+} from '../lib/examCorrectionReleased';
 import { 
   CheckCircle, 
   Cancel, 
@@ -258,10 +262,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     isExamCorrectionFinished(kaFilePath),
   );
   const [examMarkedDraft, setExamMarkedDraft] = useState(() => isExamCorrectionDraft(kaFilePath));
+  const [examMarkedReleased, setExamMarkedReleased] = useState(() =>
+    isExamCorrectionReleased(kaFilePath),
+  );
 
   useEffect(() => {
     setExamMarkedFinished(isExamCorrectionFinished(kaFilePath));
     setExamMarkedDraft(isExamCorrectionDraft(kaFilePath));
+    setExamMarkedReleased(isExamCorrectionReleased(kaFilePath));
   }, [kaFilePath]);
   const [submissions, setSubmissions] = useState<KASubmission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2452,6 +2460,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                       if (checked) {
                         setExamCorrectionFinished(kaFilePath, false);
                         setExamMarkedFinished(false);
+                        setExamCorrectionReleased(kaFilePath, false);
+                        setExamMarkedReleased(false);
                       }
                     }}
                     sx={{
@@ -2471,6 +2481,42 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                     }}
                   >
                     Entwurf
+                  </Typography>
+                }
+                sx={{ m: 0, mr: 0.25 }}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={examMarkedReleased}
+                    onChange={(_, checked) => {
+                      setExamCorrectionReleased(kaFilePath, checked);
+                      setExamMarkedReleased(checked);
+                      if (checked) {
+                        setExamCorrectionDraft(kaFilePath, false);
+                        setExamMarkedDraft(false);
+                        setExamCorrectionFinished(kaFilePath, false);
+                        setExamMarkedFinished(false);
+                      }
+                    }}
+                    sx={{
+                      p: 0.35,
+                      color: '#9e9e9e',
+                      '&.Mui-checked': { color: '#7b1fa2' },
+                    }}
+                  />
+                }
+                label={
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.72rem',
+                      color: examMarkedReleased ? '#7b1fa2' : '#616161',
+                    }}
+                  >
+                    Zur Korrektur frei
                   </Typography>
                 }
                 sx={{ m: 0, mr: 0.25 }}

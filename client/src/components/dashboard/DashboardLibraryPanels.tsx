@@ -100,6 +100,7 @@ import {
 } from '../../lib/learningGroupAppearance';
 import { isExamCorrectionDraft } from '../../lib/examCorrectionDraft';
 import { isExamCorrectionFinished } from '../../lib/examCorrectionFinished';
+import { isExamCorrectionReleased } from '../../lib/examCorrectionReleased';
 import { examBaseGitPath, examFamilyKey } from '../../lib/examVersionPaths';
 import { deriveExamCorrectionListStatus, type ExamSessionMeta } from '../../lib/examCorrectionListStatus';
 import ExamListStatusBadge from '../exam/ExamListStatusBadge';
@@ -876,6 +877,7 @@ export const DashboardExamsPanel: React.FC<{
   const [examSessionMetaByPath, setExamSessionMetaByPath] = useState<Record<string, ExamSessionMeta>>({});
   const [examFinishedByPath, setExamFinishedByPath] = useState<Record<string, boolean>>({});
   const [examDraftByPath, setExamDraftByPath] = useState<Record<string, boolean>>({});
+  const [examReleasedByPath, setExamReleasedByPath] = useState<Record<string, boolean>>({});
 
   const loadExamIcons = useCallback(async () => {
     const loaded = await fetchExamLibraryIconsFromServer();
@@ -944,12 +946,15 @@ export const DashboardExamsPanel: React.FC<{
   const refreshExamWorkflowFlags = useCallback(() => {
     const finished: Record<string, boolean> = {};
     const draft: Record<string, boolean> = {};
+    const released: Record<string, boolean> = {};
     for (const path of examWorkflowPaths) {
       finished[path] = isExamCorrectionFinished(path);
       draft[path] = isExamCorrectionDraft(path);
+      released[path] = isExamCorrectionReleased(path);
     }
     setExamFinishedByPath(finished);
     setExamDraftByPath(draft);
+    setExamReleasedByPath(released);
   }, [examWorkflowPaths]);
 
   useEffect(() => {
@@ -1287,12 +1292,13 @@ export const DashboardExamsPanel: React.FC<{
           const workflowPath = examBaseGitPath(item.path);
           const finished = Boolean(examFinishedByPath[workflowPath]);
           const draft = Boolean(examDraftByPath[workflowPath]);
+          const released = Boolean(examReleasedByPath[workflowPath]);
           const running = isExamFamilyRunning(item.path);
           const listStatus = deriveExamCorrectionListStatus(
             finished,
             draft,
             running,
-            examSessionMetaByPath[workflowPath],
+            released,
           );
           const rowTint =
             finished ? 'fertig' : listStatus === 'entwurf' ? 'entwurf' : undefined;
