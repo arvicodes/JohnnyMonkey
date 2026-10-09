@@ -87,6 +87,27 @@ function persistInputValue(
   el.setAttribute('value', value);
 }
 
+function syncMcSelectCheckboxes(doc: Document, taskId: string, rawValue: string) {
+  const wrap = doc.querySelector(
+    `.exam-multi-select[data-answer-id="${CSS.escape(taskId)}"], .exam-mc-single-select[data-answer-id="${CSS.escape(taskId)}"]`,
+  );
+  if (!wrap) return;
+  const value = normAnswer(rawValue);
+  const parts = value
+    ? value
+        .split('|')
+        .map((p) => normAnswer(p))
+        .filter(Boolean)
+    : [];
+  const partSet = new Set(parts);
+  wrap.querySelectorAll('input[type="checkbox"]').forEach((node) => {
+    const input = node as HTMLInputElement;
+    const v = normAnswer(input.value);
+    const on = partSet.has(v);
+    persistInputValue(input, v, on);
+  });
+}
+
 function attachPointsBadge(
   badge: HTMLSpanElement,
   taskId: string,
@@ -159,6 +180,17 @@ function fillAndMark(
       el.classList.add(
         isPartial ? 'answer-partial' : isCorrect ? 'answer-correct' : 'answer-incorrect',
       );
+      if (
+        teacherCorrectionMode &&
+        el instanceof HTMLInputElement &&
+        (el.type === 'checkbox' || el.type === 'radio')
+      ) {
+        const lab = el.closest('label');
+        lab?.classList.add(
+          isPartial ? 'answer-partial' : isCorrect ? 'answer-correct' : 'answer-incorrect',
+        );
+        return;
+      }
       el.setAttribute('readonly', 'readonly');
       el.setAttribute('disabled', 'disabled');
       (el as HTMLInputElement).readOnly = true;
@@ -199,11 +231,34 @@ function fillAndMark(
 
     if (byId) {
       if (byId instanceof HTMLInputElement && (byId.type === 'checkbox' || byId.type === 'radio')) {
-        persistInputValue(byId, value);
+        const on =
+          value === 'true' ||
+          value === '1' ||
+          (byId.type === 'checkbox' && Boolean(value)) ||
+          (byId.type === 'radio' && normAnswer(byId.value) === value);
+        persistInputValue(byId, value, on);
       } else {
         persistInputValue(byId, value);
+        if (
+          byId instanceof HTMLInputElement &&
+          (byId.type === 'hidden' || byId.type === 'text')
+        ) {
+          syncMcSelectCheckboxes(doc, taskId, value);
+        }
       }
       markEl(byId);
+      const mcWrap = doc.querySelector(
+        `.exam-multi-select[data-answer-id="${CSS.escape(taskId)}"], .exam-mc-single-select[data-answer-id="${CSS.escape(taskId)}"]`,
+      );
+      if (mcWrap) {
+        mcWrap.querySelectorAll('input[type="checkbox"]').forEach((node) => {
+          const input = node as HTMLInputElement;
+          if (input.checked) markEl(input);
+        });
+        if (!value) {
+          (mcWrap as HTMLElement).classList.add('answer-incorrect');
+        }
+      }
       const badge = doc.createElement('span');
       badge.className = `points-badge ${
         isPartial ? 'points-partial' : achieved > 0 ? 'points-correct' : 'points-incorrect'
@@ -222,8 +277,10 @@ function fillAndMark(
         if (match) {
           persistInputValue(input, value, true);
         }
-        input.disabled = true;
-        input.setAttribute('disabled', 'disabled');
+        if (!teacherCorrectionMode) {
+          input.disabled = true;
+          input.setAttribute('disabled', 'disabled');
+        }
         if (match) markEl(input);
         const lab = input.closest('label') || input.parentElement;
         if (lab && match) {
@@ -461,6 +518,21 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       top: auto !important;
     }
     input, textarea, select, button { pointer-events: none !important; }
+    html.teacher-correction-mode #jm-general-comment-field,
+    html.teacher-correction-mode .jm-general-comment-input {
+      pointer-events: auto !important;
+      cursor: text !important;
+    }
+    html.teacher-correction-mode input[type="checkbox"],
+    html.teacher-correction-mode input[type="radio"] {
+      pointer-events: none !important;
+      opacity: 1 !important;
+    }
+    html.teacher-correction-mode label.answer-correct input,
+    html.teacher-correction-mode label.answer-partial input,
+    html.teacher-correction-mode label.answer-incorrect input {
+      accent-color: currentColor;
+    }
     .jm-points-badge-editable {
       pointer-events: auto !important;
       cursor: pointer !important;
@@ -735,11 +807,25 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
 
   doc.querySelectorAll('input, textarea, select, button').forEach((el) => {
     if (teacherCorrectionMode && el.id === 'jm-general-comment-field') return;
+    if (
+      teacherCorrectionMode &&
+      el instanceof HTMLInputElement &&
+      (el.type === 'checkbox' || el.type === 'radio')
+    ) {
+      return;
+    }
     (el as HTMLInputElement).disabled = true;
     (el as HTMLInputElement).readOnly = true;
   });
 
   if (teacherCorrectionMode) {
+    const generalTa = doc.getElementById('jm-general-comment-field');
+    if (generalTa instanceof HTMLTextAreaElement) {
+      generalTa.disabled = false;
+      generalTa.readOnly = false;
+      generalTa.removeAttribute('disabled');
+      generalTa.removeAttribute('readonly');
+    }
     const boot = doc.createElement('script');
     boot.textContent = `(function(){
   function send(taskId){ try { parent.postMessage({ type: 'jm-exam-correction-field', taskId: taskId }, '*'); } catch(e) {} }

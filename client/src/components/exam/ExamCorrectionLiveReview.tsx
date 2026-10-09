@@ -149,7 +149,14 @@ export default function ExamCorrectionLiveReview({
         </Typography>
       ) : null}
 
-      <Dialog open={Boolean(editTaskId)} onClose={() => setEditTaskId(null)} maxWidth="xs" fullWidth>
+      <Dialog
+        open={Boolean(editTaskId)}
+        onClose={() => setEditTaskId(null)}
+        maxWidth="xs"
+        fullWidth
+        disableEnforceFocus
+        sx={{ zIndex: (t) => t.zIndex.modal + 28 }}
+      >
         <DialogTitle sx={{ fontSize: '1rem', py: 1.5 }}>
           Bewertung: {editTaskId}
         </DialogTitle>

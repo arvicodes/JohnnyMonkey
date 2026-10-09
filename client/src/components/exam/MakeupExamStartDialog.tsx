@@ -141,7 +141,14 @@ export default function MakeupExamStartDialog({
   }, [groupId, selectedPath, sickIds, advanced, lessonFolder, onStarted, onClose]);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      disableEnforceFocus
+      sx={{ zIndex: (t) => t.zIndex.modal + 24 }}
+    >
       <DialogTitle>Nachschrift starten</DialogTitle>
       <DialogContent sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Typography variant="body2" color="text.secondary">

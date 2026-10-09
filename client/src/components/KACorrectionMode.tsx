@@ -2627,37 +2627,49 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                   }}
                 />
               </Box>
+              {sickStudentsInGroup.length > 0 ? (
+                groupExamBeacon.active && groupExamBeacon.makeupSession ? (
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="outlined"
+                    onClick={() => void stopMakeupExam()}
+                    disabled={makeupBeaconBusy}
+                    sx={{
+                      ...kaCorrectionToolbarBtnSx,
+                      mr: 0.35,
+                      borderColor: '#f9a825 !important',
+                      color: '#e65100',
+                      '&:hover': { bgcolor: 'rgba(249, 168, 37, 0.12)' },
+                    }}
+                  >
+                    {makeupBeaconBusy ? '…' : 'Nachschrift beenden'}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="outlined"
+                    onClick={() => {
+                      if (!activeGroupId) {
+                        alert('Bitte oben eine Lerngruppe wählen.');
+                        return;
+                      }
+                      setMakeupDialogOpen(true);
+                    }}
+                    sx={{
+                      ...kaCorrectionToolbarBtnSx,
+                      mr: 0.35,
+                      borderColor: '#f9a825 !important',
+                      color: '#e65100',
+                      '&:hover': { bgcolor: 'rgba(249, 168, 37, 0.12)' },
+                    }}
+                  >
+                    Nachschrift ({sickStudentsInGroup.length})
+                  </Button>
+                )
+              ) : null}
               <ButtonGroup size="small" variant="outlined" sx={kaCorrectionToolbarGroupSx}>
-                {sickStudentsInGroup.length > 0 ? (
-                  groupExamBeacon.active && groupExamBeacon.makeupSession ? (
-                    <Button
-                      onClick={() => void stopMakeupExam()}
-                      disabled={makeupBeaconBusy}
-                      tabIndex={-1}
-                      sx={{
-                        ...kaCorrectionToolbarBtnSx,
-                        borderColor: '#f9a825 !important',
-                        color: '#e65100',
-                        '&:hover': { bgcolor: 'rgba(249, 168, 37, 0.12)' },
-                      }}
-                    >
-                      {makeupBeaconBusy ? '…' : 'Nachschrift beenden'}
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={() => setMakeupDialogOpen(true)}
-                      tabIndex={-1}
-                      sx={{
-                        ...kaCorrectionToolbarBtnSx,
-                        borderColor: '#f9a825 !important',
-                        color: '#e65100',
-                        '&:hover': { bgcolor: 'rgba(249, 168, 37, 0.12)' },
-                      }}
-                    >
-                      Nachschrift ({sickStudentsInGroup.length})
-                    </Button>
-                  )
-                ) : null}
                 <Button
                   onClick={handleOpenKA}
                   startIcon={<Description sx={{ fontSize: 13 }} />}
@@ -3370,38 +3382,35 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
           {selectedSubmission.markedSick &&
           !submissionHasFilledAnswers(selectedSubmission.answers) ? (
-            <Alert severity="info" sx={{ mb: 1, py: 0.5, fontSize: '0.8rem' }}>
-              Krank — noch keine Nachschrift. Oben{' '}
-              <strong>Nachschrift ({sickStudentsInGroup.length})</strong> starten, Prüfung und
-              Version wählen. Nach der Abgabe erscheint die Korrektur hier (gelber Rand bleibt, Note
-              wird angezeigt).
+            <Alert severity="warning" sx={{ mb: 0.75, py: 0.5, fontSize: '0.75rem' }}>
+              Krank, noch keine (Nachschrift-)Abgabe — Prüfung unten zur manuellen Korrektur /
+              Punkte. Live-Nachschrift: Button <strong>Nachschrift</strong> oben.
             </Alert>
-          ) : (
-            <ExamCorrectionLiveReview
-              refreshKey={correctionReviewRefreshKey}
-              buildHtml={() => buildReviewHtmlForSubmission(selectedSubmission)}
-              getFieldCorrection={getFieldCorrectionForDialog}
-              onSaveGeneralComment={(comment) => {
-                const generalKey = correctionStorageKey(
-                  selectedSubmission.id,
-                  GENERAL_COMMENT_TASK,
-                );
-                setCorrections((prev) => ({
-                  ...prev,
-                  [generalKey]: { ...prev[generalKey], comment },
-                }));
-                void saveCorrection(
-                  GENERAL_COMMENT_TASK,
-                  undefined,
-                  comment,
-                  selectedSubmission.id,
-                );
-              }}
-              onSaveField={(taskId, points, comment) => {
-                void saveCorrection(taskId, points, comment, selectedSubmission.id);
-              }}
-            />
-          )}
+          ) : null}
+          <ExamCorrectionLiveReview
+            refreshKey={correctionReviewRefreshKey}
+            buildHtml={() => buildReviewHtmlForSubmission(selectedSubmission)}
+            getFieldCorrection={getFieldCorrectionForDialog}
+            onSaveGeneralComment={(comment) => {
+              const generalKey = correctionStorageKey(
+                selectedSubmission.id,
+                GENERAL_COMMENT_TASK,
+              );
+              setCorrections((prev) => ({
+                ...prev,
+                [generalKey]: { ...prev[generalKey], comment },
+              }));
+              void saveCorrection(
+                GENERAL_COMMENT_TASK,
+                undefined,
+                comment,
+                selectedSubmission.id,
+              );
+            }}
+            onSaveField={(taskId, points, comment) => {
+              void saveCorrection(taskId, points, comment, selectedSubmission.id);
+            }}
+          />
 
           </>
                           )}
