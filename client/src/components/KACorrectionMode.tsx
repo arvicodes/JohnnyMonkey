@@ -161,6 +161,21 @@ const kaCorrectionToolbarGroupSx = {
     width: 'max-content',
   },
 } as const;
+
+const kaWorkflowCheckboxSx = {
+  p: 0.15,
+  '& .MuiSvgIcon-root': { fontSize: 15 },
+} as const;
+
+const kaWorkflowControlSx = {
+  m: 0,
+  mr: 0.1,
+  '& .MuiFormControlLabel-label': {
+    fontSize: '0.62rem',
+    fontWeight: 700,
+    lineHeight: 1.1,
+  },
+} as const;
 const PARTIAL_CREDIT_BG = '#fff9c4';
 const PARTIAL_CREDIT_BORDER = '#fff176';
 const PARTIAL_CREDIT_TEXT = '#f57f17';
@@ -2403,168 +2418,146 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
       {/* Header — fest oben (Vollbild), Entwurf/fertig immer sichtbar */}
       <Card
         sx={{
-          mb: 1.5,
+          mb: 1,
           bgcolor: '#fff',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           flexShrink: 0,
           ...(embedded ? { position: 'sticky', top: 0, zIndex: 30 } : {}),
         }}
       >
-        <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-          <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1}>
-            <Box sx={{ minWidth: 0, flex: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2', mb: 0.25 }}>
-              📝 Korrekturmodus
-            </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
-                {kaFilePath.split('/').pop() || kaFilePath} {submissions.length > 0 && `• ${submissions.length} Abgabe${submissions.length > 1 ? 'n' : ''}`}
-              </Typography>
-            </Box>
-            <IconButton
-              onClick={onClose}
-              tabIndex={-1}
-              sx={{
-                p: 0.5,
-                minWidth: 28,
-                width: 28,
-                height: 28,
-                flexShrink: 0,
-                '& .MuiSvgIcon-root': {
-                  fontSize: 18,
-                },
-              }}
-            >
-              <Close sx={{ width: '100%', height: '100%' }} />
-            </IconButton>
-          </Box>
+        <CardContent sx={{ p: 0.85, '&:last-child': { pb: 0.85 } }}>
           <Box
-            sx={{
-              mt: 1,
-              pt: 0.75,
-              borderTop: '1px solid #eee',
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              gap: 0.75,
-            }}
+            display="flex"
+            alignItems="center"
+            gap={0.5}
+            flexWrap="wrap"
+            sx={{ rowGap: 0.35 }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    size="small"
-                    checked={examMarkedDraft}
-                    onChange={(_, checked) => {
-                      setExamCorrectionDraft(kaFilePath, checked);
-                      setExamMarkedDraft(checked);
-                      if (checked) {
-                        setExamCorrectionFinished(kaFilePath, false);
-                        setExamMarkedFinished(false);
-                        setExamCorrectionReleased(kaFilePath, false);
-                        setExamMarkedReleased(false);
-                      }
-                    }}
-                    sx={{
-                      p: 0.35,
-                      color: '#9e9e9e',
-                      '&.Mui-checked': { color: '#757575' },
-                    }}
-                  />
-                }
-                label={
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: '0.72rem',
-                      color: examMarkedDraft ? '#757575' : '#616161',
-                    }}
-                  >
-                    Entwurf
-                  </Typography>
-                }
-                sx={{ m: 0, mr: 0.25 }}
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    size="small"
-                    checked={examMarkedReleased}
-                    onChange={(_, checked) => {
-                      setExamCorrectionReleased(kaFilePath, checked);
-                      setExamMarkedReleased(checked);
-                      if (checked) {
-                        setExamCorrectionDraft(kaFilePath, false);
-                        setExamMarkedDraft(false);
-                        setExamCorrectionFinished(kaFilePath, false);
-                        setExamMarkedFinished(false);
-                      }
-                    }}
-                    sx={{
-                      p: 0.35,
-                      color: '#9e9e9e',
-                      '&.Mui-checked': { color: '#7b1fa2' },
-                    }}
-                  />
-                }
-                label={
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: '0.72rem',
-                      color: examMarkedReleased ? '#7b1fa2' : '#616161',
-                    }}
-                  >
-                    Zur Korrektur frei
-                  </Typography>
-                }
-                sx={{ m: 0, mr: 0.25 }}
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    size="small"
-                    checked={examMarkedFinished}
-                    onChange={(_, checked) => {
-                      setExamCorrectionFinished(kaFilePath, checked);
-                      setExamMarkedFinished(checked);
-                      if (checked) {
-                        setExamCorrectionDraft(kaFilePath, false);
-                        setExamMarkedDraft(false);
-                      }
-                    }}
-                    sx={{
-                      p: 0.35,
-                      color: '#9e9e9e',
-                      '&.Mui-checked': { color: '#43a047' },
-                    }}
-                  />
-                }
-                label={
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: '0.72rem',
-                      color: examMarkedFinished ? '#43a047' : '#616161',
-                    }}
-                  >
-                    fertig
-                  </Typography>
-                }
-                sx={{ m: 0 }}
-              />
+            <Box sx={{ minWidth: 0, flexShrink: 0, maxWidth: { xs: '100%', sm: 140 } }}>
+              <Typography
+                variant="subtitle2"
+                sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.8rem', lineHeight: 1.15 }}
+              >
+                📝 Korrekturmodus
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                noWrap
+                title={kaFilePath}
+                sx={{ fontSize: '0.62rem', display: 'block' }}
+              >
+                {kaFilePath.split('/').pop() || kaFilePath}
+                {submissions.length > 0
+                  ? ` · ${submissions.length} Abg.`
+                  : ' · keine Abg.'}
+              </Typography>
             </Box>
             <Box
               sx={{
-                flex: '1 1 auto',
+                flex: '1 1 280px',
                 display: 'flex',
-                justifyContent: 'flex-end',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: { xs: 'flex-start', md: 'flex-end' },
+                gap: 0.35,
                 minWidth: 0,
                 overflowX: 'auto',
               }}
             >
+              <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={examMarkedDraft}
+                      onChange={(_, checked) => {
+                        setExamCorrectionDraft(kaFilePath, checked);
+                        setExamMarkedDraft(checked);
+                        if (checked) {
+                          setExamCorrectionFinished(kaFilePath, false);
+                          setExamMarkedFinished(false);
+                          setExamCorrectionReleased(kaFilePath, false);
+                          setExamMarkedReleased(false);
+                        }
+                      }}
+                      sx={{
+                        ...kaWorkflowCheckboxSx,
+                        color: '#9e9e9e',
+                        '&.Mui-checked': { color: '#757575' },
+                      }}
+                    />
+                  }
+                  label="Entwurf"
+                  sx={{
+                    ...kaWorkflowControlSx,
+                    '& .MuiFormControlLabel-label': {
+                      ...kaWorkflowControlSx['& .MuiFormControlLabel-label'],
+                      color: examMarkedDraft ? '#757575' : '#616161',
+                    },
+                  }}
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={examMarkedReleased}
+                      onChange={(_, checked) => {
+                        setExamCorrectionReleased(kaFilePath, checked);
+                        setExamMarkedReleased(checked);
+                        if (checked) {
+                          setExamCorrectionDraft(kaFilePath, false);
+                          setExamMarkedDraft(false);
+                          setExamCorrectionFinished(kaFilePath, false);
+                          setExamMarkedFinished(false);
+                        }
+                      }}
+                      sx={{
+                        ...kaWorkflowCheckboxSx,
+                        color: '#9e9e9e',
+                        '&.Mui-checked': { color: '#7b1fa2' },
+                      }}
+                    />
+                  }
+                  label="Korrektur frei"
+                  sx={{
+                    ...kaWorkflowControlSx,
+                    '& .MuiFormControlLabel-label': {
+                      ...kaWorkflowControlSx['& .MuiFormControlLabel-label'],
+                      color: examMarkedReleased ? '#7b1fa2' : '#616161',
+                    },
+                  }}
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={examMarkedFinished}
+                      onChange={(_, checked) => {
+                        setExamCorrectionFinished(kaFilePath, checked);
+                        setExamMarkedFinished(checked);
+                        if (checked) {
+                          setExamCorrectionDraft(kaFilePath, false);
+                          setExamMarkedDraft(false);
+                        }
+                      }}
+                      sx={{
+                        ...kaWorkflowCheckboxSx,
+                        color: '#9e9e9e',
+                        '&.Mui-checked': { color: '#43a047' },
+                      }}
+                    />
+                  }
+                  label="fertig"
+                  sx={{
+                    ...kaWorkflowControlSx,
+                    '& .MuiFormControlLabel-label': {
+                      ...kaWorkflowControlSx['& .MuiFormControlLabel-label'],
+                      color: examMarkedFinished ? '#43a047' : '#616161',
+                    },
+                  }}
+                />
+              </Box>
               <ButtonGroup size="small" variant="outlined" sx={kaCorrectionToolbarGroupSx}>
                 <Button
                   onClick={handleOpenKA}
@@ -2679,6 +2672,21 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                 ) : null}
               </ButtonGroup>
             </Box>
+            <IconButton
+              onClick={onClose}
+              tabIndex={-1}
+              sx={{
+                p: 0.35,
+                minWidth: 26,
+                width: 26,
+                height: 26,
+                flexShrink: 0,
+                ml: 'auto',
+                '& .MuiSvgIcon-root': { fontSize: 17 },
+              }}
+            >
+              <Close sx={{ width: '100%', height: '100%' }} />
+            </IconButton>
           </Box>
         </CardContent>
       </Card>
@@ -2719,8 +2727,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
       {/* Breadcrumb-Liste aller Schüler der aktiven Lerngruppe */}
       {learningGroupStudents.length > 0 && (
         <Box sx={{ 
-          mb: 1, 
-          p: 0.75, 
+          mb: 0.75, 
+          p: 0.5, 
           bgcolor: '#fff', 
           borderRadius: 1, 
           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
@@ -2729,9 +2737,6 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
           gap: 0.5,
           alignItems: 'center'
         }}>
-          <Typography variant="caption" sx={{ width: '100%', color: '#666', fontSize: '0.68rem', mb: 0.25 }}>
-            Teilpunkte zählen in der Aufgabenzeile und Gesamtpunktzahl · Vorschau nach Teilpunkten oder Doppelklick (fertig)
-          </Typography>
           {learningGroupStudents.map((student, index) => {
             const submission = submissionByStudentId.get(student.id);
             const hasSubmission = Boolean(submission);
@@ -2986,103 +2991,107 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
       </Tabs>
       )}
 
-      {submissions.length === 0 && !loading && (
-        <Box sx={{ p: 2, textAlign: 'center', bgcolor: '#fff', borderRadius: 1, boxShadow: '0 1px 4px rgba(0,0,0,0.08)', mb: 1 }}>
-          <Typography variant="body1" sx={{ mb: 1, color: '#666' }}>
-            📭 Noch keine Abgaben
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem', mb: 2 }}>
-            Das ist die Korrekturansicht. Solange niemand abgegeben hat, bleibt sie leer.
-            Zum Ansehen/Bearbeiten der {getFileTypeName()} nutze die Buttons unten oder das Stift-Icon im Dateibaum.
-          </Typography>
-          <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap" useFlexGap>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={() => {
-                window.open(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(kaFilePath)}`, '_blank');
-              }}
-            >
-              {getFileTypeName()} öffnen
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={onClose}
-            >
-              Schließen &amp; im Dateibaum Stift nutzen
-            </Button>
-          </Stack>
-        </Box>
-      )}
-
       {mode === 'by-student' && learningGroupStudents.length > 0 && (
         <Box>
           {!selectedSubmission ? (
-            <Card sx={{ mb: 1, bgcolor: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-              <CardContent sx={{ p: 1.5 }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                  <IconButton
-                    onClick={handlePreviousStudent}
-                    disabled={currentStudentIndex === 0}
-                    size="small"
-                    tabIndex={-1}
-                    sx={{ p: 0.5, width: 28, height: 28 }}
-                  >
-                    <ArrowBack sx={{ fontSize: 16 }} />
-                  </IconButton>
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#1976d2' }}>
-                    {currentStudentIndex + 1}/{learningGroupStudents.length}
-                  </Typography>
-                  <IconButton
-                    onClick={handleNextStudent}
-                    disabled={currentStudentIndex === learningGroupStudents.length - 1}
-                    size="small"
-                    tabIndex={-1}
-                    sx={{ p: 0.5, width: 28, height: 28 }}
-                  >
-                    <ArrowForward sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </Box>
-                <Box textAlign="center">
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
-                    {learningGroupStudents[currentStudentIndex]?.name || 'Schüler/in'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    Noch keine digitale Abgabe. Du kannst die Lösungen hier manuell eintragen.
-                  </Typography>
-                  <FormControlLabel
-                    control={
-                      <Switch
+            <Card sx={{ mb: 0.75, bgcolor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+              <CardContent sx={{ py: 0.55, px: 0.75, '&:last-child': { pb: 0.55 } }}>
+                {(() => {
+                  const student = learningGroupStudents[currentStudentIndex];
+                  const placeholderSub = student
+                    ? submissionByStudentId.get(student.id)
+                    : undefined;
+                  return (
+                    <Box
+                      display="flex"
+                      alignItems="center"
+                      gap={0.5}
+                      flexWrap="wrap"
+                      sx={{ rowGap: 0.35 }}
+                    >
+                      <IconButton
+                        onClick={handlePreviousStudent}
+                        disabled={currentStudentIndex === 0}
                         size="small"
-                        checked={false}
-                        disabled={saving}
-                        onChange={(_, on) => {
-                          const student = learningGroupStudents[currentStudentIndex];
-                          if (student) void setMarkedSickForStudent(student.id, on);
-                        }}
+                        tabIndex={-1}
+                        sx={{ p: 0.25, width: 24, height: 24 }}
+                      >
+                        <ArrowBack sx={{ fontSize: 15 }} />
+                      </IconButton>
+                      <Typography
+                        variant="caption"
+                        sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.68rem', minWidth: 36 }}
+                      >
+                        {currentStudentIndex + 1}/{learningGroupStudents.length}
+                      </Typography>
+                      <IconButton
+                        onClick={handleNextStudent}
+                        disabled={currentStudentIndex === learningGroupStudents.length - 1}
+                        size="small"
+                        tabIndex={-1}
+                        sx={{ p: 0.25, width: 24, height: 24 }}
+                      >
+                        <ArrowForward sx={{ fontSize: 15 }} />
+                      </IconButton>
+                      <Typography
+                        variant="caption"
+                        sx={{ fontWeight: 700, fontSize: '0.75rem', flex: '1 1 120px', minWidth: 0 }}
+                        noWrap
+                      >
+                        {student?.name || 'Schüler/in'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.62rem' }}>
+                        keine Abgabe
+                      </Typography>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            size="small"
+                            checked={Boolean(placeholderSub?.markedSick)}
+                            disabled={saving}
+                            onChange={(_, on) => {
+                              if (student) void setMarkedSickForStudent(student.id, on);
+                            }}
+                          />
+                        }
+                        label={
+                          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.2 }}>
+                            <LocalHospital sx={{ fontSize: 14, color: '#f9a825' }} />
+                            <Typography component="span" sx={{ fontSize: '0.62rem', fontWeight: 700 }}>
+                              Krank
+                            </Typography>
+                          </Box>
+                        }
+                        sx={{ m: 0, ml: 0.25 }}
                       />
-                    }
-                    label={
-                      <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
-                        <LocalHospital sx={{ fontSize: 16, color: '#f9a825' }} />
-                        <Typography component="span" variant="caption" sx={{ fontWeight: 600 }}>
-                          Krank (zählt nicht im Schnitt)
-                        </Typography>
-                      </Box>
-                    }
-                    sx={{ m: 0, mb: 1.5, justifyContent: 'center' }}
-                  />
-                  <Button
-                    variant="contained"
-                    size="small"
-                    disabled={creatingManualSubmission}
-                    onClick={() => void createManualSubmissionForCurrentStudent()}
-                    startIcon={creatingManualSubmission ? <CircularProgress size={14} color="inherit" /> : <Edit />}
-                  >
-                    {creatingManualSubmission ? 'Wird angelegt…' : 'Abgabe erfassen'}
-                  </Button>
-                </Box>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        disabled={creatingManualSubmission}
+                        onClick={() => void createManualSubmissionForCurrentStudent()}
+                        startIcon={
+                          creatingManualSubmission ? (
+                            <CircularProgress size={12} color="inherit" />
+                          ) : (
+                            <Edit sx={{ fontSize: 13 }} />
+                          )
+                        }
+                        tabIndex={-1}
+                        sx={{
+                          ...epoNotenToolbarOutlinedBtnSx,
+                          minHeight: 24,
+                          py: 0.2,
+                          px: 0.65,
+                          fontSize: '0.62rem',
+                          boxShadow: 'none',
+                          ml: { xs: 0, sm: 'auto' },
+                        }}
+                      >
+                        {creatingManualSubmission ? '…' : 'Abgabe erfassen'}
+                      </Button>
+                    </Box>
+                  );
+                })()}
               </CardContent>
             </Card>
           ) : (
