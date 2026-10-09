@@ -6,6 +6,8 @@ export type ExamBeaconGroupConfig = {
   studentIds?: string[];
   versionCount?: 1 | 2 | 3;
   versionAssignments?: Record<string, string>;
+  /** Nachschrift für kranke SuS (Korrekturmodus). */
+  makeupSession?: boolean;
 };
 
 export type ExamStartPayloadConfig = {

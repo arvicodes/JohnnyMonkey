@@ -6,6 +6,8 @@ export type LessonExamBeaconStatus = {
   active: boolean;
   filePath: string | null;
   beaconId: string | null;
+  makeupSession?: boolean;
+  studentIds?: string[];
 };
 
 export function normalizeExamBeaconPath(raw: string): string {
@@ -44,13 +46,20 @@ export async function fetchLessonExamBeacon(groupId: string): Promise<LessonExam
   if (!res.ok) return { active: false, filePath: null, beaconId: null };
   const data = (await res.json()) as {
     active?: boolean;
-    beacon?: { filePath?: string; beaconId?: string } | null;
+    beacon?: {
+      filePath?: string;
+      beaconId?: string;
+      makeupSession?: boolean;
+      studentIds?: string[];
+    } | null;
   };
   if (!data.active || !data.beacon) return { active: false, filePath: null, beaconId: null };
   return {
     active: true,
     filePath: data.beacon.filePath || null,
     beaconId: data.beacon.beaconId || null,
+    makeupSession: Boolean(data.beacon.makeupSession),
+    studentIds: data.beacon.studentIds || [],
   };
 }
 

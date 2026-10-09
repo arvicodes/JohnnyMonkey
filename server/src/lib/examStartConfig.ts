@@ -7,6 +7,8 @@ export type ExamBeaconGroupConfig = {
   versionCount?: 1 | 2 | 3;
   /** Manuelle Zuweisung SuS → Versionsbuchstabe. */
   versionAssignments?: Record<string, string>;
+  /** Nachschrift-Sitzung (kranke SuS). */
+  makeupSession?: boolean;
 };
 
 export function parseExamBeaconGroupConfig(raw: string | null | undefined): ExamBeaconGroupConfig {

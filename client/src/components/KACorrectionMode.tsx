@@ -98,6 +98,9 @@ import {
 import { resetExamSession } from '../lib/examSessionReset';
 import ExamFullResetConfirmDialog from './exam/ExamFullResetConfirmDialog';
 import ExamCorrectionLiveReview from './exam/ExamCorrectionLiveReview';
+import MakeupExamStartDialog from './exam/MakeupExamStartDialog';
+import { submissionHasFilledAnswers } from '../lib/examSubmissionAnswers';
+import { fetchLessonExamBeacon, stopLessonExam } from '../lib/lessonExamBeacon';
 
 interface KASubmission {
   id: string;
@@ -346,6 +349,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
   const [versionPassword, setVersionPassword] = useState('');
   const [versionChangeError, setVersionChangeError] = useState<string | null>(null);
   const [versionChangeBusy, setVersionChangeBusy] = useState(false);
+  const [makeupDialogOpen, setMakeupDialogOpen] = useState(false);
+  const [makeupBeaconBusy, setMakeupBeaconBusy] = useState(false);
+  const [groupExamBeacon, setGroupExamBeacon] = useState({
+    active: false,
+    filePath: null as string | null,
+    beaconId: null as string | null,
+    makeupSession: false,
+  });
 
   useEffect(() => {
     try {
@@ -438,6 +449,47 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     });
     return map;
   }, [groupSubmissions]);
+
+  const sickStudentsInGroup = useMemo(
+    () =>
+      learningGroupStudents
+        .filter((s) => submissionByStudentId.get(s.id)?.markedSick)
+        .map((s) => ({ id: s.id, name: s.name })),
+    [learningGroupStudents, submissionByStudentId],
+  );
+
+  const refreshGroupExamBeacon = useCallback(() => {
+    if (!activeGroupId) return;
+    void fetchLessonExamBeacon(activeGroupId).then((st) =>
+      setGroupExamBeacon({
+        active: st.active,
+        filePath: st.filePath,
+        beaconId: st.beaconId,
+        makeupSession: Boolean(st.makeupSession),
+      }),
+    );
+  }, [activeGroupId]);
+
+  useEffect(() => {
+    refreshGroupExamBeacon();
+    const t = window.setInterval(refreshGroupExamBeacon, 8000);
+    return () => window.clearInterval(t);
+  }, [refreshGroupExamBeacon]);
+
+  const stopMakeupExam = async () => {
+    if (!activeGroupId || makeupBeaconBusy) return;
+    setMakeupBeaconBusy(true);
+    try {
+      const teacherId = teacherIdFromStorage();
+      if (!teacherId) throw new Error('Nicht angemeldet');
+      await stopLessonExam({ teacherId, groupIds: [activeGroupId] });
+      refreshGroupExamBeacon();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Nachschrift konnte nicht beendet werden');
+    } finally {
+      setMakeupBeaconBusy(false);
+    }
+  };
 
   const loadExamGroups = useCallback(async () => {
     try {
@@ -1286,9 +1338,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
       title: reviewFilePath.split('/').pop() || 'Prüfung',
       answers,
       corrections: previewCorrections,
-      gradeLabel: submission.markedSick
-        ? 'K'
-        : calculateGrade(totalForPreview, maxPts),
+      gradeLabel: gradeForSubmission(submission, totalForPreview, maxPts),
       totalPoints: totalForPreview,
       maxPoints: maxPts,
       classAverageText: classAverageLabelForGroup,
@@ -1364,7 +1414,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     submission: KASubmission | null | undefined,
     achieved: number,
     max: number,
-  ): string => (submission?.markedSick ? 'K' : calculateGrade(achieved, max));
+  ): string => {
+    if (submission?.markedSick && !submissionHasFilledAnswers(submission.answers)) return 'K';
+    return calculateGrade(achieved, max);
+  };
 
   const groupAnswerFieldIdsByTask = (answerIds: string[]) => {
     const grouped: Record<string, string[]> = {};
@@ -2575,6 +2628,36 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                 />
               </Box>
               <ButtonGroup size="small" variant="outlined" sx={kaCorrectionToolbarGroupSx}>
+                {sickStudentsInGroup.length > 0 ? (
+                  groupExamBeacon.active && groupExamBeacon.makeupSession ? (
+                    <Button
+                      onClick={() => void stopMakeupExam()}
+                      disabled={makeupBeaconBusy}
+                      tabIndex={-1}
+                      sx={{
+                        ...kaCorrectionToolbarBtnSx,
+                        borderColor: '#f9a825 !important',
+                        color: '#e65100',
+                        '&:hover': { bgcolor: 'rgba(249, 168, 37, 0.12)' },
+                      }}
+                    >
+                      {makeupBeaconBusy ? '…' : 'Nachschrift beenden'}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => setMakeupDialogOpen(true)}
+                      tabIndex={-1}
+                      sx={{
+                        ...kaCorrectionToolbarBtnSx,
+                        borderColor: '#f9a825 !important',
+                        color: '#e65100',
+                        '&:hover': { bgcolor: 'rgba(249, 168, 37, 0.12)' },
+                      }}
+                    >
+                      Nachschrift ({sickStudentsInGroup.length})
+                    </Button>
+                  )
+                ) : null}
                 <Button
                   onClick={handleOpenKA}
                   startIcon={<Description sx={{ fontSize: 13 }} />}
@@ -3285,30 +3368,40 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             </CardContent>
           </Card>
 
-          <ExamCorrectionLiveReview
-            refreshKey={correctionReviewRefreshKey}
-            buildHtml={() => buildReviewHtmlForSubmission(selectedSubmission)}
-            getFieldCorrection={getFieldCorrectionForDialog}
-            onSaveGeneralComment={(comment) => {
-              const generalKey = correctionStorageKey(
-                selectedSubmission.id,
-                GENERAL_COMMENT_TASK,
-              );
-              setCorrections((prev) => ({
-                ...prev,
-                [generalKey]: { ...prev[generalKey], comment },
-              }));
-              void saveCorrection(
-                GENERAL_COMMENT_TASK,
-                undefined,
-                comment,
-                selectedSubmission.id,
-              );
-            }}
-            onSaveField={(taskId, points, comment) => {
-              void saveCorrection(taskId, points, comment, selectedSubmission.id);
-            }}
-          />
+          {selectedSubmission.markedSick &&
+          !submissionHasFilledAnswers(selectedSubmission.answers) ? (
+            <Alert severity="info" sx={{ mb: 1, py: 0.5, fontSize: '0.8rem' }}>
+              Krank — noch keine Nachschrift. Oben{' '}
+              <strong>Nachschrift ({sickStudentsInGroup.length})</strong> starten, Prüfung und
+              Version wählen. Nach der Abgabe erscheint die Korrektur hier (gelber Rand bleibt, Note
+              wird angezeigt).
+            </Alert>
+          ) : (
+            <ExamCorrectionLiveReview
+              refreshKey={correctionReviewRefreshKey}
+              buildHtml={() => buildReviewHtmlForSubmission(selectedSubmission)}
+              getFieldCorrection={getFieldCorrectionForDialog}
+              onSaveGeneralComment={(comment) => {
+                const generalKey = correctionStorageKey(
+                  selectedSubmission.id,
+                  GENERAL_COMMENT_TASK,
+                );
+                setCorrections((prev) => ({
+                  ...prev,
+                  [generalKey]: { ...prev[generalKey], comment },
+                }));
+                void saveCorrection(
+                  GENERAL_COMMENT_TASK,
+                  undefined,
+                  comment,
+                  selectedSubmission.id,
+                );
+              }}
+              onSaveField={(taskId, points, comment) => {
+                void saveCorrection(taskId, points, comment, selectedSubmission.id);
+              }}
+            />
+          )}
 
           </>
                           )}
@@ -4175,6 +4268,19 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
         onConfirm={handleFullResetConfirm}
         busy={resetting}
         examLabel={kaFilePath.split('/').pop() || kaFilePath}
+      />
+
+      <MakeupExamStartDialog
+        open={makeupDialogOpen}
+        onClose={() => setMakeupDialogOpen(false)}
+        groupId={activeGroupId}
+        groupName={examGroups.find((g) => g.id === activeGroupId)?.name || 'Lerngruppe'}
+        kaFilePath={kaFilePath}
+        sickStudents={sickStudentsInGroup}
+        onStarted={() => {
+          refreshGroupExamBeacon();
+          void loadSubmissions();
+        }}
       />
 
       {/* Dreierprobe Modal */}

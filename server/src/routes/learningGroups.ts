@@ -589,7 +589,17 @@ router.post('/exam-beacon/start', async (req: Request, res: Response) => {
       groupIds?: string[];
       filePath?: string;
       lessonPath?: string;
-      examConfig?: { byGroup?: Record<string, Record<string, unknown>> };
+      examConfig?: {
+        byGroup?: Record<
+          string,
+          {
+            studentIds?: string[];
+            versionCount?: number;
+            versionAssignments?: Record<string, string>;
+            makeupSession?: boolean;
+          }
+        >;
+      };
     };
     const ids = normalizeExamGroupIds(groupId, groupIds);
     if (!teacherId?.trim() || !ids.length || !filePath?.trim()) {
@@ -622,6 +632,7 @@ router.post('/exam-beacon/start', async (req: Request, res: Response) => {
           rawGroupCfg.versionAssignments && typeof rawGroupCfg.versionAssignments === 'object'
             ? rawGroupCfg.versionAssignments
             : undefined,
+        makeupSession: Boolean(rawGroupCfg.makeupSession),
       });
       await prisma.lessonExamBeacon.upsert({
         where: { groupId: gid },
@@ -726,12 +737,32 @@ router.get('/exam-beacon/status/:groupId', async (req: Request, res: Response) =
     const groupId = req.params.groupId;
     const row = await prisma.lessonExamBeacon.findUnique({
       where: { groupId },
-      select: { groupId: true, filePath: true, lessonPath: true, beaconId: true, active: true, updatedAt: true },
+      select: {
+        groupId: true,
+        filePath: true,
+        lessonPath: true,
+        beaconId: true,
+        active: true,
+        updatedAt: true,
+        configJson: true,
+      },
     });
     if (!row || !row.active) {
       return res.json({ active: false, beacon: null });
     }
-    return res.json({ active: true, beacon: row });
+    const cfg = parseExamBeaconGroupConfig(row.configJson);
+    return res.json({
+      active: true,
+      beacon: {
+        groupId: row.groupId,
+        filePath: row.filePath,
+        lessonPath: row.lessonPath,
+        beaconId: row.beaconId,
+        updatedAt: row.updatedAt,
+        makeupSession: Boolean(cfg.makeupSession),
+        studentIds: cfg.studentIds || [],
+      },
+    });
   } catch (e: any) {
     console.error('exam-beacon/status:', e);
     return res.status(500).json({ error: e?.message || 'Serverfehler' });

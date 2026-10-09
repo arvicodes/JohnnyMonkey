@@ -189,14 +189,12 @@ export class KACorrectionController {
         return res.status(400).json({ error: 'kaFilePath und answers sind erforderlich' });
       }
 
-      // Prüfe ob bereits abgegeben
-      const existing = await prisma.kASubmission.findUnique({
+      const pathVariants = getPossiblePaths(String(kaFilePath));
+      const existing = await prisma.kASubmission.findFirst({
         where: {
-          kaFilePath_studentId: {
-            kaFilePath,
-            studentId
-          }
-        }
+          studentId,
+          OR: pathVariants.map((p) => ({ kaFilePath: p })),
+        },
       });
 
       // Debug: Log die eingehenden Daten
@@ -208,6 +206,22 @@ export class KACorrectionController {
       });
 
       if (existing) {
+        if (existing.markedSick) {
+          const normalizedPath = String(kaFilePath).replace(/\\/g, '/').trim();
+          const submission = await prisma.kASubmission.update({
+            where: { id: existing.id },
+            data: {
+              kaFilePath: normalizedPath,
+              answers: JSON.stringify(answers),
+              autoPoints: autoPoints || 0,
+              totalPoints: autoPoints || 0,
+              status: 'submitted',
+              markedSick: true,
+            },
+          });
+          console.log('✅ Krank-Nachschrift aktualisiert:', submission.id);
+          return res.json({ success: true, submission });
+        }
         console.log('⚠️ Abgabe existiert bereits:', existing.id);
         return res.status(400).json({ error: 'Klassenarbeit wurde bereits abgegeben' });
       }
