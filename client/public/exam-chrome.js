@@ -26,11 +26,6 @@
     return dir + stem + '.html';
   }
 
-  function examReadHtmlUrl(filePath) {
-    var params = new URLSearchParams({ filePath: String(filePath || '') });
-    return '/api/file-system-paths/read-html?' + params.toString();
-  }
-
   var sessionResetBusy = false;
 
   function postResetExamSession(restartTimer) {
@@ -119,15 +114,6 @@
       });
   }
 
-  function openExamPreviewTab() {
-    var path = getExamFilePath();
-    if (!path) {
-      window.alert('Pfad unbekannt — Vorschau nicht möglich.');
-      return;
-    }
-    window.open(examReadHtmlUrl(path), '_blank', 'noopener,noreferrer');
-  }
-
   function ensureExamSessionResetTrio() {
     if (localStorage.getItem('teacherId') === null) return;
     var toolbar = document.querySelector('.exam-toolbar');
@@ -140,7 +126,6 @@
       mount.setAttribute('role', 'group');
       mount.setAttribute('aria-label', 'Prüfung zurücksetzen');
       mount.innerHTML =
-        '<button type="button" class="exam-session-reset-btn exam-session-reset-btn--preview" id="examSessionPreviewBtn">Vorschau (Tab)</button>' +
         '<button type="button" class="exam-session-reset-btn exam-session-reset-btn--full" id="examSessionFullResetBtn">Alles zurücksetzen</button>' +
         '<button type="button" class="exam-session-reset-btn exam-session-reset-btn--timer" id="examSessionTimerResetBtn">Zeit neu<br>starten</button>';
       var altMount = document.getElementById('examAltVariantToolbar');
@@ -149,13 +134,8 @@
       } else {
         toolbar.appendChild(mount);
       }
-      var previewBtn = document.getElementById('examSessionPreviewBtn');
       var fullBtn = document.getElementById('examSessionFullResetBtn');
       var timerBtn = document.getElementById('examSessionTimerResetBtn');
-      if (previewBtn && !previewBtn.__jmWired) {
-        previewBtn.__jmWired = true;
-        previewBtn.addEventListener('click', openExamPreviewTab);
-      }
       if (fullBtn && !fullBtn.__jmWired) {
         fullBtn.__jmWired = true;
         fullBtn.addEventListener('click', runFullExamReset);
@@ -503,11 +483,9 @@
       '.aids-general-rules-list li.aids-general-rules-list__no-marker{list-style:none;margin-left:-1.35em;padding-left:0}' +
       '.teacher-mode #timer.exam-chrome-timer-editable{cursor:text}' +
       '.teacher-mode #timer.exam-chrome-timer-editable:focus{outline:2px solid rgba(225,6,0,.45);outline-offset:2px}' +
-      '.exam-session-reset-trio{display:flex;flex-direction:column;align-items:stretch;gap:8px;width:100%;margin-top:8px;box-sizing:border-box}' +
-      '.exam-session-reset-btn{width:100%;max-width:148px;box-sizing:border-box;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:inherit;line-height:1.25;padding:8px 8px;color:#fff}' +
+      '.exam-session-reset-trio{display:flex;flex-direction:column;align-items:stretch;gap:10px;width:100%;margin:14px 0 4px;box-sizing:border-box}' +
+      '.exam-session-reset-btn{width:100%;max-width:148px;box-sizing:border-box;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:inherit;line-height:1.25;padding:8px 8px;color:#fff;margin:0}' +
       '.exam-session-reset-btn:disabled{opacity:.55;cursor:not-allowed}' +
-      '.exam-session-reset-btn--preview{background:#1a1a1a;font-size:11px}' +
-      '.exam-session-reset-btn--preview:hover:not(:disabled){background:#333}' +
       '.exam-session-reset-btn--full{background:#E10600;font-size:11px}' +
       '.exam-session-reset-btn--full:hover:not(:disabled){background:#B00500}' +
       '.exam-session-reset-btn--timer{background:#81c784;font-size:15px;border-radius:8px;padding:14px 8px;white-space:normal}' +

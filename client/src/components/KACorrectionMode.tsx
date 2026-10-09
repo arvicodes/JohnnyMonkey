@@ -118,6 +118,8 @@ interface KACorrectionModeProps {
   kaFilePath: string;
   onClose: () => void;
   groupId?: string | null;
+  /** Eingebettet in ExamCorrectionModeShell — volle Höhe der rechten Spalte. */
+  embedded?: boolean;
 }
 
 type CorrectionMode = 'by-student' | 'by-task';
@@ -228,7 +230,12 @@ function shouldShowPurpleReviewRing(submission: KASubmission | null | undefined)
   return hasManualCorrectionWork(submission) || isReviewCompleteFlag(submission);
 }
 
-const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose, groupId = null }) => {
+const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
+  kaFilePath,
+  onClose,
+  groupId = null,
+  embedded = false,
+}) => {
   const [submissions, setSubmissions] = useState<KASubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -2293,7 +2300,24 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
   };
 
   return (
-    <Box sx={{ p: 1, bgcolor: '#f5f7fa', minHeight: '100vh' }}>
+    <Box
+      sx={{
+        p: 1,
+        bgcolor: '#f5f7fa',
+        ...(embedded
+          ? {
+              flex: 1,
+              minHeight: 0,
+              height: '100%',
+              width: '100%',
+              boxSizing: 'border-box',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'auto',
+            }
+          : { minHeight: '100vh' }),
+      }}
+    >
       {/* Header */}
       <Card sx={{ mb: 1.5, bgcolor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
         <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
@@ -2458,22 +2482,24 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
                 </Button>
                 </>
               )}
-              <IconButton
-                onClick={onClose} 
-                tabIndex={-1}
-                sx={{ 
-                  p: 0.5,
-                  minWidth: 28,
-                  width: 28,
-                  height: 28,
-                  ml: 0.5,
-                  '& .MuiSvgIcon-root': {
-                    fontSize: 18
-                  }
-                }}
-              >
-                <Close sx={{ width: '100%', height: '100%' }} />
-              </IconButton>
+              {!embedded ? (
+                <IconButton
+                  onClick={onClose}
+                  tabIndex={-1}
+                  sx={{
+                    p: 0.5,
+                    minWidth: 28,
+                    width: 28,
+                    height: 28,
+                    ml: 0.5,
+                    '& .MuiSvgIcon-root': {
+                      fontSize: 18,
+                    },
+                  }}
+                >
+                  <Close sx={{ width: '100%', height: '100%' }} />
+                </IconButton>
+              ) : null}
             </Box>
           </Box>
         </CardContent>
