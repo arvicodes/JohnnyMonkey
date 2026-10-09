@@ -98,6 +98,9 @@ import {
   isInformatikFolderPath,
   resolveLearningGroupDisplayStyle,
 } from '../../lib/learningGroupAppearance';
+import { isExamCorrectionFinished } from '../../lib/examCorrectionFinished';
+import { deriveExamCorrectionListStatus, type ExamSessionMeta } from '../../lib/examCorrectionListStatus';
+import ExamListStatusBadge from '../exam/ExamListStatusBadge';
 
 /** Farben wie in der Präsentation: P rot, Ü gelb, E blau. */
 const COLOR_PRUEFUNG = '#c62828';
@@ -513,6 +516,8 @@ function MaterialRow({
   icon,
   onIconClick,
   actions,
+  centerSlot,
+  finishedOverlay,
 }: {
   title: string;
   subtitle?: string;
@@ -522,10 +527,13 @@ function MaterialRow({
   icon?: string;
   onIconClick?: () => void;
   actions: React.ReactNode;
+  centerSlot?: React.ReactNode;
+  finishedOverlay?: boolean;
 }) {
   return (
     <Box
       sx={{
+        position: 'relative',
         display: 'flex',
         alignItems: 'center',
         gap: 0.6,
@@ -535,11 +543,26 @@ function MaterialRow({
         bgcolor: rowBg,
         border: '1px solid #e0e0e0',
         minHeight: 30,
+        overflow: 'hidden',
         '&:hover': { bgcolor: rowBg, filter: 'brightness(0.98)' },
       }}
     >
+      {finishedOverlay ? (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            bgcolor: 'rgba(76, 175, 80, 0.2)',
+            borderRadius: 'inherit',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+        />
+      ) : null}
       <Box
         sx={{
+          position: 'relative',
+          zIndex: 1,
           width: accentWidth,
           alignSelf: 'stretch',
           borderRadius: 0.5,
@@ -589,7 +612,7 @@ function MaterialRow({
           </Box>
         </Tooltip>
       ) : null}
-      <Box sx={{ flex: 1, minWidth: 0 }}>
+      <Box sx={{ position: 'relative', zIndex: 1, flex: 1, minWidth: 0 }}>
         <Typography
           sx={{
             fontSize: '0.74rem',
@@ -619,7 +642,25 @@ function MaterialRow({
           </Typography>
         ) : null}
       </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>{actions}</Box>
+      {centerSlot ? (
+        <Box
+          sx={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 1,
+            pointerEvents: 'none',
+            maxWidth: '42%',
+            px: 0.5,
+          }}
+        >
+          {centerSlot}
+        </Box>
+      ) : null}
+      <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 0.35, flexShrink: 0 }}>
+        {actions}
+      </Box>
     </Box>
   );
 }
@@ -817,6 +858,8 @@ export const DashboardExamsPanel: React.FC<{
   const [examHistoryRows, setExamHistoryRows] = useState<ExamSessionHistoryRow[]>([]);
   const [examHistoryLoading, setExamHistoryLoading] = useState(false);
   const [examHistoryError, setExamHistoryError] = useState<string | null>(null);
+  const [examSessionMetaByPath, setExamSessionMetaByPath] = useState<Record<string, ExamSessionMeta>>({});
+  const [examFinishedByPath, setExamFinishedByPath] = useState<Record<string, boolean>>({});
 
   const loadExamIcons = useCallback(async () => {
     const loaded = await fetchExamLibraryIconsFromServer();
@@ -870,6 +913,55 @@ export const DashboardExamsPanel: React.FC<{
   useEffect(() => {
     void load();
   }, [load, refreshKey]);
+
+  const isExamVariantFile = (name: string) => /__[A-Z]\.html?$/i.test(name || '');
+
+  const mainExamItems = useMemo(
+    () => items.filter((i) => !isExamVariantFile(i.name)),
+    [items],
+  );
+
+  const refreshExamFinishedFlags = useCallback(() => {
+    const map: Record<string, boolean> = {};
+    for (const item of mainExamItems) {
+      map[item.path] = isExamCorrectionFinished(item.path);
+    }
+    setExamFinishedByPath(map);
+  }, [mainExamItems]);
+
+  useEffect(() => {
+    refreshExamFinishedFlags();
+  }, [refreshExamFinishedFlags, refreshKey]);
+
+  useEffect(() => {
+    if (!mainExamItems.length) {
+      setExamSessionMetaByPath({});
+      return;
+    }
+    let cancelled = false;
+    void Promise.all(
+      mainExamItems.map(async (item) => {
+        try {
+          const sessions = await fetchExamSessionHistory(item.path);
+          const everStarted = sessions.length > 0;
+          const hasEndedSession = sessions.some((s) => !s.running || Boolean(s.endedAt));
+          return { path: item.path, everStarted, hasEndedSession };
+        } catch {
+          return { path: item.path, everStarted: false, hasEndedSession: false };
+        }
+      }),
+    ).then((rows) => {
+      if (cancelled) return;
+      const next: Record<string, ExamSessionMeta> = {};
+      for (const r of rows) {
+        next[r.path] = { everStarted: r.everStarted, hasEndedSession: r.hasEndedSession };
+      }
+      setExamSessionMetaByPath(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [mainExamItems, refreshKey, activeExamBeacons]);
 
   const teacherGroupIdsKey = useMemo(
     () =>
@@ -1052,8 +1144,6 @@ export const DashboardExamsPanel: React.FC<{
       ? 'Noch keine Arbeits-Reihe gewählt — im Tab „Reihen“ eine Reihe auswählen.'
       : 'Noch keine Prüfung unter den gewählten Reihen / Lerngruppen-Ordnern.';
 
-  const isExamVariantFile = (name: string) => /__[A-Z]\.html?$/i.test(name || '');
-
   const openTypeDialog = (item: LibraryExamItem) => {
     setTypeDialogItem(item);
     setTypeChoice(examTypeFromFileName(item.name) || 'QZ');
@@ -1160,6 +1250,17 @@ export const DashboardExamsPanel: React.FC<{
         createAccent={COLOR_PRUEFUNG}
         renderItem={(item) => {
           const rowStyle = examMaterialRowStyle(item.name);
+          const variant = isExamVariantFile(item.name);
+          const finished = !variant && Boolean(examFinishedByPath[item.path]);
+          const running = !variant && runningGroupIdsForExam(item.path).length > 0;
+          const listStatus =
+            !variant
+              ? deriveExamCorrectionListStatus(
+                  finished,
+                  running,
+                  examSessionMetaByPath[item.path],
+                )
+              : null;
           return (
           <MaterialRow
             key={item.path}
@@ -1170,6 +1271,8 @@ export const DashboardExamsPanel: React.FC<{
             rowBg={rowStyle.rowBg}
             icon={getExamLibraryIcon(item.path, item.name, iconMap, iconTemplate)}
             onIconClick={() => setIconPickerItem(item)}
+            finishedOverlay={finished}
+            centerSlot={listStatus ? <ExamListStatusBadge status={listStatus} /> : undefined}
             actions={
               <>
                 {!isExamVariantFile(item.name) ? (() => {

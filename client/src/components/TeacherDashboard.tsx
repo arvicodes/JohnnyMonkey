@@ -45,7 +45,7 @@ import {
   type LessonFolderFsItem,
 } from '../lib/presentationLessonFileLink';
 import MaterialShareVersionControl from './MaterialShareVersionControl';
-import ExamCorrectionModeShell from './exam/ExamCorrectionModeShell';
+import KACorrectionMode from './KACorrectionMode';
 import { DEFAULT_PROFILE_COLOR } from '../lib/profileColor';
 import TeacherSettingsMenu from './teacher-profile/TeacherSettingsMenu';
 import TeacherFullArchiveModal from './teacher-profile/TeacherFullArchiveModal';
@@ -21020,16 +21020,22 @@ Gegen√ºberstellung zu anderen **Verfahrensarten** (z. B. **Substitutionsverschl√
       {showKACorrectionMode && (
         <Dialog
           open={showKACorrectionMode}
-          onClose={() => setShowKACorrectionMode(false)}
-          fullScreen
-          sx={{ zIndex: (t) => t.zIndex.modal + 8 }}
+          onClose={() => {
+            setShowKACorrectionMode(false);
+            setExamsPanelRefreshKey((k) => k + 1);
+          }}
+          maxWidth="lg"
+          fullWidth
         >
-          <ExamCorrectionModeShell
-            initialExamPath={selectedKAFilePath}
-            rootPaths={dashboardLibraryRootPaths}
-            groups={groups}
-            onClose={() => setShowKACorrectionMode(false)}
-          />
+          <DialogContent sx={{ p: 0 }}>
+            <KACorrectionMode
+              kaFilePath={selectedKAFilePath}
+              onClose={() => {
+                setShowKACorrectionMode(false);
+                setExamsPanelRefreshKey((k) => k + 1);
+              }}
+            />
+          </DialogContent>
         </Dialog>
       )}
 

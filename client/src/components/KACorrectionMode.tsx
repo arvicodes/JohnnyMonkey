@@ -29,7 +29,12 @@ import {
   Tooltip,
   FormControlLabel,
   Switch,
+  Checkbox,
 } from '@mui/material';
+import {
+  isExamCorrectionFinished,
+  setExamCorrectionFinished,
+} from '../lib/examCorrectionFinished';
 import { 
   CheckCircle, 
   Cancel, 
@@ -236,6 +241,13 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
   groupId = null,
   embedded = false,
 }) => {
+  const [examMarkedFinished, setExamMarkedFinished] = useState(() =>
+    isExamCorrectionFinished(kaFilePath),
+  );
+
+  useEffect(() => {
+    setExamMarkedFinished(isExamCorrectionFinished(kaFilePath));
+  }, [kaFilePath]);
   const [submissions, setSubmissions] = useState<KASubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -2378,6 +2390,29 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
               </Typography>
             </Box>
             <Box display="flex" gap={0.5} alignItems="center" flexWrap="nowrap">
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={examMarkedFinished}
+                    onChange={(_, checked) => {
+                      setExamCorrectionFinished(kaFilePath, checked);
+                      setExamMarkedFinished(checked);
+                    }}
+                    sx={{
+                      p: 0.35,
+                      color: '#9e9e9e',
+                      '&.Mui-checked': { color: '#43a047' },
+                    }}
+                  />
+                }
+                label={
+                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.72rem', color: examMarkedFinished ? '#43a047' : '#616161' }}>
+                    fertig
+                  </Typography>
+                }
+                sx={{ m: 0, mr: 0.25, flexShrink: 0 }}
+              />
               <Button 
                 onClick={handleOpenKA}
                 variant="outlined"
