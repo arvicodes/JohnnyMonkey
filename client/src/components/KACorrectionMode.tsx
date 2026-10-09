@@ -47,7 +47,6 @@ import {
   Cancel, 
   ArrowBack, 
   ArrowForward, 
-  Person,
   AccessTime,
   Grade,
   Edit,
@@ -3096,251 +3095,152 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             </Card>
           ) : (
           <>
-          {/* Student Header Card - Kompakt */}
-          <Card sx={{ mb: 1, bgcolor: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-            <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
-              {/* Header Row: Navigation + Student Name */}
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.75} flexWrap="wrap" gap={0.5}>
-                {/* Navigation Links */}
-                <Box display="flex" alignItems="center" gap={0.5}>
-                  <IconButton
-                    onClick={handlePreviousStudent}
-                    disabled={currentStudentIndex === 0}
+          <Card sx={{ mb: 0.75, bgcolor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <CardContent sx={{ py: 0.55, px: 0.75, '&:last-child': { pb: 0.55 } }}>
+              <Box
+                display="flex"
+                alignItems="center"
+                gap={0.45}
+                flexWrap="wrap"
+                sx={{ rowGap: 0.35 }}
+              >
+                <IconButton
+                  onClick={handlePreviousStudent}
+                  disabled={currentStudentIndex === 0}
+                  size="small"
+                  tabIndex={-1}
+                  sx={{ p: 0.25, width: 24, height: 24 }}
+                >
+                  <ArrowBack sx={{ fontSize: 15 }} />
+                </IconButton>
+                <Typography
+                  variant="caption"
+                  sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.68rem', minWidth: 36 }}
+                >
+                  {currentStudentIndex + 1}/{learningGroupStudents.length}
+                </Typography>
+                <IconButton
+                  onClick={handleNextStudent}
+                  disabled={currentStudentIndex === learningGroupStudents.length - 1}
+                  size="small"
+                  tabIndex={-1}
+                  sx={{ p: 0.25, width: 24, height: 24 }}
+                >
+                  <ArrowForward sx={{ fontSize: 15 }} />
+                </IconButton>
+                <Typography
+                  variant="caption"
+                  sx={{ fontWeight: 700, fontSize: '0.75rem', flex: '1 1 100px', minWidth: 0 }}
+                  noWrap
+                >
+                  {submissionStudentName(selectedSubmission)}
+                </Typography>
+                <Tooltip title="Prüfungsversion (Masterpasswort)">
+                  <Chip
+                    label={submissionVersionLetter(selectedSubmission, kaFilePath)}
                     size="small"
-                    tabIndex={-1}
-                    sx={{ 
-                      p: 0.5,
-                      width: 28,
-                      height: 28
+                    onClick={openVersionDialog}
+                    sx={{
+                      fontWeight: 800,
+                      fontSize: '0.68rem',
+                      height: 22,
+                      minWidth: 26,
+                      bgcolor: '#e3f2fd',
+                      color: '#1565c0',
+                      border: '1px solid #1565c0',
+                      cursor: 'pointer',
+                      '& .MuiChip-label': { px: 0.6 },
                     }}
-                  >
-                    <ArrowBack sx={{ fontSize: 16 }} />
-                  </IconButton>
-                  
-                  <Box sx={{ 
-                    px: 1, 
-                    py: 0.25,
-                    bgcolor: '#f5f5f5',
-                    borderRadius: 1,
-                    border: '1px solid #e0e0e0',
-                    minWidth: 50,
-                    textAlign: 'center'
-                  }}>
-                    <Typography variant="caption" sx={{ 
-                      fontWeight: 700,
-                      color: '#1976d2',
-                      fontSize: '0.75rem'
-                    }}>
-                      {currentStudentIndex + 1}/{learningGroupStudents.length}
-                    </Typography>
-                  </Box>
-                  
-                  <IconButton
-                    onClick={handleNextStudent}
-                    disabled={currentStudentIndex === learningGroupStudents.length - 1}
-                    size="small"
-                    tabIndex={-1}
-                    sx={{ 
-                      p: 0.5,
-                      width: 28,
-                      height: 28
-                    }}
-                  >
-                    <ArrowForward sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </Box>
-                
-                {/* Student Name + Vorschau */}
-                <Box display="flex" alignItems="center" gap={0.75} flexWrap="wrap">
-                  <Box display="flex" alignItems="center" gap={0.5}>
-                    <Person sx={{ color: '#1976d2', fontSize: 18 }} />
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1a1a1a', fontSize: '0.85rem' }}>
-                      {submissionStudentName(selectedSubmission)}
-                    </Typography>
-                    <Tooltip title="Prüfungsversion — Klick zum Korrigieren (Masterpasswort)">
-                      <Chip
-                        label={submissionVersionLetter(selectedSubmission, kaFilePath)}
-                        size="small"
-                        onClick={openVersionDialog}
-                        sx={{
-                          fontWeight: 900,
-                          fontSize: '0.95rem',
-                          height: 28,
-                          minWidth: 32,
-                          bgcolor: '#e3f2fd',
-                          color: '#1565c0',
-                          border: '2px solid #1565c0',
-                          cursor: 'pointer',
-                          '&:hover': { bgcolor: '#bbdefb' },
-                        }}
-                      />
-                    </Tooltip>
-                    <Tooltip title="Abgabe dieses Schülers löschen, damit neu bearbeitet werden kann">
-                      <span>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="warning"
-                          startIcon={<RestartAlt sx={{ fontSize: 16 }} />}
-                          disabled={!selectedSubmission || resetStudentBusy}
-                          onClick={() => setResetStudentOpen(true)}
-                          tabIndex={-1}
-                          sx={{ fontSize: '0.72rem', py: 0.25, minHeight: 28 }}
-                        >
-                          Zurücksetzen
-                        </Button>
-                      </span>
-                    </Tooltip>
-                  </Box>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        size="small"
-                        checked={Boolean(selectedSubmission.markedSick)}
-                        disabled={saving}
-                        onChange={(_, on) => {
-                          const sid = selectedSubmission.student?.id;
-                          if (sid) void setMarkedSickForStudent(sid, on);
-                          else void toggleMarkedSick(selectedSubmission, on);
-                        }}
-                      />
-                    }
-                    label={
-                      <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
-                        <LocalHospital sx={{ fontSize: 16, color: '#f9a825' }} />
-                        <Typography component="span" variant="caption" sx={{ fontWeight: 600 }}>
-                          Krank
-                        </Typography>
-                      </Box>
-                    }
-                    sx={{ m: 0, ml: 0.5 }}
                   />
-                  <Tooltip
-                    title={
-                      !canOpenStudentPreview(selectedSubmission)
-                        ? 'Teilpunkte vergeben oder Doppelklick auf den Namen oben (Bewertung fertig)'
-                        : 'Vorschau wie für Schüler:in'
-                    }
-                  >
-                    <span>
-                      <Button
-                        onClick={() => void openStudentPreview()}
-                        variant="contained"
-                        size="small"
-                        startIcon={<Visibility />}
-                        disabled={previewLoading || !canOpenStudentPreview(selectedSubmission)}
-                        tabIndex={-1}
-                        sx={{
-                          fontSize: '0.72rem',
-                          py: 0.35,
-                          px: 1,
-                          minHeight: 28,
-                          bgcolor: PURPLE_REVIEW,
-                          '&:hover': { bgcolor: '#6a1b9a' },
-                        }}
-                      >
-                        {previewLoading ? '…' : 'Vorschau'}
-                      </Button>
-                      <Button
-                        onClick={() => void downloadAllCorrectedReviewsPdf()}
-                        variant="outlined"
-                        size="small"
-                        startIcon={<FileDownload />}
-                        disabled={reviewPdfBusy || groupSubmissions.length === 0}
-                        tabIndex={-1}
-                        sx={{ fontSize: '0.72rem', py: 0.35, px: 1, minHeight: 28 }}
-                      >
-                        {reviewPdfBusy ? 'PDF…' : 'Alle als PDF'}
-                      </Button>
-                    </span>
-                  </Tooltip>
-                </Box>
-              </Box>
-              
-              {/* Info Row: Chips */}
-              <Box display="flex" gap={0.5} flexWrap="wrap" alignItems="center">
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          size="small"
-                          checked={tabThroughAnswersOnly}
-                          onChange={(_, checked) => setTabThroughAnswersOnly(checked)}
-                        />
-                      }
-                      label={
-                        <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
-                          Tab nur Lösungsfelder
-                        </Typography>
-                      }
-                      sx={{ mr: 0.5, ml: 0, '& .MuiFormControlLabel-label': { lineHeight: 1.2 } }}
-                    />
-                    <Chip
-                      label={`${formatExamPointsDisplay(selectedLiveTotal)} von ${formatExamPointsDisplay(maxTotalPoints)} (davon ${formatExamPointsDisplay(selectedSubmission.autoPoints)} auto)`}
+                </Tooltip>
+                <Tooltip title="Abgabe zurücksetzen">
+                  <span>
+                    <IconButton
                       size="small"
-                    sx={{ 
-                        bgcolor: '#c8e6c9', 
-                        color: '#2e7d32', 
-                      fontWeight: 600,
-                      fontSize: '0.7rem',
-                      height: 24
-                    }}
-                    />
-                    <Tooltip 
-                      title={
-                        <Box component="div" sx={{ fontSize: '0.75rem', lineHeight: 1.6 }}>
-                          {getGradeScale(maxTotalPoints, selectedLiveTotal)}
-                        </Box>
-                      }
-                      arrow
-                      placement="top"
-                      enterDelay={100}
-                      leaveDelay={0}
-                      PopperProps={{
-                        modifiers: [
-                          {
-                            name: 'preventOverflow',
-                            enabled: true,
-                            options: {
-                              altAxis: true,
-                              altBoundary: true,
-                              tether: false,
-                              rootBoundary: 'viewport',
-                              padding: 8,
-                            },
-                          },
-                          {
-                            name: 'flip',
-                            enabled: true,
-                            options: {
-                              altBoundary: true,
-                              rootBoundary: 'viewport',
-                              padding: 8,
-                            },
-                          },
-                          {
-                            name: 'offset',
-                            enabled: true,
-                            options: {
-                              offset: [0, 8],
-                            },
-                          },
-                        ],
-                      }}
+                      disabled={resetStudentBusy}
+                      onClick={() => setResetStudentOpen(true)}
+                      tabIndex={-1}
+                      sx={{ p: 0.25, width: 24, height: 24, color: '#ed6c02' }}
                     >
-                    <Chip
-                        label={`Note: ${calculateGrade(selectedLiveTotal, maxTotalPoints)}`}
-                        size="medium"
-                        sx={{ 
-                          bgcolor: '#1976d2', 
-                          color: '#fff', 
-                          fontWeight: 700,
-                          fontSize: '0.9rem',
-                          height: 32,
-                          cursor: 'help',
-                          px: 1.5
-                        }}
-                      />
-                    </Tooltip>
+                      <RestartAlt sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      size="small"
+                      checked={Boolean(selectedSubmission.markedSick)}
+                      disabled={saving}
+                      onChange={(_, on) => {
+                        const sid = selectedSubmission.student?.id;
+                        if (sid) void setMarkedSickForStudent(sid, on);
+                        else void toggleMarkedSick(selectedSubmission, on);
+                      }}
+                    />
+                  }
+                  label={
+                    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.2 }}>
+                      <LocalHospital sx={{ fontSize: 14, color: '#f9a825' }} />
+                      <Typography component="span" sx={{ fontSize: '0.62rem', fontWeight: 700 }}>
+                        Krank
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{ m: 0 }}
+                />
+                <Chip
+                  size="small"
+                  label={`${formatExamPointsDisplay(selectedLiveTotal)}/${formatExamPointsDisplay(maxTotalPoints)}`}
+                  sx={{
+                    height: 22,
+                    fontSize: '0.62rem',
+                    fontWeight: 700,
+                    bgcolor: '#c8e6c9',
+                    color: '#2e7d32',
+                    '& .MuiChip-label': { px: 0.6 },
+                  }}
+                />
+                <Tooltip
+                  title={
+                    <Box component="div" sx={{ fontSize: '0.72rem', lineHeight: 1.5 }}>
+                      {getGradeScale(maxTotalPoints, selectedLiveTotal)}
+                    </Box>
+                  }
+                  arrow
+                  placement="top"
+                >
+                  <Chip
+                    size="small"
+                    label={calculateGrade(selectedLiveTotal, maxTotalPoints)}
+                    sx={{
+                      height: 22,
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      bgcolor: '#1976d2',
+                      color: '#fff',
+                      cursor: 'help',
+                      '& .MuiChip-label': { px: 0.65 },
+                    }}
+                  />
+                </Tooltip>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      size="small"
+                      checked={tabThroughAnswersOnly}
+                      onChange={(_, checked) => setTabThroughAnswersOnly(checked)}
+                    />
+                  }
+                  label={
+                    <Typography sx={{ fontSize: '0.6rem', fontWeight: 600 }}>Tab Felder</Typography>
+                  }
+                  sx={{
+                    m: 0,
+                    ml: { xs: 0, sm: 'auto' },
+                    '& .MuiFormControlLabel-label': { lineHeight: 1.1 },
+                  }}
+                />
               </Box>
               {(() => {
                 const generalKey = correctionStorageKey(
@@ -3354,10 +3254,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                   corrections[generalKey]?.comment ?? savedGeneral?.comment ?? '';
                 return (
                   <TextField
-                    label="Allgemeiner Kommentar (sichtbar in der Freigabe / Vorschau)"
                     multiline
-                    minRows={2}
-                    maxRows={5}
+                    minRows={1}
+                    maxRows={3}
                     fullWidth
                     size="small"
                     value={generalComment}
@@ -3376,11 +3275,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                       );
                     }}
                     sx={{
-                      mt: 0.75,
-                      '& .MuiInputBase-input': { fontSize: '0.8rem' },
-                      '& .MuiInputLabel-root': { fontSize: '0.75rem' },
+                      mt: 0.45,
+                      '& .MuiInputBase-root': { py: 0.35, fontSize: '0.68rem' },
+                      '& .MuiInputBase-input': { py: 0.35 },
                     }}
-                    placeholder="z. B. Hinweise zur Bewertung, was besonders gut war …"
+                    placeholder="Allgemeiner Kommentar (Freigabe)"
                     inputProps={{ tabIndex: tabIndexSkipWhenAnswersOnly }}
                   />
                 );
@@ -3388,10 +3287,6 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             </CardContent>
           </Card>
 
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, px: 0.5 }}>
-            Ansicht wie nach der Freigabe. Auf einen Punktestreifen klicken, um Punkte oder
-            Aufgabenkommentar anzupassen.
-            </Typography>
           <ExamCorrectionLiveReview
             refreshKey={correctionReviewRefreshKey}
             buildHtml={() => buildReviewHtmlForSubmission(selectedSubmission)}
