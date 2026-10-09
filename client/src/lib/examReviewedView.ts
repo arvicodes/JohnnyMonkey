@@ -594,8 +594,29 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       font-size: 13px;
       color: #546e7a;
     }
+    .jm-general-comment-wrap {
+      margin-bottom: 12px;
+      text-align: left;
+    }
+    .jm-general-comment-input {
+      display: block;
+      width: 100%;
+      margin-top: 6px;
+      padding: 8px 10px;
+      font-family: ${EXAM_TEACHER_COMMENT_FONT};
+      font-size: 1.1rem;
+      line-height: 1.35;
+      color: #424242;
+      border: 1px solid #bdbdbd;
+      border-radius: 6px;
+      background: #fff;
+      box-sizing: border-box;
+      resize: vertical;
+      min-height: 2.8em;
+    }
     .jm-review-result .teacher-comment {
-      margin-top: 10px;
+      margin-top: 0;
+      margin-bottom: 12px;
       padding-top: 0;
       border-top: none;
       font-size: 14px;
@@ -667,22 +688,6 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   fillAndMark(doc, answers, key, opts.corrections || [], teacherCorrectionMode);
   injectPerTaskTeacherComments(doc, opts.corrections || []);
 
-  if (teacherCorrectionMode) {
-    const boot = doc.createElement('script');
-    boot.textContent = `(function(){
-  function send(taskId){ try { parent.postMessage({ type: 'jm-exam-correction-field', taskId: taskId }, '*'); } catch(e) {} }
-  document.querySelectorAll('.jm-points-badge-editable[data-jm-task-id]').forEach(function(b){
-    b.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); send(b.getAttribute('data-jm-task-id')); });
-  });
-})();`;
-    doc.body.appendChild(boot);
-  }
-
-  doc.querySelectorAll('input, textarea, select, button').forEach((el) => {
-    (el as HTMLInputElement).disabled = true;
-    (el as HTMLInputElement).readOnly = true;
-  });
-
   const rawTotal = Number(opts.totalPoints) || 0;
   const cappedTotal =
     opts.maxPoints > 0 ? Math.min(rawTotal, opts.maxPoints) : rawTotal;
@@ -695,9 +700,18 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   )?.comment;
   const generalComment = (generalCommentRaw || '').trim();
   const sigUrl = teacherSignatureImgUrl(origin);
+  const generalCommentBlock = teacherCorrectionMode
+    ? `<div class="jm-general-comment-wrap">
+        <span class="jm-comment-label">Allgemeiner Kommentar:</span>
+        <textarea id="jm-general-comment-field" class="jm-general-comment-input" rows="2" placeholder="Sichtbar in der Freigabe …">${escapeHtmlText(generalComment)}</textarea>
+      </div>`
+    : generalComment
+      ? `<div class="teacher-comment"><span class="jm-comment-label">Kommentar:</span> <span class="jm-teacher-handwriting">${escapeHtmlText(generalComment)}</span></div>`
+      : '';
   const box = doc.createElement('div');
   box.className = 'jm-review-result';
   box.innerHTML = `
+    ${generalCommentBlock}
     <div class="jm-review-head">
       <div class="jm-grade-block">
         <div class="jm-grade-note-wrap">
@@ -715,14 +729,42 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       </div>
     </div>
     <hr class="jm-review-rule" />
-    ${
-      generalComment
-        ? `<div class="teacher-comment"><span class="jm-comment-label">Kommentar:</span> <span class="jm-teacher-handwriting">${escapeHtmlText(generalComment)}</span></div>`
-        : ''
-    }
   `;
   const paper = doc.querySelector('.exam-paper') || doc.body;
   paper.appendChild(box);
+
+  doc.querySelectorAll('input, textarea, select, button').forEach((el) => {
+    if (teacherCorrectionMode && el.id === 'jm-general-comment-field') return;
+    (el as HTMLInputElement).disabled = true;
+    (el as HTMLInputElement).readOnly = true;
+  });
+
+  if (teacherCorrectionMode) {
+    const boot = doc.createElement('script');
+    boot.textContent = `(function(){
+  function send(taskId){ try { parent.postMessage({ type: 'jm-exam-correction-field', taskId: taskId }, '*'); } catch(e) {} }
+  document.querySelectorAll('.jm-points-badge-editable[data-jm-task-id]').forEach(function(b){
+    b.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); send(b.getAttribute('data-jm-task-id')); });
+  });
+  function notifyHeight(){
+    try {
+      var h = Math.max(document.documentElement.scrollHeight || 0, document.body ? document.body.scrollHeight : 0);
+      parent.postMessage({ type: 'jm-exam-correction-resize', height: h }, '*');
+    } catch(e) {}
+  }
+  var ta = document.getElementById('jm-general-comment-field');
+  if (ta) {
+    ta.addEventListener('blur', function(){
+      try { parent.postMessage({ type: 'jm-exam-correction-general', value: ta.value }, '*'); } catch(e) {}
+      notifyHeight();
+    });
+    ta.addEventListener('input', function(){ notifyHeight(); });
+  }
+  notifyHeight();
+  window.addEventListener('load', notifyHeight);
+})();`;
+    doc.body.appendChild(boot);
+  }
 
   if (!doc.documentElement.getAttribute('lang')) {
     doc.documentElement.setAttribute('lang', 'de');

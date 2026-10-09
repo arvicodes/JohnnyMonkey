@@ -2425,14 +2425,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
         bgcolor: '#f5f7fa',
         ...(embedded
           ? {
-              flex: 1,
-              minHeight: 0,
-              height: '100%',
               width: '100%',
               boxSizing: 'border-box',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
             }
           : { minHeight: '100vh' }),
       }}
@@ -2731,13 +2725,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
         </CardContent>
       </Card>
 
-      <Box
-        sx={{
-          flex: embedded ? '1 1 auto' : undefined,
-          minHeight: embedded ? 0 : undefined,
-          overflow: embedded ? 'auto' : undefined,
-        }}
-      >
+      <Box>
 
       {examGroups.length > 1 && (
         <Tabs
@@ -3294,48 +3282,6 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                   }}
                 />
               </Box>
-              {(() => {
-                const generalKey = correctionStorageKey(
-                  selectedSubmission.id,
-                  GENERAL_COMMENT_TASK,
-                );
-                const savedGeneral = selectedSubmission.corrections?.find(
-                  (c) => c.taskNumber === GENERAL_COMMENT_TASK,
-                );
-                const generalComment =
-                  corrections[generalKey]?.comment ?? savedGeneral?.comment ?? '';
-                return (
-                  <TextField
-                    multiline
-                    minRows={1}
-                    maxRows={3}
-                    fullWidth
-                    size="small"
-                    value={generalComment}
-                    onChange={(e) => {
-                      setCorrections((prev) => ({
-                        ...prev,
-                        [generalKey]: { ...prev[generalKey], comment: e.target.value },
-                      }));
-                    }}
-                    onBlur={(e) => {
-                      void saveCorrection(
-                        GENERAL_COMMENT_TASK,
-                        undefined,
-                        e.target.value,
-                        selectedSubmission.id,
-                      );
-                    }}
-                    sx={{
-                      mt: 0.5,
-                      '& .MuiInputBase-root': { py: 0.4, fontSize: '0.72rem' },
-                      '& .MuiInputBase-input': { py: 0.4 },
-                    }}
-                    placeholder="Allgemeiner Kommentar (Freigabe)"
-                    inputProps={{ tabIndex: tabIndexSkipWhenAnswersOnly }}
-                  />
-                );
-              })()}
             </CardContent>
           </Card>
 
@@ -3343,7 +3289,22 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             refreshKey={correctionReviewRefreshKey}
             buildHtml={() => buildReviewHtmlForSubmission(selectedSubmission)}
             getFieldCorrection={getFieldCorrectionForDialog}
-            fillHeight={embedded}
+            onSaveGeneralComment={(comment) => {
+              const generalKey = correctionStorageKey(
+                selectedSubmission.id,
+                GENERAL_COMMENT_TASK,
+              );
+              setCorrections((prev) => ({
+                ...prev,
+                [generalKey]: { ...prev[generalKey], comment },
+              }));
+              void saveCorrection(
+                GENERAL_COMMENT_TASK,
+                undefined,
+                comment,
+                selectedSubmission.id,
+              );
+            }}
             onSaveField={(taskId, points, comment) => {
               void saveCorrection(taskId, points, comment, selectedSubmission.id);
             }}

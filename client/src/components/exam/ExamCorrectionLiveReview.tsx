@@ -15,27 +15,38 @@ type ExamCorrectionLiveReviewProps = {
   buildHtml: () => Promise<string>;
   refreshKey: string;
   onSaveField: (taskId: string, points: number | undefined, comment: string) => void;
+  onSaveGeneralComment?: (comment: string) => void;
   getFieldCorrection: (taskId: string) => { points?: number; comment?: string };
-  /** Volle Höhe der Spalte statt fester 72vh. */
-  fillHeight?: boolean;
 };
 
 export default function ExamCorrectionLiveReview({
   buildHtml,
   refreshKey,
   onSaveField,
+  onSaveGeneralComment,
   getFieldCorrection,
-  fillHeight = false,
 }: ExamCorrectionLiveReviewProps) {
   const [html, setHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [frameHeight, setFrameHeight] = useState(400);
   const [editTaskId, setEditTaskId] = useState<string | null>(null);
   const [editPoints, setEditPoints] = useState('');
   const [editComment, setEditComment] = useState('');
   const buildHtmlRef = useRef(buildHtml);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   buildHtmlRef.current = buildHtml;
   const loadSeqRef = useRef(0);
+
+  const measureFrame = useCallback(() => {
+    const doc = iframeRef.current?.contentDocument;
+    if (!doc) return;
+    const h = Math.max(
+      doc.documentElement?.scrollHeight || 0,
+      doc.body?.scrollHeight || 0,
+    );
+    if (h > 0) setFrameHeight(h + 12);
+  }, []);
 
   const reload = useCallback(() => {
     const seq = ++loadSeqRef.current;
@@ -64,7 +75,20 @@ export default function ExamCorrectionLiveReview({
 
   useEffect(() => {
     const onMessage = (ev: MessageEvent) => {
-      const data = ev.data as { type?: string; taskId?: string };
+      const data = ev.data as {
+        type?: string;
+        taskId?: string;
+        value?: string;
+        height?: number;
+      };
+      if (data?.type === 'jm-exam-correction-resize' && typeof data.height === 'number') {
+        if (data.height > 0) setFrameHeight(data.height + 12);
+        return;
+      }
+      if (data?.type === 'jm-exam-correction-general') {
+        onSaveGeneralComment?.(String(data.value ?? ''));
+        return;
+      }
       if (data?.type !== 'jm-exam-correction-field' || !data.taskId) return;
       const taskId = String(data.taskId);
       const cur = getFieldCorrection(taskId);
@@ -74,7 +98,13 @@ export default function ExamCorrectionLiveReview({
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [getFieldCorrection]);
+  }, [getFieldCorrection, onSaveGeneralComment]);
+
+  useEffect(() => {
+    if (!html) return;
+    const t = window.setTimeout(() => measureFrame(), 80);
+    return () => window.clearTimeout(t);
+  }, [html, measureFrame]);
 
   const saveEdit = () => {
     if (!editTaskId) return;
@@ -85,40 +115,26 @@ export default function ExamCorrectionLiveReview({
     reload();
   };
 
-  const frameMinH = fillHeight ? '100%' : 'min(72vh, 900px)';
-  const frameH = fillHeight ? '100%' : '72vh';
-
   return (
-    <Box
-      sx={{
-        position: 'relative',
-        minHeight: fillHeight ? 320 : frameMinH,
-        height: fillHeight ? 'min(52vh, 100%)' : undefined,
-        flex: fillHeight ? '1 1 auto' : undefined,
-        bgcolor: '#f3f3f3',
-        borderRadius: 1,
-        display: fillHeight ? 'flex' : 'block',
-        flexDirection: fillHeight ? 'column' : undefined,
-      }}
-    >
+    <Box sx={{ position: 'relative', width: '100%' }}>
       {loading && !html ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 240 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 3 }}>
           <CircularProgress size={32} />
         </Box>
       ) : null}
       {html ? (
         <iframe
+          ref={iframeRef}
           title="Korrekturansicht"
           srcDoc={html}
           sandbox="allow-scripts allow-same-origin"
+          onLoad={measureFrame}
           style={{
             width: '100%',
-            minHeight: fillHeight ? 280 : 'min(72vh, 900px)',
-            height: frameH,
-            flex: fillHeight ? '1 1 auto' : undefined,
+            height: frameHeight,
             border: 0,
             display: 'block',
-            borderRadius: 4,
+            overflow: 'hidden',
           }}
         />
       ) : null}

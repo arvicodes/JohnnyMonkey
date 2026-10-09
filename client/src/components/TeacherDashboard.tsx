@@ -21027,7 +21027,7 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
           fullScreen
           sx={{ zIndex: (t) => t.zIndex.modal + 8 }}
         >
-          <DialogContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <DialogContent sx={{ p: 0, overflow: 'auto' }}>
             <KACorrectionMode
               kaFilePath={selectedKAFilePath}
               embedded
