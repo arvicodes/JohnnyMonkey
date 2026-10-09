@@ -555,7 +555,7 @@ function MaterialRow({
           sx={{
             position: 'absolute',
             inset: 0,
-            bgcolor: 'rgba(108, 118, 102, 0.38)',
+            bgcolor: 'rgba(76, 175, 80, 0.16)',
             borderRadius: 'inherit',
             pointerEvents: 'none',
             zIndex: 0,

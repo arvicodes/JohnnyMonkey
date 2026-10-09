@@ -2375,16 +2375,24 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
               boxSizing: 'border-box',
               display: 'flex',
               flexDirection: 'column',
-              overflow: 'auto',
+              overflow: 'hidden',
             }
           : { minHeight: '100vh' }),
       }}
     >
-      {/* Header */}
-      <Card sx={{ mb: 1.5, bgcolor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+      {/* Header — fest oben (Vollbild), Entwurf/fertig immer sichtbar */}
+      <Card
+        sx={{
+          mb: 1.5,
+          bgcolor: '#fff',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          flexShrink: 0,
+          ...(embedded ? { position: 'sticky', top: 0, zIndex: 30 } : {}),
+        }}
+      >
         <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-          <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Box>
+          <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1}>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
               <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2', mb: 0.25 }}>
               📝 Korrekturmodus
             </Typography>
@@ -2392,7 +2400,30 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                 {kaFilePath.split('/').pop() || kaFilePath} {submissions.length > 0 && `• ${submissions.length} Abgabe${submissions.length > 1 ? 'n' : ''}`}
               </Typography>
             </Box>
-            <Box display="flex" gap={0.5} alignItems="center" flexWrap="nowrap">
+            <IconButton
+              onClick={onClose}
+              tabIndex={-1}
+              sx={{
+                p: 0.5,
+                minWidth: 28,
+                width: 28,
+                height: 28,
+                flexShrink: 0,
+                '& .MuiSvgIcon-root': {
+                  fontSize: 18,
+                },
+              }}
+            >
+              <Close sx={{ width: '100%', height: '100%' }} />
+            </IconButton>
+          </Box>
+          <Box
+            display="flex"
+            gap={0.5}
+            alignItems="center"
+            flexWrap="wrap"
+            sx={{ mt: 1, pt: 0.75, borderTop: '1px solid #eee' }}
+          >
               <FormControlLabel
                 control={
                   <Checkbox
@@ -2443,12 +2474,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                     sx={{
                       p: 0.35,
                       color: '#9e9e9e',
-                      '&.Mui-checked': { color: '#5a7d5c' },
+                      '&.Mui-checked': { color: '#43a047' },
                     }}
                   />
                 }
                 label={
-                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.72rem', color: examMarkedFinished ? '#5a7d5c' : '#616161' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.72rem', color: examMarkedFinished ? '#43a047' : '#616161' }}>
                     fertig
                   </Typography>
                 }
@@ -2605,26 +2636,17 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                 </Button>
                 </>
               )}
-              <IconButton
-                onClick={onClose}
-                tabIndex={-1}
-                sx={{
-                  p: 0.5,
-                  minWidth: 28,
-                  width: 28,
-                  height: 28,
-                  ml: 0.5,
-                  '& .MuiSvgIcon-root': {
-                    fontSize: 18,
-                  },
-                }}
-              >
-                <Close sx={{ width: '100%', height: '100%' }} />
-              </IconButton>
-            </Box>
           </Box>
         </CardContent>
       </Card>
+
+      <Box
+        sx={{
+          flex: embedded ? '1 1 auto' : undefined,
+          minHeight: embedded ? 0 : undefined,
+          overflow: embedded ? 'auto' : undefined,
+        }}
+      >
 
       {examGroups.length > 1 && (
         <Tabs
@@ -4184,6 +4206,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
           </Button>
         </DialogActions>
       </Dialog>
+
+      </Box>
 
       <ExamFullResetConfirmDialog
         open={fullResetOpen}

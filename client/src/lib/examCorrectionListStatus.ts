@@ -23,7 +23,7 @@ export const EXAM_STATUS_COLOR: Record<ExamCorrectionListStatus, string> = {
   entwurf: '#757575',
   aktiv: '#c62828',
   'zur-korrektur': '#7b1fa2',
-  fertig: '#5a7d5c',
+  fertig: '#43a047',
 };
 
 export function deriveExamCorrectionListStatus(
