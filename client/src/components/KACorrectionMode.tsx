@@ -30,7 +30,9 @@ import {
   FormControlLabel,
   Switch,
   Checkbox,
+  ButtonGroup,
 } from '@mui/material';
+import { epoNotenToolbarOutlinedBtnSx } from './epo-noten/epoNotenUi';
 import { isExamCorrectionDraft, setExamCorrectionDraft } from '../lib/examCorrectionDraft';
 import {
   isExamCorrectionFinished,
@@ -145,6 +147,16 @@ const correctionStorageKey = (submissionId: string, fieldKey: string): string =>
 const REVIEW_COMPLETE_TASK = '__review_complete__';
 const GENERAL_COMMENT_TASK = '__general_comment__';
 const PURPLE_REVIEW = '#7b1fa2';
+
+const kaCorrectionToolbarGroupSx = {
+  flexShrink: 0,
+  maxWidth: '100%',
+  '& .MuiButtonGroup-grouped': {
+    ...epoNotenToolbarOutlinedBtnSx,
+    minWidth: 0,
+    width: 'max-content',
+  },
+} as const;
 const PARTIAL_CREDIT_BG = '#fff9c4';
 const PARTIAL_CREDIT_BORDER = '#fff176';
 const PARTIAL_CREDIT_TEXT = '#f57f17';
@@ -2418,12 +2430,17 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             </IconButton>
           </Box>
           <Box
-            display="flex"
-            gap={0.5}
-            alignItems="center"
-            flexWrap="wrap"
-            sx={{ mt: 1, pt: 0.75, borderTop: '1px solid #eee' }}
+            sx={{
+              mt: 1,
+              pt: 0.75,
+              borderTop: '1px solid #eee',
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: 0.75,
+            }}
           >
+            <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
               <FormControlLabel
                 control={
                   <Checkbox
@@ -2456,7 +2473,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                     Entwurf
                   </Typography>
                 }
-                sx={{ m: 0, mr: 0.25, flexShrink: 0 }}
+                sx={{ m: 0, mr: 0.25 }}
               />
               <FormControlLabel
                 control={
@@ -2479,163 +2496,143 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                   />
                 }
                 label={
-                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.72rem', color: examMarkedFinished ? '#43a047' : '#616161' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.72rem',
+                      color: examMarkedFinished ? '#43a047' : '#616161',
+                    }}
+                  >
                     fertig
                   </Typography>
                 }
-                sx={{ m: 0, mr: 0.25, flexShrink: 0 }}
+                sx={{ m: 0 }}
               />
-              <Button 
-                onClick={handleOpenKA}
-                variant="outlined"
-                size="small"
-                startIcon={<Description />}
-                tabIndex={-1}
-                sx={{ 
-                  fontSize: '0.75rem',
-                  px: 1,
-                  py: 0.5,
-                  minWidth: 'auto',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                KA öffnen
-              </Button>
-              <Button 
-                onClick={exportBothWordVersions}
-                variant="outlined"
-                size="small"
-                startIcon={<FileDownload />}
-                disabled={exporting}
-                tabIndex={-1}
-                sx={{ 
-                  fontSize: '0.75rem',
-                  px: 1,
-                  py: 0.5,
-                  minWidth: 'auto',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {exporting ? 'Exportiert...' : 'Word Download'}
-              </Button>
-              {Object.keys(examAnswers).length > 0 && (
-                <>
-                  <Button
-                    onClick={openAnswerKeyEditor}
-                    variant="outlined"
-                    size="small"
-                    startIcon={<Edit />}
-                    tabIndex={-1}
-                    sx={{ fontSize: '0.75rem', px: 1, py: 0.5, minWidth: 'auto', whiteSpace: 'nowrap' }}
-                  >
-                    Musterlösung
-                  </Button>
-                  <Button
-                    onClick={() => void recalculateAllSubmissions()}
-                    variant="outlined"
-                    size="small"
-                    disabled={recalculating || submissions.length === 0}
-                    tabIndex={-1}
-                    sx={{ fontSize: '0.75rem', px: 1, py: 0.5, minWidth: 'auto', whiteSpace: 'nowrap' }}
-                  >
-                    {recalculating ? 'Bewerte…' : 'Neu bewerten'}
-                  </Button>
-                </>
-              )}
-              {submissions.length > 0 && (
-                <>
-                  <Tooltip
-                    title={
-                      selectedSubmission && !canOpenStudentPreview(selectedSubmission)
-                        ? 'Teilpunkte vergeben oder Doppelklick auf Schüler:in (Bewertung fertig)'
-                        : 'Schüleransicht mit Korrektur'
-                    }
-                  >
-                    <span>
-                      <Button
-                        onClick={() => void openStudentPreview()}
-                        variant="outlined"
-                        size="small"
-                        startIcon={<Visibility />}
-                        disabled={
-                          previewLoading ||
-                          !selectedSubmission ||
-                          !canOpenStudentPreview(selectedSubmission)
-                        }
-                        tabIndex={-1}
-                        sx={{
-                          fontSize: '0.75rem',
-                          px: 1,
-                          py: 0.5,
-                          minWidth: 'auto',
-                          whiteSpace: 'nowrap',
-                          borderColor: PURPLE_REVIEW,
-                          color: PURPLE_REVIEW,
-                        }}
-                      >
-                        {previewLoading ? 'Vorschau…' : 'Vorschau'}
-                      </Button>
-                    </span>
-                  </Tooltip>
-                  <Button 
-                    onClick={() => setShowDreierprobe(true)}
-                    variant="contained"
-                    color="primary"
-                    size="small"
-                    startIcon={<BarChart />}
-                    tabIndex={-1}
-                    sx={{ 
-                      fontSize: '0.75rem',
-                      px: 1,
-                      py: 0.5,
-                      minWidth: 'auto',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    Dreierprobe
-                  </Button>
-                  {missingGroupStudents.length > 0 && (
+            </Box>
+            <Box
+              sx={{
+                flex: '1 1 auto',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                minWidth: 0,
+                overflowX: 'auto',
+              }}
+            >
+              <ButtonGroup size="small" variant="outlined" sx={kaCorrectionToolbarGroupSx}>
+                <Button
+                  onClick={handleOpenKA}
+                  startIcon={<Description sx={{ fontSize: 13 }} />}
+                  tabIndex={-1}
+                >
+                  KA öffnen
+                </Button>
+                <Button
+                  onClick={() => void exportBothWordVersions()}
+                  startIcon={<FileDownload sx={{ fontSize: 13 }} />}
+                  disabled={exporting}
+                  tabIndex={-1}
+                >
+                  {exporting ? 'Export…' : 'Word'}
+                </Button>
+                {Object.keys(examAnswers).length > 0 ? (
+                  <>
                     <Button
-                      onClick={() => {
-                        setDreierprobeEmailTab(true);
-                        setShowDreierprobe(true);
-                      }}
-                      variant="outlined"
-                      size="small"
-                      startIcon={<Email />}
+                      onClick={openAnswerKeyEditor}
+                      startIcon={<Edit sx={{ fontSize: 13 }} />}
+                      tabIndex={-1}
+                    >
+                      Musterlösung
+                    </Button>
+                    <Button
+                      onClick={() => void recalculateAllSubmissions()}
+                      disabled={recalculating || submissions.length === 0}
+                      tabIndex={-1}
+                    >
+                      {recalculating ? 'Bewerte…' : 'Neu bewerten'}
+                    </Button>
+                  </>
+                ) : null}
+                {submissions.length > 0 ? (
+                  <>
+                    <Tooltip
+                      title={
+                        selectedSubmission && !canOpenStudentPreview(selectedSubmission)
+                          ? 'Teilpunkte vergeben oder Doppelklick auf Schüler:in (Bewertung fertig)'
+                          : 'Schüleransicht mit Korrektur'
+                      }
+                    >
+                      <span style={{ display: 'inline-flex' }}>
+                        <Button
+                          onClick={() => void openStudentPreview()}
+                          startIcon={<Visibility sx={{ fontSize: 13 }} />}
+                          disabled={
+                            previewLoading ||
+                            !selectedSubmission ||
+                            !canOpenStudentPreview(selectedSubmission)
+                          }
+                          tabIndex={-1}
+                          sx={{
+                            borderColor: `${PURPLE_REVIEW} !important`,
+                            color: PURPLE_REVIEW,
+                            '&:hover': {
+                              borderColor: `${PURPLE_REVIEW} !important`,
+                              bgcolor: 'rgba(123, 31, 162, 0.06)',
+                            },
+                          }}
+                        >
+                          {previewLoading ? 'Vorschau…' : 'Vorschau'}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    <Button
+                      onClick={() => setShowDreierprobe(true)}
+                      variant="contained"
+                      color="primary"
+                      startIcon={<BarChart sx={{ fontSize: 13 }} />}
                       tabIndex={-1}
                       sx={{
-                        fontSize: '0.75rem',
-                        px: 1,
-                        py: 0.5,
-                        minWidth: 'auto',
-                        whiteSpace: 'nowrap',
-                        borderColor: '#f57c00',
-                        color: '#e65100',
+                        ...epoNotenToolbarOutlinedBtnSx,
+                        minWidth: 0,
+                        width: 'max-content',
+                        boxShadow: 'none',
+                        '&:hover': { boxShadow: 'none' },
                       }}
                     >
-                      Fehlende anschreiben ({missingGroupStudents.length})
+                      Dreierprobe
                     </Button>
-                  )}
-                <Button 
-                  onClick={() => setFullResetOpen(true)}
-                  variant="outlined"
-                  color="error"
-                  size="small"
-                  disabled={resetting}
-                  tabIndex={-1}
-                  sx={{ 
-                    fontSize: '0.75rem',
-                    px: 1,
-                    py: 0.5,
-                    minWidth: 'auto',
-                    whiteSpace: 'nowrap'
-                  }}
-                  >
-                    Alles zurücksetzen
-                </Button>
-                </>
-              )}
+                    {missingGroupStudents.length > 0 ? (
+                      <Button
+                        onClick={() => {
+                          setDreierprobeEmailTab(true);
+                          setShowDreierprobe(true);
+                        }}
+                        startIcon={<Email sx={{ fontSize: 13 }} />}
+                        tabIndex={-1}
+                        sx={{
+                          borderColor: '#f57c00 !important',
+                          color: '#e65100',
+                          '&:hover': {
+                            borderColor: '#f57c00 !important',
+                            bgcolor: 'rgba(245, 124, 0, 0.08)',
+                          },
+                        }}
+                      >
+                        Fehlende ({missingGroupStudents.length})
+                      </Button>
+                    ) : null}
+                    <Button
+                      onClick={() => setFullResetOpen(true)}
+                      color="error"
+                      disabled={resetting}
+                      tabIndex={-1}
+                    >
+                      Alles zurücksetzen
+                    </Button>
+                  </>
+                ) : null}
+              </ButtonGroup>
+            </Box>
           </Box>
         </CardContent>
       </Card>
