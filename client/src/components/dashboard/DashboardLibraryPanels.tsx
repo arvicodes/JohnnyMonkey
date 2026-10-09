@@ -763,7 +763,6 @@ function StufeReiheSections<T extends { stufe: string; reihe: string; subject: s
 export const DashboardExamsPanel: React.FC<{
   rootPaths: string[];
   colors: Colors;
-  onEditExam?: (item: LibraryExamItem) => void;
   onCorrectExam?: (item: LibraryExamItem) => void;
   onDeleteExam?: (item: LibraryExamItem) => void;
   onDuplicateExam?: (item: LibraryExamItem) => void | Promise<void>;
@@ -778,7 +777,6 @@ export const DashboardExamsPanel: React.FC<{
 }> = ({
   rootPaths,
   colors,
-  onEditExam,
   onCorrectExam,
   onDeleteExam,
   onDuplicateExam,
@@ -1229,16 +1227,6 @@ export const DashboardExamsPanel: React.FC<{
                     onClick={() => onCorrectExam(item)}
                   >
                     <GradingIcon sx={{ fontSize: 12 }} />
-                  </TinyAction>
-                ) : null}
-                {onEditExam ? (
-                  <TinyAction
-                    title="Bearbeiten"
-                    bgcolor={BTN_EDIT}
-                    hover={BTN_EDIT_HOVER}
-                    onClick={() => onEditExam(item)}
-                  >
-                    <EditIcon sx={{ fontSize: 12 }} />
                   </TinyAction>
                 ) : null}
                 {!isExamVariantFile(item.name) && onDuplicateExam ? (

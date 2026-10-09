@@ -78,7 +78,12 @@ import {
 } from '../lib/examGradeLabel';
 import { gradePercentDisplayRanges, scoreToGradeTendency, tendencyToAsciiLabel } from '../lib/gradeScale';
 import { filterLearningGroupsForExamFile } from '../lib/examLearningGroupFilter';
-import { examBaseGitPath, normalizeVersionLetter, versionLetterFromKaPath } from '../lib/examVersionPaths';
+import {
+  examBaseGitPath,
+  normalizeVersionLetter,
+  resolveExamHtmlReadPath,
+  versionLetterFromKaPath,
+} from '../lib/examVersionPaths';
 import { resetExamSession } from '../lib/examSessionReset';
 import ExamFullResetConfirmDialog from './exam/ExamFullResetConfirmDialog';
 import ExamCorrectionLiveReview from './exam/ExamCorrectionLiveReview';
@@ -1200,9 +1205,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
     const previewCorrections = correctionsForPreview(submission);
     const maxPts = calculateMaxTotalPoints();
     const totalForPreview = liveAchievedTotal(submission);
+    const reviewFilePath = resolveExamHtmlReadPath(
+      submission.kaFilePath,
+      kaFilePath,
+      submission.versionLetter ?? submissionVersionLetter(submission, kaFilePath),
+    );
     return buildExamReviewedHtml({
-      filePath: submission.kaFilePath || kaFilePath,
-      title: (submission.kaFilePath || kaFilePath).split('/').pop() || 'Prüfung',
+      filePath: reviewFilePath,
+      title: reviewFilePath.split('/').pop() || 'Prüfung',
       answers,
       corrections: previewCorrections,
       gradeLabel: calculateGrade(totalForPreview, maxPts),
@@ -3134,7 +3144,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, px: 0.5 }}>
             Ansicht wie nach der Freigabe. Auf einen Punktestreifen klicken, um Punkte oder
             Aufgabenkommentar anzupassen.
-          </Typography>
+            </Typography>
           <ExamCorrectionLiveReview
             refreshKey={correctionReviewRefreshKey}
             buildHtml={() => buildReviewHtmlForSubmission(selectedSubmission)}
@@ -3145,8 +3155,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({ kaFilePath, onClose
           />
 
           </>
-          )}
-        </Box>
+                          )}
+                                  </Box>
       )}
 
       {mode === 'by-task' && (

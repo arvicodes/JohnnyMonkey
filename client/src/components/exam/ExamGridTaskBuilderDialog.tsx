@@ -34,9 +34,6 @@ import {
   resolveVersionFilePath,
   versionLetterFromKaPath,
 } from '../../lib/examVersionPaths';
-import { resetExamSession } from '../../lib/examSessionReset';
-import ExamSessionResetTrio from './ExamSessionResetTrio';
-import ExamFullResetConfirmDialog from './ExamFullResetConfirmDialog';
 
 type Props = {
   open: boolean;
@@ -126,8 +123,6 @@ export default function ExamGridTaskBuilderDialog({
   const [activeTaskTab, setActiveTaskTab] = useState(0);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [sessionResetBusy, setSessionResetBusy] = useState(false);
-  const [fullResetOpen, setFullResetOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [examVersionLetters, setExamVersionLetters] = useState<string[]>(['A']);
   const [examVersionPaths, setExamVersionPaths] = useState<Record<string, string>>({});
@@ -171,43 +166,6 @@ export default function ExamGridTaskBuilderDialog({
     },
     [],
   );
-
-  const handleRestartTimerForAll = React.useCallback(async () => {
-    const pathForReset = examBaseGitPath(activeFilePath || filePath);
-    if (
-      !window.confirm(
-        'Zeit für alle neu starten?\n\n' +
-          '• Abgaben werden gelöscht\n' +
-          '• Laufende Prüfung in allen betroffenen Lerngruppen wird neu gestartet\n' +
-          '• Schüler mit offenem Prüfungsfenster bekommen den Timer neu (60 Min.)',
-      )
-    ) {
-      return;
-    }
-    setSessionResetBusy(true);
-    try {
-      const result = await resetExamSession(pathForReset, { restartTimer: true });
-      onNotify?.(result.message, 'success');
-    } catch (e) {
-      onNotify?.(e instanceof Error ? e.message : 'Neustart fehlgeschlagen', 'error');
-    } finally {
-      setSessionResetBusy(false);
-    }
-  }, [activeFilePath, filePath, onNotify]);
-
-  const handleFullResetConfirm = React.useCallback(async () => {
-    const pathForReset = examBaseGitPath(activeFilePath || filePath);
-    setSessionResetBusy(true);
-    try {
-      const result = await resetExamSession(pathForReset, { restartTimer: true });
-      onNotify?.(result.message, 'success');
-      setFullResetOpen(false);
-    } catch (e) {
-      onNotify?.(e instanceof Error ? e.message : 'Zurücksetzen fehlgeschlagen', 'error');
-    } finally {
-      setSessionResetBusy(false);
-    }
-  }, [activeFilePath, filePath, onNotify]);
 
   const openFamilyRef = React.useRef('');
 
@@ -609,20 +567,12 @@ export default function ExamGridTaskBuilderDialog({
                 compact
                 filePath={versionMetaPath}
                 activeVariantPath={activeFilePath}
-                disabled={loading || saving || sessionResetBusy}
+                disabled={loading || saving}
                 onActiveFilePathChange={handleVersionPathChange}
                 onVersionMetaChange={handleVersionMetaChange}
               />
             </Box>
           ) : null}
-
-          <ExamFullResetConfirmDialog
-            open={fullResetOpen}
-            onClose={() => setFullResetOpen(false)}
-            onConfirm={handleFullResetConfirm}
-            busy={sessionResetBusy}
-            examLabel={activeFilePath?.split('/').pop() || filePath.split('/').pop()}
-          />
 
           {(() => {
             const editorMain = (
@@ -722,44 +672,7 @@ export default function ExamGridTaskBuilderDialog({
               </>
             );
 
-            if (!activeFilePath) {
-              return editorMain;
-            }
-
-            return (
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: '148px minmax(0, 1fr)',
-                  gap: '10px',
-                  alignItems: 'start',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                }}
-              >
-                <Box
-                  sx={{
-                    position: 'sticky',
-                    top: 8,
-                    alignSelf: 'start',
-                  }}
-                >
-                  <ExamSessionResetTrio
-                    disabled={loading || saving || sessionResetBusy}
-                    onOpenPreview={() =>
-                      window.open(
-                        `/api/file-system-paths/read-html?filePath=${encodeURIComponent(activeFilePath)}`,
-                        '_blank',
-                        'noopener,noreferrer',
-                      )
-                    }
-                    onRestartTimer={() => void handleRestartTimerForAll()}
-                    onFullReset={() => setFullResetOpen(true)}
-                  />
-                </Box>
-                <Box sx={{ minWidth: 0 }}>{editorMain}</Box>
-              </Box>
-            );
+            return editorMain;
           })()}
         </Box>
       </DialogContent>

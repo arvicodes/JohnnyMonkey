@@ -15,6 +15,163 @@
     }
   }
 
+  function examBaseGitPath(anyVariantPath) {
+    var s = String(anyVariantPath || '').replace(/\\/g, '/').trim();
+    if (!s) return s;
+    var slash = s.lastIndexOf('/');
+    var dir = slash >= 0 ? s.slice(0, slash + 1) : '';
+    var file = slash >= 0 ? s.slice(slash + 1) : s;
+    var stem = file.replace(/\.(html|htm)$/i, '');
+    stem = stem.replace(/__([A-Z])$/i, '');
+    return dir + stem + '.html';
+  }
+
+  function examReadHtmlUrl(filePath) {
+    var params = new URLSearchParams({ filePath: String(filePath || '') });
+    return '/api/file-system-paths/read-html?' + params.toString();
+  }
+
+  var sessionResetBusy = false;
+
+  function postResetExamSession(restartTimer) {
+    var loginCode = localStorage.getItem('loginCode') || '';
+    var kaFilePath = examBaseGitPath(getExamFilePath());
+    return fetch('/api/ka-corrections/reset-exam-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-login-code': loginCode,
+      },
+      body: JSON.stringify({
+        kaFilePath: kaFilePath,
+        restartTimer: Boolean(restartTimer),
+      }),
+    }).then(function (res) {
+      return res.json().then(function (data) {
+        if (!res.ok) throw new Error(data.error || 'Zurücksetzen fehlgeschlagen');
+        return data;
+      });
+    });
+  }
+
+  function setSessionResetTrioDisabled(disabled) {
+    var mount = document.getElementById('examSessionResetTrio');
+    if (!mount) return;
+    mount.querySelectorAll('button').forEach(function (btn) {
+      btn.disabled = disabled;
+    });
+  }
+
+  function runFullExamReset() {
+    if (sessionResetBusy) return;
+    if (
+      !window.confirm(
+        'Alles zurücksetzen?\n\n' +
+          '• alle Abgaben und Korrekturen werden gelöscht\n' +
+          '• laufende Prüfung in betroffenen Lerngruppen wird neu gestartet\n' +
+          '• Schüler mit offenem Fenster bekommen den Timer neu (60 Min.)\n\n' +
+          'Diese Aktion kann nicht rückgängig gemacht werden.',
+      )
+    ) {
+      return;
+    }
+    var typed = window.prompt('Geben Sie ZURÜCKSETZEN ein, um fortzufahren:');
+    if (typed !== 'ZURÜCKSETZEN') return;
+    sessionResetBusy = true;
+    setSessionResetTrioDisabled(true);
+    postResetExamSession(true)
+      .then(function (data) {
+        window.alert(data.message || 'Zurückgesetzt.');
+      })
+      .catch(function (err) {
+        window.alert(err && err.message ? err.message : 'Zurücksetzen fehlgeschlagen');
+      })
+      .finally(function () {
+        sessionResetBusy = false;
+        setSessionResetTrioDisabled(false);
+      });
+  }
+
+  function runRestartExamTimer() {
+    if (sessionResetBusy) return;
+    if (
+      !window.confirm(
+        'Zeit für alle neu starten?\n\n' +
+          '• Abgaben werden gelöscht\n' +
+          '• Laufende Prüfung in allen betroffenen Lerngruppen wird neu gestartet\n' +
+          '• Schüler mit offenem Prüfungsfenster bekommen den Timer neu (60 Min.)',
+      )
+    ) {
+      return;
+    }
+    sessionResetBusy = true;
+    setSessionResetTrioDisabled(true);
+    postResetExamSession(true)
+      .then(function (data) {
+        window.alert(data.message || 'Timer neu gestartet.');
+      })
+      .catch(function (err) {
+        window.alert(err && err.message ? err.message : 'Neustart fehlgeschlagen');
+      })
+      .finally(function () {
+        sessionResetBusy = false;
+        setSessionResetTrioDisabled(false);
+      });
+  }
+
+  function openExamPreviewTab() {
+    var path = getExamFilePath();
+    if (!path) {
+      window.alert('Pfad unbekannt — Vorschau nicht möglich.');
+      return;
+    }
+    window.open(examReadHtmlUrl(path), '_blank', 'noopener,noreferrer');
+  }
+
+  function ensureExamSessionResetTrio() {
+    if (localStorage.getItem('teacherId') === null) return;
+    var toolbar = document.querySelector('.exam-toolbar');
+    if (!toolbar) return;
+    var mount = document.getElementById('examSessionResetTrio');
+    if (!mount) {
+      mount = document.createElement('div');
+      mount.id = 'examSessionResetTrio';
+      mount.className = 'exam-session-reset-trio teacher-only';
+      mount.setAttribute('role', 'group');
+      mount.setAttribute('aria-label', 'Prüfung zurücksetzen');
+      mount.innerHTML =
+        '<button type="button" class="exam-session-reset-btn exam-session-reset-btn--preview" id="examSessionPreviewBtn">Vorschau (Tab)</button>' +
+        '<button type="button" class="exam-session-reset-btn exam-session-reset-btn--full" id="examSessionFullResetBtn">Alles zurücksetzen</button>' +
+        '<button type="button" class="exam-session-reset-btn exam-session-reset-btn--timer" id="examSessionTimerResetBtn">Zeit neu<br>starten</button>';
+      var altMount = document.getElementById('examAltVariantToolbar');
+      if (altMount && altMount.parentNode === toolbar) {
+        altMount.insertAdjacentElement('afterend', mount);
+      } else {
+        toolbar.appendChild(mount);
+      }
+      var previewBtn = document.getElementById('examSessionPreviewBtn');
+      var fullBtn = document.getElementById('examSessionFullResetBtn');
+      var timerBtn = document.getElementById('examSessionTimerResetBtn');
+      if (previewBtn && !previewBtn.__jmWired) {
+        previewBtn.__jmWired = true;
+        previewBtn.addEventListener('click', openExamPreviewTab);
+      }
+      if (fullBtn && !fullBtn.__jmWired) {
+        fullBtn.__jmWired = true;
+        fullBtn.addEventListener('click', runFullExamReset);
+      }
+      if (timerBtn && !timerBtn.__jmWired) {
+        timerBtn.__jmWired = true;
+        timerBtn.addEventListener('click', runRestartExamTimer);
+      }
+    } else {
+      var altMount = document.getElementById('examAltVariantToolbar');
+      if (altMount && altMount.parentNode === toolbar && mount.previousElementSibling !== altMount) {
+        altMount.insertAdjacentElement('afterend', mount);
+      }
+    }
+  }
+
   function parseMinutesFromAids(text) {
     var m = String(text || '').match(/(\d+)/);
     if (!m) return null;
@@ -345,7 +502,16 @@
       '.aids-general-rules-list li:last-child{margin-bottom:0}' +
       '.aids-general-rules-list li.aids-general-rules-list__no-marker{list-style:none;margin-left:-1.35em;padding-left:0}' +
       '.teacher-mode #timer.exam-chrome-timer-editable{cursor:text}' +
-      '.teacher-mode #timer.exam-chrome-timer-editable:focus{outline:2px solid rgba(225,6,0,.45);outline-offset:2px}';
+      '.teacher-mode #timer.exam-chrome-timer-editable:focus{outline:2px solid rgba(225,6,0,.45);outline-offset:2px}' +
+      '.exam-session-reset-trio{display:flex;flex-direction:column;align-items:stretch;gap:8px;width:100%;margin-top:8px;box-sizing:border-box}' +
+      '.exam-session-reset-btn{width:100%;max-width:148px;box-sizing:border-box;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:inherit;line-height:1.25;padding:8px 8px;color:#fff}' +
+      '.exam-session-reset-btn:disabled{opacity:.55;cursor:not-allowed}' +
+      '.exam-session-reset-btn--preview{background:#1a1a1a;font-size:11px}' +
+      '.exam-session-reset-btn--preview:hover:not(:disabled){background:#333}' +
+      '.exam-session-reset-btn--full{background:#E10600;font-size:11px}' +
+      '.exam-session-reset-btn--full:hover:not(:disabled){background:#B00500}' +
+      '.exam-session-reset-btn--timer{background:#81c784;font-size:15px;border-radius:8px;padding:14px 8px;white-space:normal}' +
+      '.exam-session-reset-btn--timer:hover:not(:disabled){background:#66bb6a}';
   }
 
   function setupExamChromeTimerToggle() {
@@ -420,9 +586,13 @@
     setupExamHeaderMetaEditing();
     setupChromeTimerEditing();
     updateAidsRulesRowVisibility();
+    ensureExamSessionResetTrio();
+    setTimeout(ensureExamSessionResetTrio, 0);
+    setTimeout(ensureExamSessionResetTrio, 400);
   }
 
   global.setupExamChrome = setupExamChrome;
+  global.jmEnsureExamSessionResetTrio = ensureExamSessionResetTrio;
   global.jmRenderAidsGeneralRulesList = function () {
     var el = document.getElementById('aidsGeneralRules');
     if (el) renderAidsGeneralRulesList(el);

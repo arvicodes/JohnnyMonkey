@@ -3991,6 +3991,9 @@
     });
     html += '</div>';
     mount.innerHTML = html;
+    if (typeof global.jmEnsureExamSessionResetTrio === 'function') {
+      global.jmEnsureExamSessionResetTrio();
+    }
   }
 
   function syncExamAltGroupsToGlobal(root) {

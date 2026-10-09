@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Box,
   CircularProgress,
@@ -26,17 +26,34 @@ export default function ExamCorrectionLiveReview({
 }: ExamCorrectionLiveReviewProps) {
   const [html, setHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [editTaskId, setEditTaskId] = useState<string | null>(null);
   const [editPoints, setEditPoints] = useState('');
   const [editComment, setEditComment] = useState('');
+  const buildHtmlRef = useRef(buildHtml);
+  buildHtmlRef.current = buildHtml;
+  const loadSeqRef = useRef(0);
 
   const reload = useCallback(() => {
+    const seq = ++loadSeqRef.current;
     setLoading(true);
-    void buildHtml()
-      .then((h) => setHtml(h))
-      .catch(() => setHtml(null))
-      .finally(() => setLoading(false));
-  }, [buildHtml]);
+    setLoadError(null);
+    void buildHtmlRef
+      .current()
+      .then((h) => {
+        if (seq !== loadSeqRef.current) return;
+        setHtml(h);
+      })
+      .catch((err: unknown) => {
+        if (seq !== loadSeqRef.current) return;
+        setHtml(null);
+        setLoadError(err instanceof Error ? err.message : 'Unbekannter Fehler');
+      })
+      .finally(() => {
+        if (seq !== loadSeqRef.current) return;
+        setLoading(false);
+      });
+  }, []);
 
   useEffect(() => {
     reload();
@@ -90,6 +107,11 @@ export default function ExamCorrectionLiveReview({
       {!loading && !html ? (
         <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
           Korrekturansicht konnte nicht geladen werden.
+          {loadError ? (
+            <Box component="span" sx={{ display: 'block', mt: 0.5, fontSize: '0.75rem', color: 'error.main' }}>
+              {loadError}
+            </Box>
+          ) : null}
         </Typography>
       ) : null}
 

@@ -18150,7 +18150,6 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
                 setSelectedKAFilePath(item.path);
                 setShowKACorrectionMode(true);
               }}
-              onEditExam={(item) => void handleEditSingleQuestion({ path: item.path, name: item.name })}
               onDeleteExam={(item) => handleExamDeleteDialogOpen({ path: item.path, name: item.name })}
               onDuplicateExam={(item) => handleDuplicateExamination({ path: item.path, name: item.name })}
               onNotify={(message, severity) => showSnackbar(message, severity ?? 'success')}

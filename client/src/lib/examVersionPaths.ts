@@ -57,6 +57,32 @@ export function versionLetterFromKaPath(kaPath: string): string {
   return m ? m[1].toUpperCase() : 'A';
 }
 
+/** Vollständiger Git-Pfad für read-html (Abgaben speichern oft nur den Dateinamen). */
+export function resolveExamHtmlReadPath(
+  submissionKaPath: string | undefined,
+  contextKaPath: string,
+  versionLetter?: string | null,
+): string {
+  const ctx = (contextKaPath || '').replace(/\\/g, '/').trim();
+  const sub = (submissionKaPath || '').replace(/\\/g, '/').trim();
+  let full = ctx;
+  if (sub) {
+    if (sub.includes('/')) {
+      full = sub;
+    } else if (ctx.includes('/')) {
+      const folder = ctx.replace(/\/[^/]+$/, '');
+      full = folder ? `${folder}/${sub}` : sub;
+    } else {
+      full = sub;
+    }
+  }
+  const base = examBaseGitPath(full || ctx);
+  const letter =
+    normalizeVersionLetter(versionLetter || '') ||
+    versionLetterFromKaPath(sub.includes('/') ? sub : full);
+  return gitPathVariant(base, letter);
+}
+
 export function examVersionStorageKey(beaconId: string, userId: string): string {
   return `jm_exam_version_${beaconId}_${userId}`;
 }
