@@ -55,7 +55,9 @@ import {
   type ExamLibraryType,
 } from '../../lib/examLibraryUi';
 import {
+  examBeaconPathsEqual,
   fetchLessonExamBeacon,
+  normalizeExamBeaconPath,
   startLessonExam,
   stopLessonExam,
   teacherIdFromStorage,
@@ -150,16 +152,6 @@ function pathMatchesAssigned(itemPath: string, assignedPath: string): boolean {
   const a = toPortableWorkingReihePath(assignedPath) || assignedPath;
   const b = toPortableWorkingReihePath(itemPath) || itemPath;
   return folderPathsEquivalent(a, b) || folderPathCovers(a, b) || folderPathCovers(b, a);
-}
-
-function normalizeExamBeaconPath(raw: string): string {
-  let p = (raw || '').replace(/\\/g, '/').trim();
-  if (p.startsWith('J-M-Reihen/')) p = `git-intern/${p.slice('J-M-Reihen/'.length)}`;
-  return p.toLowerCase();
-}
-
-function examBeaconPathsEqual(a: string, b: string): boolean {
-  return normalizeExamBeaconPath(a) === normalizeExamBeaconPath(b);
 }
 
 function groupsForMaterialPath(

@@ -1452,6 +1452,25 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     return `${selectedSubmission.id}:${selectedSubmission.answers}:${JSON.stringify(corrections)}:${maxTotalPoints}`;
   }, [selectedSubmission?.id, selectedSubmission?.answers, corrections, maxTotalPoints]);
 
+  const mergeSubmissionIntoState = (updated: KASubmission, studentId?: string) => {
+    const student =
+      updated.student ||
+      (studentId ? learningGroupStudents.find((s) => s.id === studentId) : undefined);
+    const merged: KASubmission = student ? { ...updated, student } : updated;
+    setSubmissions((prev) => {
+      if (prev.some((s) => s.id === merged.id)) {
+        return prev.map((s) => (s.id === merged.id ? { ...s, ...merged } : s));
+      }
+      return [...prev, merged];
+    });
+    if (
+      selectedSubmission?.id === merged.id ||
+      (studentId && learningGroupStudents[currentStudentIndex]?.id === studentId)
+    ) {
+      setSelectedSubmission(merged);
+    }
+  };
+
   const toggleMarkedSick = async (submission: KASubmission, markedSick: boolean) => {
     const loginCode = localStorage.getItem('loginCode') || '';
     if (!loginCode) return;
@@ -1468,10 +1487,38 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
       if (!res.ok) throw new Error('Speichern fehlgeschlagen');
       const data = await res.json();
       const updated = data.submission as KASubmission;
-      setSubmissions((prev) => prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)));
-      if (selectedSubmission?.id === updated.id) {
-        setSelectedSubmission({ ...selectedSubmission, ...updated });
+      mergeSubmissionIntoState(updated, submission.student?.id);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Krank-Status konnte nicht gespeichert werden');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const setMarkedSickForStudent = async (studentId: string, markedSick: boolean) => {
+    const existing = submissionByStudentId.get(studentId);
+    if (existing) {
+      await toggleMarkedSick(existing, markedSick);
+      return;
+    }
+    if (!markedSick) return;
+    const loginCode = localStorage.getItem('loginCode') || '';
+    if (!loginCode) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/ka-corrections/submissions/create-for-student', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-login-code': loginCode },
+        body: JSON.stringify({ kaFilePath, studentId, answers: {}, markedSick: true }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error || 'Speichern fehlgeschlagen');
       }
+      const data = await res.json();
+      const submission = data.submission as KASubmission;
+      if (!submission?.id) throw new Error('Ungültige Server-Antwort');
+      mergeSubmissionIntoState(submission, studentId);
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Krank-Status konnte nicht gespeichert werden');
     } finally {
@@ -2862,9 +2909,31 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
                     {learningGroupStudents[currentStudentIndex]?.name || 'Schüler/in'}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     Noch keine digitale Abgabe. Du kannst die Lösungen hier manuell eintragen.
                   </Typography>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        size="small"
+                        checked={false}
+                        disabled={saving}
+                        onChange={(_, on) => {
+                          const student = learningGroupStudents[currentStudentIndex];
+                          if (student) void setMarkedSickForStudent(student.id, on);
+                        }}
+                      />
+                    }
+                    label={
+                      <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
+                        <LocalHospital sx={{ fontSize: 16, color: '#f9a825' }} />
+                        <Typography component="span" variant="caption" sx={{ fontWeight: 600 }}>
+                          Krank (zählt nicht im Schnitt)
+                        </Typography>
+                      </Box>
+                    }
+                    sx={{ m: 0, mb: 1.5, justifyContent: 'center' }}
+                  />
                   <Button
                     variant="contained"
                     size="small"
@@ -2981,7 +3050,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                         size="small"
                         checked={Boolean(selectedSubmission.markedSick)}
                         disabled={saving}
-                        onChange={(_, on) => void toggleMarkedSick(selectedSubmission, on)}
+                        onChange={(_, on) => {
+                          const sid = selectedSubmission.student?.id;
+                          if (sid) void setMarkedSickForStudent(sid, on);
+                          else void toggleMarkedSick(selectedSubmission, on);
+                        }}
                       />
                     }
                     label={
@@ -3175,6 +3248,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             refreshKey={correctionReviewRefreshKey}
             buildHtml={() => buildReviewHtmlForSubmission(selectedSubmission)}
             getFieldCorrection={getFieldCorrectionForDialog}
+            fillHeight={embedded}
             onSaveField={(taskId, points, comment) => {
               void saveCorrection(taskId, points, comment, selectedSubmission.id);
             }}

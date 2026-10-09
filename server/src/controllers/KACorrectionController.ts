@@ -1357,10 +1357,11 @@ export class KACorrectionController {
       const teacher = await requireTeacher(req);
       if (!teacher) return res.status(403).json({ error: 'Nur Lehrer' });
 
-      const { kaFilePath, studentId, answers } = req.body as {
+      const { kaFilePath, studentId, answers, markedSick } = req.body as {
         kaFilePath?: string;
         studentId?: string;
         answers?: Record<string, unknown>;
+        markedSick?: boolean;
       };
 
       if (!kaFilePath || !studentId) {
@@ -1384,6 +1385,17 @@ export class KACorrectionController {
         },
       });
       if (existing) {
+        if (markedSick !== undefined) {
+          const patched = await prisma.kASubmission.update({
+            where: { id: existing.id },
+            data: { markedSick: Boolean(markedSick) },
+            include: {
+              student: { select: { id: true, name: true, loginCode: true } },
+              corrections: { where: { teacherId: teacher.id } },
+            },
+          });
+          return res.json({ success: true, submission: patched, created: false });
+        }
         return res.json({ success: true, submission: existing, created: false });
       }
 
@@ -1399,6 +1411,7 @@ export class KACorrectionController {
           autoPoints: 0,
           totalPoints: 0,
           status: 'submitted',
+          markedSick: Boolean(markedSick),
         },
       });
 

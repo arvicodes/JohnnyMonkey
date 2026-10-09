@@ -16,6 +16,8 @@ type ExamCorrectionLiveReviewProps = {
   refreshKey: string;
   onSaveField: (taskId: string, points: number | undefined, comment: string) => void;
   getFieldCorrection: (taskId: string) => { points?: number; comment?: string };
+  /** Volle Höhe der Spalte statt fester 72vh. */
+  fillHeight?: boolean;
 };
 
 export default function ExamCorrectionLiveReview({
@@ -23,6 +25,7 @@ export default function ExamCorrectionLiveReview({
   refreshKey,
   onSaveField,
   getFieldCorrection,
+  fillHeight = false,
 }: ExamCorrectionLiveReviewProps) {
   const [html, setHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -82,8 +85,22 @@ export default function ExamCorrectionLiveReview({
     reload();
   };
 
+  const frameMinH = fillHeight ? '100%' : 'min(72vh, 900px)';
+  const frameH = fillHeight ? '100%' : '72vh';
+
   return (
-    <Box sx={{ position: 'relative', minHeight: 'min(72vh, 900px)', bgcolor: '#f3f3f3', borderRadius: 1 }}>
+    <Box
+      sx={{
+        position: 'relative',
+        minHeight: fillHeight ? 320 : frameMinH,
+        height: fillHeight ? 'min(52vh, 100%)' : undefined,
+        flex: fillHeight ? '1 1 auto' : undefined,
+        bgcolor: '#f3f3f3',
+        borderRadius: 1,
+        display: fillHeight ? 'flex' : 'block',
+        flexDirection: fillHeight ? 'column' : undefined,
+      }}
+    >
       {loading && !html ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 240 }}>
           <CircularProgress size={32} />
@@ -96,8 +113,9 @@ export default function ExamCorrectionLiveReview({
           sandbox="allow-scripts allow-same-origin"
           style={{
             width: '100%',
-            minHeight: 'min(72vh, 900px)',
-            height: '72vh',
+            minHeight: fillHeight ? 280 : 'min(72vh, 900px)',
+            height: frameH,
+            flex: fillHeight ? '1 1 auto' : undefined,
             border: 0,
             display: 'block',
             borderRadius: 4,

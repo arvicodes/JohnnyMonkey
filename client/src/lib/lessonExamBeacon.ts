@@ -8,6 +8,16 @@ export type LessonExamBeaconStatus = {
   beaconId: string | null;
 };
 
+export function normalizeExamBeaconPath(raw: string): string {
+  let p = (raw || '').replace(/\\/g, '/').trim();
+  if (p.startsWith('J-M-Reihen/')) p = `git-intern/${p.slice('J-M-Reihen/'.length)}`;
+  return p.toLowerCase();
+}
+
+export function examBeaconPathsEqual(a: string, b: string): boolean {
+  return normalizeExamBeaconPath(a) === normalizeExamBeaconPath(b);
+}
+
 export function teacherIdFromStorage(): string {
   // Lehrer-Login setzt teacherId (App.tsx); userId nur als Fallback
   return (
