@@ -8,7 +8,8 @@ import { epoNotenCompactIconBtnSx } from './epoNotenUi';
 type Props = {
   saving: boolean;
   completed: boolean;
-  releasableCount: number;
+  /** SuS mit eingetragener Note (auch bereits freigegeben — erneutes Freigeben aktualisiert) */
+  gradedCount: number;
   schemaIntegrated: boolean;
   onRelease: () => void;
   onSchema: () => void;
@@ -25,7 +26,7 @@ const iconBtnSx = {
 export function EpoCourseGroupIconActions({
   saving,
   completed,
-  releasableCount,
+  gradedCount,
   schemaIntegrated,
   onRelease,
   onSchema,
@@ -34,19 +35,19 @@ export function EpoCourseGroupIconActions({
     <Box sx={{ ...epoJaFeatureGroupShellSx, gap: 0.2 }}>
       <Tooltip
         title={
-          releasableCount > 0
-            ? `${releasableCount} Bewertung(en) an SuS freigeben`
-            : 'Keine fertigen Bewertungen zum Freigeben'
+          gradedCount > 0
+            ? `${gradedCount} Bewertung(en) freigeben oder aktualisieren`
+            : 'Noch keine Noten — zuerst Bewertungen eintragen'
         }
       >
         <span>
           <IconButton
             size="small"
-            disabled={saving || completed || releasableCount === 0}
+            disabled={saving || completed}
             onClick={onRelease}
             sx={{
               ...iconBtnSx,
-              ...(releasableCount > 0 ? EPO_GREEN_ACTIVE_ICON_SX : {}),
+              ...(gradedCount > 0 ? EPO_GREEN_ACTIVE_ICON_SX : {}),
             }}
             aria-label="Bewertungen an SuS freigeben"
           >

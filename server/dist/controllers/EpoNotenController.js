@@ -69,6 +69,51 @@ const effectiveTeacherGrade = (payload, groupId, entry, mode, weightsPercent) =>
         return '';
     return rasterResultFromTotal(mode, (0, epoNotenScoring_1.epoRoundedPoints)(scores, weightsPercent));
 };
+const priorEpoGradesForGroup = async (teacherId, currentRoundId, groupId, groups) => {
+    var _a, _b;
+    const index = await loadTeacherIndex(teacherId);
+    const chron = [...index.rounds]
+        .filter((r) => r.groupIds.includes(groupId))
+        .sort((a, b) => {
+        const byDate = a.date.localeCompare(b.date);
+        if (byDate !== 0)
+            return byDate;
+        return a.createdAt.localeCompare(b.createdAt);
+    });
+    const curIdx = chron.findIndex((r) => r.id === currentRoundId);
+    if (curIdx <= 0)
+        return {};
+    const groupName = (_a = groups.find((g) => g.id === groupId)) === null || _a === void 0 ? void 0 : _a.name;
+    const out = {};
+    for (const meta of chron.slice(0, curIdx)) {
+        const payload = await loadRound(teacherId, meta.id);
+        if (!payload)
+            continue;
+        const variantCats = await roundCategoryTexts(teacherId, payload, groupId);
+        const mode = assessmentModeForGroup(payload, groupId, groupName);
+        const group = groups.find((g) => g.id === groupId);
+        if (!group)
+            continue;
+        for (const s of group.students) {
+            const gidsInRound = groupIdsForStudentInRound(payload, s.id, groups);
+            const entry = findEntry(payload, s.id, groupId, gidsInRound);
+            if (!entry)
+                continue;
+            const grade = effectiveTeacherGrade(payload, groupId, entry, mode, variantCats.categoryWeightsPercent);
+            if (!grade.trim())
+                continue;
+            const list = (_b = out[s.id]) !== null && _b !== void 0 ? _b : [];
+            list.push({
+                roundTitle: payload.title,
+                roundDate: payload.date,
+                grade,
+                assessmentMode: mode,
+            });
+            out[s.id] = list;
+        }
+    }
+    return out;
+};
 const entryRequiresStudentSelf = (payload, groupId, entry) => {
     var _a;
     if ((entry === null || entry === void 0 ? void 0 : entry.withoutSelfAssessment) || (entry === null || entry === void 0 ? void 0 : entry.teacherGradeOnly))
@@ -99,7 +144,7 @@ const entryStudentUsesSelfRaster = (payload, groupId, entry, useRaster) => {
     return true;
 };
 const applyGroupEpoFeaturesToStudents = (payload, groupId, flags, groups) => {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     const group = groups.find((g) => g.id === groupId);
     if (!group)
         return;
@@ -129,7 +174,7 @@ const applyGroupEpoFeaturesToStudents = (payload, groupId, flags, groups) => {
         const existing = findEntry(payload, s.id, groupId, gidsInRound);
         if (existing === null || existing === void 0 ? void 0 : existing.goalsSubmittedAt)
             continue;
-        const keepRasterGrades = flags.raster || Boolean(existing === null || existing === void 0 ? void 0 : existing.teacherReleasedAt);
+        const keepRasterScores = flags.raster || Boolean(existing === null || existing === void 0 ? void 0 : existing.teacherReleasedAt);
         const entry = {
             studentId: s.id,
             groupId,
@@ -140,12 +185,12 @@ const applyGroupEpoFeaturesToStudents = (payload, groupId, flags, groups) => {
             selfScores: existing === null || existing === void 0 ? void 0 : existing.selfScores,
             selfGradeFromTable: existing === null || existing === void 0 ? void 0 : existing.selfGradeFromTable,
             studentSubmittedAt: (_a = existing === null || existing === void 0 ? void 0 : existing.studentSubmittedAt) !== null && _a !== void 0 ? _a : null,
-            teacherScores: keepRasterGrades ? existing === null || existing === void 0 ? void 0 : existing.teacherScores : undefined,
-            teacherGrade: keepRasterGrades ? existing === null || existing === void 0 ? void 0 : existing.teacherGrade : '',
-            teacherReleasedAt: (_b = existing === null || existing === void 0 ? void 0 : existing.teacherReleasedAt) !== null && _b !== void 0 ? _b : null,
+            teacherScores: keepRasterScores ? existing === null || existing === void 0 ? void 0 : existing.teacherScores : undefined,
+            teacherGrade: (_b = existing === null || existing === void 0 ? void 0 : existing.teacherGrade) !== null && _b !== void 0 ? _b : '',
+            teacherReleasedAt: (_c = existing === null || existing === void 0 ? void 0 : existing.teacherReleasedAt) !== null && _c !== void 0 ? _c : null,
             goal: existing === null || existing === void 0 ? void 0 : existing.goal,
             goalAction: existing === null || existing === void 0 ? void 0 : existing.goalAction,
-            goalsSubmittedAt: (_c = existing === null || existing === void 0 ? void 0 : existing.goalsSubmittedAt) !== null && _c !== void 0 ? _c : null,
+            goalsSubmittedAt: (_d = existing === null || existing === void 0 ? void 0 : existing.goalsSubmittedAt) !== null && _d !== void 0 ? _d : null,
             teacherJustification: existing === null || existing === void 0 ? void 0 : existing.teacherJustification,
             ...fields,
         };
@@ -351,7 +396,16 @@ const loadTeacherIndex = async (teacherId) => parseIndex(await readRow(teacherId
 const saveIndex = async (teacherId, index) => {
     await writeRow(teacherId, INDEX_PATH, JSON.stringify(index));
 };
-const loadRound = async (teacherId, roundId) => parseRound(await readRow(teacherId, roundDataPath(roundId)));
+const loadRound = async (teacherId, roundId) => {
+    const round = parseRound(await readRow(teacherId, roundDataPath(roundId)));
+    if (!round)
+        return null;
+    const groups = await loadTeacherGroupsWithStudents(teacherId);
+    if (normalizeMultiGroupEntries(round, groups)) {
+        await saveRound(teacherId, round);
+    }
+    return round;
+};
 const saveRound = async (teacherId, data) => {
     data.updatedAt = new Date().toISOString();
     await writeRow(teacherId, roundDataPath(data.id), JSON.stringify(data));
@@ -501,12 +555,70 @@ const findEntry = (round, studentId, groupId, studentGroupIdsInRound) => {
         return null;
     const gids = studentGroupIdsInRound !== null && studentGroupIdsInRound !== void 0 ? studentGroupIdsInRound : [];
     const hasScopedForStudent = round.entries.some((e) => e.studentId === studentId && Boolean(e.groupId));
-    if (!hasScopedForStudent) {
-        return gids.includes(groupId) ? legacy : null;
+    if (hasScopedForStudent)
+        return null;
+    if (gids.length !== 1 || gids[0] !== groupId)
+        return null;
+    return legacy;
+};
+const blankScopedEntryForGroup = (studentId, groupId, studentName, flagsFrom) => ({
+    studentId,
+    groupId,
+    studentName,
+    studentSubmittedAt: null,
+    goalsSubmittedAt: null,
+    teacherReleasedAt: null,
+    teacherGrade: '',
+    withoutSelfAssessment: flagsFrom === null || flagsFrom === void 0 ? void 0 : flagsFrom.withoutSelfAssessment,
+    teacherGradeOnly: flagsFrom === null || flagsFrom === void 0 ? void 0 : flagsFrom.teacherGradeOnly,
+    goalsWaived: flagsFrom === null || flagsFrom === void 0 ? void 0 : flagsFrom.goalsWaived,
+    selfUsesRaster: flagsFrom === null || flagsFrom === void 0 ? void 0 : flagsFrom.selfUsesRaster,
+});
+/** Legacy entries without groupId must not be shared across multiple courses in one round. */
+const normalizeMultiGroupEntries = (round, groups) => {
+    var _a, _b, _c, _d, _e;
+    let changed = false;
+    const gidsByStudent = new Map();
+    for (const gid of round.groupIds) {
+        const group = groups.find((g) => g.id === gid);
+        if (!group)
+            continue;
+        for (const s of group.students) {
+            const list = (_a = gidsByStudent.get(s.id)) !== null && _a !== void 0 ? _a : [];
+            if (!list.includes(gid))
+                list.push(gid);
+            gidsByStudent.set(s.id, list);
+        }
     }
-    if (gids.length === 1 && gids[0] === groupId)
-        return legacy;
-    return null;
+    for (const [studentId, gids] of gidsByStudent) {
+        const ordered = [...gids].sort((a, b) => round.groupIds.indexOf(a) - round.groupIds.indexOf(b));
+        const legacy = round.entries.find((e) => e.studentId === studentId && !e.groupId);
+        if (legacy) {
+            round.entries = round.entries.filter((e) => !(e.studentId === studentId && !e.groupId));
+            changed = true;
+            const hasScoped = round.entries.some((e) => e.studentId === studentId && e.groupId);
+            if (!hasScoped) {
+                const primary = ordered[0];
+                if (primary)
+                    upsertEntry(round, { ...legacy, groupId: primary });
+                const flagsSource = { ...legacy, groupId: primary };
+                for (const gid of ordered.slice(1)) {
+                    upsertEntry(round, blankScopedEntryForGroup(studentId, gid, legacy.studentName, flagsSource));
+                }
+            }
+        }
+        if (ordered.length <= 1)
+            continue;
+        const name = (_c = (_b = round.entries.find((e) => e.studentId === studentId)) === null || _b === void 0 ? void 0 : _b.studentName) !== null && _c !== void 0 ? _c : (0, webUntisStudentList_1.stripMiddleNames)((_e = (_d = groups.flatMap((g) => g.students).find((s) => s.id === studentId)) === null || _d === void 0 ? void 0 : _d.name) !== null && _e !== void 0 ? _e : '');
+        const template = round.entries.find((e) => e.studentId === studentId && e.groupId);
+        for (const gid of ordered) {
+            if (round.entries.some((e) => e.studentId === studentId && e.groupId === gid))
+                continue;
+            upsertEntry(round, blankScopedEntryForGroup(studentId, gid, name, template));
+            changed = true;
+        }
+    }
+    return changed;
 };
 const upsertEntry = (round, entry) => {
     const gid = entry.groupId;
@@ -778,10 +890,18 @@ class EpoNotenController {
                     return pendA ? -1 : 1;
                 return ea.studentName.localeCompare(eb.studentName, 'de');
             });
+            const priorEpoGrades = {};
+            for (const gid of round.groupIds) {
+                const partial = await priorEpoGradesForGroup(user.id, roundId, gid, groups);
+                for (const [studentId, items] of Object.entries(partial)) {
+                    priorEpoGrades[`${studentId}:${gid}`] = items;
+                }
+            }
             return res.json({
                 round,
                 students: merged,
                 stats: roundStats(round),
+                priorEpoGrades,
                 variantId: categories.variantId,
                 variantName: categories.variantName,
                 useRaster: categories.useRaster,
@@ -1286,7 +1406,7 @@ class EpoNotenController {
         }
     }
     static async getCurrent(req, res) {
-        var _a, _b, _c;
+        var _a, _b, _c, _d, _e, _f, _g;
         try {
             res.set('Cache-Control', 'private, no-store, must-revalidate');
             const user = await getUserByLoginCode(req);
@@ -1312,13 +1432,36 @@ class EpoNotenController {
                         teacherName: groups[0].teacher.name,
                     });
                 }
-                const resolved = roundIdQ
-                    ? groupIdQ
-                        ? all.find((r) => r.roundId === roundIdQ && r.groupId === groupIdQ) ||
-                            all.find((r) => r.roundId === roundIdQ && (!groupIdQ || r.groupId === groupIdQ)) ||
-                            all[0]
-                        : all.find((r) => r.roundId === roundIdQ) || all[0]
-                    : all[0];
+                let resolved;
+                if (roundIdQ && groupIdQ) {
+                    resolved = all.find((r) => r.roundId === roundIdQ && r.groupId === groupIdQ);
+                }
+                else if (roundIdQ) {
+                    resolved = all.find((r) => r.roundId === roundIdQ);
+                }
+                else if (groupIdQ) {
+                    resolved = all.find((r) => r.groupId === groupIdQ);
+                }
+                else {
+                    resolved = all[0];
+                }
+                if (!resolved) {
+                    const groups = await prisma.learningGroup.findMany({
+                        where: { students: { some: { id: user.id } } },
+                        select: { teacherId: true, teacher: { select: { name: true } } },
+                        take: 1,
+                    });
+                    return res.json({
+                        sessions: all.map((r) => studentSessionDto(r, user.id, r.studentGroupIdsInRound)),
+                        round: null,
+                        myEntry: null,
+                        canEditSelf: false,
+                        canEditGoals: false,
+                        teacherId: (_b = (_a = groups[0]) === null || _a === void 0 ? void 0 : _a.teacherId) !== null && _b !== void 0 ? _b : '',
+                        teacherName: (_d = (_c = groups[0]) === null || _c === void 0 ? void 0 : _c.teacher.name) !== null && _d !== void 0 ? _d : '',
+                        roundId: roundIdQ || null,
+                    });
+                }
                 const myEntry = findEntry(resolved.payload, user.id, resolved.groupId, resolved.studentGroupIdsInRound);
                 const categories = await roundCategoryTexts(resolved.teacherId, resolved.payload, resolved.groupId);
                 const groupPublished = isGroupPublishedForStudents(resolved.payload, resolved.groupId);
@@ -1337,7 +1480,7 @@ class EpoNotenController {
                         id: resolved.roundId,
                         title: resolved.payload.title,
                         date: resolved.payload.date,
-                        publishedAt: groupPublished ? (_c = (_b = (_a = resolved.payload.groupMeta) === null || _a === void 0 ? void 0 : _a[resolved.groupId]) === null || _b === void 0 ? void 0 : _b.publishedAt) !== null && _c !== void 0 ? _c : resolved.payload.publishedAt : null,
+                        publishedAt: groupPublished ? (_g = (_f = (_e = resolved.payload.groupMeta) === null || _e === void 0 ? void 0 : _e[resolved.groupId]) === null || _f === void 0 ? void 0 : _f.publishedAt) !== null && _g !== void 0 ? _g : resolved.payload.publishedAt : null,
                         groupId: resolved.groupId,
                         groupName: resolved.groupName,
                         assessmentMode: assessmentModeForGroup(resolved.payload, resolved.groupId, resolved.groupName),
@@ -1387,8 +1530,12 @@ class EpoNotenController {
             const allRounds = await resolveStudentRounds(user.id);
             if (!teacherId || !roundId) {
                 const first = roundId
-                    ? allRounds.find((r) => r.roundId === roundId && (!groupId || r.groupId === groupId)) || allRounds.find((r) => r.roundId === roundId)
-                    : allRounds[0];
+                    ? groupId
+                        ? allRounds.find((r) => r.roundId === roundId && r.groupId === groupId)
+                        : allRounds.find((r) => r.roundId === roundId)
+                    : groupId
+                        ? allRounds.find((r) => r.groupId === groupId)
+                        : allRounds[0];
                 if (!first || !isGroupPublishedForStudents(first.payload, first.groupId)) {
                     return res.status(404).json({ error: 'Keine freigegebene EPO-Runde' });
                 }
@@ -1642,8 +1789,6 @@ class EpoNotenController {
             let count = 0;
             const groupsToIntegrate = new Set();
             for (const entry of payload.entries) {
-                if (entry.teacherReleasedAt)
-                    continue;
                 const gids = (_e = studentToGroups.get(entry.studentId)) !== null && _e !== void 0 ? _e : [];
                 const entryGroupId = (_f = entry.groupId) !== null && _f !== void 0 ? _f : (gids.length === 1 ? gids[0] : null);
                 if (!entryGroupId)

@@ -586,6 +586,15 @@ export function isEpoGroupCompleted(
   return Boolean(round.groupMeta?.[groupId]?.completedAt);
 }
 
+/** Alle Lerngruppen der Runde auf „fertig“ gesetzt. */
+export function isEpoRoundCompleted(round: {
+  groupIds: string[];
+  groupMeta?: Record<string, EpoNotenGroupMeta>;
+}): boolean {
+  if (!round.groupIds.length) return false;
+  return round.groupIds.every((gid) => isEpoGroupCompleted(round, gid));
+}
+
 export type EpoNotenRound = {
   id: string;
   title: string;

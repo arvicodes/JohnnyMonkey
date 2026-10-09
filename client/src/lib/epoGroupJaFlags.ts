@@ -69,16 +69,47 @@ export function epoJaFlagsToEntryFields(flags: EpoJaFlags): Pick<
   };
 }
 
+/** Nur Lehrkraft-Note (kein SuS-Raster, kein Lehrer-Raster). */
+export function epoGroupNoteOnly(flags: EpoJaFlags): boolean {
+  return !flags.self && !flags.raster;
+}
+
+export function entryMatchesGroupJaFlags(entry: EpoNotenEntry, group: EpoJaFlags): boolean {
+  const expected = epoJaFlagsToEntryFields(group);
+  const selfUsesOk =
+    expected.selfUsesRaster === undefined
+      ? entry.selfUsesRaster === undefined ||
+        entry.selfUsesRaster === (group.self && group.raster ? true : group.self ? false : undefined)
+      : entry.selfUsesRaster === expected.selfUsesRaster;
+  return (
+    Boolean(entry.withoutSelfAssessment) === Boolean(expected.withoutSelfAssessment) &&
+    Boolean(entry.teacherGradeOnly) === Boolean(expected.teacherGradeOnly) &&
+    Boolean(entry.goalsWaived) === Boolean(expected.goalsWaived) &&
+    selfUsesOk
+  );
+}
+
+/** SuS-Zeile: Kurs-Defaults, außer es gibt echte Abweichungen in den gespeicherten Feldern. */
+export function epoDisplayJaFlags(entry: EpoNotenEntry, group: EpoJaFlags): EpoJaFlags {
+  if (entryMatchesGroupJaFlags(entry, group)) return group;
+  return epoEntryJaFlags(entry, group);
+}
+
+export function epoStudentNoteOnlyFlow(entry: EpoNotenEntry, group: EpoJaFlags): boolean {
+  return Boolean(entry.teacherGradeOnly) || epoGroupNoteOnly(group);
+}
+
 export function epoEntryJaFlags(entry: EpoNotenEntry, group?: EpoJaFlags): EpoJaFlags {
+  const g = group ?? { self: true, raster: true, goals: true };
   if (entry.teacherGradeOnly) {
     return { self: false, raster: false, goals: !entry.goalsWaived };
   }
   const self = !entry.withoutSelfAssessment;
   const goals = !entry.goalsWaived;
   if (!self) {
-    return { self: false, raster: true, goals };
+    return { self: false, raster: g.raster, goals };
   }
-  let raster = group?.raster ?? true;
+  let raster = g.raster;
   if (entry.selfUsesRaster === false) raster = false;
   if (entry.selfUsesRaster === true) raster = true;
   return { self: true, raster, goals };

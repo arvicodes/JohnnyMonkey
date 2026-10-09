@@ -132,6 +132,59 @@ const effectiveTeacherGrade = (
   return rasterResultFromTotal(mode, epoRoundedPoints(scores, weightsPercent));
 };
 
+type PriorEpoGradeDto = {
+  roundTitle: string;
+  roundDate: string;
+  grade: string;
+  assessmentMode: AssessmentMode;
+};
+
+const priorEpoGradesForGroup = async (
+  teacherId: string,
+  currentRoundId: string,
+  groupId: string,
+  groups: { id: string; name: string; students: { id: string }[] }[],
+): Promise<Record<string, PriorEpoGradeDto[]>> => {
+  const index = await loadTeacherIndex(teacherId);
+  const chron = [...index.rounds]
+    .filter((r) => r.groupIds.includes(groupId))
+    .sort((a, b) => {
+      const byDate = a.date.localeCompare(b.date);
+      if (byDate !== 0) return byDate;
+      return a.createdAt.localeCompare(b.createdAt);
+    });
+  const curIdx = chron.findIndex((r) => r.id === currentRoundId);
+  if (curIdx <= 0) return {};
+
+  const groupName = groups.find((g) => g.id === groupId)?.name;
+  const out: Record<string, PriorEpoGradeDto[]> = {};
+
+  for (const meta of chron.slice(0, curIdx)) {
+    const payload = await loadRound(teacherId, meta.id);
+    if (!payload) continue;
+    const variantCats = await roundCategoryTexts(teacherId, payload, groupId);
+    const mode = assessmentModeForGroup(payload, groupId, groupName);
+    const group = groups.find((g) => g.id === groupId);
+    if (!group) continue;
+    for (const s of group.students) {
+      const gidsInRound = groupIdsForStudentInRound(payload, s.id, groups);
+      const entry = findEntry(payload, s.id, groupId, gidsInRound);
+      if (!entry) continue;
+      const grade = effectiveTeacherGrade(payload, groupId, entry, mode, variantCats.categoryWeightsPercent);
+      if (!grade.trim()) continue;
+      const list = out[s.id] ?? [];
+      list.push({
+        roundTitle: payload.title,
+        roundDate: payload.date,
+        grade,
+        assessmentMode: mode,
+      });
+      out[s.id] = list;
+    }
+  }
+  return out;
+};
+
 const entryRequiresStudentSelf = (
   payload: EpoNotenRoundPayload,
   groupId: string,
@@ -194,7 +247,7 @@ const applyGroupEpoFeaturesToStudents = (
     const gidsInRound = groupIdsForStudentInRound(payload, s.id, groups);
     const existing = findEntry(payload, s.id, groupId, gidsInRound);
     if (existing?.goalsSubmittedAt) continue;
-    const keepRasterGrades = flags.raster || Boolean(existing?.teacherReleasedAt);
+    const keepRasterScores = flags.raster || Boolean(existing?.teacherReleasedAt);
     const entry: EpoNotenEntry = {
       studentId: s.id,
       groupId,
@@ -205,8 +258,8 @@ const applyGroupEpoFeaturesToStudents = (
       selfScores: existing?.selfScores,
       selfGradeFromTable: existing?.selfGradeFromTable,
       studentSubmittedAt: existing?.studentSubmittedAt ?? null,
-      teacherScores: keepRasterGrades ? existing?.teacherScores : undefined,
-      teacherGrade: keepRasterGrades ? existing?.teacherGrade : '',
+      teacherScores: keepRasterScores ? existing?.teacherScores : undefined,
+      teacherGrade: existing?.teacherGrade ?? '',
       teacherReleasedAt: existing?.teacherReleasedAt ?? null,
       goal: existing?.goal,
       goalAction: existing?.goalAction,
@@ -461,8 +514,15 @@ const saveIndex = async (teacherId: string, index: EpoNotenIndexPayload) => {
   await writeRow(teacherId, INDEX_PATH, JSON.stringify(index));
 };
 
-const loadRound = async (teacherId: string, roundId: string) =>
-  parseRound(await readRow(teacherId, roundDataPath(roundId)));
+const loadRound = async (teacherId: string, roundId: string) => {
+  const round = parseRound(await readRow(teacherId, roundDataPath(roundId)));
+  if (!round) return null;
+  const groups = await loadTeacherGroupsWithStudents(teacherId);
+  if (normalizeMultiGroupEntries(round, groups)) {
+    await saveRound(teacherId, round);
+  }
+  return round;
+};
 
 const saveRound = async (teacherId: string, data: EpoNotenRoundPayload) => {
   data.updatedAt = new Date().toISOString();
@@ -642,11 +702,82 @@ const findEntry = (
   const hasScopedForStudent = round.entries.some(
     (e) => e.studentId === studentId && Boolean(e.groupId),
   );
-  if (!hasScopedForStudent) {
-    return gids.includes(groupId) ? legacy : null;
+  if (hasScopedForStudent) return null;
+  if (gids.length !== 1 || gids[0] !== groupId) return null;
+  return legacy;
+};
+
+const blankScopedEntryForGroup = (
+  studentId: string,
+  groupId: string,
+  studentName: string,
+  flagsFrom?: EpoNotenEntry | null,
+): EpoNotenEntry => ({
+  studentId,
+  groupId,
+  studentName,
+  studentSubmittedAt: null,
+  goalsSubmittedAt: null,
+  teacherReleasedAt: null,
+  teacherGrade: '',
+  withoutSelfAssessment: flagsFrom?.withoutSelfAssessment,
+  teacherGradeOnly: flagsFrom?.teacherGradeOnly,
+  goalsWaived: flagsFrom?.goalsWaived,
+  selfUsesRaster: flagsFrom?.selfUsesRaster,
+});
+
+/** Legacy entries without groupId must not be shared across multiple courses in one round. */
+const normalizeMultiGroupEntries = (
+  round: EpoNotenRoundPayload,
+  groups: { id: string; students: { id: string; name: string }[] }[],
+): boolean => {
+  let changed = false;
+  const gidsByStudent = new Map<string, string[]>();
+
+  for (const gid of round.groupIds) {
+    const group = groups.find((g) => g.id === gid);
+    if (!group) continue;
+    for (const s of group.students) {
+      const list = gidsByStudent.get(s.id) ?? [];
+      if (!list.includes(gid)) list.push(gid);
+      gidsByStudent.set(s.id, list);
+    }
   }
-  if (gids.length === 1 && gids[0] === groupId) return legacy;
-  return null;
+
+  for (const [studentId, gids] of gidsByStudent) {
+    const ordered = [...gids].sort((a, b) => round.groupIds.indexOf(a) - round.groupIds.indexOf(b));
+    const legacy = round.entries.find((e) => e.studentId === studentId && !e.groupId);
+
+    if (legacy) {
+      round.entries = round.entries.filter((e) => !(e.studentId === studentId && !e.groupId));
+      changed = true;
+      const hasScoped = round.entries.some((e) => e.studentId === studentId && e.groupId);
+      if (!hasScoped) {
+        const primary = ordered[0];
+        if (primary) upsertEntry(round, { ...legacy, groupId: primary });
+        const flagsSource = { ...legacy, groupId: primary };
+        for (const gid of ordered.slice(1)) {
+          upsertEntry(round, blankScopedEntryForGroup(studentId, gid, legacy.studentName, flagsSource));
+        }
+      }
+    }
+
+    if (ordered.length <= 1) continue;
+
+    const name =
+      round.entries.find((e) => e.studentId === studentId)?.studentName ??
+      stripMiddleNames(
+        groups.flatMap((g) => g.students).find((s) => s.id === studentId)?.name ?? '',
+      );
+    const template = round.entries.find((e) => e.studentId === studentId && e.groupId);
+    for (const gid of ordered) {
+      if (round.entries.some((e) => e.studentId === studentId && e.groupId === gid)) continue;
+      upsertEntry(round, blankScopedEntryForGroup(studentId, gid, name, template));
+      changed = true;
+    }
+  }
+
+  return changed;
 };
 
 const upsertEntry = (round: EpoNotenRoundPayload, entry: EpoNotenEntry) => {
@@ -947,10 +1078,19 @@ export class EpoNotenController {
         return ea.studentName.localeCompare(eb.studentName, 'de');
       });
 
+      const priorEpoGrades: Record<string, PriorEpoGradeDto[]> = {};
+      for (const gid of round.groupIds) {
+        const partial = await priorEpoGradesForGroup(user.id, roundId, gid, groups);
+        for (const [studentId, items] of Object.entries(partial)) {
+          priorEpoGrades[`${studentId}:${gid}`] = items;
+        }
+      }
+
       return res.json({
         round,
         students: merged,
         stats: roundStats(round),
+        priorEpoGrades,
         variantId: categories.variantId,
         variantName: categories.variantName,
         useRaster: categories.useRaster,
@@ -1486,13 +1626,34 @@ export class EpoNotenController {
           });
         }
 
-        const resolved = roundIdQ
-          ? groupIdQ
-            ? all.find((r) => r.roundId === roundIdQ && r.groupId === groupIdQ) ||
-              all.find((r) => r.roundId === roundIdQ && (!groupIdQ || r.groupId === groupIdQ)) ||
-              all[0]
-            : all.find((r) => r.roundId === roundIdQ) || all[0]
-          : all[0];
+        let resolved: ResolvedRound | undefined;
+        if (roundIdQ && groupIdQ) {
+          resolved = all.find((r) => r.roundId === roundIdQ && r.groupId === groupIdQ);
+        } else if (roundIdQ) {
+          resolved = all.find((r) => r.roundId === roundIdQ);
+        } else if (groupIdQ) {
+          resolved = all.find((r) => r.groupId === groupIdQ);
+        } else {
+          resolved = all[0];
+        }
+
+        if (!resolved) {
+          const groups = await prisma.learningGroup.findMany({
+            where: { students: { some: { id: user.id } } },
+            select: { teacherId: true, teacher: { select: { name: true } } },
+            take: 1,
+          });
+          return res.json({
+            sessions: all.map((r) => studentSessionDto(r, user.id, r.studentGroupIdsInRound)),
+            round: null,
+            myEntry: null,
+            canEditSelf: false,
+            canEditGoals: false,
+            teacherId: groups[0]?.teacherId ?? '',
+            teacherName: groups[0]?.teacher.name ?? '',
+            roundId: roundIdQ || null,
+          });
+        }
 
         const myEntry = findEntry(
           resolved.payload,
@@ -1579,10 +1740,12 @@ export class EpoNotenController {
       const allRounds = await resolveStudentRounds(user.id);
       if (!teacherId || !roundId) {
         const first = roundId
-          ? allRounds.find(
-              (r) => r.roundId === roundId && (!groupId || r.groupId === groupId),
-            ) || allRounds.find((r) => r.roundId === roundId)
-          : allRounds[0];
+          ? groupId
+            ? allRounds.find((r) => r.roundId === roundId && r.groupId === groupId)
+            : allRounds.find((r) => r.roundId === roundId)
+          : groupId
+            ? allRounds.find((r) => r.groupId === groupId)
+            : allRounds[0];
         if (!first || !isGroupPublishedForStudents(first.payload, first.groupId)) {
           return res.status(404).json({ error: 'Keine freigegebene EPO-Runde' });
         }
@@ -1869,7 +2032,6 @@ export class EpoNotenController {
       const groupsToIntegrate = new Set<string>();
 
       for (const entry of payload.entries) {
-        if (entry.teacherReleasedAt) continue;
         const gids = studentToGroups.get(entry.studentId) ?? [];
         const entryGroupId =
           entry.groupId ?? (gids.length === 1 ? gids[0] : null);

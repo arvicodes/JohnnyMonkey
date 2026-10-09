@@ -39,9 +39,12 @@ import PanoramaFishEyeIcon from '@mui/icons-material/PanoramaFishEye';
 import { EpoJaFeatureButtons } from './EpoJaFeatureButtons';
 import { EpoCourseGroupIconActions } from './EpoCourseGroupIconActions';
 import {
+  epoDisplayJaFlags,
   epoEntryJaFlags,
   epoGroupJaFlags,
+  epoGroupNoteOnly,
   epoJaFlagsToEntryFields,
+  epoStudentNoteOnlyFlow,
   epoJaFeatureGroupShellSx,
   type EpoJaFlags,
 } from '../../lib/epoGroupJaFlags';
@@ -58,6 +61,7 @@ import {
   type EpoNotenRound,
   allCategoriesSelected,
   isEpoGroupCompleted,
+  isEpoRoundCompleted,
   isEpoGroupPublished,
   assessmentModeForGroup,
   compareEpoStudentListOrder,
@@ -70,7 +74,6 @@ import {
   epoRoundedPoints,
   epoEffectiveVariantIdForGroup,
   epoGroupUsesRaster,
-  epoGroupSelfAssessmentOnly,
   epoTeacherUsesRaster,
   formatEpoPointsDisplay,
   emptyCategoryScores,
@@ -119,6 +122,19 @@ type RoundListItem = {
   activeGroups: { id: string; name: string }[];
 };
 
+type PriorEpoGradeItem = {
+  roundTitle: string;
+  roundDate: string;
+  grade: string;
+  assessmentMode: EpoNotenAssessmentMode;
+};
+
+function formatPriorEpoGradesNotes(items: PriorEpoGradeItem[]): string {
+  return items
+    .map((p) => (p.assessmentMode === 'mss' ? `${p.grade} P.` : p.grade))
+    .join(' · ');
+}
+
 export function EpoNotenTeacherView() {
   const [loading, setLoading] = useState(true);
   const [rounds, setRounds] = useState<RoundListItem[]>([]);
@@ -126,6 +142,7 @@ export function EpoNotenTeacherView() {
   const [selectedId, setSelectedId] = useState('');
   const [round, setRound] = useState<EpoNotenRound | null>(null);
   const [students, setStudents] = useState<EpoNotenEntry[]>([]);
+  const [priorEpoGrades, setPriorEpoGrades] = useState<Record<string, PriorEpoGradeItem[]>>({});
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [selectedStudentGroupId, setSelectedStudentGroupId] = useState('');
   const [teacherScores, setTeacherScores] = useState<number[]>(normalizeCategoryScores([]));
@@ -214,6 +231,12 @@ export function EpoNotenTeacherView() {
     setCategoryWeightsPercent(
       Array.isArray(data.categoryWeightsPercent) ? (data.categoryWeightsPercent as number[]) : undefined,
     );
+    const prior = data.priorEpoGrades;
+    setPriorEpoGrades(
+      prior && typeof prior === 'object' && !Array.isArray(prior)
+        ? (prior as Record<string, PriorEpoGradeItem[]>)
+        : {},
+    );
   }, []);
 
   const refresh = useCallback(async () => {
@@ -264,15 +287,21 @@ export function EpoNotenTeacherView() {
       if (!studentId) return null;
       const gid = groupId || selectedStudentGroupId || studentListGroupFilter;
       if (gid) {
-        const exact = students.find((s) => s.studentId === studentId && s.groupId === gid);
-        if (exact) return exact;
+        return students.find((s) => s.studentId === studentId && s.groupId === gid) ?? null;
       }
       return students.find((s) => s.studentId === studentId) ?? null;
     },
     [students, selectedStudentGroupId, studentListGroupFilter],
   );
 
-  const selectedStudent = findStudentRow(selectedStudentId);
+  const selectedStudent = findStudentRow(selectedStudentId, selectedStudentGroupId);
+
+  const selectedPriorEpoNotes = useMemo(() => {
+    if (!selectedStudent?.groupId || !selectedStudentId) return '';
+    const items = priorEpoGrades[`${selectedStudentId}:${selectedStudent.groupId}`];
+    if (!items?.length) return '';
+    return formatPriorEpoGradesNotes(items);
+  }, [priorEpoGrades, selectedStudent?.groupId, selectedStudentId]);
 
   const groupMode = useCallback(
     (groupId: string): EpoNotenAssessmentMode => {
@@ -305,13 +334,22 @@ export function EpoNotenTeacherView() {
     return s;
   }, [passiveIdsForGroup, round?.groupIds]);
 
+  const groupJaFlagsFor = useCallback(
+    (groupId: string | undefined): EpoJaFlags => {
+      if (!round || !groupId) return { self: true, raster: true, goals: true };
+      return epoGroupJaFlags(round, groupId);
+    },
+    [round],
+  );
+
   const usesRasterForEntry = useCallback(
     (e: EpoNotenEntry) => {
       if (!round || !e.groupId) return groupUsesRaster;
-      if (e.teacherGradeOnly) return false;
+      const g = groupJaFlagsFor(e.groupId);
+      if (epoStudentNoteOnlyFlow(e, g)) return false;
       return epoTeacherUsesRaster(round, e.groupId);
     },
-    [groupUsesRaster, round],
+    [groupJaFlagsFor, groupUsesRaster, round],
   );
 
   const sortStudentsForGroup = useCallback(
@@ -413,7 +451,7 @@ export function EpoNotenTeacherView() {
       return;
     }
 
-    const entry = findStudentRow(selectedStudentId);
+    const entry = findStudentRow(selectedStudentId, selectedStudentGroupId);
     const selectionKey = `${entry?.groupId ?? selectedStudentGroupId}:${selectedStudentId}`;
 
     if (selectionKey !== prevSelectionKeyRef.current) {
@@ -466,20 +504,25 @@ export function EpoNotenTeacherView() {
         throw new Error('Kein Schüler ausgewählt');
       }
       const scores = normalizeCategoryScores(scoresSnapshot);
-      const row = findStudentRow(selectedStudentId);
+      const row = findStudentRow(selectedStudentId, selectedStudentGroupId);
       const mode = row?.groupId ? groupMode(row.groupId) : selectedAssessmentMode;
+      const groupFlags = row?.groupId ? groupJaFlagsFor(row.groupId) : null;
+      const noteOnly = row && groupFlags ? epoStudentNoteOnlyFlow(row, groupFlags) : false;
       const usesRaster = row ? usesRasterForEntry(row) : false;
-      const resolvedGrade = row?.teacherGradeOnly || !usesRaster
+      const resolvedGrade = noteOnly || !usesRaster
         ? grade.trim()
         : grade.trim() ||
           (allCategoriesSelected(scores)
             ? rasterResultFromTotal(mode, epoRoundedPoints(scores, categoryWeightsPercent))
             : '');
+      const syncGroupFields =
+        groupFlags && epoGroupNoteOnly(groupFlags) ? epoJaFlagsToEntryFields(groupFlags) : {};
       const res = await apiPut(`/api/epo-noten/${round.id}/teacher/${selectedStudentId}`, {
         groupId: row?.groupId,
-        teacherScores: scores,
+        teacherScores: noteOnly ? emptyCategoryScores() : scores,
         teacherGrade: resolvedGrade,
         teacherJustification: teacherJustificationRef.current,
+        ...syncGroupFields,
         ...(options?.revokeRelease ? { revokeRelease: true } : {}),
       });
       if (!res?.ok) {
@@ -508,7 +551,7 @@ export function EpoNotenTeacherView() {
       }
       return entry;
     },
-    [categoryWeightsPercent, findStudentRow, groupMode, round, selectedStudentGroupId, selectedStudentId, usesRasterForEntry],
+    [categoryWeightsPercent, findStudentRow, groupJaFlagsFor, groupMode, round, selectedStudentGroupId, selectedStudentId, usesRasterForEntry],
   );
 
   const saveTeacherDraftNow = useCallback((): Promise<void> => {
@@ -539,7 +582,7 @@ export function EpoNotenTeacherView() {
   }, [loadList, persistTeacherEntry, round, selectedStudentId, students]);
 
   const clearTeacherAssessment = useCallback(async () => {
-    const row = findStudentRow(selectedStudentId);
+    const row = findStudentRow(selectedStudentId, selectedStudentGroupId);
     if (!round || !selectedStudentId || !row?.groupId) return;
     const empty = emptyCategoryScores();
     teacherScoresRef.current = empty;
@@ -568,7 +611,7 @@ export function EpoNotenTeacherView() {
 
   useEffect(() => {
     if (!round || !selectedStudentId) return;
-    const entry = findStudentRow(selectedStudentId);
+    const entry = findStudentRow(selectedStudentId, selectedStudentGroupId);
     if (!entry || entry.teacherReleasedAt || entry.teacherGradeOnly) return;
     if (!usesRasterForEntry(entry)) return;
     if (!shouldPrefillTeacherFromSelf(entry)) {
@@ -630,7 +673,6 @@ export function EpoNotenTeacherView() {
 
   const applyStudentEpoFeatures = async (flags: EpoJaFlags) => {
     if (!round || !selectedStudent?.groupId) return;
-    if (selectedStudent.studentSubmittedAt || selectedStudent.teacherReleasedAt) return;
     setSaving(true);
     setError(null);
     try {
@@ -1029,13 +1071,13 @@ export function EpoNotenTeacherView() {
     ? groups.find((g) => g.id === activeCourseGroupId)?.name ?? ''
     : '';
 
-  const releasableCountInGroup = useCallback(
+  const gradedCountInGroup = useCallback(
     (groupId: string) => {
       if (!round || groupId === '__other__') return 0;
       const mode = groupMode(groupId);
       const passive = passiveIdsForGroup(groupId);
       return students.filter((s) => {
-        if (s.groupId !== groupId || s.teacherReleasedAt) return false;
+        if (s.groupId !== groupId) return false;
         if (isPassiveStudentId(s.studentId, passive)) return false;
         return Boolean(
           teacherFormGradeFromEntry(s, mode, categoryWeightsPercent, usesRasterForEntry(s)).trim(),
@@ -1048,10 +1090,13 @@ export function EpoNotenTeacherView() {
   const releaseAllInGroup = async (groupId: string) => {
     if (!round || groupId === '__other__') return;
     const groupName = groups.find((g) => g.id === groupId)?.name ?? 'Lerngruppe';
-    const n = releasableCountInGroup(groupId);
+    const n = gradedCountInGroup(groupId);
     if (n === 0) {
+      const noteOnly = epoGroupNoteOnly(groupJaFlagsFor(groupId));
       setError(
-        `In „${groupName}“ gibt es keine fertigen Bewertungen, die noch nicht freigegeben sind (Raster vollständig ausfüllen).`,
+        noteOnly
+          ? `In „${groupName}“ fehlt noch mindestens eine Note — bitte eintragen und speichern.`
+          : `In „${groupName}“ gibt es keine fertigen Bewertungen, die noch nicht freigegeben sind (Raster vollständig ausfüllen).`,
       );
       return;
     }
@@ -1187,6 +1232,8 @@ export function EpoNotenTeacherView() {
               const active = r.id === selectedId;
               const roundForCourses = active && round ? round : null;
               const expanded = Boolean(expandedRoundIds[r.id]);
+              const roundSnapshot = active && round ? round : r;
+              const roundAllFertig = isEpoRoundCompleted(roundSnapshot);
               return (
                 <Accordion
                   key={r.id}
@@ -1199,10 +1246,20 @@ export function EpoNotenTeacherView() {
                   elevation={0}
                   sx={{
                     borderBottom: '1px solid',
-                    borderColor: 'divider',
-                    bgcolor: active ? epoNotenPalette.primaryTint : 'transparent',
+                    borderColor: roundAllFertig ? epoNotenPalette.fertigBorder : 'divider',
+                    bgcolor: roundAllFertig
+                      ? active
+                        ? epoNotenPalette.fertigBgSelected
+                        : epoNotenPalette.fertigBg
+                      : active
+                        ? epoNotenPalette.primaryTint
+                        : 'transparent',
                     '&:before': { display: 'none' },
-                    ...(active ? { borderLeft: `3px solid ${epoNotenPalette.primary}` } : {}),
+                    ...(roundAllFertig
+                      ? { borderLeft: `3px solid ${epoNotenPalette.fertigAccent}` }
+                      : active
+                        ? { borderLeft: `3px solid ${epoNotenPalette.primary}` }
+                        : {}),
                   }}
                 >
                   <AccordionSummary
@@ -1224,9 +1281,17 @@ export function EpoNotenTeacherView() {
                         </Typography>
                         <Chip
                           size="small"
-                          label={r.publishedAt ? 'live' : 'Entwurf'}
-                          color={r.publishedAt ? 'success' : 'default'}
-                          sx={{ height: 16, fontSize: '0.58rem', fontWeight: 700, flexShrink: 0 }}
+                          label={roundAllFertig ? 'fertig' : r.publishedAt ? 'live' : 'Entwurf'}
+                          color={roundAllFertig || r.publishedAt ? 'success' : 'default'}
+                          sx={{
+                            height: 16,
+                            fontSize: '0.58rem',
+                            fontWeight: 700,
+                            flexShrink: 0,
+                            ...(roundAllFertig
+                              ? { bgcolor: epoNotenPalette.fertigChipBg, color: '#fff' }
+                              : {}),
+                          }}
                         />
                       </Stack>
                       <Typography variant="caption" sx={{ color: epoNotenPalette.textSecondary, lineHeight: 1.2, fontSize: '0.62rem' }}>
@@ -1242,7 +1307,9 @@ export function EpoNotenTeacherView() {
                         pr: 0.75,
                         pb: 0.75,
                         pt: 0.25,
-                        bgcolor: 'rgba(25, 118, 210, 0.04)',
+                        bgcolor: roundAllFertig
+                          ? 'rgba(46, 125, 50, 0.06)'
+                          : 'rgba(25, 118, 210, 0.04)',
                       }}
                     >
                       <Stack direction="row" alignItems="center" justifyContent="flex-end" gap={0.35} sx={{ mb: 0.5, width: '100%' }}>
@@ -1332,7 +1399,7 @@ export function EpoNotenTeacherView() {
                                 <EpoCourseGroupIconActions
                                   saving={saving}
                                   completed={completed}
-                                  releasableCount={releasableCountInGroup(gid)}
+                                  gradedCount={gradedCountInGroup(gid)}
                                   schemaIntegrated={Boolean(
                                     roundForCourses.groupMeta?.[gid]?.schemaIntegratedAt,
                                   )}
@@ -1719,11 +1786,12 @@ export function EpoNotenTeacherView() {
                               round && section.groupId !== '__other__'
                                 ? epoGroupUsesRaster(round, section.groupId)
                                 : groupUsesRaster;
+                            const rowGroupFlags =
+                              round && section.groupId !== '__other__'
+                                ? groupJaFlagsFor(section.groupId)
+                                : null;
                             const goalsWaivedForRow =
-                              Boolean(s.goalsWaived) ||
-                              (round && section.groupId !== '__other__'
-                                ? epoGroupSelfAssessmentOnly(round, section.groupId)
-                                : false);
+                              Boolean(s.goalsWaived) || (rowGroupFlags ? !rowGroupFlags.goals : false);
                             const pendingKind = !passive && live
                               ? studentEpoPendingKind(s, true, {
                                   usesRaster: sectionUsesRaster,
@@ -1787,7 +1855,9 @@ export function EpoNotenTeacherView() {
                                         fontWeight: 900,
                                         fontVariantNumeric: 'tabular-nums',
                                         lineHeight: 1,
-                                        color: s.teacherReleasedAt ? epoNotenPalette.fertigAccent : 'primary.main',
+                                        color: gradeLabel
+                                          ? epoNotenPalette.fertigAccent
+                                          : 'text.disabled',
                                         flexShrink: 0,
                                         minWidth: '2rem',
                                         textAlign: 'right',
@@ -1812,6 +1882,31 @@ export function EpoNotenTeacherView() {
                       </Typography>
                     ) : (
                       <Stack spacing={0.45}>
+                        {selectedPriorEpoNotes ? (
+                          <Typography
+                            sx={{
+                              alignSelf: 'stretch',
+                              textAlign: 'right',
+                              color: 'text.secondary',
+                              fontSize: '0.72rem',
+                              lineHeight: 1.2,
+                              mb: -0.15,
+                            }}
+                          >
+                            alte Epo:{' '}
+                            <Typography
+                              component="span"
+                              sx={{
+                                fontWeight: 800,
+                                fontSize: '0.88rem',
+                                color: 'text.primary',
+                                fontVariantNumeric: 'tabular-nums',
+                              }}
+                            >
+                              {selectedPriorEpoNotes}
+                            </Typography>
+                          </Typography>
+                        ) : null}
                         {selectedStudent.groupId ? (
                           <Stack spacing={0.35} sx={{ mb: 0.25 }}>
                             <Typography sx={{ fontWeight: 800, fontSize: '0.82rem' }}>
@@ -1822,18 +1917,13 @@ export function EpoNotenTeacherView() {
                                 selectedStudent.studentId,
                                 passiveIdsForGroup(selectedStudent.groupId),
                               );
-                              const modeLocked =
-                                saving ||
-                                passiveSaving ||
-                                Boolean(selectedStudent.teacherReleasedAt);
-                              const groupFlags = round
-                                ? epoGroupJaFlags(round, selectedStudent.groupId)
-                                : { self: true, raster: true, goals: true };
+                              const modeLocked = saving || passiveSaving;
+                              const groupFlags = groupJaFlagsFor(selectedStudent.groupId);
                               return (
                                 <EpoJaFeatureButtons
                                   size="student"
                                   disabled={modeLocked || passive}
-                                  value={epoEntryJaFlags(selectedStudent, groupFlags)}
+                                  value={epoDisplayJaFlags(selectedStudent, groupFlags)}
                                   onChange={(flags) => void applyStudentEpoFeatures(flags)}
                                   absent={{
                                     active: passive,
@@ -1932,8 +2022,12 @@ export function EpoNotenTeacherView() {
                           </Typography>
                         ) : null}
 
-                        <Box sx={{ position: 'relative', width: '100%' }}>
-                            {selectedStudent.teacherGradeOnly ||
+                        <Box sx={{ width: '100%' }}>
+                            {(selectedStudent.groupId &&
+                              epoStudentNoteOnlyFlow(
+                                selectedStudent,
+                                groupJaFlagsFor(selectedStudent.groupId),
+                              )) ||
                             !(selectedStudent.groupId && round && epoTeacherUsesRaster(round, selectedStudent.groupId)) ? (
                               <Stack spacing={1} sx={{ mt: 0.5 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
