@@ -483,7 +483,7 @@
       '.aids-general-rules-list li.aids-general-rules-list__no-marker{list-style:none;margin-left:-1.35em;padding-left:0}' +
       '.teacher-mode #timer.exam-chrome-timer-editable{cursor:text}' +
       '.teacher-mode #timer.exam-chrome-timer-editable:focus{outline:2px solid rgba(225,6,0,.45);outline-offset:2px}' +
-      '.exam-session-reset-trio{display:flex;flex-direction:column;align-items:stretch;gap:10px;width:100%;margin:14px 0 4px;box-sizing:border-box}' +
+      '.exam-session-reset-trio{display:flex;flex-direction:column;align-items:stretch;gap:16px;width:100%;margin:14px 0 4px;box-sizing:border-box}' +
       '.exam-session-reset-btn{width:100%;max-width:148px;box-sizing:border-box;border:none;border-radius:7px;font-weight:700;cursor:pointer;font-family:inherit;line-height:1.25;padding:8px 8px;color:#fff;margin:0}' +
       '.exam-session-reset-btn:disabled{opacity:.55;cursor:not-allowed}' +
       '.exam-session-reset-btn--full{background:#E10600;font-size:11px}' +
