@@ -2605,24 +2605,22 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                 </Button>
                 </>
               )}
-              {!embedded ? (
-                <IconButton
-                  onClick={onClose}
-                  tabIndex={-1}
-                  sx={{
-                    p: 0.5,
-                    minWidth: 28,
-                    width: 28,
-                    height: 28,
-                    ml: 0.5,
-                    '& .MuiSvgIcon-root': {
-                      fontSize: 18,
-                    },
-                  }}
-                >
-                  <Close sx={{ width: '100%', height: '100%' }} />
-                </IconButton>
-              ) : null}
+              <IconButton
+                onClick={onClose}
+                tabIndex={-1}
+                sx={{
+                  p: 0.5,
+                  minWidth: 28,
+                  width: 28,
+                  height: 28,
+                  ml: 0.5,
+                  '& .MuiSvgIcon-root': {
+                    fontSize: 18,
+                  },
+                }}
+              >
+                <Close sx={{ width: '100%', height: '100%' }} />
+              </IconButton>
             </Box>
           </Box>
         </CardContent>
