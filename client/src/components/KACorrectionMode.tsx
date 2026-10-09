@@ -31,6 +31,7 @@ import {
   Switch,
   Checkbox,
 } from '@mui/material';
+import { isExamCorrectionDraft, setExamCorrectionDraft } from '../lib/examCorrectionDraft';
 import {
   isExamCorrectionFinished,
   setExamCorrectionFinished,
@@ -244,9 +245,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
   const [examMarkedFinished, setExamMarkedFinished] = useState(() =>
     isExamCorrectionFinished(kaFilePath),
   );
+  const [examMarkedDraft, setExamMarkedDraft] = useState(() => isExamCorrectionDraft(kaFilePath));
 
   useEffect(() => {
     setExamMarkedFinished(isExamCorrectionFinished(kaFilePath));
+    setExamMarkedDraft(isExamCorrectionDraft(kaFilePath));
   }, [kaFilePath]);
   const [submissions, setSubmissions] = useState<KASubmission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2394,20 +2397,58 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                 control={
                   <Checkbox
                     size="small"
-                    checked={examMarkedFinished}
+                    checked={examMarkedDraft}
                     onChange={(_, checked) => {
-                      setExamCorrectionFinished(kaFilePath, checked);
-                      setExamMarkedFinished(checked);
+                      setExamCorrectionDraft(kaFilePath, checked);
+                      setExamMarkedDraft(checked);
+                      if (checked) {
+                        setExamCorrectionFinished(kaFilePath, false);
+                        setExamMarkedFinished(false);
+                      }
                     }}
                     sx={{
                       p: 0.35,
                       color: '#9e9e9e',
-                      '&.Mui-checked': { color: '#43a047' },
+                      '&.Mui-checked': { color: '#757575' },
                     }}
                   />
                 }
                 label={
-                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.72rem', color: examMarkedFinished ? '#43a047' : '#616161' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.72rem',
+                      color: examMarkedDraft ? '#757575' : '#616161',
+                    }}
+                  >
+                    Entwurf
+                  </Typography>
+                }
+                sx={{ m: 0, mr: 0.25, flexShrink: 0 }}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={examMarkedFinished}
+                    onChange={(_, checked) => {
+                      setExamCorrectionFinished(kaFilePath, checked);
+                      setExamMarkedFinished(checked);
+                      if (checked) {
+                        setExamCorrectionDraft(kaFilePath, false);
+                        setExamMarkedDraft(false);
+                      }
+                    }}
+                    sx={{
+                      p: 0.35,
+                      color: '#9e9e9e',
+                      '&.Mui-checked': { color: '#5a7d5c' },
+                    }}
+                  />
+                }
+                label={
+                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.72rem', color: examMarkedFinished ? '#5a7d5c' : '#616161' }}>
                     fertig
                   </Typography>
                 }

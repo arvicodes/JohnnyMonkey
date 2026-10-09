@@ -21024,12 +21024,13 @@ GegenÃ¼berstellung zu anderen **Verfahrensarten** (z. B. **SubstitutionsverschlÃ
             setShowKACorrectionMode(false);
             setExamsPanelRefreshKey((k) => k + 1);
           }}
-          maxWidth="lg"
-          fullWidth
+          fullScreen
+          sx={{ zIndex: (t) => t.zIndex.modal + 8 }}
         >
-          <DialogContent sx={{ p: 0 }}>
+          <DialogContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
             <KACorrectionMode
               kaFilePath={selectedKAFilePath}
+              embedded
               onClose={() => {
                 setShowKACorrectionMode(false);
                 setExamsPanelRefreshKey((k) => k + 1);

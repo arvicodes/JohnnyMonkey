@@ -1,7 +1,7 @@
 import { examBaseGitPath } from './examVersionPaths';
 import { teacherIdFromStorage } from './lessonExamBeacon';
 
-const STORAGE_KEY = 'jmExamCorrectionFinishedV1';
+const STORAGE_KEY = 'jmExamCorrectionDraftV1';
 
 function normalizeExamPath(filePath: string): string {
   const base = examBaseGitPath(filePath) || filePath;
@@ -32,17 +32,17 @@ function storageKeyForPath(filePath: string): string {
   return `${teacherId}::${normalizeExamPath(filePath)}`;
 }
 
-export function isExamCorrectionFinished(filePath: string): boolean {
+export function isExamCorrectionDraft(filePath: string): boolean {
   if (!filePath.trim()) return false;
   const map = readMap();
   return Boolean(map[storageKeyForPath(filePath)]);
 }
 
-export function setExamCorrectionFinished(filePath: string, finished: boolean): void {
+export function setExamCorrectionDraft(filePath: string, draft: boolean): void {
   if (!filePath.trim()) return;
   const map = readMap();
   const key = storageKeyForPath(filePath);
-  if (finished) map[key] = true;
+  if (draft) map[key] = true;
   else delete map[key];
   writeMap(map);
 }

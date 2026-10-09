@@ -98,7 +98,9 @@ import {
   isInformatikFolderPath,
   resolveLearningGroupDisplayStyle,
 } from '../../lib/learningGroupAppearance';
+import { isExamCorrectionDraft } from '../../lib/examCorrectionDraft';
 import { isExamCorrectionFinished } from '../../lib/examCorrectionFinished';
+import { examBaseGitPath, examFamilyKey } from '../../lib/examVersionPaths';
 import { deriveExamCorrectionListStatus, type ExamSessionMeta } from '../../lib/examCorrectionListStatus';
 import ExamListStatusBadge from '../exam/ExamListStatusBadge';
 
@@ -517,7 +519,7 @@ function MaterialRow({
   onIconClick,
   actions,
   centerSlot,
-  finishedOverlay,
+  rowTint,
 }: {
   title: string;
   subtitle?: string;
@@ -528,7 +530,8 @@ function MaterialRow({
   onIconClick?: () => void;
   actions: React.ReactNode;
   centerSlot?: React.ReactNode;
-  finishedOverlay?: boolean;
+  /** Dezenter Schleier über der Zeile (fertig / Entwurf). */
+  rowTint?: 'fertig' | 'entwurf';
 }) {
   return (
     <Box
@@ -547,12 +550,24 @@ function MaterialRow({
         '&:hover': { bgcolor: rowBg, filter: 'brightness(0.98)' },
       }}
     >
-      {finishedOverlay ? (
+      {rowTint === 'fertig' ? (
         <Box
           sx={{
             position: 'absolute',
             inset: 0,
-            bgcolor: 'rgba(76, 175, 80, 0.2)',
+            bgcolor: 'rgba(108, 118, 102, 0.38)',
+            borderRadius: 'inherit',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+        />
+      ) : null}
+      {rowTint === 'entwurf' ? (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            bgcolor: 'rgba(130, 130, 130, 0.22)',
             borderRadius: 'inherit',
             pointerEvents: 'none',
             zIndex: 0,
@@ -860,6 +875,7 @@ export const DashboardExamsPanel: React.FC<{
   const [examHistoryError, setExamHistoryError] = useState<string | null>(null);
   const [examSessionMetaByPath, setExamSessionMetaByPath] = useState<Record<string, ExamSessionMeta>>({});
   const [examFinishedByPath, setExamFinishedByPath] = useState<Record<string, boolean>>({});
+  const [examDraftByPath, setExamDraftByPath] = useState<Record<string, boolean>>({});
 
   const loadExamIcons = useCallback(async () => {
     const loaded = await fetchExamLibraryIconsFromServer();
@@ -916,38 +932,45 @@ export const DashboardExamsPanel: React.FC<{
 
   const isExamVariantFile = (name: string) => /__[A-Z]\.html?$/i.test(name || '');
 
-  const mainExamItems = useMemo(
-    () => items.filter((i) => !isExamVariantFile(i.name)),
-    [items],
-  );
-
-  const refreshExamFinishedFlags = useCallback(() => {
-    const map: Record<string, boolean> = {};
-    for (const item of mainExamItems) {
-      map[item.path] = isExamCorrectionFinished(item.path);
+  const examWorkflowPaths = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of items) {
+      const w = examBaseGitPath(item.path);
+      if (w) set.add(w);
     }
-    setExamFinishedByPath(map);
-  }, [mainExamItems]);
+    return [...set];
+  }, [items]);
+
+  const refreshExamWorkflowFlags = useCallback(() => {
+    const finished: Record<string, boolean> = {};
+    const draft: Record<string, boolean> = {};
+    for (const path of examWorkflowPaths) {
+      finished[path] = isExamCorrectionFinished(path);
+      draft[path] = isExamCorrectionDraft(path);
+    }
+    setExamFinishedByPath(finished);
+    setExamDraftByPath(draft);
+  }, [examWorkflowPaths]);
 
   useEffect(() => {
-    refreshExamFinishedFlags();
-  }, [refreshExamFinishedFlags, refreshKey]);
+    refreshExamWorkflowFlags();
+  }, [refreshExamWorkflowFlags, refreshKey]);
 
   useEffect(() => {
-    if (!mainExamItems.length) {
+    if (!examWorkflowPaths.length) {
       setExamSessionMetaByPath({});
       return;
     }
     let cancelled = false;
     void Promise.all(
-      mainExamItems.map(async (item) => {
+      examWorkflowPaths.map(async (path) => {
         try {
-          const sessions = await fetchExamSessionHistory(item.path);
+          const sessions = await fetchExamSessionHistory(path);
           const everStarted = sessions.length > 0;
           const hasEndedSession = sessions.some((s) => !s.running || Boolean(s.endedAt));
-          return { path: item.path, everStarted, hasEndedSession };
+          return { path, everStarted, hasEndedSession };
         } catch {
-          return { path: item.path, everStarted: false, hasEndedSession: false };
+          return { path, everStarted: false, hasEndedSession: false };
         }
       }),
     ).then((rows) => {
@@ -961,7 +984,18 @@ export const DashboardExamsPanel: React.FC<{
     return () => {
       cancelled = true;
     };
-  }, [mainExamItems, refreshKey, activeExamBeacons]);
+  }, [examWorkflowPaths, refreshKey, activeExamBeacons]);
+
+  const isExamFamilyRunning = useCallback(
+    (examPath: string) => {
+      const family = examFamilyKey(examPath);
+      if (!family) return false;
+      return Object.values(activeExamBeacons).some(
+        (b) => examFamilyKey(b.filePath) === family,
+      );
+    },
+    [activeExamBeacons],
+  );
 
   const teacherGroupIdsKey = useMemo(
     () =>
@@ -1250,17 +1284,18 @@ export const DashboardExamsPanel: React.FC<{
         createAccent={COLOR_PRUEFUNG}
         renderItem={(item) => {
           const rowStyle = examMaterialRowStyle(item.name);
-          const variant = isExamVariantFile(item.name);
-          const finished = !variant && Boolean(examFinishedByPath[item.path]);
-          const running = !variant && runningGroupIdsForExam(item.path).length > 0;
-          const listStatus =
-            !variant
-              ? deriveExamCorrectionListStatus(
-                  finished,
-                  running,
-                  examSessionMetaByPath[item.path],
-                )
-              : null;
+          const workflowPath = examBaseGitPath(item.path);
+          const finished = Boolean(examFinishedByPath[workflowPath]);
+          const draft = Boolean(examDraftByPath[workflowPath]);
+          const running = isExamFamilyRunning(item.path);
+          const listStatus = deriveExamCorrectionListStatus(
+            finished,
+            draft,
+            running,
+            examSessionMetaByPath[workflowPath],
+          );
+          const rowTint =
+            finished ? 'fertig' : listStatus === 'entwurf' ? 'entwurf' : undefined;
           return (
           <MaterialRow
             key={item.path}
@@ -1271,8 +1306,8 @@ export const DashboardExamsPanel: React.FC<{
             rowBg={rowStyle.rowBg}
             icon={getExamLibraryIcon(item.path, item.name, iconMap, iconTemplate)}
             onIconClick={() => setIconPickerItem(item)}
-            finishedOverlay={finished}
-            centerSlot={listStatus ? <ExamListStatusBadge status={listStatus} /> : undefined}
+            rowTint={rowTint}
+            centerSlot={<ExamListStatusBadge status={listStatus} />}
             actions={
               <>
                 {!isExamVariantFile(item.name) ? (() => {
