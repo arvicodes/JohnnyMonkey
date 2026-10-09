@@ -1,0 +1,16 @@
+---
+description: Kompakte MUI-Buttons — nur Inhaltsbreite, einheitliches Padding
+globs: client/**/*.{tsx,ts}
+alwaysApply: false
+---
+
+# Buttons kompakt (JohnnyMonkey UI)
+
+Bei **Toolbar- und Aktions-Buttons** in der App (besonders EPO-Noten, Dashboard-Kopfzeilen):
+
+- **Breite**: `minWidth: 0`, `width: 'max-content'` — nicht volle Zeile oder feste Mindestbreite.
+- **Padding**: bestehende Tokens nutzen, nicht ad hoc vergrößern.
+  - EPO-Kopfzeile outlined: `epoNotenToolbarOutlinedBtnSx` / `epoNotenToolbarOutlinedBtnCompactSx` aus `epoNotenUi.ts`
+  - Dialoge / kleine Text-Buttons: `epoNotenCompactBtnSx`
+- **Icons**: `startIcon` mit Größe über die Button-`sx` (`fontSize` 12–13), nicht große Inline-`fontSize` am Icon.
+- **Neue Buttons** im gleichen Kontext wie JA-Toggles oder „Kurs zurücksetzen“ immer an dieses Muster anbinden.
