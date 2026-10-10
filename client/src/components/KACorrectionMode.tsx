@@ -1419,6 +1419,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
   const buildReviewHtmlForSubmission = async (
     submission: KASubmission,
     onlyTaskNumber?: string,
+    onlyTaskFieldId?: string,
   ): Promise<string> => {
     const answers = answersForCorrectionGrouping(submission.answers) as Record<string, unknown>;
     const previewCorrections = correctionsForPreview(submission);
@@ -1442,8 +1443,15 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
       learningGroupName: activeLearningGroupName,
       teacherCorrectionMode: true,
       onlyTaskNumber: onlyTaskNumber || undefined,
+      onlyTaskFieldId: onlyTaskFieldId || undefined,
       gradeMetricLabel: useMssGrading ? 'MSS-Punkte' : 'Note',
     });
+  };
+
+  const fieldSubTabLabel = (taskNum: string, fieldId: string): string => {
+    const m = fieldId.match(/^a\d+([a-z])$/i);
+    if (m) return `${taskNum}${m[1].toUpperCase()})`;
+    return fieldId;
   };
 
   const getFieldCorrectionForSubmission = useCallback(
@@ -1513,6 +1521,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     : ['4', '5', '6', '7', '8', '9'];
 
   const [byTaskSelectedNum, setByTaskSelectedNum] = useState('');
+  const [byTaskSubFieldId, setByTaskSubFieldId] = useState('');
 
   const gradingMaxPoints = (max: number): number =>
     isHuKiMssExamPath(kaFilePath) ? HU_KI_MSS_EXAM_MAX_POINTS : max;
@@ -1614,6 +1623,22 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     },
     [answerKeyFieldsByTask, correctAnswers, groupSubmissions],
   );
+
+  const byTaskSubFieldIds = useMemo(() => {
+    const taskNum = byTaskSelectedNum || byTaskTabNumbers[0] || '';
+    if (!taskNum) return [];
+    return fieldIdsForByTask(taskNum);
+  }, [byTaskSelectedNum, byTaskTabNumbers, fieldIdsForByTask]);
+
+  useEffect(() => {
+    if (!byTaskSubFieldIds.length) {
+      setByTaskSubFieldId('');
+      return;
+    }
+    if (!byTaskSubFieldIds.includes(byTaskSubFieldId)) {
+      setByTaskSubFieldId(byTaskSubFieldIds[0]);
+    }
+  }, [byTaskSubFieldIds.join('|'), byTaskSubFieldId]);
 
   const openAnswerKeyEditor = () => {
     const draft: Record<string, string> = {};
@@ -3840,6 +3865,38 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             })}
           </Tabs>
 
+          {byTaskSubFieldIds.length > 1 ? (
+            <Tabs
+              value={byTaskSubFieldId || byTaskSubFieldIds[0]}
+              onChange={(_, v) => setByTaskSubFieldId(String(v))}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{
+                minHeight: 34,
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+                flexShrink: 0,
+                bgcolor: '#fafafa',
+                '& .MuiTab-root': {
+                  minHeight: 34,
+                  py: 0.35,
+                  px: 1,
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  textTransform: 'none',
+                },
+              }}
+            >
+              {byTaskSubFieldIds.map((fieldId) => (
+                <Tab
+                  key={fieldId}
+                  value={fieldId}
+                  label={fieldSubTabLabel(byTaskSelectedNum || byTaskTabNumbers[0] || '', fieldId)}
+                />
+              ))}
+            </Tabs>
+          ) : null}
+
           {byTaskTabNumbers.length === 0 ? (
             <Alert severity="info" sx={{ my: 1, fontSize: '0.8rem' }}>
               Keine Aufgaben mit manueller Korrektur erkannt — Musterlösung laden oder Schülerweise nutzen.
@@ -3850,6 +3907,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             const taskNum = byTaskSelectedNum || byTaskTabNumbers[0];
             if (!taskNum) return null;
             const taskFieldIds = fieldIdsForByTask(taskNum);
+            const scopeFieldId =
+              byTaskSubFieldIds.length > 1
+                ? byTaskSubFieldId || byTaskSubFieldIds[0]
+                : undefined;
             const taskSubmissions = groupSubmissions
               .filter((sub) => !sub.markedSick)
               .map((sub) => {
@@ -3886,7 +3947,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                       submission.student?.id || '',
                       passiveStudentIdsForGroup,
                     );
-                    const reviewKey = `${submission.id}:${taskNum}:${submission.answers}:${JSON.stringify(corrections)}:${maxTotalPoints}`;
+                    const reviewKey = `${submission.id}:${taskNum}:${scopeFieldId || ''}:${submission.answers}:${JSON.stringify(corrections)}:${maxTotalPoints}`;
                     return (
                       <Box
                         key={submission.id}
@@ -3926,7 +3987,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                         </Box>
                         <ExamCorrectionLiveReview
                           refreshKey={reviewKey}
-                          buildHtml={() => buildReviewHtmlForSubmission(submission, taskNum)}
+                          buildHtml={() =>
+                            buildReviewHtmlForSubmission(submission, taskNum, scopeFieldId)
+                          }
                           getFieldCorrection={(taskId) => getFieldCorrectionForSubmission(submission, taskId)}
                           onSaveField={(taskId, points, comment) => {
                             void saveCorrection(taskId, points, comment, submission.id);

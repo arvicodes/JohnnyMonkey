@@ -59,6 +59,8 @@ export type ExamReviewedViewOpts = {
   teacherCorrectionMode?: boolean;
   /** Nur diese Aufgabennummer anzeigen (z. B. „3“ für Aufgabe 3). */
   onlyTaskNumber?: string;
+  /** Nur diese Teilaufgabe (z. B. „a2a“) innerhalb von onlyTaskNumber. */
+  onlyTaskFieldId?: string;
   /** z. B. „MSS-Punkte“ statt „Note“ in der grünen Box */
   gradeMetricLabel?: string;
 };
@@ -422,19 +424,6 @@ function buildSortReviewPanel(
     panel.appendChild(commentEl);
   }
 
-  if (teacherCorrectionMode) {
-    panel.appendChild(
-      createTeacherCommentPointsRow(
-        doc,
-        answerId,
-        achieved,
-        maxPts,
-        isPartial,
-        savedComment,
-      ),
-    );
-  }
-
   panel.appendChild(grid);
   return panel;
 }
@@ -686,6 +675,44 @@ function syncMcSelectCheckboxes(doc: Document, taskId: string, rawValue: string)
 
 function isWfTableFieldId(taskId: string): boolean {
   return /^a1[a-z]$/i.test(taskId);
+}
+
+function subsectionContainsFieldId(sub: Element, fieldId: string): boolean {
+  const id = fieldId.toLowerCase();
+  if (sub.querySelector(`#${CSS.escape(id)}`)) return true;
+  if (sub.querySelector(`[data-answer-id="${CSS.escape(id)}"]`)) return true;
+  if (sub.querySelector(`[data-for="${CSS.escape(id)}"]`)) return true;
+  return false;
+}
+
+/** Aufgabenweise: nur eine Aufgabe / optional eine Teilaufgabe im DOM behalten. */
+function applyExamCorrectionScope(
+  doc: Document,
+  onlyTask?: string,
+  onlyFieldId?: string,
+) {
+  const taskNum = String(onlyTask || '').trim();
+  if (!taskNum) return;
+  doc.documentElement.classList.add('jm-exam-by-task-only');
+  doc.querySelectorAll('.task').forEach((taskEl) => {
+    const m = taskEl.querySelector('.task-number')?.textContent?.match(/Aufgabe\s+(\d+)/i);
+    if (m?.[1] !== taskNum) {
+      taskEl.remove();
+      return;
+    }
+    const fieldId = String(onlyFieldId || '').trim().toLowerCase();
+    if (!fieldId) return;
+    taskEl.querySelectorAll('.exam-subsection').forEach((sub) => {
+      if (!subsectionContainsFieldId(sub, fieldId)) sub.remove();
+    });
+    if (/^a1[a-z]$/i.test(fieldId)) {
+      taskEl.querySelectorAll('tr.exam-wf-table-row').forEach((tr) => {
+        const hid = tr.querySelector('input[type="hidden"][id^="a1"]') as HTMLInputElement | null;
+        if (hid?.id?.toLowerCase() !== fieldId) tr.remove();
+      });
+    }
+  });
+  doc.querySelectorAll('.instructions, .submit-section').forEach((el) => el.remove());
 }
 
 function injectTaskPointsSummaries(
@@ -984,7 +1011,17 @@ function fillAndMark(
           isPartial,
         );
         sortRoot.parentElement?.insertBefore(panel, sortRoot.nextSibling);
-        if (!teacherCorrectionMode) {
+        if (teacherCorrectionMode) {
+          attachSubsectionTeacherToolbar(
+            doc,
+            taskId,
+            sortRoot,
+            achieved,
+            maxPts,
+            isPartial,
+            savedTaskComment,
+          );
+        } else {
           const slots = sortRoot.querySelectorAll('.exam-sort-slot');
           const fromDoc = sortSolutionStepsFromDoc(doc, taskId);
           const correctSteps = fromDoc.length ? fromDoc : primarySortSolutionSteps(expected);
@@ -2071,6 +2108,18 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     html.jm-exam-by-task-only .exam-sort-drag + .exam-sort-hint {
       max-width: 100% !important;
     }
+    html.jm-exam-by-task-only .task-content,
+    html.jm-exam-by-task-only .exam-subsection,
+    html.jm-exam-by-task-only .jm-sort-review-panel {
+      display: block !important;
+      visibility: visible !important;
+    }
+    html.jm-exam-by-task-only .exam-chart-figure img {
+      max-width: 100% !important;
+      max-height: 220px !important;
+      height: auto !important;
+      width: auto !important;
+    }
     .exam-paper {
       width: 100% !important;
       max-width: none !important;
@@ -2336,6 +2385,12 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
   }
 
+  const onlyTask = String(opts.onlyTaskNumber || '').trim();
+  const onlyFieldId = String(opts.onlyTaskFieldId || '').trim();
+  if (onlyTask) {
+    applyExamCorrectionScope(reviewDoc, onlyTask, onlyFieldId || undefined);
+  }
+
   fillAndMark(
     reviewDoc,
     answers,
@@ -2348,17 +2403,6 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
 
   if (teacherCorrectionMode) {
     reviewDoc.querySelectorAll('.task .solution').forEach((el) => el.remove());
-  }
-
-  const onlyTask = String(opts.onlyTaskNumber || '').trim();
-  if (onlyTask) {
-    reviewDoc.documentElement.classList.add('jm-exam-by-task-only');
-    reviewDoc.querySelectorAll('.task').forEach((taskEl) => {
-      const numEl = taskEl.querySelector('.task-number');
-      const match = numEl?.textContent?.match(/Aufgabe\s+(\d+)/i);
-      if (match?.[1] !== onlyTask) taskEl.remove();
-    });
-    reviewDoc.querySelectorAll('.instructions, .submit-section').forEach((el) => el.remove());
   }
 
   const rawTotal = Number(opts.totalPoints) || 0;
@@ -2398,7 +2442,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
         <div class="meta">${pointsText}</div>
         ${
           opts.classAverageText
-            ? `<div class="avg">⌀ ${escapeHtmlText(opts.classAverageText)}</div>`
+            ? `<div class="avg">Notenschnitt ⌀ ${escapeHtmlText(opts.classAverageText)}</div>`
             : ''
         }
       </div>
