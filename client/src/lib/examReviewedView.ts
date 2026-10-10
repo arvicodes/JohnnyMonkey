@@ -1853,9 +1853,32 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       font-weight: 600;
     }
     html.teacher-correction-mode img.exam-dollar-img,
-    html.teacher-correction-mode .exam-paper img {
+    html.teacher-correction-mode .exam-paper img:not(.header-logo):not(.jm-grade-signature) {
       max-width: 100%;
       height: auto;
+    }
+    html.teacher-correction-mode img.header-logo {
+      height: 48px !important;
+      width: auto !important;
+      max-width: 96px !important;
+      object-fit: contain;
+      display: block;
+    }
+    html.teacher-correction-mode .header-brand-row {
+      display: grid !important;
+      grid-template-columns: auto 1fr !important;
+      align-items: center;
+      column-gap: 10px;
+      margin-bottom: 6px;
+    }
+    html.teacher-correction-mode .header-title {
+      font-size: 1.05rem !important;
+      line-height: 1.2 !important;
+    }
+    html.teacher-correction-mode .exam-paper > .header {
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #e0e0e0;
     }
     .jm-student-keyword {
       color: #0d47a1 !important;
