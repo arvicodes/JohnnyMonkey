@@ -163,6 +163,9 @@ const correctionStorageKey = (submissionId: string, fieldKey: string): string =>
 const REVIEW_COMPLETE_TASK = '__review_complete__';
 const GENERAL_COMMENT_TASK = '__general_comment__';
 const PURPLE_REVIEW = '#7b1fa2';
+const BREADCRUMB_PENDING_COLOR = '#1565c0';
+const BREADCRUMB_PENDING_BG = '#e3f2fd';
+const BREADCRUMB_PENDING_BORDER = '#64b5f6';
 
 const kaCorrectionToolbarBtnSx = {
   ...epoNotenToolbarOutlinedBtnSx,
@@ -2972,8 +2975,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             const submission = submissionByStudentId.get(student.id);
             const hasSubmission = Boolean(submission);
             const isSelected = currentStudentIndex === index;
-            const purpleRing = hasSubmission && shouldShowPurpleReviewRing(submission);
             const reviewFinished = hasSubmission && isReviewCompleteFlag(submission);
+            const pendingReview = hasSubmission && !reviewFinished && !submission?.markedSick;
+            const purpleRing =
+              hasSubmission && !pendingReview && shouldShowPurpleReviewRing(submission);
             const isSick = Boolean(submission?.markedSick);
             
             // Prüfe ob alle Korrekturfelder von mir ausgefüllt sind
@@ -3090,14 +3095,34 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
               <Chip
                 key={student.id}
                 label={
-                  <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.35 }}>
+                    {hasSubmission && !isSick ? (
+                      <Checkbox
+                        size="small"
+                        checked={reviewFinished}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={() => {
+                          if (submission) void toggleReviewComplete(submission);
+                        }}
+                        inputProps={{
+                          'aria-label': `Bewertung für ${displayName} fertig`,
+                        }}
+                        sx={{
+                          p: 0.15,
+                          color: BREADCRUMB_PENDING_BORDER,
+                          '&.Mui-checked': { color: '#43a047' },
+                        }}
+                      />
+                    ) : null}
                     <span
                       style={{
                         color: !hasSubmission
                           ? '#b71c1c'
-                          : reviewFinished || allFieldsFilled
-                            ? PURPLE_REVIEW
-                            : '#f57c00',
+                          : pendingReview
+                            ? BREADCRUMB_PENDING_COLOR
+                            : reviewFinished || allFieldsFilled
+                              ? PURPLE_REVIEW
+                              : '#f57c00',
                       }}
                     >
                       {displayName}
@@ -3110,12 +3135,26 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                           lineHeight: 1.1,
                           padding: '1px 7px',
                           borderRadius: 6,
-                          color: reviewFinished ? PURPLE_REVIEW : gradeColor,
-                          backgroundColor: reviewFinished
-                            ? 'rgba(123, 31, 162, 0.12)'
-                            : `${gradeColor}22`,
-                          border: `2px solid ${reviewFinished ? PURPLE_REVIEW : gradeColor}`,
-                          boxShadow: `0 1px 2px ${gradeColor}33`,
+                          color: pendingReview
+                            ? BREADCRUMB_PENDING_COLOR
+                            : reviewFinished
+                              ? PURPLE_REVIEW
+                              : gradeColor,
+                          backgroundColor: pendingReview
+                            ? 'rgba(21, 101, 192, 0.12)'
+                            : reviewFinished
+                              ? 'rgba(123, 31, 162, 0.12)'
+                              : `${gradeColor}22`,
+                          border: `2px solid ${
+                            pendingReview
+                              ? BREADCRUMB_PENDING_COLOR
+                              : reviewFinished
+                                ? PURPLE_REVIEW
+                                : gradeColor
+                          }`,
+                          boxShadow: pendingReview
+                            ? 'none'
+                            : `0 1px 2px ${gradeColor}33`,
                         }}
                       >
                         {grade}
@@ -3148,8 +3187,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                     : isSick
                       ? 'Krank — zählt nicht im Klassenschnitt'
                       : reviewFinished
-                        ? 'Bewertung fertig (Doppelklick zum Zurücknehmen)'
-                        : 'Doppelklick: Bewertung als fertig markieren'
+                        ? 'Bewertung fertig (Checkbox oder Doppelklick zum Zurücknehmen)'
+                        : 'Checkbox oder Doppelklick: Bewertung als fertig markieren'
                 }
                 tabIndex={-1}
                 sx={{
@@ -3161,24 +3200,28 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                     ? SICK_HIGHLIGHT_BG
                     : !hasSubmission
                       ? '#ffebee'
-                      : reviewFinished
-                        ? '#f3e5f5'
-                        : allFieldsFilled
-                          ? '#e8f5e9'
-                          : '#fff3e0',
+                      : pendingReview
+                        ? BREADCRUMB_PENDING_BG
+                        : reviewFinished
+                          ? '#f3e5f5'
+                          : allFieldsFilled
+                            ? '#e8f5e9'
+                            : '#fff3e0',
                   color: !hasSubmission ? '#b71c1c' : '#1a1a1a',
                   opacity: hasSubmission ? 1 : 0.85,
                   border: isSick
                     ? `2px solid ${SICK_BORDER}`
                     : isSelected
                       ? '2px solid #1976d2'
-                      : purpleRing
-                        ? `2px solid ${PURPLE_REVIEW}`
-                        : hasSubmission
-                          ? allFieldsFilled
-                            ? '1px solid #4caf50'
-                            : '1px solid #ffb74d'
-                          : '1px solid #ef9a9a',
+                      : pendingReview
+                        ? `1px solid ${BREADCRUMB_PENDING_BORDER}`
+                        : purpleRing
+                          ? `2px solid ${PURPLE_REVIEW}`
+                          : hasSubmission
+                            ? allFieldsFilled
+                              ? '1px solid #4caf50'
+                              : '1px solid #ffb74d'
+                            : '1px solid #ef9a9a',
                   cursor: hasSubmission ? 'pointer' : 'default',
                   transition: 'all 0.2s ease',
                   '&:hover': {
