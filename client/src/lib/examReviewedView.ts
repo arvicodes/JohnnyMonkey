@@ -23,8 +23,11 @@ import {
   buildExamDollarAnswerKeyFromHtml,
   examDollarSubmitFieldsInOrder,
   examHtmlUsesDollarAuthoring,
+  groupSubmissionKeysByMux,
   isPlaceholderLegacyExamKey,
   remapExamDollarSubmissionToSynthetic,
+  sortMuxPrefixes,
+  syntheticDollarFieldIdsForTask,
 } from './examDollarCorrection';
 import {
   EXAM_TEACHER_COMMENT_FONT,
@@ -1306,11 +1309,47 @@ function waitForDocumentImages(doc: Document): Promise<void> {
   ).then(() => undefined);
 }
 
+function isScorableDollarInput(el: HTMLInputElement | HTMLTextAreaElement): boolean {
+  if (el.classList.contains('exam-dollar-gap') || el.classList.contains('exam-dollar-area')) {
+    return true;
+  }
+  if (el instanceof HTMLInputElement && (el.type === 'text' || el.type === 'number')) {
+    return Boolean(el.closest('.exam-dollar-rendered'));
+  }
+  return false;
+}
+
+function collectExamAnswerInputsInTask(
+  taskEl: Element,
+): Array<HTMLInputElement | HTMLTextAreaElement> {
+  const out: Array<HTMLInputElement | HTMLTextAreaElement> = [];
+  const push = (node: Element) => {
+    if (!(node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement)) return;
+    if (!node.id) return;
+    if (node.classList.contains('exam-dollar-source')) return;
+    if (node instanceof HTMLTextAreaElement && node.hasAttribute('hidden')) return;
+    out.push(node);
+  };
+  taskEl
+    .querySelectorAll('input[type="text"], textarea, input[type="number"]')
+    .forEach(push);
+  taskEl.querySelectorAll('input[type="hidden"]').forEach((node) => {
+    if (!(node instanceof HTMLInputElement) || !node.id) return;
+    if (!/^a\d/i.test(node.id) && !node.id.startsWith('examDollar_')) return;
+    push(node);
+  });
+  return out;
+}
+
 /** Gleiche Reihenfolge wie collectExamAnswers() in der Prüfungs-HTML. */
 function collectExamAnswerInputsInDocOrder(
   doc: Document,
 ): Array<HTMLInputElement | HTMLTextAreaElement> {
   const out: Array<HTMLInputElement | HTMLTextAreaElement> = [];
+  doc.querySelectorAll('.exam-paper .task').forEach((taskEl) => {
+    collectExamAnswerInputsInTask(taskEl).forEach((el) => out.push(el));
+  });
+  if (out.length) return out;
   doc
     .querySelectorAll('input[type="text"], textarea, input[type="number"]')
     .forEach((node) => {
@@ -1348,15 +1387,34 @@ function applyExamDollarAnswersToRenderedDoc(
   rawAnswers: Record<string, unknown>,
   examHtml: string,
 ): void {
-  const rows = examDollarSubmitFieldsInOrder(rawAnswers, examHtml);
-  if (!rows.length) return;
-  const inputs = collectExamAnswerInputsInDocOrder(doc);
-  rows.forEach((row, idx) => {
-    const el = inputs[idx];
-    if (!el) return;
-    el.id = row.syntheticId;
-    persistInputValue(el, row.value);
-    el.classList.add('jm-student-input');
+  const dollarKeys = Object.keys(rawAnswers).filter((k) => k.startsWith('examDollar_'));
+  if (!dollarKeys.length) return;
+
+  const muxMap = groupSubmissionKeysByMux(dollarKeys);
+  const muxOrder = sortMuxPrefixes(muxMap);
+  const taskEls = Array.from(doc.querySelectorAll('.exam-paper .task'));
+
+  muxOrder.forEach((mux, taskIdx) => {
+    const taskEl = taskEls[taskIdx];
+    if (!taskEl) return;
+    const storageKeys = muxMap.get(mux) || [];
+    const syntheticIds = syntheticDollarFieldIdsForTask(examHtml, taskIdx);
+    const allInputs = collectExamAnswerInputsInTask(taskEl);
+    const scorableInputs = allInputs.filter(isScorableDollarInput);
+    const targets = scorableInputs.length ? scorableInputs : allInputs;
+    const offset = Math.max(0, storageKeys.length - syntheticIds.length);
+
+    syntheticIds.forEach((syntheticId, fi) => {
+      const el = targets[fi];
+      const storageKey = storageKeys[offset + fi];
+      if (!el || !storageKey) return;
+      el.id = syntheticId;
+      persistInputValue(el, normAnswer(rawAnswers[storageKey]));
+      el.classList.add('jm-student-input');
+      if (el instanceof HTMLInputElement && el.type === 'text') {
+        el.classList.add('exam-dollar-gap');
+      }
+    });
   });
   const radioNames = new Set<string>();
   doc.querySelectorAll('input[type="radio"]').forEach((node) => {
@@ -2063,6 +2121,13 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       color: #1565c0 !important;
       -webkit-text-fill-color: #1565c0;
       font-weight: 600;
+    }
+    html.teacher-correction-mode input.exam-dollar-gap:disabled,
+    html.teacher-correction-mode input.jm-student-input:disabled,
+    html.teacher-correction-mode textarea.exam-dollar-area:disabled {
+      opacity: 1 !important;
+      color: #1565c0 !important;
+      -webkit-text-fill-color: #1565c0 !important;
     }
     html.teacher-correction-mode img.exam-dollar-img,
     html.teacher-correction-mode .exam-paper img:not(.header-logo):not(.jm-grade-signature) {

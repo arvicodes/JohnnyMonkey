@@ -1,4 +1,5 @@
 import type { ExamAnswerKey } from './examAnswerKey';
+import { sortExamAnswerFieldIds } from './examAnswerKey';
 
 export type ExamDollarTaskSlice = {
   taskNum: string;
@@ -56,7 +57,7 @@ export function countScorableFieldsInDollarSource(source: string): number {
   return Math.max(n, 1);
 }
 
-function groupSubmissionKeysByMux(keys: string[]): Map<string, string[]> {
+export function groupSubmissionKeysByMux(keys: string[]): Map<string, string[]> {
   const map = new Map<string, string[]>();
   for (const k of keys) {
     const m = k.match(/^examDollar_([^_]+)_(\d+)$/);
@@ -77,9 +78,20 @@ function groupSubmissionKeysByMux(keys: string[]): Map<string, string[]> {
   return map;
 }
 
-function sortMuxPrefixes(map: Map<string, string[]>): string[] {
+export function sortMuxPrefixes(map: Map<string, string[]>): string[] {
   // Jedes Aufgaben-Mux bekommt beim Rendern einen eigenen Zeitstempel — Reihenfolge ≈ Aufgaben 1…n
   return [...map.keys()].sort((a, b) => a.localeCompare(b, 'en'));
+}
+
+/** Bewertbare Feld-IDs (a1a, a1b, …) pro Dollar-Aufgabe — nicht jedes examDollar_*-Hilfsfeld. */
+export function syntheticDollarFieldIdsForTask(html: string, taskIndex: number): string[] {
+  const sources = extractExamDollarSources(html);
+  const source = sources[taskIndex] || '';
+  const taskNumMatch = source.match(/\$Aufgabe\s+(\d+)\s*\$/i);
+  const taskNum = taskNumMatch?.[1] || String(taskIndex + 1);
+  const fullKey = buildExamDollarAnswerKeyFromHtml(html);
+  const re = new RegExp(`^a${taskNum}[a-z]$`, 'i');
+  return sortExamAnswerFieldIds(Object.keys(fullKey.answers).filter((id) => re.test(id)));
 }
 
 export function buildExamDollarAnswerKeyFromHtml(html: string): ExamAnswerKey {
@@ -158,12 +170,12 @@ export function remapExamDollarSubmissionToSynthetic(
   const out: Record<string, unknown> = { ...raw };
 
   muxOrder.forEach((mux, idx) => {
-    const taskNumMatch = sources[idx]?.match(/\$Aufgabe\s+(\d+)\s*\$/i);
-    const taskNum = taskNumMatch?.[1] || String(idx + 1);
+    const syntheticIds = syntheticDollarFieldIdsForTask(html, idx);
     const fields = muxMap.get(mux) || [];
-    fields.forEach((storageKey, fi) => {
-      const letter = String.fromCharCode(97 + (fi % 26));
-      const synthetic = `a${taskNum}${letter}`;
+    const offset = Math.max(0, fields.length - syntheticIds.length);
+    syntheticIds.forEach((synthetic, fi) => {
+      const storageKey = fields[offset + fi];
+      if (!storageKey) return;
       out[synthetic] = raw[storageKey];
     });
   });
@@ -204,14 +216,15 @@ export function examDollarSubmitFieldsInOrder(
   const rows: ExamDollarSubmitFieldRow[] = [];
 
   muxOrder.forEach((mux, idx) => {
-    const taskNumMatch = sources[idx]?.match(/\$Aufgabe\s+(\d+)\s*\$/i);
-    const taskNum = taskNumMatch?.[1] || String(idx + 1);
+    const syntheticIds = syntheticDollarFieldIdsForTask(html, idx);
     const fields = muxMap.get(mux) || [];
-    fields.forEach((storageKey, fi) => {
-      const letter = String.fromCharCode(97 + (fi % 26));
+    const offset = Math.max(0, fields.length - syntheticIds.length);
+    syntheticIds.forEach((syntheticId, fi) => {
+      const storageKey = fields[offset + fi];
+      if (!storageKey) return;
       rows.push({
         storageKey,
-        syntheticId: `a${taskNum}${letter}`,
+        syntheticId,
         value: normDollarStoredAnswer(raw[storageKey]),
       });
     });
