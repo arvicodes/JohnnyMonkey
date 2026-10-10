@@ -25,8 +25,10 @@ import {
 import { buildExamVersionInfo } from '../lib/examVersionPaths';
 import {
   activeVersionLetters,
+  normalizeFormulationVariantCount,
   normalizeVersionCount,
   parseExamBeaconGroupConfig,
+  resolveStudentFormulationAlt,
   resolveStudentVersionLetter,
   studentAllowedInBeacon,
 } from '../lib/examStartConfig';
@@ -596,6 +598,8 @@ router.post('/exam-beacon/start', async (req: Request, res: Response) => {
             studentIds?: string[];
             versionCount?: number;
             versionAssignments?: Record<string, string>;
+            formulationVariantCount?: number;
+            formulationVariantAssignments?: Record<string, string>;
             makeupSession?: boolean;
           }
         >;
@@ -623,6 +627,9 @@ router.post('/exam-beacon/start', async (req: Request, res: Response) => {
     for (const gid of ids) {
       const rawGroupCfg = examConfig?.byGroup?.[gid] || {};
       const versionCount = normalizeVersionCount(rawGroupCfg.versionCount);
+      const formulationVariantCount = normalizeFormulationVariantCount(
+        rawGroupCfg.formulationVariantCount,
+      );
       const groupConfigJson = JSON.stringify({
         studentIds: Array.isArray(rawGroupCfg.studentIds)
           ? rawGroupCfg.studentIds.filter((x): x is string => typeof x === 'string')
@@ -631,6 +638,12 @@ router.post('/exam-beacon/start', async (req: Request, res: Response) => {
         versionAssignments:
           rawGroupCfg.versionAssignments && typeof rawGroupCfg.versionAssignments === 'object'
             ? rawGroupCfg.versionAssignments
+            : undefined,
+        formulationVariantCount,
+        formulationVariantAssignments:
+          rawGroupCfg.formulationVariantAssignments &&
+          typeof rawGroupCfg.formulationVariantAssignments === 'object'
+            ? rawGroupCfg.formulationVariantAssignments
             : undefined,
         makeupSession: Boolean(rawGroupCfg.makeupSession),
       });
@@ -810,6 +823,13 @@ router.get('/exam-beacon/student-poll', async (req: Request, res: Response) => {
         sessionLetters,
         cfg.versionAssignments,
       );
+      const formulationVariantCount = normalizeFormulationVariantCount(cfg.formulationVariantCount);
+      const assignedFormulationAlt = resolveStudentFormulationAlt(
+        user.id,
+        r.beaconId,
+        formulationVariantCount,
+        cfg.formulationVariantAssignments,
+      );
       beacons.push({
         groupId: r.groupId,
         groupName: r.group.name,
@@ -821,6 +841,8 @@ router.get('/exam-beacon/student-poll', async (req: Request, res: Response) => {
         versionPaths: versionInfo.paths,
         baseFilePath: versionInfo.baseFilePath,
         assignedVersionLetter,
+        formulationVariantCount,
+        assignedFormulationAlt,
       });
     }
     return res.json({ beacons });

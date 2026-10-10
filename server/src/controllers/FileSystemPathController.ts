@@ -15,6 +15,7 @@ import * as XLSX from 'xlsx';
 import { convert } from 'libreoffice-convert';
 import {
   injectExamFilePathForClient,
+  injectFormulationAltForClient,
   patchExamAidsGeneralRulesMarkup,
   patchExamAidsRulesRowLayout,
   syncExamDollarTasksInHtml,
@@ -271,7 +272,7 @@ export class FileSystemPathController {
   // HTML-Datei lesen (für Lehrer und Schüler - keine Authentifizierung erforderlich)
   static async readHtmlFile(req: Request, res: Response) {
     try {
-      const { filePath } = req.query;
+      const { filePath, formulationAlt } = req.query;
 
       if (!filePath) {
         return res.status(400).json({ error: 'filePath is required' });
@@ -294,6 +295,9 @@ export class FileSystemPathController {
         console.warn('exam shuffle transform skipped:', transformErr);
       }
       htmlOut = injectExamFilePathForClient(htmlOut, String(filePath));
+      if (formulationAlt != null && String(formulationAlt).trim() !== '') {
+        htmlOut = injectFormulationAltForClient(htmlOut, String(formulationAlt));
+      }
 
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.send(htmlOut);

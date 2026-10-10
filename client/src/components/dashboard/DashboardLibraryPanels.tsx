@@ -866,6 +866,18 @@ export const DashboardExamsPanel: React.FC<{
         .map((g) => g.id),
     [examStartGroupsOrdered, examStartGroupIds],
   );
+
+  const examStartGroupsBySubject = useMemo(() => {
+    const mathe: typeof examStartGroupsOrdered = [];
+    const informatik: typeof examStartGroupsOrdered = [];
+    const other: typeof examStartGroupsOrdered = [];
+    for (const g of examStartGroupsOrdered) {
+      if (/informatik/i.test(g.name)) informatik.push(g);
+      else if (/mathe|klasse\s*\d/i.test(g.name)) mathe.push(g);
+      else other.push(g);
+    }
+    return { mathe, informatik, other };
+  }, [examStartGroupsOrdered]);
   const [examRunBusyPath, setExamRunBusyPath] = useState<string | null>(null);
   const [lastStartGroupIdsByExam, setLastStartGroupIdsByExam] = useState<Record<string, string[]>>(
     {},
@@ -1483,46 +1495,127 @@ export const DashboardExamsPanel: React.FC<{
         {groups.length === 0 ? (
           <Typography variant="body2">Keine Lerngruppe vorhanden — zuerst im Tab „Lerngruppen“ anlegen.</Typography>
         ) : (
-          <FormGroup>
-            {examStartGroupsOrdered.map((g) => (
-              <FormControlLabel
-                key={g.id}
-                sx={{
-                  ml: 0,
-                  ...(g.isArchived
-                    ? {
-                        color: 'text.disabled',
-                        '& .MuiCheckbox-root': { color: 'action.disabled' },
+          <>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: '#1565c0', display: 'block', mb: 0.5 }}>
+                  Mathe
+                </Typography>
+                <FormGroup>
+                  {examStartGroupsBySubject.mathe.map((g) => (
+                    <FormControlLabel
+                      key={g.id}
+                      sx={{
+                        ml: 0,
+                        ...(g.isArchived
+                          ? {
+                              color: 'text.disabled',
+                              '& .MuiCheckbox-root': { color: 'action.disabled' },
+                            }
+                          : {}),
+                      }}
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={examStartGroupIds.includes(g.id)}
+                          onChange={(_, checked) => {
+                            setExamStartGroupIds((prev) =>
+                              checked ? [...new Set([...prev, g.id])] : prev.filter((id) => id !== g.id),
+                            );
+                          }}
+                        />
                       }
-                    : {}),
-                }}
-                control={
-                  <Checkbox
-                    size="small"
-                    checked={examStartGroupIds.includes(g.id)}
-                    onChange={(_, checked) => {
-                      setExamStartGroupIds((prev) =>
-                        checked ? [...new Set([...prev, g.id])] : prev.filter((id) => id !== g.id),
-                      );
-                    }}
-                  />
-                }
-                label={
-                  <Typography
-                    component="span"
-                    variant="body2"
-                    sx={{
-                      color: g.isArchived ? 'text.disabled' : 'text.primary',
-                      fontStyle: g.isArchived ? 'italic' : 'normal',
-                    }}
-                  >
-                    {g.name}
-                    {g.isArchived ? ' (Archiv)' : ''}
-                  </Typography>
-                }
-              />
-            ))}
-          </FormGroup>
+                      label={
+                        <Typography
+                          component="span"
+                          variant="body2"
+                          sx={{
+                            color: g.isArchived ? 'text.disabled' : 'text.primary',
+                            fontStyle: g.isArchived ? 'italic' : 'normal',
+                          }}
+                        >
+                          {g.name}
+                          {g.isArchived ? ' (Archiv)' : ''}
+                        </Typography>
+                      }
+                    />
+                  ))}
+                </FormGroup>
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: '#006064', display: 'block', mb: 0.5 }}>
+                  Informatik
+                </Typography>
+                <FormGroup>
+                  {examStartGroupsBySubject.informatik.map((g) => (
+                    <FormControlLabel
+                      key={g.id}
+                      sx={{
+                        ml: 0,
+                        ...(g.isArchived
+                          ? {
+                              color: 'text.disabled',
+                              '& .MuiCheckbox-root': { color: 'action.disabled' },
+                            }
+                          : {}),
+                      }}
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={examStartGroupIds.includes(g.id)}
+                          onChange={(_, checked) => {
+                            setExamStartGroupIds((prev) =>
+                              checked ? [...new Set([...prev, g.id])] : prev.filter((id) => id !== g.id),
+                            );
+                          }}
+                        />
+                      }
+                      label={
+                        <Typography
+                          component="span"
+                          variant="body2"
+                          sx={{
+                            color: g.isArchived ? 'text.disabled' : 'text.primary',
+                            fontStyle: g.isArchived ? 'italic' : 'normal',
+                          }}
+                        >
+                          {g.name}
+                          {g.isArchived ? ' (Archiv)' : ''}
+                        </Typography>
+                      }
+                    />
+                  ))}
+                </FormGroup>
+              </Box>
+            </Box>
+            {examStartGroupsBySubject.other.length > 0 ? (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                  Weitere
+                </Typography>
+                <FormGroup>
+                  {examStartGroupsBySubject.other.map((g) => (
+                    <FormControlLabel
+                      key={g.id}
+                      sx={{ ml: 0 }}
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={examStartGroupIds.includes(g.id)}
+                          onChange={(_, checked) => {
+                            setExamStartGroupIds((prev) =>
+                              checked ? [...new Set([...prev, g.id])] : prev.filter((id) => id !== g.id),
+                            );
+                          }}
+                        />
+                      }
+                      label={<Typography variant="body2">{g.name}</Typography>}
+                    />
+                  ))}
+                </FormGroup>
+              </Box>
+            ) : null}
+          </>
         )}
         <ExamStartAdvancedSection
           groups={examStartGroupsOrdered}

@@ -286,3 +286,19 @@ export function injectExamFilePathForClient(html: string, filePath: string): str
   if (idx === -1) return `${html}\n${snippet}`;
   return `${html.slice(0, idx)}${snippet}\n${html.slice(idx)}`;
 }
+
+const FORMULATION_ALT_MARKER = 'data-jm-exam-formulation-alt-init';
+
+/** Setzt globale Dollar-Variante (0 = Standard, 1 = A1, 2 = A2) beim Laden. */
+export function injectFormulationAltForClient(html: string, altIndex: string): string {
+  const idx = String(altIndex ?? '').trim();
+  if (!idx || idx === '0' || html.includes(FORMULATION_ALT_MARKER)) return html;
+  if (!/^[12]$/.test(idx)) return html;
+  const token = '</body>';
+  const at = html.lastIndexOf(token);
+  const snippet = `<script ${FORMULATION_ALT_MARKER}="1">(function(){var a=${JSON.stringify(
+    idx,
+  )};function apply(){if(typeof window.setExamGlobalAltIndex==='function')window.setExamGlobalAltIndex(a);else document.body.setAttribute('data-jm-exam-alt-variant',a);}if(document.body)apply();else document.addEventListener('DOMContentLoaded',apply);})();</script>`;
+  if (at === -1) return `${html}\n${snippet}`;
+  return `${html.slice(0, at)}${snippet}\n${html.slice(at)}`;
+}

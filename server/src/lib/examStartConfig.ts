@@ -7,6 +7,10 @@ export type ExamBeaconGroupConfig = {
   versionCount?: 1 | 2 | 3;
   /** Manuelle Zuweisung SuS → Versionsbuchstabe. */
   versionAssignments?: Record<string, string>;
+  /** 1 = Standard ($$), 2 = Aufteilung A1/A2 ($$ / $$$ im Dollar-Code). */
+  formulationVariantCount?: 1 | 2;
+  /** SuS → „1“ (A1) oder „2“ (A2). */
+  formulationVariantAssignments?: Record<string, string>;
   /** Nachschrift-Sitzung (kranke SuS). */
   makeupSession?: boolean;
 };
@@ -67,6 +71,26 @@ export function studentAllowedInBeacon(
   cfg: ExamBeaconGroupConfig,
 ): boolean {
   const ids = cfg.studentIds;
-  if (!ids?.length) return true;
+  if (ids === undefined) return true;
+  if (!ids.length) return false;
   return ids.includes(studentId);
+}
+
+export function normalizeFormulationVariantCount(n: unknown): 1 | 2 {
+  return Number(n) === 2 ? 2 : 1;
+}
+
+const FORMULATION_ALT_POOL = ['1', '2'] as const;
+
+export function resolveStudentFormulationAlt(
+  studentId: string,
+  beaconId: string,
+  count: 1 | 2,
+  assignments?: Record<string, string>,
+): string {
+  if (count <= 1) return '0';
+  const manual = assignments?.[studentId]?.trim();
+  if (manual && (FORMULATION_ALT_POOL as readonly string[]).includes(manual)) return manual;
+  const idx = hash32(`${studentId}|${beaconId}|exam-formulation-alt-v1`) % 2;
+  return FORMULATION_ALT_POOL[idx];
 }

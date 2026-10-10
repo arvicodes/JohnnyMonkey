@@ -26,6 +26,8 @@ type ExamBeacon = {
   versionPaths?: Record<string, string>;
   baseFilePath?: string;
   assignedVersionLetter?: string;
+  formulationVariantCount?: number;
+  assignedFormulationAlt?: string;
 };
 
 const POLL_MS = 1500;
@@ -178,10 +180,25 @@ export default function StudentLiveExamAlert({ userId }: { userId: string }) {
     const timerEpoch = encodeURIComponent(
       beacon.updatedAt || beacon.beaconId || String(Date.now()),
     );
+    const alt =
+      beacon.formulationVariantCount === 2 && beacon.assignedFormulationAlt
+        ? String(beacon.assignedFormulationAlt).trim()
+        : '';
+    const altQs =
+      alt && alt !== '0' ? `&formulationAlt=${encodeURIComponent(alt)}` : '';
     setHtmlUrl(
-      `/api/file-system-paths/read-html?filePath=${encodeURIComponent(path)}&timerEpoch=${timerEpoch}`,
+      `/api/file-system-paths/read-html?filePath=${encodeURIComponent(path)}&timerEpoch=${timerEpoch}${altQs}`,
     );
-  }, [beacon?.filePath, beacon?.updatedAt, beacon?.beaconId, chosenLetter, versionPaths, baseFilePath]);
+  }, [
+    beacon?.filePath,
+    beacon?.updatedAt,
+    beacon?.beaconId,
+    beacon?.formulationVariantCount,
+    beacon?.assignedFormulationAlt,
+    chosenLetter,
+    versionPaths,
+    baseFilePath,
+  ]);
 
   const open = Boolean(beacon);
   const needsLetterPrompt = Boolean(

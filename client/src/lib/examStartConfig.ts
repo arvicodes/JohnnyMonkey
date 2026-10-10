@@ -6,9 +6,24 @@ export type ExamBeaconGroupConfig = {
   studentIds?: string[];
   versionCount?: 1 | 2 | 3;
   versionAssignments?: Record<string, string>;
+  /** 1 = Standard, 2 = A1/A2 ($$ / $$$). */
+  formulationVariantCount?: 1 | 2;
+  formulationVariantAssignments?: Record<string, string>;
   /** Nachschrift für kranke SuS (Korrekturmodus). */
   makeupSession?: boolean;
 };
+
+export const FORMULATION_VARIANT_LABELS = ['A1', 'A2'] as const;
+
+export function formulationLettersForCount(count: 1 | 2): string[] {
+  return count === 2 ? ['1', '2'] : [];
+}
+
+export function formulationLetterLabel(letter: string): string {
+  if (letter === '1') return 'A1';
+  if (letter === '2') return 'A2';
+  return letter;
+}
 
 export type ExamStartPayloadConfig = {
   byGroup: Record<string, ExamBeaconGroupConfig>;
@@ -21,7 +36,12 @@ export function variantLettersForCount(count: 1 | 2 | 3): string[] {
 }
 
 export function emptyGroupExamConfig(): ExamBeaconGroupConfig {
-  return { versionCount: 1, versionAssignments: {} };
+  return {
+    versionCount: 1,
+    versionAssignments: {},
+    formulationVariantCount: 1,
+    formulationVariantAssignments: {},
+  };
 }
 
 export function buildExamStartPayload(

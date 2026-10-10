@@ -18,6 +18,8 @@ import {
   type ExamBeaconGroupConfig,
   type ExamGroupStudent,
   emptyGroupExamConfig,
+  formulationLetterLabel,
+  formulationLettersForCount,
   variantLettersForCount,
 } from '../../lib/examStartConfig';
 
@@ -86,31 +88,31 @@ export function useExamStartAdvancedState(selectedGroupIds: string[]) {
     for (const gid of selectedGroupIds) {
       const students = studentsByGroup[gid] || [];
       const cfg = groupConfig[gid] || emptyGroupExamConfig();
-      const versionCount = (cfg.versionCount || 1) as 1 | 2 | 3;
-      const letters = lettersForCount(versionCount);
+      const formulationVariantCount = (cfg.formulationVariantCount || 1) as 1 | 2;
+      const formLetters = formulationLettersForCount(formulationVariantCount);
       const selectedIds =
-        cfg.studentIds?.length && cfg.studentIds.length < students.length
-          ? cfg.studentIds
-          : undefined;
-      const versionAssignments = manualVariants ? cfg.versionAssignments || {} : undefined;
-      const normalizedAssignments: Record<string, string> = {};
-      if (versionAssignments && selectedIds) {
-        for (const sid of selectedIds) {
-          const L = versionAssignments[sid];
-          if (L && letters.includes(L)) normalizedAssignments[sid] = L;
-        }
-      } else if (versionAssignments) {
-        for (const s of students) {
-          const L = versionAssignments[s.id];
-          if (L && letters.includes(L)) normalizedAssignments[s.id] = L;
+        cfg.studentIds === undefined
+          ? undefined
+          : cfg.studentIds.length
+            ? cfg.studentIds
+            : [];
+      const formAssignments = manualVariants ? cfg.formulationVariantAssignments || {} : undefined;
+      const normalizedFormAssignments: Record<string, string> = {};
+      const assignTargets =
+        selectedIds === undefined ? students.map((s) => s.id) : selectedIds;
+      if (formAssignments && formulationVariantCount === 2) {
+        for (const sid of assignTargets) {
+          const L = formAssignments[sid];
+          if (L && formLetters.includes(L)) normalizedFormAssignments[sid] = L;
         }
       }
       out[gid] = {
         studentIds: selectedIds,
-        versionCount,
-        versionAssignments:
-          manualVariants && Object.keys(normalizedAssignments).length
-            ? normalizedAssignments
+        versionCount: 1,
+        formulationVariantCount,
+        formulationVariantAssignments:
+          manualVariants && Object.keys(normalizedFormAssignments).length
+            ? normalizedFormAssignments
             : undefined,
       };
     }
@@ -140,7 +142,6 @@ export const ExamStartAdvancedSection: React.FC<{
     manualVariants,
     setManualVariants,
     patchGroupConfig,
-    lettersForCount,
     loadingMeta,
   } = advanced;
 
@@ -165,16 +166,16 @@ export const ExamStartAdvancedSection: React.FC<{
             onChange={(_, v) => setManualVariants(v)}
           />
         }
-        label={<Typography variant="body2">Varianten pro SuS manuell zuweisen</Typography>}
+        label={<Typography variant="body2">Formulierungsvarianten A1/A2 pro SuS zuweisen</Typography>}
         sx={{ mb: 1, ml: 0 }}
       />
       {selectedGroupIds.map((gid) => {
         const students = studentsByGroup[gid] || [];
         const cfg = groupConfig[gid] || emptyGroupExamConfig();
-        const versionCount = (cfg.versionCount || 1) as 1 | 2 | 3;
-        const letters = lettersForCount(versionCount);
+        const formulationVariantCount = (cfg.formulationVariantCount || 1) as 1 | 2;
+        const formLetters = formulationLettersForCount(formulationVariantCount);
         const selectedStudentIds = new Set(
-          cfg.studentIds?.length ? cfg.studentIds : students.map((s) => s.id),
+          cfg.studentIds === undefined ? students.map((s) => s.id) : cfg.studentIds,
         );
         return (
           <Box
@@ -227,9 +228,10 @@ export const ExamStartAdvancedSection: React.FC<{
                         size="small"
                         checked={selectedStudentIds.has(s.id)}
                         onChange={(_, checked) => {
-                          const base = cfg.studentIds?.length
-                            ? [...cfg.studentIds]
-                            : students.map((x) => x.id);
+                          const base =
+                            cfg.studentIds === undefined
+                              ? students.map((x) => x.id)
+                              : [...cfg.studentIds];
                           const next = checked
                             ? [...new Set([...base, s.id])]
                             : base.filter((id) => id !== s.id);
@@ -249,29 +251,29 @@ export const ExamStartAdvancedSection: React.FC<{
                       >
                         {s.name}
                       </Typography>
-                      {manualVariants ? (
+                      {manualVariants && formulationVariantCount === 2 ? (
                         <Select
                           size="small"
                           disabled={!selectedStudentIds.has(s.id)}
                           value={
-                            cfg.versionAssignments?.[s.id] &&
-                            letters.includes(cfg.versionAssignments[s.id])
-                              ? cfg.versionAssignments[s.id]
-                              : letters[0]
+                            cfg.formulationVariantAssignments?.[s.id] &&
+                            formLetters.includes(cfg.formulationVariantAssignments[s.id])
+                              ? cfg.formulationVariantAssignments[s.id]
+                              : formLetters[0]
                           }
                           onChange={(e) => {
                             const L = String(e.target.value);
                             patchGroupConfig(gid, {
-                              versionAssignments: {
-                                ...(cfg.versionAssignments || {}),
+                              formulationVariantAssignments: {
+                                ...(cfg.formulationVariantAssignments || {}),
                                 [s.id]: L,
                               },
                             });
                           }}
                           sx={{ minWidth: 56, fontSize: '0.8rem', flexShrink: 0 }}
                         >
-                          {letters.map((L) => (
-                            <MenuItem key={L} value={L}>{L}</MenuItem>
+                          {formLetters.map((L) => (
+                            <MenuItem key={L} value={L}>{formulationLetterLabel(L)}</MenuItem>
                           ))}
                         </Select>
                       ) : null}
@@ -279,18 +281,27 @@ export const ExamStartAdvancedSection: React.FC<{
                   ))}
                 </Box>
                 <FormControl size="small">
-                  <FormLabel sx={{ fontSize: '0.75rem', mb: 0.25 }}>Varianten in dieser Gruppe</FormLabel>
+                  <FormLabel sx={{ fontSize: '0.75rem', mb: 0.25 }}>
+                    Formulierungsvarianten ($$ / $$$ im Aufgabentext)
+                  </FormLabel>
                   <RadioGroup
                     row
-                    value={String(versionCount)}
+                    value={String(formulationVariantCount)}
                     onChange={(_, v) => {
-                      const n = Number(v) as 1 | 2 | 3;
-                      patchGroupConfig(gid, { versionCount: n });
+                      const n = Number(v) === 2 ? 2 : 1;
+                      patchGroupConfig(gid, { formulationVariantCount: n });
                     }}
                   >
-                    <FormControlLabel value="1" control={<Radio size="small" />} label="1 (A)" />
-                    <FormControlLabel value="2" control={<Radio size="small" />} label="2 (A/B)" />
-                    <FormControlLabel value="3" control={<Radio size="small" />} label="3 (A/B/C)" />
+                    <FormControlLabel
+                      value="1"
+                      control={<Radio size="small" />}
+                      label="1 (Standard)"
+                    />
+                    <FormControlLabel
+                      value="2"
+                      control={<Radio size="small" />}
+                      label="2 (A1 / A2)"
+                    />
                   </RadioGroup>
                 </FormControl>
               </>
