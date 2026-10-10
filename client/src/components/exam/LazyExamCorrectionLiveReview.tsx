@@ -17,7 +17,7 @@ export default function LazyExamCorrectionLiveReview(props: Props) {
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) setActive(true);
       },
-      { root: null, rootMargin: '280px 0px', threshold: 0.01 },
+      { root: null, rootMargin: '120px 0px', threshold: 0.01 },
     );
     io.observe(el);
     return () => io.disconnect();

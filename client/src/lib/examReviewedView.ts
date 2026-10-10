@@ -1517,6 +1517,69 @@ function fetchExamSourceHtml(filePath: string): Promise<string> {
   return pending;
 }
 
+const scopedReviewShellCache = new Map<string, string>();
+const builtReviewHtmlCache = new Map<string, Promise<string>>();
+const BUILT_REVIEW_HTML_CACHE_MAX = 120;
+
+function applyStudentReviewHeader(reviewDoc: Document, opts: ExamReviewedViewOpts): void {
+  if (opts.studentName?.trim()) {
+    const nameEl = reviewDoc.getElementById('studentName');
+    if (nameEl) nameEl.textContent = opts.studentName.trim();
+  }
+  if (opts.learningGroupName?.trim()) {
+    const classHdr = reviewDoc.querySelector('.header-class');
+    if (classHdr) {
+      const base = (classHdr.textContent || '').trim();
+      const grp = opts.learningGroupName.trim();
+      classHdr.textContent = base ? `${base} · ${grp}` : grp;
+    }
+  }
+}
+
+export function preloadExamReviewForCorrection(filePath: string): void {
+  if (!filePath?.trim()) return;
+  void fetchExamSourceHtml(filePath);
+}
+
+export function warmExamReviewTaskScope(
+  filePath: string,
+  onlyTask: string,
+  onlyFieldId?: string,
+): void {
+  if (!filePath?.trim() || !onlyTask?.trim() || typeof window === 'undefined') return;
+  const scopeKey = `${normalizeExamHtmlCacheKey(filePath)}|tc=1|${onlyTask}|${onlyFieldId || ''}`;
+  if (scopedReviewShellCache.has(scopeKey)) return;
+  void buildExamReviewedHtml({
+    filePath,
+    title: '',
+    answers: {},
+    corrections: [],
+    gradeLabel: '–',
+    totalPoints: 0,
+    maxPoints: 0,
+    teacherCorrectionMode: true,
+    onlyTaskNumber: onlyTask,
+    onlyTaskFieldId: onlyFieldId,
+  }).catch(() => undefined);
+}
+
+export async function buildExamReviewedHtmlCached(
+  cacheKey: string,
+  opts: ExamReviewedViewOpts,
+): Promise<string> {
+  if (!cacheKey) return buildExamReviewedHtml(opts);
+  const existing = builtReviewHtmlCache.get(cacheKey);
+  if (existing) return existing;
+  const pending = buildExamReviewedHtml(opts);
+  builtReviewHtmlCache.set(cacheKey, pending);
+  pending.catch(() => builtReviewHtmlCache.delete(cacheKey));
+  while (builtReviewHtmlCache.size > BUILT_REVIEW_HTML_CACHE_MAX) {
+    const oldest = builtReviewHtmlCache.keys().next().value;
+    if (oldest) builtReviewHtmlCache.delete(oldest);
+  }
+  return pending;
+}
+
 /** Baut die fertige Korrektur-HTML (nur lesen) — für Dialog/iframe, ohne Popup. */
 export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise<string> {
   const html = await fetchExamSourceHtml(opts.filePath);
@@ -1543,6 +1606,30 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       key = dollarKey;
     }
     answers = remapExamDollarSubmissionToSynthetic(answers, html);
+  }
+
+  const teacherCorrectionMode = Boolean(opts.teacherCorrectionMode);
+  const onlyTask = String(opts.onlyTaskNumber || '').trim();
+  const onlyFieldId = String(opts.onlyTaskFieldId || '').trim();
+  const scopeShellKey =
+    !usesDollarAuthoring && typeof window !== 'undefined'
+      ? `${normalizeExamHtmlCacheKey(opts.filePath)}|tc=${teacherCorrectionMode ? 1 : 0}|${onlyTask}|${onlyFieldId}`
+      : '';
+
+  const scopedShellHit = scopeShellKey ? scopedReviewShellCache.get(scopeShellKey) : undefined;
+  if (scopedShellHit) {
+    const reviewDocCached = new DOMParser().parseFromString(scopedShellHit, 'text/html');
+    applyStudentReviewHeader(reviewDocCached, opts);
+    return finishExamReviewDocument({
+      reviewDoc: reviewDocCached,
+      opts,
+      answers,
+      key,
+      teacherCorrectionMode,
+      html,
+      usesDollarAuthoring: false,
+      detachDollarBootstrap: null,
+    });
   }
 
   const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -2445,26 +2532,8 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
 
   doc.querySelectorAll('.aids-box, .header-divider').forEach((el) => el.remove());
 
-  if (opts.studentName?.trim()) {
-    const nameEl = doc.getElementById('studentName');
-    if (nameEl) nameEl.textContent = opts.studentName.trim();
-  }
-  if (opts.learningGroupName?.trim()) {
-    const classHdr = doc.querySelector('.header-class');
-    if (classHdr) {
-      const base = (classHdr.textContent || '').trim();
-      const grp = opts.learningGroupName.trim();
-      classHdr.textContent = base ? `${base} · ${grp}` : grp;
-    }
-  }
-
   doc.querySelectorAll('.footer-luck, .footer-clover').forEach((el) => el.remove());
   doc.querySelectorAll('.footer, .footer-note').forEach((el) => el.remove());
-
-  const teacherCorrectionMode = Boolean(opts.teacherCorrectionMode);
-  if (teacherCorrectionMode) {
-    doc.documentElement.classList.add('teacher-correction-mode');
-  }
 
   let reviewDoc = doc;
   let detachDollarBootstrap: (() => void) | null = null;
@@ -2494,11 +2563,52 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
   }
 
-  const onlyTask = String(opts.onlyTaskNumber || '').trim();
-  const onlyFieldId = String(opts.onlyTaskFieldId || '').trim();
   if (onlyTask) {
     applyExamCorrectionScope(reviewDoc, onlyTask, onlyFieldId || undefined);
   }
+
+  if (!usesDollarAuthoring && scopeShellKey) {
+    scopedReviewShellCache.set(scopeShellKey, reviewDoc.documentElement.outerHTML);
+  }
+  if (!usesDollarAuthoring) {
+    applyStudentReviewHeader(reviewDoc, opts);
+  }
+
+  return finishExamReviewDocument({
+    reviewDoc,
+    opts,
+    answers,
+    key,
+    teacherCorrectionMode,
+    html,
+    usesDollarAuthoring,
+    detachDollarBootstrap,
+  });
+}
+
+type FinishExamReviewCtx = {
+  reviewDoc: Document;
+  opts: ExamReviewedViewOpts;
+  answers: Record<string, unknown>;
+  key: ReturnType<typeof parseExamAnswerKey>;
+  teacherCorrectionMode: boolean;
+  html: string;
+  usesDollarAuthoring: boolean;
+  detachDollarBootstrap: (() => void) | null;
+};
+
+async function finishExamReviewDocument(ctx: FinishExamReviewCtx): Promise<string> {
+  const {
+    reviewDoc,
+    opts,
+    answers,
+    key,
+    teacherCorrectionMode,
+    usesDollarAuthoring,
+    detachDollarBootstrap,
+  } = ctx;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const onlyTask = String(opts.onlyTaskNumber || '').trim();
 
   fillAndMark(
     reviewDoc,

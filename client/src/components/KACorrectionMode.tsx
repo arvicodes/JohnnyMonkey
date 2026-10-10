@@ -77,7 +77,11 @@ import {
 } from '@mui/icons-material';
 import { teacherIdFromStorage } from '../lib/lessonExamBeacon';
 import { openExamHtmlInNewTab } from '../lib/openExamHtml';
-import { buildExamReviewedHtml } from '../lib/examReviewedView';
+import {
+  buildExamReviewedHtmlCached,
+  preloadExamReviewForCorrection,
+  warmExamReviewTaskScope,
+} from '../lib/examReviewedView';
 import { downloadCombinedExamReviewsPdf } from '../lib/examReviewPdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
@@ -424,6 +428,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
   useEffect(() => {
     loadSubmissions();
+  }, [kaFilePath]);
+
+  useEffect(() => {
+    preloadExamReviewForCorrection(kaFilePath);
   }, [kaFilePath]);
 
   useEffect(() => {
@@ -1448,7 +1456,23 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
       kaFilePath,
       submission.versionLetter ?? submissionVersionLetter(submission, kaFilePath),
     );
-    return buildExamReviewedHtml({
+    const correctionSig = submissionCorrectionSignature(
+      submission.id,
+      submission.corrections,
+      corrections,
+    );
+    const htmlCacheKey = [
+      reviewFilePath,
+      onlyTaskNumber || '',
+      onlyTaskFieldId || '',
+      submission.id,
+      submission.answers,
+      correctionSig,
+      String(maxPts),
+      classAverageLabelForGroup || '',
+      useMssGrading ? 'mss' : 'note',
+    ].join('|');
+    return buildExamReviewedHtmlCached(htmlCacheKey, {
       filePath: reviewFilePath,
       title: reviewFilePath.split('/').pop() || 'Prüfung',
       answers,
@@ -1675,6 +1699,29 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
       setByTaskSubFieldId(byTaskSubFieldIds[0]);
     }
   }, [byTaskSubFieldIds.join('|'), byTaskSubFieldId]);
+
+  useEffect(() => {
+    if (mode !== 'by-task') return;
+    const taskNum = byTaskSelectedNum || byTaskTabNumbers[0];
+    if (!taskNum) return;
+    const fields = fieldIdsForByTask(taskNum);
+    const subScopes = byTaskCorrectionUsesSubScopes(taskNum, fields);
+    const scopeField =
+      subScopes && byTaskSubFieldIds.length
+        ? byTaskSubFieldIds.includes(byTaskSubFieldId)
+          ? byTaskSubFieldId
+          : byTaskSubFieldIds[0]
+        : undefined;
+    warmExamReviewTaskScope(kaFilePath, taskNum, scopeField);
+  }, [
+    mode,
+    kaFilePath,
+    byTaskSelectedNum,
+    byTaskTabNumbers.join('|'),
+    byTaskSubFieldId,
+    byTaskSubFieldIds.join('|'),
+    fieldIdsForByTask,
+  ]);
 
   const studentsPendingReviewCompleteKey = useMemo(
     () =>
