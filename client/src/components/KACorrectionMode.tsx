@@ -123,6 +123,8 @@ import {
 import { resetExamSession } from '../lib/examSessionReset';
 import ExamFullResetConfirmDialog from './exam/ExamFullResetConfirmDialog';
 import ExamCorrectionLiveReview from './exam/ExamCorrectionLiveReview';
+import LazyExamCorrectionLiveReview from './exam/LazyExamCorrectionLiveReview';
+import { submissionCorrectionSignature } from '../lib/examCorrectionReviewKeys';
 import MakeupExamStartDialog from './exam/MakeupExamStartDialog';
 import { submissionHasFilledAnswers } from '../lib/examSubmissionAnswers';
 import { fetchLessonExamBeacon, stopLessonExam } from '../lib/lessonExamBeacon';
@@ -480,8 +482,16 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
   }, [kaFilePath]);
 
   const groupSubmissions = useMemo(() => {
-    const ids = new Set(learningGroupStudents.map((s) => s.id));
-    return submissions.filter((s) => ids.has(s.student?.id));
+    const order = learningGroupStudents.map((s) => s.id);
+    const indexById = new Map(order.map((id, i) => [id, i]));
+    return [...submissions].sort((a, b) => {
+      const ia = a.student?.id ? indexById.get(a.student.id) : undefined;
+      const ib = b.student?.id ? indexById.get(b.student.id) : undefined;
+      if (ia != null && ib != null) return ia - ib;
+      if (ia != null) return -1;
+      if (ib != null) return 1;
+      return (a.student?.name || '').localeCompare(b.student?.name || '', 'de');
+    });
   }, [submissions, learningGroupStudents]);
 
   const submissionByStudentId = useMemo(() => {
@@ -514,7 +524,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
   useEffect(() => {
     refreshGroupExamBeacon();
-    const t = window.setInterval(refreshGroupExamBeacon, 8000);
+    const t = window.setInterval(refreshGroupExamBeacon, 20000);
     return () => window.clearInterval(t);
   }, [refreshGroupExamBeacon]);
 
@@ -1829,8 +1839,13 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
   const correctionReviewRefreshKey = useMemo(() => {
     if (!selectedSubmission) return '';
-    return `${selectedSubmission.id}:${selectedSubmission.answers}:${JSON.stringify(corrections)}:${maxTotalPoints}:${useMssGrading}`;
-  }, [selectedSubmission?.id, selectedSubmission?.answers, corrections, maxTotalPoints, useMssGrading]);
+    const sig = submissionCorrectionSignature(
+      selectedSubmission.id,
+      selectedSubmission.corrections,
+      corrections,
+    );
+    return `${selectedSubmission.id}:${selectedSubmission.answers}:${sig}:${maxTotalPoints}:${useMssGrading}`;
+  }, [selectedSubmission?.id, selectedSubmission?.answers, selectedSubmission?.corrections, corrections, maxTotalPoints, useMssGrading]);
 
   const mergeSubmissionIntoState = (updated: KASubmission, studentId?: string) => {
     const student =
@@ -3843,7 +3858,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
               <strong>Nachschrift</strong> oben.
             </Alert>
           ) : (
-            <ExamCorrectionLiveReview
+            <LazyExamCorrectionLiveReview
               refreshKey={correctionReviewRefreshKey}
               buildHtml={() => buildReviewHtmlForSubmission(selectedSubmission)}
               getFieldCorrection={getFieldCorrectionForDialog}
@@ -3979,7 +3994,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                 : byTaskSubFieldIds[0]
               : undefined;
             const taskSubmissions = groupSubmissions
-              .filter((sub) => !sub.markedSick)
+              .filter(
+                (sub) =>
+                  !sub.markedSick || submissionHasFilledAnswers(sub.answers),
+              )
               .map((sub) => {
                 const answers = answersForCorrectionGrouping(sub.answers) as Record<string, unknown>;
                 const taskAnswers = taskFieldIds.map((taskId) => ({
@@ -3990,13 +4008,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                   submission: sub,
                   answers: taskAnswers,
                 };
-              })
-              .filter(
-                (item) =>
-                  item.answers.length > 0 ||
-                  (taskNum === '3' && useGeometryTask3) ||
-                  submissionHasFilledAnswers(item.submission.answers),
-              );
+              });
 
             if (taskSubmissions.length === 0) {
               return (
@@ -4027,7 +4039,13 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                       submission.student?.id || '',
                       passiveStudentIdsForGroup,
                     );
-                    const reviewKey = `${submission.id}:${taskNum}:${activeScopeFieldId || ''}:${submission.answers}:${JSON.stringify(corrections)}:${maxTotalPoints}`;
+                    const correctionSig = submissionCorrectionSignature(
+                      submission.id,
+                      submission.corrections,
+                      corrections,
+                      taskFieldIds,
+                    );
+                    const reviewKey = `${submission.id}:${taskNum}:${activeScopeFieldId || ''}:${submission.answers}:${correctionSig}:${maxTotalPoints}`;
                     return (
                       <Box
                         key={submission.id}
@@ -4064,8 +4082,15 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                               sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#9e9e9e', color: '#fff' }}
                             />
                           ) : null}
+                          {submission.markedSick ? (
+                            <Chip
+                              label="Krank"
+                              size="small"
+                              sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#fff8e1', color: '#f57f17' }}
+                            />
+                          ) : null}
                         </Box>
-                        <ExamCorrectionLiveReview
+                        <LazyExamCorrectionLiveReview
                           key={reviewKey}
                           refreshKey={reviewKey}
                           buildHtml={() =>

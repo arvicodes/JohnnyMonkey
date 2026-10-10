@@ -1434,13 +1434,34 @@ async function bootstrapDollarExamReviewHtml(preHtml: string): Promise<DollarBoo
   });
 }
 
+const examSourceHtmlCache = new Map<string, Promise<string>>();
+
+function normalizeExamHtmlCacheKey(filePath: string): string {
+  return (filePath || '').replace(/\\/g, '/').replace(/\/+$/, '').trim().toLowerCase();
+}
+
+function fetchExamSourceHtml(filePath: string): Promise<string> {
+  const key = normalizeExamHtmlCacheKey(filePath);
+  if (!key) return Promise.reject(new Error('Prüfung konnte nicht geladen werden'));
+  let pending = examSourceHtmlCache.get(key);
+  if (!pending) {
+    pending = fetch(`/api/file-system-paths/read-html?filePath=${encodeURIComponent(filePath)}`).then(
+      (res) => {
+        if (!res.ok) throw new Error('Prüfung konnte nicht geladen werden');
+        return res.text();
+      },
+    );
+    examSourceHtmlCache.set(key, pending);
+    pending.catch(() => {
+      examSourceHtmlCache.delete(key);
+    });
+  }
+  return pending;
+}
+
 /** Baut die fertige Korrektur-HTML (nur lesen) — für Dialog/iframe, ohne Popup. */
 export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise<string> {
-  const res = await fetch(
-    `/api/file-system-paths/read-html?filePath=${encodeURIComponent(opts.filePath)}`,
-  );
-  if (!res.ok) throw new Error('Prüfung konnte nicht geladen werden');
-  const html = await res.text();
+  const html = await fetchExamSourceHtml(opts.filePath);
   let key = parseExamAnswerKey(html);
 
   let answers: Record<string, unknown> = opts.answers || {};
