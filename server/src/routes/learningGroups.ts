@@ -130,6 +130,7 @@ router.get('/', async (req: Request, res: Response) => {
         displayOrder: true,
         isArchived: true,
         moderatorStudentId: true,
+        passiveStudentIds: true,
         students: {
           orderBy: { name: 'asc' },
           select: {

@@ -3291,7 +3291,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                             : allFieldsFilled
                               ? '#e8f5e9'
                               : '#fff3e0',
-                  color: !hasSubmission ? '#b71c1c' : '#1a1a1a',
+                  color: isPassive ? '#757575' : !hasSubmission ? '#b71c1c' : '#1a1a1a',
                   opacity: isPassive ? 0.48 : hasSubmission ? 1 : 0.85,
                   filter: isPassive ? 'grayscale(0.85)' : 'none',
                   border: isPassive

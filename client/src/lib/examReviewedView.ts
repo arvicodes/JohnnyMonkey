@@ -19,6 +19,7 @@ import {
   highlightStudentAnswerHtml,
   isManualExamAnswerKey,
 } from './examStudentAnswerDisplay';
+import { examHtmlUsesDollarAuthoring } from './examDollarCorrection';
 import {
   EXAM_TEACHER_COMMENT_FONT,
   injectHandwritingFontsIntoDocument,
@@ -996,11 +997,18 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   const doc = new DOMParser().parseFromString(html, 'text/html');
   injectHandwritingFontsIntoDocument(doc);
 
+  const usesDollarAuthoring = examHtmlUsesDollarAuthoring(html);
   doc
     .querySelectorAll(
-      '.exam-chrome, .exam-toolbar, .submit-section, .schema-modal, .header-buttons, script',
+      '.exam-chrome, .exam-toolbar, .submit-section, .schema-modal, .header-buttons',
     )
     .forEach((el) => el.remove());
+  if (!usesDollarAuthoring) {
+    doc.querySelectorAll('script').forEach((el) => el.remove());
+  } else {
+    doc.body?.classList.add('teacher-mode');
+    doc.querySelectorAll('.exam-dollar-live-edit').forEach((el) => el.remove());
+  }
 
   // Relative Assets auf Download-API umbiegen (iframe srcDoc hat keine Ordner-URL)
   const folder = opts.filePath.replace(/\\/g, '/').replace(/\/[^/]+$/, '');
