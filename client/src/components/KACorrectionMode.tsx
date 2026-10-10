@@ -344,6 +344,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
   const [answerKeySaving, setAnswerKeySaving] = useState(false);
   const [resetStudentOpen, setResetStudentOpen] = useState(false);
   const [resetStudentBusy, setResetStudentBusy] = useState(false);
+  const [resetStudentConfirmText, setResetStudentConfirmText] = useState('');
+  const RESET_STUDENT_CONFIRM_PHRASE = 'ZURÜCKSETZEN';
   const [recalculating, setRecalculating] = useState(false);
   const [answerEdits, setAnswerEdits] = useState<Record<string, string>>({});
   const [creatingManualSubmission, setCreatingManualSubmission] = useState(false);
@@ -1742,10 +1744,15 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
   const resetSelectedStudent = async () => {
     if (!selectedSubmission) return;
+    if (resetStudentConfirmText.trim() !== RESET_STUDENT_CONFIRM_PHRASE) {
+      alert(`Bitte „${RESET_STUDENT_CONFIRM_PHRASE}“ eingeben, um die Abgabe zu löschen.`);
+      return;
+    }
     setResetStudentBusy(true);
     try {
       await deleteSubmissionById(selectedSubmission.id);
       setResetStudentOpen(false);
+      setResetStudentConfirmText('');
       await loadSubmissions();
       selectStudentAtIndex(currentStudentIndex);
     } catch (e) {
@@ -4339,7 +4346,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
       <Dialog
         open={resetStudentOpen}
-        onClose={() => !resetStudentBusy && setResetStudentOpen(false)}
+        onClose={() => {
+          if (resetStudentBusy) return;
+          setResetStudentOpen(false);
+          setResetStudentConfirmText('');
+        }}
         maxWidth="xs"
         fullWidth
         disableEnforceFocus
@@ -4347,20 +4358,45 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
       >
         <DialogTitle>Schüler zurücksetzen?</DialogTitle>
         <DialogContent>
-          <Typography variant="body2">
+          <Typography variant="body2" sx={{ mb: 1.5 }}>
             Die Abgabe von <strong>{submissionStudentName(selectedSubmission)}</strong> wird gelöscht.
             Korrektur und Punkte dieser Person fallen weg. Nach einem Neuladen der Prüfung kann sie
             erneut bearbeitet werden, solange die Zeit noch läuft.
           </Typography>
+          <Typography variant="body2" sx={{ mb: 1, color: 'error.main', fontWeight: 600 }}>
+            Diese Aktion kann nicht rückgängig gemacht werden.
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Zur Bestätigung <strong>{RESET_STUDENT_CONFIRM_PHRASE}</strong> eingeben:
+          </Typography>
+          <TextField
+            fullWidth
+            size="small"
+            autoFocus
+            value={resetStudentConfirmText}
+            onChange={(e) => setResetStudentConfirmText(e.target.value)}
+            placeholder={RESET_STUDENT_CONFIRM_PHRASE}
+            disabled={resetStudentBusy}
+          />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setResetStudentOpen(false)} disabled={resetStudentBusy}>
+          <Button
+            onClick={() => {
+              setResetStudentOpen(false);
+              setResetStudentConfirmText('');
+            }}
+            disabled={resetStudentBusy}
+          >
             Abbrechen
           </Button>
           <Button
             color="warning"
             variant="contained"
-            disabled={resetStudentBusy || !selectedSubmission}
+            disabled={
+              resetStudentBusy ||
+              !selectedSubmission ||
+              resetStudentConfirmText.trim() !== RESET_STUDENT_CONFIRM_PHRASE
+            }
             onClick={() => void resetSelectedStudent()}
           >
             {resetStudentBusy ? 'Lösche…' : 'Ja, zurücksetzen'}

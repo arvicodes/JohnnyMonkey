@@ -5,7 +5,7 @@ import {
   sortExamAnswerFieldIds,
 } from './examAnswerKey';
 import { examAnswerScoreFraction } from './examMcPartialScore';
-import { huKiFieldAutoPoints } from './huKiMssExamScoring';
+import { huKiFieldAutoPoints, isHuKiMssExamPath } from './huKiMssExamScoring';
 import {
   essaySolutionFromDoc,
   highlightStudentAnswerHtml,
@@ -181,6 +181,34 @@ function syncMcSelectCheckboxes(doc: Document, taskId: string, rawValue: string)
   });
 }
 
+function isWfTableFieldId(taskId: string): boolean {
+  return /^a1[a-z]$/i.test(taskId);
+}
+
+function injectTaskPointsSummaries(
+  doc: Document,
+  taskAchieved: Record<string, number>,
+  taskMax: Record<string, number>,
+) {
+  doc.querySelectorAll('.task').forEach((taskEl) => {
+    const numEl = taskEl.querySelector('.task-number');
+    const match = numEl?.textContent?.match(/Aufgabe\s+(\d+)/i);
+    const n = match?.[1];
+    if (!n || taskMax[n] == null) return;
+    const achieved = taskAchieved[n] ?? 0;
+    const max = taskMax[n] ?? 0;
+    const fmt = (x: number) =>
+      (Math.round(x * 100) / 100).toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+    const existing = numEl?.querySelector('.jm-task-points-earned');
+    existing?.remove();
+    const span = doc.createElement('span');
+    span.className = 'jm-task-points-earned';
+    span.textContent = ` — ${fmt(achieved)} / ${fmt(max)} P.`;
+    span.setAttribute('title', `Erreichte Punkte Aufgabe ${n}`);
+    numEl?.appendChild(span);
+  });
+}
+
 function attachPointsBadge(
   badge: HTMLSpanElement,
   taskId: string,
@@ -218,6 +246,10 @@ function fillAndMark(
 
   const studentAnswers = answers || {};
   const fieldIds = sortExamAnswerFieldIds(Object.keys(key.answers || {}));
+  const taskAchieved: Record<string, number> = {};
+  const taskMax: Record<string, number> = {};
+  let task1RowSum = 0;
+  const huKi = isHuKiMssExamPath(examFilePath);
 
   fieldIds.forEach((taskId) => {
     const raw = studentAnswers[taskId];
@@ -266,6 +298,17 @@ function fillAndMark(
     }
     if (huKiPts != null && achieved === 0 && normAnswer(raw)) {
       isCorrect = false;
+    }
+
+    const taskNumMatch = taskId.match(/^a(\d+)/i);
+    if (taskNumMatch) {
+      const tn = taskNumMatch[1];
+      taskMax[tn] = (taskMax[tn] || 0) + maxPts;
+      if (huKi && isWfTableFieldId(taskId)) {
+        task1RowSum += achieved;
+      } else {
+        taskAchieved[tn] = (taskAchieved[tn] || 0) + achieved;
+      }
     }
 
     const byId = doc.getElementById(taskId) as HTMLInputElement | HTMLTextAreaElement | null;
@@ -354,17 +397,27 @@ function fillAndMark(
       if (taskId === 'a2a' && value) {
         applyExamSortAnswerToDoc(doc, taskId, value);
       }
-      markEl(byId);
+      const wfSelect = doc.querySelector(
+        `.exam-mc-single-select[data-answer-id="${CSS.escape(taskId)}"]`,
+      );
+      if (
+        !(byId instanceof HTMLInputElement && byId.type === 'hidden') &&
+        !wfSelect
+      ) {
+        markEl(byId);
+      }
       const mcWrap = doc.querySelector(
         `.exam-multi-select[data-answer-id="${CSS.escape(taskId)}"], .exam-mc-single-select[data-answer-id="${CSS.escape(taskId)}"]`,
       );
-      if (mcWrap) {
-        mcWrap.querySelectorAll('input[type="checkbox"]').forEach((node) => {
+      if (mcWrap || wfSelect) {
+        const wrap = (wfSelect || mcWrap) as HTMLElement;
+        wrap.querySelectorAll('input[type="checkbox"]').forEach((node) => {
           const input = node as HTMLInputElement;
           if (input.checked) markEl(input);
+          else if (value && normAnswer(input.value) === value) markEl(input);
         });
         if (!value) {
-          (mcWrap as HTMLElement).classList.add('answer-incorrect');
+          wrap.classList.add('answer-incorrect');
         }
       }
       const badge = doc.createElement('span');
@@ -382,9 +435,16 @@ function fillAndMark(
         taskId === 'a2a'
           ? doc.querySelector(`.exam-sort-drag[data-answer-id="${CSS.escape(taskId)}"]`)
           : null;
-      const anchor = sortRoot || anchorAfterField(byId);
-      attachPointsBadge(badge, taskId, teacherCorrectionMode, anchor, insertAfter);
-      insertSolutionHint(badge);
+      if (wfSelect) {
+        badge.classList.add('jm-wf-inline-points');
+        attachPointsBadge(badge, taskId, teacherCorrectionMode, wfSelect, (a, n) =>
+          a.appendChild(n),
+        );
+      } else {
+        const anchor = sortRoot || anchorAfterField(byId);
+        attachPointsBadge(badge, taskId, teacherCorrectionMode, anchor, insertAfter);
+      }
+      insertSolutionHint(wfSelect || sortRoot || byId);
       return;
     }
 
@@ -440,6 +500,10 @@ function fillAndMark(
     }
   });
 
+  if (huKi) {
+    taskAchieved['1'] = Math.max(0, task1RowSum);
+  }
+
   Object.entries(answers || {}).forEach(([fieldId, raw]) => {
     if (!fieldId.startsWith('examDollar_')) return;
     const el = doc.getElementById(fieldId) as HTMLInputElement | HTMLTextAreaElement | null;
@@ -447,6 +511,8 @@ function fillAndMark(
     persistInputValue(el, normAnswer(raw));
     el.classList.add('answer-correct');
   });
+
+  injectTaskPointsSummaries(doc, taskAchieved, taskMax);
 }
 
 function findTaskCommentAnchor(doc: Document, taskNumber: string): HTMLElement | null {
@@ -657,21 +723,44 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     html.teacher-correction-mode label.answer-incorrect input {
       accent-color: currentColor;
     }
+    html.teacher-correction-mode .exam-wf-table th:nth-child(1),
+    html.teacher-correction-mode .exam-wf-table-num {
+      width: 1.75em !important;
+      min-width: 1.75em !important;
+      padding-left: 2px !important;
+      padding-right: 2px !important;
+    }
     html.teacher-correction-mode .exam-wf-table-choices {
-      padding-left: 0 !important;
+      padding-left: 4px !important;
       text-align: left !important;
+      white-space: nowrap !important;
     }
     html.teacher-correction-mode .exam-wf-table-choices .exam-mc-wf-inline {
+      display: inline-flex !important;
       justify-content: flex-start !important;
-      gap: 2px 10px !important;
-      margin-left: -10px !important;
+      align-items: center !important;
+      gap: 4px 8px !important;
+      margin-left: 0 !important;
       flex-wrap: nowrap !important;
+      width: auto !important;
+    }
+    html.teacher-correction-mode .jm-wf-inline-points.points-badge {
+      margin-left: 2px !important;
+      vertical-align: middle;
+      flex-shrink: 0;
     }
     html.teacher-correction-mode .exam-wf-table th:nth-child(3),
     html.teacher-correction-mode .exam-wf-table th:nth-child(4) {
-      width: 3.6em !important;
+      width: auto !important;
       padding-left: 4px !important;
       padding-right: 4px !important;
+    }
+    .jm-task-points-earned {
+      margin-left: 6px;
+      font-size: 0.92em;
+      font-weight: 800;
+      color: #2e7d32;
+      white-space: nowrap;
     }
     html.teacher-correction-mode .exam-wf-table-choices .exam-mc-option {
       margin: 0 !important;
