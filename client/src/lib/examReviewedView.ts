@@ -63,12 +63,63 @@ export type ExamReviewedViewOpts = {
 };
 
 function formatPointsBadge(achieved: number, maxPts: number): string {
-  const fmt = (n: number) => {
-    const r = Math.round(n * 100) / 100;
-    if (Math.abs(r - Math.round(r)) < 1e-9) return String(Math.round(r));
-    return r.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
-  };
-  return `${fmt(achieved)}/${fmt(maxPts)}`;
+  return `${fmtExamPoints(achieved)}/${fmtExamPoints(maxPts)}`;
+}
+
+function fmtExamPoints(n: number): string {
+  const r = Math.round(n * 100) / 100;
+  if (Math.abs(r - Math.round(r)) < 1e-9) return String(Math.round(r));
+  return r.toFixed(2).replace(/\.?0+$/, '').replace('.', ',');
+}
+
+function pointsBadgeToneClass(
+  achieved: number,
+  maxPts: number,
+  isPartial: boolean,
+): string {
+  if (achieved < 0) return 'points-incorrect';
+  if (isPartial) return 'points-partial';
+  if (achieved > 0) return 'points-correct';
+  return 'points-incorrect';
+}
+
+function subsectionTitleAnchor(doc: Document, el: Element | null): Element | null {
+  const sub = el?.closest('.exam-subsection');
+  return sub?.querySelector('.exam-subsection-title') || null;
+}
+
+function createFieldPointsBadge(
+  doc: Document,
+  taskId: string,
+  achieved: number,
+  maxPts: number,
+  isPartial: boolean,
+  teacherCorrectionMode: boolean,
+  minPts = 0,
+): HTMLSpanElement {
+  const badge = doc.createElement('span');
+  if (teacherCorrectionMode) {
+    badge.className = 'jm-field-points-earned';
+    badge.setAttribute('data-jm-task-id', taskId);
+    const input = doc.createElement('input');
+    input.type = 'number';
+    input.className = 'jm-field-points-input jm-inline-points-input';
+    input.setAttribute('data-task-id', taskId);
+    input.setAttribute('data-max', String(maxPts));
+    input.min = String(minPts);
+    input.max = String(maxPts);
+    input.step = minPts < 0 ? '1' : maxPts <= 2 ? '0.5' : '0.25';
+    if (Number.isFinite(achieved)) input.value = String(achieved);
+    const suffix = doc.createElement('span');
+    suffix.className = 'jm-field-points-suffix';
+    suffix.textContent = ` / ${fmtExamPoints(maxPts)} P.`;
+    badge.appendChild(input);
+    badge.appendChild(suffix);
+    return badge;
+  }
+  badge.className = `points-badge ${pointsBadgeToneClass(achieved, maxPts, isPartial)}`;
+  badge.textContent = formatPointsBadge(achieved, maxPts);
+  return badge;
 }
 
 function escapeHtmlText(s: string): string {
@@ -163,39 +214,6 @@ function markWfTableRowTeacher(row: Element) {
   styleWfStudentChecks(row);
 }
 
-function createInlinePointsControl(
-  doc: Document,
-  taskId: string,
-  achieved: number,
-  maxPts: number,
-  minPts = 0,
-): HTMLElement {
-  const wrap = doc.createElement('div');
-  wrap.className = 'jm-inline-points-wrap';
-  const label = doc.createElement('span');
-  label.className = 'jm-essay-teacher-label';
-  label.textContent = 'Punkte:';
-  const input = doc.createElement('input');
-  input.type = 'number';
-  input.className = 'jm-inline-points-input';
-  input.setAttribute('data-task-id', taskId);
-  input.setAttribute('data-max', String(maxPts));
-  input.min = String(minPts);
-  input.max = String(maxPts);
-  input.step =
-    minPts < 0 ? '1' : maxPts <= 2 ? '0.5' : '0.25';
-  if (Number.isFinite(achieved)) {
-    input.value = String(achieved);
-  }
-  const maxHint = doc.createElement('span');
-  maxHint.className = 'jm-inline-points-max';
-  maxHint.textContent = `/ ${maxPts} P.`;
-  wrap.appendChild(label);
-  wrap.appendChild(input);
-  wrap.appendChild(maxHint);
-  return wrap;
-}
-
 function buildSortReviewPanel(
   doc: Document,
   answerId: string,
@@ -261,7 +279,6 @@ function buildSortReviewPanel(
   if (teacherCorrectionMode) {
     const colSide = doc.createElement('div');
     colSide.className = 'jm-sort-review-col jm-sort-review-side jm-correction-side-panel';
-    colSide.appendChild(createInlinePointsControl(doc, answerId, achieved, maxPts));
     const commentLabel = doc.createElement('span');
     commentLabel.className = 'jm-essay-teacher-label';
     commentLabel.textContent = 'Kommentar:';
@@ -324,7 +341,6 @@ function attachEssayTeacherCorrectionBar(
 
   const right = doc.createElement('div');
   right.className = 'jm-essay-teacher-right jm-correction-side-panel';
-  right.appendChild(createInlinePointsControl(doc, taskId, achieved, maxPts));
   const commentLabel = doc.createElement('span');
   commentLabel.className = 'jm-essay-teacher-label';
   commentLabel.textContent = 'Kommentar:';
@@ -340,6 +356,13 @@ function attachEssayTeacherCorrectionBar(
   layout.appendChild(left);
   layout.appendChild(right);
   block.appendChild(layout);
+
+  const title = subsectionTitleAnchor(doc, textarea);
+  if (title && !title.querySelector('.jm-field-points-earned')) {
+    title.appendChild(
+      createFieldPointsBadge(doc, taskId, achieved, maxPts, achieved > 0 && achieved < maxPts, true),
+    );
+  }
 }
 
 function decorateEssayStudentAnswer(
@@ -431,13 +454,15 @@ function restructureExamWfTableForTeacher(doc: Document) {
   });
 }
 
-function attachWfRowInlinePoints(
+function attachDeferredFieldPointsBadge(
   doc: Document,
   taskId: string,
   achieved: number,
   maxPts: number,
+  isPartial: boolean,
+  minPts: number,
 ) {
-  if (doc.querySelector(`.jm-inline-points-input[data-task-id="${CSS.escape(taskId)}"]`)) {
+  if (doc.querySelector(`.jm-field-points-earned[data-jm-task-id="${CSS.escape(taskId)}"]`)) {
     return;
   }
   const hidden = doc.getElementById(taskId);
@@ -446,19 +471,21 @@ function attachWfRowInlinePoints(
   const wfSelect = doc.querySelector(
     `.exam-mc-single-select[data-answer-id="${CSS.escape(taskId)}"]`,
   );
-  const control = createInlinePointsControl(doc, taskId, achieved, maxPts, -1);
+  const badge = createFieldPointsBadge(
+    doc,
+    taskId,
+    achieved,
+    maxPts,
+    isPartial,
+    true,
+    minPts,
+  );
   if (tdF) {
-    let line = tdF.querySelector('.jm-wf-row-points-line');
-    if (!line) {
-      line = doc.createElement('div');
-      line.className = 'jm-wf-row-points-line';
-      tdF.appendChild(line);
-    }
-    line.appendChild(control);
+    tdF.appendChild(badge);
     return;
   }
   if (wfSelect) {
-    wfSelect.appendChild(control);
+    wfSelect.appendChild(badge);
   }
 }
 
@@ -993,6 +1020,67 @@ function injectPerTaskTeacherComments(doc: Document, corrections: ExamReviewCorr
     if (!anchor) return;
     seen.add(tn);
     insertTaskTeacherComment(doc, anchor, text);
+  });
+}
+
+function waitForDollarExamBootstrap(win: Window): Promise<void> {
+  return new Promise((resolve) => {
+    const tick = () => {
+      if ((win as Window & { __jmExamTasksBootstrapped?: boolean }).__jmExamTasksBootstrapped) {
+        resolve();
+        return;
+      }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+}
+
+type DollarBootstrapHandle = { doc: Document; detach: () => void };
+
+/** Dollar-Aufgaben per exam-dollar-commands rendern, dann Korrektur-Markup anwenden. */
+async function bootstrapDollarExamReviewHtml(preHtml: string): Promise<DollarBootstrapHandle> {
+  return new Promise((resolve, reject) => {
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.cssText =
+      'position:fixed;left:-9999px;top:0;width:900px;height:1200px;opacity:0;pointer-events:none;border:0';
+    iframe.sandbox = 'allow-scripts allow-same-origin';
+    const timeout = window.setTimeout(() => {
+      iframe.remove();
+      reject(new Error('Prüfungsvorschau: Aufgaben konnten nicht gerendert werden (Timeout).'));
+    }, 25000);
+    const finish = (doc: Document) => {
+      window.clearTimeout(timeout);
+      resolve({
+        doc,
+        detach: () => {
+          iframe.remove();
+        },
+      });
+    };
+    const fail = (err: Error) => {
+      window.clearTimeout(timeout);
+      iframe.remove();
+      reject(err);
+    };
+    iframe.onload = () => {
+      const win = iframe.contentWindow;
+      if (!win) {
+        fail(new Error('Prüfungsvorschau: iframe nicht verfügbar'));
+        return;
+      }
+      void waitForDollarExamBootstrap(win).then(() => {
+        const doc = iframe.contentDocument;
+        if (!doc) {
+          fail(new Error('Prüfungsvorschau: Dokument nicht verfügbar'));
+          return;
+        }
+        finish(doc);
+      });
+    };
+    document.body.appendChild(iframe);
+    iframe.srcdoc = preHtml;
   });
 }
 
@@ -1689,24 +1777,36 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     doc.documentElement.classList.add('teacher-correction-mode');
   }
 
+  let reviewDoc = doc;
+  let detachDollarBootstrap: (() => void) | null = null;
+  if (usesDollarAuthoring) {
+    const answersScript = doc.createElement('script');
+    answersScript.textContent = `window.__jmExamCorrectionAnswers=${JSON.stringify(answers)};`;
+    doc.body.appendChild(answersScript);
+    const preHtml = `<!DOCTYPE html>${doc.documentElement.outerHTML}`;
+    const boot = await bootstrapDollarExamReviewHtml(preHtml);
+    reviewDoc = boot.doc;
+    detachDollarBootstrap = boot.detach;
+  }
+
   fillAndMark(
-    doc,
+    reviewDoc,
     answers,
     key,
     opts.corrections || [],
     teacherCorrectionMode,
     opts.filePath || '',
   );
-  injectPerTaskTeacherComments(doc, opts.corrections || []);
+  injectPerTaskTeacherComments(reviewDoc, opts.corrections || []);
 
   const onlyTask = String(opts.onlyTaskNumber || '').trim();
   if (onlyTask) {
-    doc.querySelectorAll('.task').forEach((taskEl) => {
+    reviewDoc.querySelectorAll('.task').forEach((taskEl) => {
       const numEl = taskEl.querySelector('.task-number');
       const match = numEl?.textContent?.match(/Aufgabe\s+(\d+)/i);
       if (match?.[1] !== onlyTask) taskEl.remove();
     });
-    doc.querySelectorAll('.instructions, .submit-section').forEach((el) => el.remove());
+    reviewDoc.querySelectorAll('.instructions, .submit-section').forEach((el) => el.remove());
   }
 
   const rawTotal = Number(opts.totalPoints) || 0;
@@ -1729,7 +1829,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     : generalComment
       ? `<div class="teacher-comment"><span class="jm-comment-label">Kommentar:</span> <span class="jm-teacher-handwriting">${escapeHtmlText(generalComment)}</span></div>`
       : '';
-  const box = doc.createElement('div');
+  const box = reviewDoc.createElement('div');
   box.className = 'jm-review-result';
   box.innerHTML = `
     ${generalCommentBlock}
@@ -1751,12 +1851,12 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     </div>
     <hr class="jm-review-rule" />
   `;
-  const paper = doc.querySelector('.exam-paper') || doc.body;
+  const paper = reviewDoc.querySelector('.exam-paper') || reviewDoc.body;
   if (!onlyTask) {
     paper.appendChild(box);
   }
 
-  doc.querySelectorAll('input, textarea, select, button').forEach((el) => {
+  reviewDoc.querySelectorAll('input, textarea, select, button').forEach((el) => {
     if (teacherCorrectionMode && el.id === 'jm-general-comment-field') return;
     if (teacherCorrectionMode && el.classList.contains('jm-essay-teacher-comment-input')) return;
     if (teacherCorrectionMode && el.classList.contains('jm-inline-points-input')) return;
@@ -1772,14 +1872,14 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   });
 
   if (teacherCorrectionMode) {
-    const generalTa = doc.getElementById('jm-general-comment-field');
+    const generalTa = reviewDoc.getElementById('jm-general-comment-field');
     if (generalTa instanceof HTMLTextAreaElement) {
       generalTa.disabled = false;
       generalTa.readOnly = false;
       generalTa.removeAttribute('disabled');
       generalTa.removeAttribute('readonly');
     }
-    doc.querySelectorAll('.jm-essay-teacher-comment-input').forEach((node) => {
+    reviewDoc.querySelectorAll('.jm-essay-teacher-comment-input').forEach((node) => {
       if (node instanceof HTMLTextAreaElement) {
         node.disabled = false;
         node.readOnly = false;
@@ -1787,7 +1887,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
         node.removeAttribute('readonly');
       }
     });
-    doc.querySelectorAll('.jm-inline-points-input').forEach((node) => {
+    reviewDoc.querySelectorAll('.jm-inline-points-input').forEach((node) => {
       if (node instanceof HTMLInputElement) {
         node.disabled = false;
         node.readOnly = false;
@@ -1795,7 +1895,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
         node.removeAttribute('readonly');
       }
     });
-    const boot = doc.createElement('script');
+    const boot = reviewDoc.createElement('script');
     boot.textContent = `(function(){
   function send(taskId){ try { parent.postMessage({ type: 'jm-exam-correction-field', taskId: taskId }, '*'); } catch(e) {} }
   document.querySelectorAll('.jm-points-badge-editable[data-jm-task-id]').forEach(function(b){
@@ -1844,14 +1944,20 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   notifyHeight();
   window.addEventListener('load', notifyHeight);
 })();`;
-    doc.body.appendChild(boot);
+    reviewDoc.body.appendChild(boot);
   }
 
-  if (!doc.documentElement.getAttribute('lang')) {
-    doc.documentElement.setAttribute('lang', 'de');
+  if (usesDollarAuthoring) {
+    reviewDoc.querySelectorAll('script').forEach((el) => el.remove());
   }
 
-  return `<!DOCTYPE html>${doc.documentElement.outerHTML}`;
+  if (!reviewDoc.documentElement.getAttribute('lang')) {
+    reviewDoc.documentElement.setAttribute('lang', 'de');
+  }
+
+  const out = `<!DOCTYPE html>${reviewDoc.documentElement.outerHTML}`;
+  detachDollarBootstrap?.();
+  return out;
 }
 
 /** @deprecated Prefer buildExamReviewedHtml + in-app Dialog (no popup). */

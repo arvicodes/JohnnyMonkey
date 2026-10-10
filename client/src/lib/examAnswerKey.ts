@@ -28,11 +28,9 @@ export function parseExamTaskPointsFromHtml(html: string): Record<string, number
   return out;
 }
 
-export function parseExamFieldPointsFromHtml(html: string): Record<string, number> {
-  const m = html.match(/<!--\s*EXAM_FIELD_POINTS\s+(\{[\s\S]*?\})\s*-->/);
-  if (!m) return {};
+function parseExamFieldPointsJson(raw: string): Record<string, number> {
   try {
-    const obj = JSON.parse(m[1]) as Record<string, unknown>;
+    const obj = JSON.parse(raw) as Record<string, unknown>;
     const out: Record<string, number> = {};
     Object.entries(obj).forEach(([k, v]) => {
       const n = Number(v);
@@ -42,6 +40,16 @@ export function parseExamFieldPointsFromHtml(html: string): Record<string, numbe
   } catch {
     return {};
   }
+}
+
+export function parseExamFieldPointsFromHtml(html: string): Record<string, number> {
+  const comment = html.match(/<!--\s*EXAM_FIELD_POINTS\s+(\{[\s\S]*?\})\s*-->/);
+  if (comment) return parseExamFieldPointsJson(comment[1]);
+  const scriptConst = html.match(
+    /(?:const|let|var)\s+EXAM_FIELD_POINTS\s*=\s*(\{[\s\S]*?\})\s*;/,
+  );
+  if (scriptConst) return parseExamFieldPointsJson(scriptConst[1]);
+  return {};
 }
 
 /** Alte eine Zeile „25.10.1881“ auf a2a_d / a2a_m / a2a_y verteilen. */
