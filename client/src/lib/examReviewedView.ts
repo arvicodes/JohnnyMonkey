@@ -5,6 +5,7 @@ import {
   sortExamAnswerFieldIds,
 } from './examAnswerKey';
 import { examAnswerScoreFraction } from './examMcPartialScore';
+import { huKiFieldAutoPoints } from './huKiMssExamScoring';
 import {
   EXAM_TEACHER_COMMENT_FONT,
   injectHandwritingFontsIntoDocument,
@@ -87,6 +88,43 @@ function persistInputValue(
   el.setAttribute('value', value);
 }
 
+function applyExamSortAnswerToDoc(doc: Document, answerId: string, rawValue: string) {
+  const root = doc.querySelector(
+    `.exam-sort-drag[data-answer-id="${CSS.escape(answerId)}"]`,
+  );
+  if (!root || !String(rawValue || '').trim()) return;
+  const steps = String(rawValue)
+    .split('|')
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const pool = root.querySelector('.exam-sort-pool');
+  const slots = root.querySelectorAll('.exam-sort-slot');
+  steps.forEach((text, i) => {
+    const slot = slots[i];
+    if (!slot) return;
+    let chip: Element | null = null;
+    if (pool) {
+      chip =
+        Array.from(pool.querySelectorAll('.exam-sort-chip')).find(
+          (c) => (c.getAttribute('data-value') || '').trim() === text,
+        ) || null;
+    }
+    if (!chip && pool) {
+      chip = doc.createElement('span');
+      chip.className = 'exam-sort-chip';
+      chip.setAttribute('data-value', text);
+      chip.textContent = text;
+      pool.appendChild(chip);
+    }
+    if (chip) slot.appendChild(chip);
+  });
+  const hidden = doc.getElementById(answerId);
+  if (hidden instanceof HTMLInputElement) {
+    hidden.value = String(rawValue);
+    hidden.setAttribute('value', String(rawValue));
+  }
+}
+
 function syncMcSelectCheckboxes(doc: Document, taskId: string, rawValue: string) {
   const wrap = doc.querySelector(
     `.exam-multi-select[data-answer-id="${CSS.escape(taskId)}"], .exam-mc-single-select[data-answer-id="${CSS.escape(taskId)}"]`,
@@ -129,6 +167,7 @@ function fillAndMark(
   key: ReturnType<typeof parseExamAnswerKey>,
   corrections: ExamReviewCorrection[],
   teacherCorrectionMode = false,
+  examFilePath = '',
 ) {
   const corrByTask: Record<string, number> = {};
   corrections.forEach((c) => {
@@ -150,10 +189,17 @@ function fillAndMark(
     const value = normAnswer(raw);
     const expected = key.answers[taskId];
     const maxPts = key.points[taskId] ?? 1;
+    const huKiPts =
+      expected !== undefined
+        ? huKiFieldAutoPoints(examFilePath, taskId, expected, raw, maxPts)
+        : null;
     const scoreFrac =
       expected !== undefined ? examAnswerScoreFraction(expected, raw) : 0;
     let isCorrect = scoreFrac >= 1 - 1e-9;
-    let achieved = maxPts * scoreFrac;
+    let achieved = huKiPts != null ? huKiPts : maxPts * scoreFrac;
+    if (huKiPts != null) {
+      isCorrect = achieved >= maxPts - 1e-9;
+    }
     if (corrByTask[taskId] != null) {
       achieved = corrByTask[taskId];
       isCorrect = achieved >= maxPts;
@@ -171,7 +217,16 @@ function fillAndMark(
       }
     }
 
-    const isPartial = achieved > 0 && achieved < maxPts - 1e-9;
+    const isPartial =
+      huKiPts != null && achieved < 0
+        ? false
+        : achieved > 0 && achieved < maxPts - 1e-9;
+    if (huKiPts != null && achieved < 0) {
+      isCorrect = false;
+    }
+    if (huKiPts != null && achieved === 0 && normAnswer(raw)) {
+      isCorrect = false;
+    }
 
     const byId = doc.getElementById(taskId) as HTMLInputElement | HTMLTextAreaElement | null;
     const radios = doc.querySelectorAll(`input[name="${CSS.escape(taskId)}"]`);
@@ -244,7 +299,13 @@ function fillAndMark(
           (byId.type === 'hidden' || byId.type === 'text')
         ) {
           syncMcSelectCheckboxes(doc, taskId, value);
+          if (taskId === 'a2a') {
+            applyExamSortAnswerToDoc(doc, taskId, value);
+          }
         }
+      }
+      if (taskId === 'a2a' && value) {
+        applyExamSortAnswerToDoc(doc, taskId, value);
       }
       markEl(byId);
       const mcWrap = doc.querySelector(
@@ -261,10 +322,20 @@ function fillAndMark(
       }
       const badge = doc.createElement('span');
       badge.className = `points-badge ${
-        isPartial ? 'points-partial' : achieved > 0 ? 'points-correct' : 'points-incorrect'
+        achieved < 0
+          ? 'points-incorrect'
+          : isPartial
+            ? 'points-partial'
+            : achieved > 0
+              ? 'points-correct'
+              : 'points-incorrect'
       }`;
       badge.textContent = formatPointsBadge(achieved, maxPts);
-      const anchor = anchorAfterField(byId);
+      const sortRoot =
+        taskId === 'a2a'
+          ? doc.querySelector(`.exam-sort-drag[data-answer-id="${CSS.escape(taskId)}"]`)
+          : null;
+      const anchor = sortRoot || anchorAfterField(byId);
       attachPointsBadge(badge, taskId, teacherCorrectionMode, anchor, insertAfter);
       insertSolutionHint(badge);
       return;
@@ -306,7 +377,13 @@ function fillAndMark(
         }
         const badge = doc.createElement('span');
         badge.className = `points-badge ${
-          isPartial ? 'points-partial' : achieved > 0 ? 'points-correct' : 'points-incorrect'
+          achieved < 0
+            ? 'points-incorrect'
+            : isPartial
+              ? 'points-partial'
+              : achieved > 0
+                ? 'points-correct'
+                : 'points-incorrect'
         }`;
         badge.textContent = formatPointsBadge(achieved, maxPts);
         attachPointsBadge(badge, taskId, teacherCorrectionMode, wrap, (a, n) => a.appendChild(n));
@@ -533,6 +610,33 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     html.teacher-correction-mode label.answer-incorrect input {
       accent-color: currentColor;
     }
+    html.teacher-correction-mode .exam-wf-table-choices {
+      padding-left: 0 !important;
+      text-align: left !important;
+    }
+    html.teacher-correction-mode .exam-wf-table-choices .exam-mc-wf-inline {
+      justify-content: flex-start !important;
+      gap: 2px 10px !important;
+      margin-left: -10px !important;
+      flex-wrap: nowrap !important;
+    }
+    html.teacher-correction-mode .exam-wf-table th:nth-child(3),
+    html.teacher-correction-mode .exam-wf-table th:nth-child(4) {
+      width: 3.6em !important;
+      padding-left: 4px !important;
+      padding-right: 4px !important;
+    }
+    html.teacher-correction-mode .exam-wf-table-choices .exam-mc-option {
+      margin: 0 !important;
+      padding: 0 2px !important;
+      font-size: 0.82em !important;
+    }
+    html.teacher-correction-mode .exam-sort-drag--steps {
+      max-width: 100% !important;
+    }
+    html.teacher-correction-mode .exam-sort-drag--steps .exam-sort-chip {
+      font-size: 12px !important;
+    }
     .jm-points-badge-editable {
       pointer-events: auto !important;
       cursor: pointer !important;
@@ -757,7 +861,14 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     doc.documentElement.classList.add('teacher-correction-mode');
   }
 
-  fillAndMark(doc, answers, key, opts.corrections || [], teacherCorrectionMode);
+  fillAndMark(
+    doc,
+    answers,
+    key,
+    opts.corrections || [],
+    teacherCorrectionMode,
+    opts.filePath || '',
+  );
   injectPerTaskTeacherComments(doc, opts.corrections || []);
 
   const rawTotal = Number(opts.totalPoints) || 0;

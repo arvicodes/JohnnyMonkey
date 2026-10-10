@@ -82,6 +82,7 @@ import {
   remapExamDollarSubmissionToSynthetic,
 } from '../lib/examDollarCorrection';
 import { examAnswerScoreFraction } from '../lib/examMcPartialScore';
+import { huKiFieldAutoPoints, isHuKiMssExamPath } from '../lib/huKiMssExamScoring';
 import {
   examGradeLabelForCorrection,
   examGradeNumericForCorrection,
@@ -1225,13 +1226,17 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
         achievedPoints += manual;
       } else {
         const correctAnswer = correctAnswers[taskId];
+        const custom =
+          correctAnswer !== undefined
+            ? huKiFieldAutoPoints(kaFilePath, taskId, correctAnswer, answer, maxPoints)
+            : null;
         const frac =
           correctAnswer !== undefined
             ? examAnswerScoreFraction(correctAnswer, answer)
             : isCorrect === true
               ? 1
               : 0;
-        const pts = maxPoints * frac;
+        const pts = custom != null ? custom : maxPoints * frac;
         if (pts > 0) autoPoints += pts;
         achievedPoints += pts;
       }
@@ -1272,7 +1277,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
           sum += coordinateAchieved + constructionPoints;
         });
       } else {
-        sum += sumTaskPoints(taskAnswers, submission).achievedPoints;
+        const r = sumTaskPoints(taskAnswers, submission);
+        sum +=
+          isHuKiMssExamPath(kaFilePath) && taskNum === '1'
+            ? Math.max(0, r.achievedPoints)
+            : r.achievedPoints;
       }
     });
     return sum;

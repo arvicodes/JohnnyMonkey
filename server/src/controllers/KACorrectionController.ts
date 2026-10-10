@@ -126,6 +126,7 @@ export class KACorrectionController {
           taskNumber: c.taskNumber,
           manualPoints: c.manualPoints,
         })),
+        submission.kaFilePath,
       );
       await prisma.kASubmission.update({
         where: { id: submissionId },
@@ -157,6 +158,7 @@ export class KACorrectionController {
           taskNumber: c.taskNumber,
           manualPoints: c.manualPoints,
         })),
+        sub.kaFilePath || kaFilePath,
       );
       await prisma.kASubmission.update({
         where: { id: sub.id },
@@ -1310,6 +1312,7 @@ export class KACorrectionController {
                   taskNumber: c.taskNumber,
                   manualPoints: c.manualPoints,
                 })),
+                sub.kaFilePath,
               );
               totalPoints = computed.totalPoints;
               autoPoints = computed.autoPoints;

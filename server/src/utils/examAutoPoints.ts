@@ -1,6 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import { examAnswerScoreFraction } from '../lib/examMcPartialScore';
+import {
+  huKiFieldAutoPoints,
+  huKiTask1FieldIds,
+  isHuKiMssExamPath,
+} from '../lib/huKiMssExamScoring';
 import { StorageManager } from './storageManager';
 
 const examHtmlBasenameCache = new Map<string, string>();
@@ -372,15 +377,45 @@ export function writeExamHtml(filePath: string, html: string): void {
   fs.writeFileSync(full, html, 'utf-8');
 }
 
-export function calculateAutoPoints(
+function fieldAutoPoints(
+  kaFilePath: string,
+  taskId: string,
   answers: Record<string, unknown>,
   key: ExamAnswerKey,
 ): number {
+  const max = key.points[taskId] || 1;
+  const custom = huKiFieldAutoPoints(
+    kaFilePath,
+    taskId,
+    key.answers[taskId],
+    answers[taskId],
+    max,
+  );
+  if (custom != null) return custom;
+  const frac = examAnswerScoreFraction(key.answers[taskId], answers[taskId]);
+  return max * frac;
+}
+
+export function calculateAutoPoints(
+  answers: Record<string, unknown>,
+  key: ExamAnswerKey,
+  kaFilePath = '',
+): number {
+  const fieldIds = Object.keys(key.answers);
+  const huKi = isHuKiMssExamPath(kaFilePath);
+  const task1Ids = huKi ? huKiTask1FieldIds(fieldIds) : [];
+  const task1Set = new Set(task1Ids);
   let total = 0;
-  for (const taskId of Object.keys(key.answers)) {
-    const max = key.points[taskId] || 1;
-    const frac = examAnswerScoreFraction(key.answers[taskId], answers[taskId]);
-    total += max * frac;
+  if (huKi && task1Ids.length) {
+    let task1 = 0;
+    task1Ids.forEach((id) => {
+      task1 += fieldAutoPoints(kaFilePath, id, answers, key);
+    });
+    total += Math.max(0, task1);
+  }
+  for (const taskId of fieldIds) {
+    if (task1Set.has(taskId)) continue;
+    total += fieldAutoPoints(kaFilePath, taskId, answers, key);
   }
   return total;
 }
@@ -392,10 +427,11 @@ export function computeSubmissionTotal(
   answersJson: string,
   key: ExamAnswerKey,
   corrections: CorrectionRow[],
+  kaFilePath = '',
 ): { autoPoints: number; totalPoints: number } {
   const rawAnswers = JSON.parse(answersJson || '{}') as Record<string, unknown>;
   const answers = expandLegacyDateAnswers(rawAnswers, Object.keys(key.answers));
-  const autoPoints = calculateAutoPoints(answers, key);
+  const autoPoints = calculateAutoPoints(answers, key, kaFilePath);
   const corrMap = new Map(corrections.map((c) => [c.taskNumber, c]));
 
   if (key.isGeometry) {
@@ -409,14 +445,30 @@ export function computeSubmissionTotal(
     return { autoPoints, totalPoints: autoPoints + manualSum };
   }
 
+  const fieldIds = Object.keys(key.answers);
+  const huKi = isHuKiMssExamPath(kaFilePath);
+  const task1Ids = huKi ? huKiTask1FieldIds(fieldIds) : [];
+  const task1Set = new Set(task1Ids);
   let totalPoints = 0;
-  for (const taskId of Object.keys(key.answers)) {
+  if (huKi && task1Ids.length) {
+    let task1 = 0;
+    task1Ids.forEach((taskId) => {
+      const corr = corrMap.get(taskId);
+      if (corr?.manualPoints != null && !Number.isNaN(corr.manualPoints)) {
+        task1 += corr.manualPoints;
+      } else {
+        task1 += fieldAutoPoints(kaFilePath, taskId, answers, key);
+      }
+    });
+    totalPoints += Math.max(0, task1);
+  }
+  for (const taskId of fieldIds) {
+    if (task1Set.has(taskId)) continue;
     const corr = corrMap.get(taskId);
     if (corr?.manualPoints != null && !Number.isNaN(corr.manualPoints)) {
       totalPoints += corr.manualPoints;
     } else {
-      const max = key.points[taskId] || 1;
-      totalPoints += max * examAnswerScoreFraction(key.answers[taskId], answers[taskId]);
+      totalPoints += fieldAutoPoints(kaFilePath, taskId, answers, key);
     }
   }
 
