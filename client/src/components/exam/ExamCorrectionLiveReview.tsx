@@ -95,6 +95,18 @@ export default function ExamCorrectionLiveReview({
         onSaveField(taskId, cur.points, String(data.value ?? ''));
         return;
       }
+      if (data?.type === 'jm-exam-correction-inline-points' && data.taskId) {
+        const taskId = String(data.taskId);
+        const cur = getFieldCorrection(taskId);
+        const raw = String(data.value ?? '').trim();
+        const pts = raw === '' ? undefined : Number(raw);
+        onSaveField(
+          taskId,
+          pts !== undefined && Number.isFinite(pts) ? pts : undefined,
+          cur.comment || '',
+        );
+        return;
+      }
       if (data?.type !== 'jm-exam-correction-field' || !data.taskId) return;
       const taskId = String(data.taskId);
       const cur = getFieldCorrection(taskId);

@@ -39,6 +39,29 @@ export function highlightStudentAnswerHtml(studentText: string, solutionText: st
   return html;
 }
 
+export function sortSolutionStepsFromDoc(doc: Document, answerId: string): string[] {
+  const el = doc.getElementById(answerId);
+  const host =
+    el?.closest('[data-exam-spec]') ||
+    doc
+      .querySelector(`.exam-sort-drag[data-answer-id="${CSS.escape(answerId)}"]`)
+      ?.closest('[data-exam-spec]');
+  if (!host) return [];
+  const raw = host.getAttribute('data-exam-spec');
+  if (!raw) return [];
+  try {
+    const spec = JSON.parse(decodeURIComponent(raw)) as { solution?: string };
+    const sol = String(spec.solution || '').split('/')[0].trim();
+    if (!sol) return [];
+    return sol
+      .split('|')
+      .map((p) => p.trim())
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 export function essaySolutionFromDoc(doc: Document, fieldId: string): string {
   const el = doc.getElementById(fieldId);
   const host = el?.closest('[data-exam-spec]');

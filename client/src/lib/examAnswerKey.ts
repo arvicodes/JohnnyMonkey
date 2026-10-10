@@ -97,6 +97,43 @@ function buildFieldPointsFromTaskPoints(
   return points;
 }
 
+/** Komma-getrennte JS-Array-Inhalte; respektiert Anführungszeichen (z. B. Kommas im Text). */
+function splitJsArrayLiteralContents(inner: string): string[] {
+  const out: string[] = [];
+  let i = 0;
+  const s = inner;
+  while (i < s.length) {
+    while (i < s.length && (s[i] === ',' || /\s/.test(s[i]))) i += 1;
+    if (i >= s.length) break;
+    const q = s[i];
+    if (q === "'" || q === '"') {
+      i += 1;
+      let val = '';
+      while (i < s.length) {
+        const ch = s[i];
+        if (ch === '\\' && i + 1 < s.length) {
+          val += s[i + 1];
+          i += 2;
+          continue;
+        }
+        if (ch === q) {
+          i += 1;
+          break;
+        }
+        val += ch;
+        i += 1;
+      }
+      if (val.trim()) out.push(val);
+    } else {
+      const start = i;
+      while (i < s.length && s[i] !== ',') i += 1;
+      const token = s.slice(start, i).trim();
+      if (token) out.push(token.replace(/^['"]|['"]$/g, ''));
+    }
+  }
+  return out;
+}
+
 function normalizeLoose(raw: unknown): string {
   if (raw === null || raw === undefined) return '';
   return String(raw)
@@ -165,10 +202,7 @@ export function parseExamAnswerKey(html: string): ExamAnswerKey {
   const arrayRe = /([a-zA-Z_]\w*)\s*:\s*\[([^\]]*)\]/g;
   let m: RegExpExecArray | null;
   while ((m = arrayRe.exec(body)) !== null) {
-    const vals = m[2]
-      .split(',')
-      .map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
-      .filter(Boolean);
+    const vals = splitJsArrayLiteralContents(m[2]);
     if (vals.length) answers[m[1]] = vals;
   }
 

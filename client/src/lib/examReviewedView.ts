@@ -14,6 +14,7 @@ import {
 } from './huKiMssExamScoring';
 import {
   essaySolutionFromDoc,
+  sortSolutionStepsFromDoc,
   highlightStudentAnswerHtml,
   isManualExamAnswerKey,
 } from './examStudentAnswerDisplay';
@@ -141,16 +142,51 @@ function applyExamSortAnswerToDoc(doc: Document, answerId: string, rawValue: str
   }
 }
 
+function createInlinePointsControl(
+  doc: Document,
+  taskId: string,
+  achieved: number,
+  maxPts: number,
+): HTMLElement {
+  const wrap = doc.createElement('div');
+  wrap.className = 'jm-inline-points-wrap';
+  const label = doc.createElement('span');
+  label.className = 'jm-essay-teacher-label';
+  label.textContent = 'Punkte:';
+  const input = doc.createElement('input');
+  input.type = 'number';
+  input.className = 'jm-inline-points-input';
+  input.setAttribute('data-task-id', taskId);
+  input.setAttribute('data-max', String(maxPts));
+  input.min = '0';
+  input.max = String(maxPts);
+  input.step = maxPts <= 2 ? '0.5' : '0.25';
+  const hasSaved = Number.isFinite(achieved);
+  if (hasSaved) input.value = String(achieved);
+  const maxHint = doc.createElement('span');
+  maxHint.className = 'jm-inline-points-max';
+  maxHint.textContent = `/ ${maxPts} P.`;
+  wrap.appendChild(label);
+  wrap.appendChild(input);
+  wrap.appendChild(maxHint);
+  return wrap;
+}
+
 function buildSortReviewPanel(
   doc: Document,
   answerId: string,
   rawValue: string,
   expected: unknown,
+  teacherCorrectionMode: boolean,
+  achieved: number,
+  maxPts: number,
+  savedComment: string,
 ): HTMLElement {
   const existing = doc.querySelector(`.jm-sort-review-panel[data-for="${CSS.escape(answerId)}"]`);
   existing?.remove();
   const studentSteps = splitSortPipe(rawValue);
-  const correctSteps = primarySortSolutionSteps(expected);
+  const fromDoc = sortSolutionStepsFromDoc(doc, answerId);
+  const correctSteps = fromDoc.length ? fromDoc : primarySortSolutionSteps(expected);
   const panel = doc.createElement('div');
   panel.className = 'jm-sort-review-panel';
   panel.setAttribute('data-for', answerId);
@@ -177,7 +213,7 @@ function buildSortReviewPanel(
 
   const correctOl = doc.createElement('ol');
   correctOl.className = 'jm-sort-review-list jm-sort-review-correct';
-  correctSteps.forEach((step) => {
+  correctSteps.forEach((step, i) => {
     const li = doc.createElement('li');
     li.textContent = step;
     correctOl.appendChild(li);
@@ -198,18 +234,34 @@ function buildSortReviewPanel(
   grid.appendChild(colStudent);
   grid.appendChild(colCorrect);
 
-  const pointsRow = doc.createElement('div');
-  pointsRow.className = 'jm-sort-points-row';
+  if (teacherCorrectionMode) {
+    const colSide = doc.createElement('div');
+    colSide.className = 'jm-sort-review-col jm-sort-review-side';
+    colSide.appendChild(createInlinePointsControl(doc, answerId, achieved, maxPts));
+    const commentLabel = doc.createElement('span');
+    commentLabel.className = 'jm-essay-teacher-label';
+    commentLabel.textContent = 'Kommentar:';
+    const commentTa = doc.createElement('textarea');
+    commentTa.className = 'jm-essay-teacher-comment-input';
+    commentTa.setAttribute('data-task-id', answerId);
+    commentTa.rows = 4;
+    commentTa.placeholder = 'Sichtbar in der Freigabe …';
+    commentTa.value = savedComment;
+    colSide.appendChild(commentLabel);
+    colSide.appendChild(commentTa);
+    grid.classList.add('jm-sort-review-grid--with-side');
+    grid.appendChild(colSide);
+  }
 
   panel.appendChild(grid);
-  panel.appendChild(pointsRow);
   return panel;
 }
 
 function attachEssayTeacherCorrectionBar(
   doc: Document,
   taskId: string,
-  badge: HTMLSpanElement,
+  achieved: number,
+  maxPts: number,
   commentText: string,
   textarea: HTMLTextAreaElement,
 ) {
@@ -218,35 +270,52 @@ function attachEssayTeacherCorrectionBar(
     textarea.closest('.item.input-group') ||
     textarea.parentElement;
   if (!block) return;
-  block.querySelector(`.jm-essay-teacher-bar[data-for="${CSS.escape(taskId)}"]`)?.remove();
+  block.querySelector(`.jm-essay-teacher-layout[data-for="${CSS.escape(taskId)}"]`)?.remove();
 
-  const bar = doc.createElement('div');
-  bar.className = 'jm-essay-teacher-bar';
-  bar.setAttribute('data-for', taskId);
+  const solution = essaySolutionFromDoc(doc, taskId);
+  const studentBox = block.querySelector(
+    `.jm-student-answer-body[data-for="${CSS.escape(taskId)}"]`,
+  );
 
-  const ptsRow = doc.createElement('div');
-  ptsRow.className = 'jm-essay-teacher-points-row';
-  const ptsLabel = doc.createElement('span');
-  ptsLabel.className = 'jm-essay-teacher-label';
-  ptsLabel.textContent = 'Punkte (klicken zum Setzen):';
-  ptsRow.appendChild(ptsLabel);
-  ptsRow.appendChild(badge);
+  const layout = doc.createElement('div');
+  layout.className = 'jm-essay-teacher-layout';
+  layout.setAttribute('data-for', taskId);
 
+  const left = doc.createElement('div');
+  left.className = 'jm-essay-teacher-left';
+  if (studentBox) left.appendChild(studentBox);
+  if (solution) {
+    const sol = doc.createElement('div');
+    sol.className = 'jm-essay-teacher-solution';
+    const solLabel = doc.createElement('div');
+    solLabel.className = 'jm-essay-teacher-solution-label';
+    solLabel.textContent = 'Musterlösung (Lehrkraft)';
+    const solBody = doc.createElement('div');
+    solBody.className = 'jm-essay-teacher-solution-body';
+    solBody.textContent = solution;
+    sol.appendChild(solLabel);
+    sol.appendChild(solBody);
+    left.appendChild(sol);
+  }
+
+  const right = doc.createElement('div');
+  right.className = 'jm-essay-teacher-right';
+  right.appendChild(createInlinePointsControl(doc, taskId, achieved, maxPts));
   const commentLabel = doc.createElement('span');
   commentLabel.className = 'jm-essay-teacher-label';
-  commentLabel.textContent = 'Kommentar zur Teilaufgabe:';
-
+  commentLabel.textContent = 'Kommentar:';
   const commentTa = doc.createElement('textarea');
   commentTa.className = 'jm-essay-teacher-comment-input';
   commentTa.setAttribute('data-task-id', taskId);
-  commentTa.rows = 3;
+  commentTa.rows = 6;
   commentTa.placeholder = 'Sichtbar in der Freigabe …';
   commentTa.value = commentText;
+  right.appendChild(commentLabel);
+  right.appendChild(commentTa);
 
-  bar.appendChild(ptsRow);
-  bar.appendChild(commentLabel);
-  bar.appendChild(commentTa);
-  block.appendChild(bar);
+  layout.appendChild(left);
+  layout.appendChild(right);
+  block.appendChild(layout);
 }
 
 function decorateEssayStudentAnswer(
@@ -557,26 +626,39 @@ function fillAndMark(
           ? doc.querySelector(`.exam-sort-drag[data-answer-id="${CSS.escape(taskId)}"]`)
           : null;
       if (taskId === 'a2a' && sortRoot) {
-        const panel = buildSortReviewPanel(doc, taskId, value, expected);
+        const panel = buildSortReviewPanel(
+          doc,
+          taskId,
+          value,
+          expected,
+          teacherCorrectionMode,
+          achieved,
+          maxPts,
+          savedTaskComment,
+        );
         sortRoot.parentElement?.insertBefore(panel, sortRoot.nextSibling);
-        const slots = sortRoot.querySelectorAll('.exam-sort-slot');
-        const correctSteps = primarySortSolutionSteps(expected);
-        const studentSteps = splitSortPipe(value);
-        slots.forEach((slot, i) => {
-          const chip = slot.querySelector('.exam-sort-chip');
-          if (!chip) return;
-          const ok =
-            correctSteps[i] &&
-            studentSteps[i] &&
-            normSortStep(correctSteps[i]) === normSortStep(studentSteps[i]);
-          chip.classList.add(ok ? 'answer-correct' : 'answer-incorrect');
-        });
-        const pointsRow = panel.querySelector('.jm-sort-points-row');
-        if (pointsRow) {
+        if (!teacherCorrectionMode) {
+          const slots = sortRoot.querySelectorAll('.exam-sort-slot');
+          const fromDoc = sortSolutionStepsFromDoc(doc, taskId);
+          const correctSteps = fromDoc.length ? fromDoc : primarySortSolutionSteps(expected);
+          const studentSteps = splitSortPipe(value);
+          slots.forEach((slot, i) => {
+            const chip = slot.querySelector('.exam-sort-chip');
+            if (!chip) return;
+            const ok =
+              correctSteps[i] &&
+              studentSteps[i] &&
+              normSortStep(correctSteps[i]) === normSortStep(studentSteps[i]);
+            chip.classList.add(ok ? 'answer-correct' : 'answer-incorrect');
+          });
+          const pointsRow = doc.createElement('div');
+          pointsRow.className = 'jm-sort-points-row';
+          panel.appendChild(pointsRow);
           attachPointsBadge(badge, taskId, teacherCorrectionMode, pointsRow, (a, n) =>
             a.appendChild(n),
           );
         }
+        return;
       } else if (wfSelect) {
         badge.classList.add('jm-wf-inline-points');
         attachPointsBadge(badge, taskId, teacherCorrectionMode, wfSelect, (a, n) =>
@@ -588,10 +670,15 @@ function fillAndMark(
         byId instanceof HTMLTextAreaElement &&
         (manualField || byId.classList.contains('exam-essay-input'))
       ) {
-        badge.setAttribute('data-jm-task-id', taskId);
-        badge.classList.add('jm-points-badge-editable');
-        badge.setAttribute('title', 'Klicken: Punkte setzen');
-        attachEssayTeacherCorrectionBar(doc, taskId, badge, savedTaskComment, byId);
+        attachEssayTeacherCorrectionBar(
+          doc,
+          taskId,
+          achieved,
+          maxPts,
+          savedTaskComment,
+          byId,
+        );
+        return;
       } else if (teacherCorrectionMode && manualField) {
         const anchor = sortRoot || anchorAfterField(byId);
         attachPointsBadge(badge, taskId, teacherCorrectionMode, anchor, insertAfter);
@@ -866,24 +953,69 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     input, textarea, select, button { pointer-events: none !important; }
     html.teacher-correction-mode #jm-general-comment-field,
     html.teacher-correction-mode .jm-general-comment-input,
-    html.teacher-correction-mode .jm-essay-teacher-comment-input {
+    html.teacher-correction-mode .jm-essay-teacher-comment-input,
+    html.teacher-correction-mode .jm-inline-points-input {
       pointer-events: auto !important;
       cursor: text !important;
     }
-    .jm-essay-teacher-bar {
+    .jm-essay-teacher-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(11rem, 14rem);
+      gap: 12px 16px;
       margin-top: 10px;
-      padding: 10px 12px;
+      align-items: start;
+    }
+    @media (max-width: 720px) {
+      .jm-essay-teacher-layout { grid-template-columns: 1fr; }
+    }
+    .jm-essay-teacher-left {
+      min-width: 0;
+    }
+    .jm-essay-teacher-right {
+      padding: 8px 10px;
       border: 1px solid #90caf9;
       border-radius: 8px;
-      background: #e3f2fd;
-      text-align: left;
+      background: #fafafa;
     }
-    .jm-essay-teacher-points-row {
+    .jm-essay-teacher-solution {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #ce93d8;
+      background: #f3e5f5;
+    }
+    .jm-essay-teacher-solution-label {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #6a1b9a;
+      margin-bottom: 4px;
+    }
+    .jm-essay-teacher-solution-body {
+      font-size: 0.88rem;
+      line-height: 1.45;
+      color: #6a1b9a !important;
+      white-space: pre-wrap;
+    }
+    .jm-inline-points-wrap {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       margin-bottom: 8px;
+    }
+    .jm-inline-points-input {
+      width: 4.2rem;
+      padding: 4px 6px;
+      font-size: 1rem;
+      font-weight: 700;
+      border: 1px solid #90caf9;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .jm-inline-points-max {
+      font-size: 0.85rem;
+      color: #546e7a;
+      font-weight: 600;
     }
     .jm-essay-teacher-label {
       display: block;
@@ -923,13 +1055,16 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
     html.teacher-correction-mode .exam-wf-table th:nth-child(1),
     html.teacher-correction-mode .exam-wf-table-num {
-      width: 1.85em !important;
-      min-width: 1.85em !important;
-      max-width: 1.85em !important;
+      width: 1.48em !important;
+      min-width: 1.48em !important;
+      max-width: 1.48em !important;
       padding: 4px 2px !important;
       font-size: 0.85em !important;
     }
+    html.teacher-correction-mode .exam-wf-table th:nth-child(2),
     html.teacher-correction-mode .exam-wf-table-text {
+      width: 40% !important;
+      max-width: 40% !important;
       padding-right: 6px !important;
       line-height: 1.35 !important;
     }
@@ -1000,6 +1135,10 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       padding: 0 2px !important;
       font-size: 0.82em !important;
     }
+    html.teacher-correction-mode .exam-subsection:has(.jm-sort-review-panel) .exam-sort-drag,
+    html.teacher-correction-mode .exam-subsection:has(.jm-sort-review-panel) .exam-sort-hint {
+      display: none !important;
+    }
     html.teacher-correction-mode .exam-sort-drag--steps {
       max-width: 100% !important;
     }
@@ -1033,8 +1172,18 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       grid-template-columns: 1fr 1fr;
       gap: 12px 16px;
     }
+    .jm-sort-review-grid.jm-sort-review-grid--with-side {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(10rem, 12rem);
+    }
     @media (max-width: 640px) {
       .jm-sort-review-grid { grid-template-columns: 1fr; }
+      .jm-sort-review-grid.jm-sort-review-grid--with-side { grid-template-columns: 1fr; }
+    }
+    .jm-sort-review-side {
+      padding: 6px 8px;
+      border: 1px solid #b0bec5;
+      border-radius: 8px;
+      background: #fafafa;
     }
     .jm-sort-review-heading {
       font-size: 0.78rem;
@@ -1048,9 +1197,19 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       font-size: 0.82rem;
       line-height: 1.45;
     }
-    .jm-sort-review-student li.answer-correct { color: #2e7d32; font-weight: 700; }
-    .jm-sort-review-student li.answer-incorrect { color: #c62828; font-weight: 700; }
-    .jm-sort-review-correct li { color: #6a1b9a; }
+    .jm-sort-review-student li {
+      color: #1565c0 !important;
+      font-weight: 600;
+      border-radius: 4px;
+      padding: 2px 4px;
+      margin-bottom: 2px;
+    }
+    .jm-sort-review-student li.answer-correct { background: #e8f5e9; }
+    .jm-sort-review-student li.answer-incorrect { background: #ffebee; }
+    .jm-sort-review-correct li {
+      color: #6a1b9a !important;
+      font-weight: 600;
+    }
     .jm-sort-points-row {
       margin-top: 8px;
       display: flex;
@@ -1364,6 +1523,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   doc.querySelectorAll('input, textarea, select, button').forEach((el) => {
     if (teacherCorrectionMode && el.id === 'jm-general-comment-field') return;
     if (teacherCorrectionMode && el.classList.contains('jm-essay-teacher-comment-input')) return;
+    if (teacherCorrectionMode && el.classList.contains('jm-inline-points-input')) return;
     if (
       teacherCorrectionMode &&
       el instanceof HTMLInputElement &&
@@ -1385,6 +1545,14 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
     doc.querySelectorAll('.jm-essay-teacher-comment-input').forEach((node) => {
       if (node instanceof HTMLTextAreaElement) {
+        node.disabled = false;
+        node.readOnly = false;
+        node.removeAttribute('disabled');
+        node.removeAttribute('readonly');
+      }
+    });
+    doc.querySelectorAll('.jm-inline-points-input').forEach((node) => {
+      if (node instanceof HTMLInputElement) {
         node.disabled = false;
         node.readOnly = false;
         node.removeAttribute('disabled');
@@ -1423,6 +1591,19 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       notifyHeight();
     });
     eta.addEventListener('input', function(){ notifyHeight(); });
+  });
+  document.querySelectorAll('.jm-inline-points-input[data-task-id]').forEach(function(inp){
+    function sendPts(){
+      try {
+        parent.postMessage({
+          type: 'jm-exam-correction-inline-points',
+          taskId: inp.getAttribute('data-task-id'),
+          value: inp.value
+        }, '*');
+      } catch(e) {}
+    }
+    inp.addEventListener('change', sendPts);
+    inp.addEventListener('blur', sendPts);
   });
   notifyHeight();
   window.addEventListener('load', notifyHeight);
