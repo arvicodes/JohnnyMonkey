@@ -1216,10 +1216,15 @@ function injectPerTaskTeacherComments(doc: Document, corrections: ExamReviewCorr
   });
 }
 
-function waitForDollarExamBootstrap(win: Window): Promise<void> {
+function waitForDollarExamBootstrap(win: Window, maxMs = 18_000): Promise<void> {
   return new Promise((resolve) => {
+    const start = performance.now();
     const tick = () => {
       if ((win as Window & { __jmExamTasksBootstrapped?: boolean }).__jmExamTasksBootstrapped) {
+        resolve();
+        return;
+      }
+      if (performance.now() - start >= maxMs) {
         resolve();
         return;
       }
@@ -1304,9 +1309,14 @@ async function bootstrapDollarExamReviewHtml(preHtml: string): Promise<DollarBoo
       'position:fixed;left:-9999px;top:0;width:900px;height:1200px;opacity:0;pointer-events:none;border:0';
     iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
     const timeout = window.setTimeout(() => {
+      const doc = iframe.contentDocument;
+      if (doc?.querySelector('.exam-paper, .task')) {
+        finish(doc);
+        return;
+      }
       iframe.remove();
       reject(new Error('Prüfungsvorschau: Aufgaben konnten nicht gerendert werden (Timeout).'));
-    }, 25000);
+    }, 45_000);
     const finish = (doc: Document) => {
       window.clearTimeout(timeout);
       resolve({
@@ -1366,7 +1376,8 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
   }
 
-  const usesDollarAuthoring = examHtmlUsesDollarAuthoring(html);
+  const usesDollarAuthoring =
+    !isHuKiMssExamPath(opts.filePath || '') && examHtmlUsesDollarAuthoring(html);
   const rawDollarAnswers = usesDollarAuthoring ? { ...answers } : null;
   if (usesDollarAuthoring) {
     const dollarKey = buildExamDollarAnswerKeyFromHtml(html);

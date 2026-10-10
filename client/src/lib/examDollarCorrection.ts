@@ -172,7 +172,7 @@ export function remapExamDollarSubmissionToSynthetic(
 }
 
 export function examHtmlUsesDollarAuthoring(html: string): boolean {
-  return /exam-dollar-source/i.test(html);
+  return /<textarea\b[^>]*\bclass=["'][^"']*exam-dollar-source\b/i.test(html);
 }
 
 export type ExamDollarSubmitFieldRow = {
