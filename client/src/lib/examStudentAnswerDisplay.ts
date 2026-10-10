@@ -76,6 +76,26 @@ export function essaySolutionFromDoc(doc: Document, fieldId: string): string {
   }
 }
 
+/** Grobe Vorschlagspunkte für manuelle Essays (Schlagwort-Abgleich mit Musterlösung). */
+export function suggestedEssayPointsFromSolution(
+  solution: string,
+  studentText: string,
+  maxPts: number,
+): number {
+  const terms = extractKeywordTerms(solution);
+  const text = String(studentText || '').trim();
+  if (!text || !terms.length || maxPts <= 0) return 0;
+  const lower = text.toLowerCase();
+  let hit = 0;
+  for (const t of terms) {
+    if (t.length >= 3 && lower.includes(t)) hit += 1;
+  }
+  const frac = hit / terms.length;
+  if (frac >= 0.55) return maxPts;
+  if (frac >= 0.28) return maxPts / 2;
+  return 0;
+}
+
 export function isManualExamAnswerKey(expected: unknown): boolean {
   const list = Array.isArray(expected) ? expected : [expected];
   return list.some((a) => String(a) === '__manual__');

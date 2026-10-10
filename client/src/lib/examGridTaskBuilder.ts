@@ -894,7 +894,7 @@ function renderSubsection(sub: GridSubsection, taskNumber: number, fieldIndex: {
       const text = allowBasicHtml(String(item.text || '').replace(/^[a-d]\)\s*/i, ''));
       const wfControls = `<div class="exam-mc-options exam-mc-wf-inline exam-mc-single-select" data-answer-id="${id}">${WAHR_FALSCH_OPTS_HTML}</div><input type="hidden" id="${id}" value="">`;
       if (sub.tableLayout) {
-        return `<tr class="exam-wf-table-row"><td class="exam-wf-table-num">${escapeHtml(numLabel)}</td><td class="exam-wf-table-text">${text}</td><td class="exam-wf-table-choices" colspan="2">${wfControls}</td></tr>`;
+        return `<tr class="exam-wf-table-row"><td class="exam-wf-table-num">${escapeHtml(numLabel)}</td><td class="exam-wf-table-text">${text}</td><td class="exam-wf-table-wahr"><label class="exam-mc-option"><input type="checkbox" value="W"> Wahr</label></td><td class="exam-wf-table-falsch"><label class="exam-mc-option"><input type="checkbox" value="F"> Falsch</label><input type="hidden" id="${id}" value=""></td></tr>`;
       }
       return renderWahrFalschInlineRow(roman, text, id);
     });
