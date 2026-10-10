@@ -1024,7 +1024,7 @@ async function bootstrapDollarExamReviewHtml(preHtml: string): Promise<DollarBoo
     iframe.setAttribute('aria-hidden', 'true');
     iframe.style.cssText =
       'position:fixed;left:-9999px;top:0;width:900px;height:1200px;opacity:0;pointer-events:none;border:0';
-    iframe.sandbox = 'allow-scripts allow-same-origin';
+    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
     const timeout = window.setTimeout(() => {
       iframe.remove();
       reject(new Error('Prüfungsvorschau: Aufgaben konnten nicht gerendert werden (Timeout).'));
