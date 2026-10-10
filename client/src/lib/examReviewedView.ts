@@ -206,6 +206,49 @@ function buildSortReviewPanel(
   return panel;
 }
 
+function attachEssayTeacherCorrectionBar(
+  doc: Document,
+  taskId: string,
+  badge: HTMLSpanElement,
+  commentText: string,
+  textarea: HTMLTextAreaElement,
+) {
+  const block =
+    textarea.closest('.exam-essay-block') ||
+    textarea.closest('.item.input-group') ||
+    textarea.parentElement;
+  if (!block) return;
+  block.querySelector(`.jm-essay-teacher-bar[data-for="${CSS.escape(taskId)}"]`)?.remove();
+
+  const bar = doc.createElement('div');
+  bar.className = 'jm-essay-teacher-bar';
+  bar.setAttribute('data-for', taskId);
+
+  const ptsRow = doc.createElement('div');
+  ptsRow.className = 'jm-essay-teacher-points-row';
+  const ptsLabel = doc.createElement('span');
+  ptsLabel.className = 'jm-essay-teacher-label';
+  ptsLabel.textContent = 'Punkte (klicken zum Setzen):';
+  ptsRow.appendChild(ptsLabel);
+  ptsRow.appendChild(badge);
+
+  const commentLabel = doc.createElement('span');
+  commentLabel.className = 'jm-essay-teacher-label';
+  commentLabel.textContent = 'Kommentar zur Teilaufgabe:';
+
+  const commentTa = doc.createElement('textarea');
+  commentTa.className = 'jm-essay-teacher-comment-input';
+  commentTa.setAttribute('data-task-id', taskId);
+  commentTa.rows = 3;
+  commentTa.placeholder = 'Sichtbar in der Freigabe …';
+  commentTa.value = commentText;
+
+  bar.appendChild(ptsRow);
+  bar.appendChild(commentLabel);
+  bar.appendChild(commentTa);
+  block.appendChild(bar);
+}
+
 function decorateEssayStudentAnswer(
   doc: Document,
   fieldId: string,
@@ -331,6 +374,8 @@ function fillAndMark(
     const expected = key.answers[taskId];
     const maxPts = key.points[taskId] ?? 1;
     const manualField = isManualExamAnswerKey(expected);
+    const savedTaskComment =
+      corrections.find((c) => c.taskNumber === taskId)?.comment?.trim() || '';
     const huKiPts =
       expected !== undefined
         ? huKiFieldAutoPoints(examFilePath, taskId, expected, raw, maxPts)
@@ -473,7 +518,8 @@ function fillAndMark(
       );
       if (
         !(byId instanceof HTMLInputElement && byId.type === 'hidden') &&
-        !wfSelect
+        !wfSelect &&
+        !(teacherCorrectionMode && byId instanceof HTMLTextAreaElement)
       ) {
         markEl(byId);
       }
@@ -502,6 +548,10 @@ function fillAndMark(
               : 'points-incorrect'
       }`;
       badge.textContent = formatPointsBadge(achieved, maxPts);
+      if (manualField && achieved <= 0 && corrByTask[taskId] == null) {
+        badge.classList.remove('points-incorrect');
+        badge.classList.add('points-partial');
+      }
       const sortRoot =
         taskId === 'a2a'
           ? doc.querySelector(`.exam-sort-drag[data-answer-id="${CSS.escape(taskId)}"]`)
@@ -533,6 +583,19 @@ function fillAndMark(
           a.appendChild(n),
         );
         insertSolutionHint(wfSelect);
+      } else if (
+        teacherCorrectionMode &&
+        byId instanceof HTMLTextAreaElement &&
+        (manualField || byId.classList.contains('exam-essay-input'))
+      ) {
+        badge.setAttribute('data-jm-task-id', taskId);
+        badge.classList.add('jm-points-badge-editable');
+        badge.setAttribute('title', 'Klicken: Punkte setzen');
+        attachEssayTeacherCorrectionBar(doc, taskId, badge, savedTaskComment, byId);
+      } else if (teacherCorrectionMode && manualField) {
+        const anchor = sortRoot || anchorAfterField(byId);
+        attachPointsBadge(badge, taskId, teacherCorrectionMode, anchor, insertAfter);
+        insertSolutionHint(sortRoot || byId);
       } else {
         const anchor = sortRoot || anchorAfterField(byId);
         attachPointsBadge(badge, taskId, teacherCorrectionMode, anchor, insertAfter);
@@ -802,9 +865,48 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
     input, textarea, select, button { pointer-events: none !important; }
     html.teacher-correction-mode #jm-general-comment-field,
-    html.teacher-correction-mode .jm-general-comment-input {
+    html.teacher-correction-mode .jm-general-comment-input,
+    html.teacher-correction-mode .jm-essay-teacher-comment-input {
       pointer-events: auto !important;
       cursor: text !important;
+    }
+    .jm-essay-teacher-bar {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid #90caf9;
+      border-radius: 8px;
+      background: #e3f2fd;
+      text-align: left;
+    }
+    .jm-essay-teacher-points-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .jm-essay-teacher-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #1565c0;
+      margin: 6px 0 4px;
+    }
+    .jm-essay-teacher-comment-input {
+      display: block;
+      width: 100%;
+      margin-top: 4px;
+      padding: 8px 10px;
+      font-family: ${EXAM_TEACHER_COMMENT_FONT};
+      font-size: 1.05rem;
+      line-height: 1.35;
+      color: #424242;
+      border: 1px solid #bdbdbd;
+      border-radius: 6px;
+      background: #fff;
+      box-sizing: border-box;
+      resize: vertical;
+      min-height: 4.5em;
     }
     html.teacher-correction-mode input[type="checkbox"],
     html.teacher-correction-mode input[type="radio"] {
@@ -1261,6 +1363,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
 
   doc.querySelectorAll('input, textarea, select, button').forEach((el) => {
     if (teacherCorrectionMode && el.id === 'jm-general-comment-field') return;
+    if (teacherCorrectionMode && el.classList.contains('jm-essay-teacher-comment-input')) return;
     if (
       teacherCorrectionMode &&
       el instanceof HTMLInputElement &&
@@ -1280,6 +1383,14 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       generalTa.removeAttribute('disabled');
       generalTa.removeAttribute('readonly');
     }
+    doc.querySelectorAll('.jm-essay-teacher-comment-input').forEach((node) => {
+      if (node instanceof HTMLTextAreaElement) {
+        node.disabled = false;
+        node.readOnly = false;
+        node.removeAttribute('disabled');
+        node.removeAttribute('readonly');
+      }
+    });
     const boot = doc.createElement('script');
     boot.textContent = `(function(){
   function send(taskId){ try { parent.postMessage({ type: 'jm-exam-correction-field', taskId: taskId }, '*'); } catch(e) {} }
@@ -1300,6 +1411,19 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     });
     ta.addEventListener('input', function(){ notifyHeight(); });
   }
+  document.querySelectorAll('.jm-essay-teacher-comment-input[data-task-id]').forEach(function(eta){
+    eta.addEventListener('blur', function(){
+      try {
+        parent.postMessage({
+          type: 'jm-exam-correction-essay-comment',
+          taskId: eta.getAttribute('data-task-id'),
+          value: eta.value
+        }, '*');
+      } catch(e) {}
+      notifyHeight();
+    });
+    eta.addEventListener('input', function(){ notifyHeight(); });
+  });
   notifyHeight();
   window.addEventListener('load', notifyHeight);
 })();`;

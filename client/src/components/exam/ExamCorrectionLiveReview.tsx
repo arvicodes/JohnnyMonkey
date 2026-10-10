@@ -89,6 +89,12 @@ export default function ExamCorrectionLiveReview({
         onSaveGeneralComment?.(String(data.value ?? ''));
         return;
       }
+      if (data?.type === 'jm-exam-correction-essay-comment' && data.taskId) {
+        const taskId = String(data.taskId);
+        const cur = getFieldCorrection(taskId);
+        onSaveField(taskId, cur.points, String(data.value ?? ''));
+        return;
+      }
       if (data?.type !== 'jm-exam-correction-field' || !data.taskId) return;
       const taskId = String(data.taskId);
       const cur = getFieldCorrection(taskId);
@@ -98,7 +104,7 @@ export default function ExamCorrectionLiveReview({
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [getFieldCorrection, onSaveGeneralComment]);
+  }, [getFieldCorrection, onSaveGeneralComment, onSaveField]);
 
   useEffect(() => {
     if (!html) return;
