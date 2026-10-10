@@ -4310,15 +4310,8 @@
       taskEl.removeAttribute('data-jm-task-shuffle');
     }
     var n = 0;
-    var taskLabel = parsed.aufgabeLabel || '1';
-    var correctionReview =
-      document.documentElement &&
-      document.documentElement.classList.contains('teacher-correction-mode');
     function idGen() {
       n += 1;
-      if (correctionReview) {
-        return 'a' + taskLabel + String.fromCharCode(96 + n);
-      }
       return 'examDollar_' + Date.now().toString(36) + '_' + n;
     }
     var html = renderBlockToHtml(parsed.body, idGen);
@@ -5644,5 +5637,6 @@
   global.jmWrapExamDollarMarkup = wrapLiveEditDollarMarkup;
 
   global.jmBootstrapExamTasksFromSource = bootstrapExamTasksFromSource;
+  global.jmApplyExamImageNaturalSizing = applyExamImageNaturalSizing;
   global.setupExamDollarAuthoring = setupExamDollarAuthoring;
 })(typeof window !== 'undefined' ? window : globalThis);

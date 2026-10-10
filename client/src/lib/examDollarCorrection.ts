@@ -174,3 +174,48 @@ export function remapExamDollarSubmissionToSynthetic(
 export function examHtmlUsesDollarAuthoring(html: string): boolean {
   return /exam-dollar-source/i.test(html);
 }
+
+export type ExamDollarSubmitFieldRow = {
+  storageKey: string;
+  syntheticId: string;
+  value: string;
+};
+
+function normDollarStoredAnswer(v: unknown): string {
+  return String(v ?? '')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .trim();
+}
+
+/** Reihenfolge wie bei collectExamAnswers() beim Abgeben (Mux → Feldnummer). */
+export function examDollarSubmitFieldsInOrder(
+  raw: Record<string, unknown>,
+  html: string,
+): ExamDollarSubmitFieldRow[] {
+  const dollarKeys = Object.keys(raw).filter((k) => k.startsWith('examDollar_'));
+  if (!dollarKeys.length) return [];
+
+  const sources = extractExamDollarSources(html);
+  const muxMap = groupSubmissionKeysByMux(dollarKeys);
+  const muxOrder = sortMuxPrefixes(muxMap);
+  const rows: ExamDollarSubmitFieldRow[] = [];
+
+  muxOrder.forEach((mux, idx) => {
+    const taskNumMatch = sources[idx]?.match(/\$Aufgabe\s+(\d+)\s*\$/i);
+    const taskNum = taskNumMatch?.[1] || String(idx + 1);
+    const fields = muxMap.get(mux) || [];
+    fields.forEach((storageKey, fi) => {
+      const letter = String.fromCharCode(97 + (fi % 26));
+      rows.push({
+        storageKey,
+        syntheticId: `a${taskNum}${letter}`,
+        value: normDollarStoredAnswer(raw[storageKey]),
+      });
+    });
+  });
+
+  return rows;
+}

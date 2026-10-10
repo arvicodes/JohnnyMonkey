@@ -21,6 +21,7 @@ import {
 } from './examStudentAnswerDisplay';
 import {
   buildExamDollarAnswerKeyFromHtml,
+  examDollarSubmitFieldsInOrder,
   examHtmlUsesDollarAuthoring,
   isPlaceholderLegacyExamKey,
   remapExamDollarSubmissionToSynthetic,
@@ -1131,6 +1132,70 @@ function waitForDollarExamBootstrap(win: Window): Promise<void> {
   });
 }
 
+function waitForDocumentImages(doc: Document): Promise<void> {
+  const imgs = Array.from(doc.querySelectorAll('img'));
+  const pending = imgs.filter((img) => !img.complete);
+  if (!pending.length) return Promise.resolve();
+  return Promise.all(
+    pending.map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          img.addEventListener('load', () => resolve(), { once: true });
+          img.addEventListener('error', () => resolve(), { once: true });
+        }),
+    ),
+  ).then(() => undefined);
+}
+
+/** Gleiche Reihenfolge wie collectExamAnswers() in der Prüfungs-HTML. */
+function collectExamAnswerInputsInDocOrder(
+  doc: Document,
+): Array<HTMLInputElement | HTMLTextAreaElement> {
+  const out: Array<HTMLInputElement | HTMLTextAreaElement> = [];
+  doc
+    .querySelectorAll('input[type="text"], textarea, input[type="number"]')
+    .forEach((node) => {
+      if (!(node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement)) return;
+      if (!node.id) return;
+      out.push(node);
+    });
+  doc.querySelectorAll('input[type="hidden"][id^="a"]').forEach((node) => {
+    if (node instanceof HTMLInputElement && node.id) out.push(node);
+  });
+  return out;
+}
+
+function applyExamDollarAnswersToRenderedDoc(
+  doc: Document,
+  rawAnswers: Record<string, unknown>,
+  examHtml: string,
+): void {
+  const rows = examDollarSubmitFieldsInOrder(rawAnswers, examHtml);
+  if (!rows.length) return;
+  const inputs = collectExamAnswerInputsInDocOrder(doc);
+  rows.forEach((row, idx) => {
+    const el = inputs[idx];
+    if (!el) return;
+    el.id = row.syntheticId;
+    persistInputValue(el, row.value);
+    el.classList.add('jm-student-input');
+  });
+  const radioNames = new Set<string>();
+  doc.querySelectorAll('input[type="radio"]').forEach((node) => {
+    if (node instanceof HTMLInputElement && node.name) radioNames.add(node.name);
+  });
+  radioNames.forEach((name) => {
+    const raw = rawAnswers[name];
+    if (raw == null) return;
+    const want = String(raw);
+    doc.querySelectorAll<HTMLInputElement>(`input[type="radio"][name="${CSS.escape(name)}"]`).forEach(
+      (radio) => {
+        radio.checked = radio.value === want;
+      },
+    );
+  });
+}
+
 type DollarBootstrapHandle = { doc: Document; detach: () => void };
 
 /** Dollar-Aufgaben per exam-dollar-commands rendern, dann Korrektur-Markup anwenden. */
@@ -1165,11 +1230,18 @@ async function bootstrapDollarExamReviewHtml(preHtml: string): Promise<DollarBoo
         fail(new Error('Prüfungsvorschau: iframe nicht verfügbar'));
         return;
       }
-      void waitForDollarExamBootstrap(win).then(() => {
+      void waitForDollarExamBootstrap(win).then(async () => {
         const doc = iframe.contentDocument;
         if (!doc) {
           fail(new Error('Prüfungsvorschau: Dokument nicht verfügbar'));
           return;
+        }
+        await waitForDocumentImages(doc);
+        const applySizing = (
+          win as Window & { jmApplyExamImageNaturalSizing?: (root: Element) => void }
+        ).jmApplyExamImageNaturalSizing;
+        if (typeof applySizing === 'function') {
+          applySizing(doc.body);
         }
         finish(doc);
       });
@@ -1198,6 +1270,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   }
 
   const usesDollarAuthoring = examHtmlUsesDollarAuthoring(html);
+  const rawDollarAnswers = usesDollarAuthoring ? { ...answers } : null;
   if (usesDollarAuthoring) {
     const dollarKey = buildExamDollarAnswerKeyFromHtml(html);
     if (
@@ -1772,9 +1845,17 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     .jm-student-input,
     html.teacher-correction-mode textarea.jm-student-input,
     html.teacher-correction-mode input.jm-student-input,
+    html.teacher-correction-mode input.exam-dollar-gap,
+    html.teacher-correction-mode textarea.exam-dollar-area,
     html.teacher-correction-mode .jm-student-answer-body {
       color: #1565c0 !important;
       -webkit-text-fill-color: #1565c0;
+      font-weight: 600;
+    }
+    html.teacher-correction-mode img.exam-dollar-img,
+    html.teacher-correction-mode .exam-paper img {
+      max-width: 100%;
+      height: auto;
     }
     .jm-student-keyword {
       color: #0d47a1 !important;
@@ -2036,13 +2117,25 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   let reviewDoc = doc;
   let detachDollarBootstrap: (() => void) | null = null;
   if (usesDollarAuthoring) {
-    const answersScript = doc.createElement('script');
-    answersScript.textContent = `window.__jmExamCorrectionAnswers=${JSON.stringify(answers)};`;
-    doc.body.appendChild(answersScript);
     const preHtml = `<!DOCTYPE html>${doc.documentElement.outerHTML}`;
     const boot = await bootstrapDollarExamReviewHtml(preHtml);
     reviewDoc = boot.doc;
     detachDollarBootstrap = boot.detach;
+    if (rawDollarAnswers) {
+      applyExamDollarAnswersToRenderedDoc(reviewDoc, rawDollarAnswers, html);
+    }
+    if (opts.studentName?.trim()) {
+      const nameEl = reviewDoc.getElementById('studentName');
+      if (nameEl) nameEl.textContent = opts.studentName.trim();
+    }
+    if (opts.learningGroupName?.trim()) {
+      const classHdr = reviewDoc.querySelector('.header-class');
+      if (classHdr) {
+        const base = (classHdr.textContent || '').trim();
+        const grp = opts.learningGroupName.trim();
+        classHdr.textContent = base ? `${base} · ${grp}` : grp;
+      }
+    }
   }
 
   fillAndMark(
