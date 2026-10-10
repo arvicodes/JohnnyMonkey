@@ -47,7 +47,14 @@ export default function ExamFullResetConfirmDialog({
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      disableEnforceFocus
+      sx={{ zIndex: (t) => t.zIndex.modal + 24 }}
+    >
       {step === 1 ? (
         <>
           <DialogTitle sx={{ pb: 1 }}>Alles zurücksetzen?</DialogTitle>

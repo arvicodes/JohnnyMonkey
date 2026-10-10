@@ -941,6 +941,23 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     selectStudentAtIndex(0);
   }, [activeGroupId]);
 
+  /** Abgaben kommen oft nach dem ersten Schüler-Sync — dann trotzdem Korrektur-Leiste zeigen. */
+  useEffect(() => {
+    const student = learningGroupStudents[currentStudentIndex];
+    if (!student) return;
+    const sub = submissionByStudentId.get(student.id);
+    if (sub) {
+      if (selectedSubmission?.id !== sub.id) {
+        setSelectedSubmission(sub);
+        void loadCorrections(sub.id);
+      }
+      return;
+    }
+    if (selectedSubmission?.student?.id === student.id) {
+      setSelectedSubmission(null);
+    }
+  }, [submissions, currentStudentIndex, learningGroupStudents, submissionByStudentId]);
+
   const toggleReviewComplete = async (submission: KASubmission) => {
     const finished = isReviewCompleteFlag(submission);
     await saveCorrection(
@@ -1597,8 +1614,28 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
   };
 
   const toggleMarkedSick = async (submission: KASubmission, markedSick: boolean) => {
-    const loginCode = localStorage.getItem('loginCode') || '';
-    if (!loginCode) return;
+    const loginCode = teacherLoginCode();
+    if (!loginCode) {
+      alert('Nicht angemeldet — bitte neu einloggen.');
+      return;
+    }
+    if (
+      !markedSick &&
+      submission.markedSick &&
+      !submissionHasFilledAnswers(submission.answers)
+    ) {
+      setSaving(true);
+      try {
+        await deleteSubmissionById(submission.id);
+        await loadSubmissions();
+        selectStudentAtIndex(currentStudentIndex);
+      } catch (e) {
+        alert(e instanceof Error ? e.message : 'Zurücksetzen fehlgeschlagen');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/ka-corrections/submissions/${submission.id}/marked-sick`, {
@@ -1651,21 +1688,30 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     }
   };
 
+  const teacherLoginCode = () =>
+    (localStorage.getItem('loginCode') || sessionStorage.getItem('loginCode') || '').trim();
+
+  const deleteSubmissionById = async (submissionId: string) => {
+    const loginCode = teacherLoginCode();
+    if (!loginCode) {
+      throw new Error('Nicht angemeldet — bitte neu einloggen.');
+    }
+    const res = await fetch(`/api/ka-corrections/submissions/${submissionId}/reset`, {
+      method: 'POST',
+      headers: { 'x-login-code': loginCode },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Zurücksetzen fehlgeschlagen');
+  };
+
   const resetSelectedStudent = async () => {
     if (!selectedSubmission) return;
-    const loginCode = localStorage.getItem('loginCode') || '';
     setResetStudentBusy(true);
     try {
-      const res = await fetch(`/api/ka-corrections/submissions/${selectedSubmission.id}/reset`, {
-        method: 'POST',
-        headers: { 'x-login-code': loginCode },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Zurücksetzen fehlgeschlagen');
-      const removedId = selectedSubmission.id;
-      setSubmissions((prev) => prev.filter((s) => s.id !== removedId));
-      setSelectedSubmission(null);
+      await deleteSubmissionById(selectedSubmission.id);
       setResetStudentOpen(false);
+      await loadSubmissions();
+      selectStudentAtIndex(currentStudentIndex);
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Zurücksetzen fehlgeschlagen');
     } finally {
@@ -3169,8 +3215,26 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                         {student?.name || 'Schüler/in'}
                       </Typography>
                       <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>
-                        keine Abgabe
+                        {placeholderSub ? 'nur Krank-Eintrag' : 'keine Abgabe'}
                       </Typography>
+                      {placeholderSub ? (
+                        <Tooltip title="Abgabe zurücksetzen">
+                          <span>
+                            <IconButton
+                              size="small"
+                              disabled={resetStudentBusy}
+                              onClick={() => {
+                                setSelectedSubmission(placeholderSub);
+                                setResetStudentOpen(true);
+                              }}
+                              tabIndex={-1}
+                              sx={{ ...kaNavIconBtnSx, color: '#ed6c02' }}
+                            >
+                              <RestartAlt sx={{ fontSize: 17 }} />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      ) : null}
                       <FormControlLabel
                         control={
                           <Switch
@@ -4087,7 +4151,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
         </Box>
       )}
 
-      <Dialog open={answerKeyOpen} onClose={() => !answerKeySaving && setAnswerKeyOpen(false)} maxWidth="md" fullWidth>
+      <Dialog
+        open={answerKeyOpen}
+        onClose={() => !answerKeySaving && setAnswerKeyOpen(false)}
+        maxWidth="md"
+        fullWidth
+        disableEnforceFocus
+        sx={{ zIndex: (t) => t.zIndex.modal + 24 }}
+      >
         <DialogTitle>Musterlösung bearbeiten</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: 1 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
@@ -4211,7 +4282,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={resetStudentOpen} onClose={() => !resetStudentBusy && setResetStudentOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog
+        open={resetStudentOpen}
+        onClose={() => !resetStudentBusy && setResetStudentOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        disableEnforceFocus
+        sx={{ zIndex: (t) => t.zIndex.modal + 24 }}
+      >
         <DialogTitle>Schüler zurücksetzen?</DialogTitle>
         <DialogContent>
           <Typography variant="body2">
@@ -4235,7 +4313,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
         </DialogActions>
       </Dialog>
 
-      <Dialog open={versionDialogOpen} onClose={() => setVersionDialogOpen(false)} maxWidth="xs" fullWidth>
+      <Dialog
+        open={versionDialogOpen}
+        onClose={() => setVersionDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        disableEnforceFocus
+        sx={{ zIndex: (t) => t.zIndex.modal + 24 }}
+      >
         <DialogTitle>Prüfungsversion ändern</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ mb: 2 }}>
