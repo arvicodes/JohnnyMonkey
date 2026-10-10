@@ -1316,12 +1316,31 @@ function collectExamAnswerInputsInDocOrder(
     .forEach((node) => {
       if (!(node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement)) return;
       if (!node.id) return;
+      if (node.classList.contains('exam-dollar-source')) return;
+      if (node instanceof HTMLTextAreaElement && node.hasAttribute('hidden')) return;
       out.push(node);
     });
-  doc.querySelectorAll('input[type="hidden"][id^="a"]').forEach((node) => {
-    if (node instanceof HTMLInputElement && node.id) out.push(node);
+  doc.querySelectorAll('input[type="hidden"]').forEach((node) => {
+    if (!(node instanceof HTMLInputElement) || !node.id) return;
+    if (!/^a\d/i.test(node.id) && !node.id.startsWith('examDollar_')) return;
+    out.push(node);
   });
   return out;
+}
+
+function applySyntheticAnswersToRenderedDoc(
+  doc: Document,
+  answers: Record<string, unknown>,
+): void {
+  const ids = sortExamAnswerFieldIds(
+    Object.keys(answers || {}).filter((k) => /^a\d[a-z]?$/i.test(k)),
+  );
+  ids.forEach((id) => {
+    const el = doc.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | null;
+    if (!el) return;
+    persistInputValue(el, normAnswer(answers[id]));
+    el.classList.add('jm-student-input');
+  });
 }
 
 function applyExamDollarAnswersToRenderedDoc(
@@ -2370,6 +2389,10 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     detachDollarBootstrap = boot.detach;
     if (rawDollarAnswers) {
       applyExamDollarAnswersToRenderedDoc(reviewDoc, rawDollarAnswers, html);
+      const dollarRows = examDollarSubmitFieldsInOrder(rawDollarAnswers, html);
+      if (!dollarRows.length) {
+        applySyntheticAnswersToRenderedDoc(reviewDoc, answers);
+      }
     }
     if (opts.studentName?.trim()) {
       const nameEl = reviewDoc.getElementById('studentName');

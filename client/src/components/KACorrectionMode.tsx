@@ -1422,7 +1422,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     onlyTaskNumber?: string,
     onlyTaskFieldId?: string,
   ): Promise<string> => {
-    const answers = answersForCorrectionGrouping(submission.answers) as Record<string, unknown>;
+    // Roh-JSON (examDollar_*): buildExamReviewedHtml mappt selbst — sonst leere Dollar-Vorschau.
+    const answers = parseAnswers(submission.answers) as Record<string, unknown>;
     const previewCorrections = correctionsForPreview(submission);
     const maxPts = calculateMaxTotalPoints();
     const totalForPreview = liveAchievedTotal(submission);
@@ -3846,7 +3847,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
         >
           <Tabs
             value={byTaskSelectedNum || byTaskTabNumbers[0] || false}
-            onChange={(_, v) => setByTaskSelectedNum(String(v))}
+            onChange={(_, v) => {
+              setByTaskSelectedNum(String(v));
+              setByTaskSubFieldId('');
+            }}
             variant="scrollable"
             scrollButtons="auto"
             sx={{
@@ -3879,7 +3883,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
           {byTaskSubFieldIds.length > 1 ? (
             <Tabs
-              value={byTaskSubFieldId || byTaskSubFieldIds[0]}
+              value={
+                byTaskSubFieldIds.includes(byTaskSubFieldId)
+                  ? byTaskSubFieldId
+                  : byTaskSubFieldIds[0]
+              }
               onChange={(_, v) => setByTaskSubFieldId(String(v))}
               variant="scrollable"
               scrollButtons="auto"
@@ -3925,10 +3933,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             const taskNum = byTaskSelectedNum || byTaskTabNumbers[0];
             if (!taskNum) return null;
             const taskFieldIds = fieldIdsForByTask(taskNum);
-            const scopeFieldId =
-              byTaskSubFieldIds.length > 1
-                ? byTaskSubFieldId || byTaskSubFieldIds[0]
-                : undefined;
+            const hasSubScopes = byTaskSubFieldIds.length > 1;
+            const activeScopeFieldId = hasSubScopes
+              ? byTaskSubFieldIds.includes(byTaskSubFieldId)
+                ? byTaskSubFieldId
+                : byTaskSubFieldIds[0]
+              : undefined;
             const taskSubmissions = groupSubmissions
               .filter((sub) => !sub.markedSick)
               .map((sub) => {
@@ -3957,28 +3967,28 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
               );
             }
 
-            const hasSubScopes = byTaskSubFieldIds.length > 1;
-            const activeScopeFieldId = hasSubScopes
-              ? byTaskSubFieldId || byTaskSubFieldIds[0]
-              : '';
             const scopeDoneId = examTaskCorrectionDoneId(
               taskNum,
-              hasSubScopes ? activeScopeFieldId : undefined,
+              hasSubScopes ? activeScopeFieldId || undefined : undefined,
             );
             const scopeDone = isExamTaskCorrectionDone(kaFilePath, scopeDoneId);
-            const scopeButtonLabel = hasSubScopes
+            const scopeButtonLabel = hasSubScopes && activeScopeFieldId
               ? fieldSubTabLabel(taskNum, activeScopeFieldId)
               : `Aufgabe ${taskNum}`;
 
             return (
               <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', py: 0.5 }}>
-                <Stack spacing={1.25} divider={<Divider flexItem />}>
+                <Stack
+                  key={`${taskNum}:${activeScopeFieldId || 'all'}`}
+                  spacing={1.25}
+                  divider={<Divider flexItem />}
+                >
                   {taskSubmissions.map(({ submission }) => {
                     const studentPassive = isPassiveStudentId(
                       submission.student?.id || '',
                       passiveStudentIdsForGroup,
                     );
-                    const reviewKey = `${submission.id}:${taskNum}:${scopeFieldId || ''}:${submission.answers}:${JSON.stringify(corrections)}:${maxTotalPoints}`;
+                    const reviewKey = `${submission.id}:${taskNum}:${activeScopeFieldId || ''}:${submission.answers}:${JSON.stringify(corrections)}:${maxTotalPoints}`;
                     return (
                       <Box
                         key={submission.id}
@@ -4017,9 +4027,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                           ) : null}
                         </Box>
                         <ExamCorrectionLiveReview
+                          key={reviewKey}
                           refreshKey={reviewKey}
                           buildHtml={() =>
-                            buildReviewHtmlForSubmission(submission, taskNum, scopeFieldId)
+                            buildReviewHtmlForSubmission(
+                              submission,
+                              taskNum,
+                              activeScopeFieldId,
+                            )
                           }
                           getFieldCorrection={(taskId) => getFieldCorrectionForSubmission(submission, taskId)}
                           onSaveField={(taskId, points, comment) => {

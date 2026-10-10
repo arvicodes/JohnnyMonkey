@@ -70,8 +70,30 @@ export default function ExamCorrectionLiveReview({
   }, []);
 
   useEffect(() => {
-    reload();
-  }, [refreshKey, reload]);
+    const seq = ++loadSeqRef.current;
+    setLoading(true);
+    setLoadError(null);
+    setHtml(null);
+    setFrameHeight(120);
+    void buildHtmlRef
+      .current()
+      .then((h) => {
+        if (seq !== loadSeqRef.current) return;
+        setHtml(h);
+      })
+      .catch((err: unknown) => {
+        if (seq !== loadSeqRef.current) return;
+        setHtml(null);
+        setLoadError(err instanceof Error ? err.message : 'Unbekannter Fehler');
+      })
+      .finally(() => {
+        if (seq !== loadSeqRef.current) return;
+        setLoading(false);
+      });
+    return () => {
+      loadSeqRef.current += 1;
+    };
+  }, [refreshKey]);
 
   useEffect(() => {
     const onMessage = (ev: MessageEvent) => {
@@ -137,13 +159,22 @@ export default function ExamCorrectionLiveReview({
 
   return (
     <Box sx={{ position: 'relative', width: '100%' }}>
-      {loading && !html ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 3 }}>
-          <CircularProgress size={32} />
+      {loading ? (
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            py: html ? 1 : 3,
+            minHeight: html ? 48 : 120,
+          }}
+        >
+          <CircularProgress size={html ? 22 : 32} />
         </Box>
       ) : null}
       {html ? (
         <iframe
+          key={refreshKey}
           ref={iframeRef}
           title="Korrekturansicht"
           srcDoc={html}
