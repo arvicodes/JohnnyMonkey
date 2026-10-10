@@ -34,11 +34,20 @@ import {
 } from '@mui/material';
 import { epoNotenToolbarOutlinedBtnSx } from './epo-noten/epoNotenUi';
 import { isPassiveStudentId, parsePassiveStudentIds } from '../lib/passiveStudents';
+import {
+  essaySolutionsFromExamHtml,
+  isManualExamAnswerKey,
+  suggestedEssayPointsFromSolution,
+} from '../lib/examStudentAnswerDisplay';
 import { isExamCorrectionDraft, setExamCorrectionDraft } from '../lib/examCorrectionDraft';
 import {
   isExamCorrectionFinished,
   setExamCorrectionFinished,
 } from '../lib/examCorrectionFinished';
+import {
+  isExamTaskCorrectionDone,
+  setExamTaskCorrectionDone,
+} from '../lib/examCorrectionTaskDone';
 import {
   isExamCorrectionReleased,
   setExamCorrectionReleased,
@@ -342,6 +351,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
   const [examDollarHtml, setExamDollarHtml] = useState('');
   const [examPoints, setExamPoints] = useState<Record<string, number>>({});
   const [examMaxPoints, setExamMaxPoints] = useState(0);
+  const [essaySolutionsByFieldId, setEssaySolutionsByFieldId] = useState<
+    Record<string, string>
+  >({});
   const [useGeometryTask3, setUseGeometryTask3] = useState(false);
   const [answerKeyOpen, setAnswerKeyOpen] = useState(false);
   const [answerKeyDraft, setAnswerKeyDraft] = useState<Record<string, string>>({});
@@ -412,6 +424,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
         const html = await res.text();
         if (cancelled) return;
         setExamDollarHtml(examHtmlUsesDollarAuthoring(html) ? html : '');
+        setEssaySolutionsByFieldId(essaySolutionsFromExamHtml(html));
         const parsed = parseExamAnswerKey(html);
         const dollarKey = examHtmlUsesDollarAuthoring(html)
           ? buildExamDollarAnswerKeyFromHtml(html)
@@ -1260,19 +1273,30 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
         achievedPoints += manual;
       } else {
         const correctAnswer = correctAnswers[taskId];
-        const custom =
-          correctAnswer !== undefined
-            ? huKiFieldAutoPoints(kaFilePath, taskId, correctAnswer, answer, maxPoints)
-            : null;
-        const frac =
-          correctAnswer !== undefined
-            ? examAnswerScoreFraction(correctAnswer, answer)
-            : isCorrect === true
-              ? 1
-              : 0;
-        const pts = custom != null ? custom : maxPoints * frac;
-        if (pts > 0) autoPoints += pts;
-        achievedPoints += pts;
+        const essaySol = essaySolutionsByFieldId[taskId];
+        if (
+          isManualExamAnswerKey(correctAnswer) &&
+          isHuKiMssExamPath(kaFilePath) &&
+          essaySol
+        ) {
+          const pts = suggestedEssayPointsFromSolution(essaySol, String(answer ?? ''), maxPoints);
+          achievedPoints += pts;
+          if (pts > 0) autoPoints += pts;
+        } else {
+          const custom =
+            correctAnswer !== undefined
+              ? huKiFieldAutoPoints(kaFilePath, taskId, correctAnswer, answer, maxPoints)
+              : null;
+          const frac =
+            correctAnswer !== undefined
+              ? examAnswerScoreFraction(correctAnswer, answer)
+              : isCorrect === true
+                ? 1
+                : 0;
+          const pts = custom != null ? custom : maxPoints * frac;
+          if (pts > 0) autoPoints += pts;
+          achievedPoints += pts;
+        }
       }
     });
 
@@ -1467,6 +1491,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
   const tasksWithRechenweg = useGeometryTask3
     ? ['3', '4', '5', '6', '7', '8', '9']
     : ['4', '5', '6', '7', '8', '9'];
+
+  const [byTaskSelectedNum, setByTaskSelectedNum] = useState('');
+
+  useEffect(() => {
+    if (!tasksWithRechenweg.includes(byTaskSelectedNum)) {
+      setByTaskSelectedNum(tasksWithRechenweg[0] ?? '');
+    }
+  }, [kaFilePath, useGeometryTask3, tasksWithRechenweg.join('|'), byTaskSelectedNum]);
 
   const gradingMaxPoints = (max: number): number =>
     isHuKiMssExamPath(kaFilePath) ? HU_KI_MSS_EXAM_MAX_POINTS : max;
@@ -3635,12 +3667,51 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
       )}
 
       {mode === 'by-task' && (
-        <Box>
-          <Typography variant="caption" sx={{ mb: 0.75, fontWeight: 600, color: '#1a1a1a', fontSize: '0.8rem', display: 'block' }}>
-            📋 Aufgabenweise Korrektur
-          </Typography>
-          
-          {tasksWithRechenweg.map(taskNum => {
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: embedded ? 0 : 360,
+            flex: embedded ? 1 : undefined,
+            maxHeight: embedded ? '100%' : undefined,
+          }}
+        >
+          <Tabs
+            value={byTaskSelectedNum || tasksWithRechenweg[0] || false}
+            onChange={(_, v) => setByTaskSelectedNum(String(v))}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{
+              minHeight: 38,
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              flexShrink: 0,
+              '& .MuiTab-root': {
+                minHeight: 38,
+                py: 0.5,
+                px: 1.25,
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                textTransform: 'none',
+              },
+            }}
+          >
+            {tasksWithRechenweg.map((n) => {
+              const done = isExamTaskCorrectionDone(kaFilePath, n);
+              return (
+                <Tab
+                  key={n}
+                  value={n}
+                  label={done ? `Aufgabe ${n} ✓` : `Aufgabe ${n}`}
+                  sx={done ? { color: '#2e7d32 !important' } : undefined}
+                />
+              );
+            })}
+          </Tabs>
+
+          {(() => {
+            const taskNum = byTaskSelectedNum || tasksWithRechenweg[0];
+            if (!taskNum) return null;
             const taskFieldIds = sortExamAnswerFieldIds(
               Object.keys(correctAnswers).filter((taskId) => {
                 const match = taskId.match(/a(\d+)/);
@@ -3663,49 +3734,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             if (taskSubmissions.length === 0) return null;
 
             return (
-              <Card key={taskNum} sx={{ mb: 1, bgcolor: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-                <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
-                  <Box display="flex" alignItems="center" gap={0.5} mb={0.75}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.8rem' }}>
-                      Aufgabe {taskNum}
-                    </Typography>
-                    <Chip
-                      label="✏️"
-                      size="small"
-                      sx={{ 
-                        bgcolor: '#fff3e0', 
-                        color: '#f57c00',
-                        fontWeight: 600,
-                        fontSize: '0.65rem',
-                        height: 20
-                      }}
-                    />
-                  </Box>
-                  
-                  <TableContainer>
-                    <Table size="small" sx={{ '& .MuiTableCell-root': { py: 0.5, px: 0.75, fontSize: '0.75rem' } }}>
-                      <TableHead>
-                        <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                          {taskNum === '3' && useGeometryTask3 ? (
-                            <>
-                              <TableCell sx={{ fontWeight: 700, width: '12%', fontSize: '0.7rem' }}>Schüler</TableCell>
-                              <TableCell sx={{ fontWeight: 700, width: '18%', fontSize: '0.7rem' }}>A3a</TableCell>
-                              <TableCell sx={{ fontWeight: 700, width: '18%', fontSize: '0.7rem' }}>A3b</TableCell>
-                              <TableCell sx={{ fontWeight: 700, width: '18%', fontSize: '0.7rem' }}>A3c</TableCell>
-                              <TableCell sx={{ fontWeight: 700, width: '18%', fontSize: '0.7rem' }}>A3d</TableCell>
-                              <TableCell sx={{ fontWeight: 700, width: '16%', fontSize: '0.7rem' }}>Kommentar</TableCell>
-                            </>
-                          ) : (
-                            <>
-                          <TableCell sx={{ fontWeight: 700, width: '20%', fontSize: '0.7rem' }}>Schüler</TableCell>
-                          <TableCell sx={{ fontWeight: 700, width: '30%', fontSize: '0.7rem' }}>Antwort</TableCell>
-                          <TableCell sx={{ fontWeight: 700, width: '15%', fontSize: '0.7rem' }}>Pkt.</TableCell>
-                          <TableCell sx={{ fontWeight: 700, width: '35%', fontSize: '0.7rem' }}>Kommentar</TableCell>
-                            </>
-                          )}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
+              <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', py: 1 }}>
+                <Stack spacing={1.25} divider={<Divider flexItem />}>
                         {taskSubmissions.map(({ submission, answers }, idx) => {
                           const studentPassive = isPassiveStudentId(
                             submission.student?.id || '',
@@ -4064,63 +4094,51 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                             };
 
                           return (
-                            <TableRow 
+                            <Card
                               key={submission.id}
-                              sx={{ 
+                              variant="outlined"
+                              sx={{
                                 opacity: studentPassive ? 0.48 : 1,
                                 filter: studentPassive ? 'grayscale(0.85)' : 'none',
-                                '&:nth-of-type(even)': { bgcolor: '#fafafa' },
-                                '&:hover': { bgcolor: '#f0f0f0' }
+                                borderColor: allFieldsFilled ? '#a5d6a7' : '#e0e0e0',
+                                bgcolor: '#fff',
                               }}
                             >
-                              <TableCell>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexWrap: 'wrap' }}>
-                                <Typography 
-                                  variant="caption" 
-                                  sx={{ 
-                                    fontWeight: 600, 
-                                    fontSize: '0.7rem',
+                              <CardContent sx={{ p: 1.25, '&:last-child': { pb: 1.25 } }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', mb: 1 }}>
+                                  <Typography
+                                    variant="subtitle2"
+                                    sx={{
+                                      fontWeight: 800,
+                                      fontSize: '0.82rem',
                                       color: studentPassive
                                         ? '#757575'
                                         : allFieldsFilled
                                           ? '#2e7d32'
                                           : someFieldsFilled
                                             ? '#f57c00'
-                                            : '#d32f2f',
-                                      bgcolor:
-                                        studentPassive || allFieldsFilled
-                                          ? 'transparent'
-                                          : someFieldsFilled
-                                            ? '#fff3e0'
-                                            : 'transparent',
-                                      px: someFieldsFilled && !studentPassive ? 0.5 : 0,
-                                      py: someFieldsFilled && !studentPassive ? 0.25 : 0,
-                                      borderRadius: someFieldsFilled && !studentPassive ? 0.5 : 0
+                                            : '#c62828',
                                     }}
                                   >
                                     {submissionStudentName(submission)}
                                   </Typography>
                                   {studentPassive ? (
-                                    <Chip label="Passiv" size="small" sx={{ height: 16, fontSize: '0.58rem', bgcolor: '#9e9e9e', color: '#fff' }} />
+                                    <Chip label="Passiv" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#9e9e9e', color: '#fff' }} />
                                   ) : null}
                                 </Box>
-                                </TableCell>
-                                <TableCell>
-                                  {renderSubtask('a')}
-                                </TableCell>
-                                <TableCell>
-                                  {renderSubtask('b')}
-                                </TableCell>
-                                <TableCell>
-                                  {renderSubtask('c')}
-                                </TableCell>
-                                <TableCell>
-                                  {renderSubtask('d')}
-                                </TableCell>
-                                <TableCell>
+                                <Grid container spacing={1}>
+                                  <Grid item xs={12} sm={6} md={3}>{renderSubtask('a')}</Grid>
+                                  <Grid item xs={12} sm={6} md={3}>{renderSubtask('b')}</Grid>
+                                  <Grid item xs={12} sm={6} md={3}>{renderSubtask('c')}</Grid>
+                                  <Grid item xs={12} sm={6} md={3}>{renderSubtask('d')}</Grid>
+                                </Grid>
+                                <Box sx={{ mt: 1 }}>
+                                  <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.35 }}>
+                                    Kommentar (gesamte Aufgabe 3)
+                                  </Typography>
                                   <TextField
                                     multiline
-                                    rows={4}
+                                    rows={3}
                                     value={task3Comment.comment ?? ''}
                                     onChange={(e) => {
                                       setCorrections(prev => ({
@@ -4135,204 +4153,247 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                                     tabIndex={idx * 5 + 5}
                                     size="small"
                                     fullWidth
-                                    placeholder="Kommentar für die gesamte Aufgabe 3..."
-                                    sx={{ 
+                                    placeholder="Kommentar …"
+                                    sx={{
                                       '& .MuiOutlinedInput-root': {
                                         bgcolor: '#e3f2fd',
                                         border: '2px solid #9c27b0',
                                         fontSize: '0.7rem',
-                                        '&:hover': {
-                                          border: '2px solid #7b1fa2'
-                                        },
-                                        '&.Mui-focused': {
-                                          border: '2px solid #7b1fa2'
-                                        }
                                       },
-                                      '& .MuiInputLabel-root': {
-                                        fontSize: '0.65rem'
-                                      }
                                     }}
                                   />
-                                </TableCell>
-                              </TableRow>
+                                </Box>
+                              </CardContent>
+                            </Card>
                             );
                           }
                           
-                          // Pro Teilaufgabe (a3a, a4b, …) eigene Punkte/Kommentare
-                          return answers.map(({ taskId, answer }, answerIdx) => {
-                            const fieldCorrectionKey = correctionStorageKey(submission.id, taskId);
-                            const savedField = submission.corrections?.find(
-                              (c) => c.taskNumber === taskId,
-                            );
-                            const fieldState =
-                              corrections[fieldCorrectionKey] !== undefined
-                                ? corrections[fieldCorrectionKey]
-                                : {
-                                    points: savedField?.manualPoints,
-                                    comment: savedField?.comment || '',
-                                  };
-                            const fieldFilled =
-                              fieldState.points !== undefined && fieldState.points !== null;
+                          const allFieldsFilledStudent = answers.every(({ taskId }) => {
+                            const k = correctionStorageKey(submission.id, taskId);
+                            const st = corrections[k];
+                            const saved = submission.corrections?.find((c) => c.taskNumber === taskId);
+                            const pts = st?.points !== undefined ? st.points : saved?.manualPoints;
+                            return pts !== undefined && pts !== null;
+                          });
 
-                            return (
-                              <TableRow
-                                key={`${submission.id}-${taskId}`}
-                                sx={{
-                                  opacity: studentPassive ? 0.48 : 1,
-                                  filter: studentPassive ? 'grayscale(0.85)' : 'none',
-                                  '&:nth-of-type(even)': { bgcolor: '#fafafa' },
-                                  '&:hover': { bgcolor: '#f0f0f0' },
-                                }}
-                              >
-                                <TableCell>
-                                  {answerIdx === 0 ? (
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexWrap: 'wrap' }}>
-                                      <Typography
-                                        variant="caption"
+                          return (
+                            <Card
+                              key={submission.id}
+                              variant="outlined"
+                              sx={{
+                                opacity: studentPassive ? 0.48 : 1,
+                                filter: studentPassive ? 'grayscale(0.85)' : 'none',
+                                borderColor: allFieldsFilledStudent ? '#a5d6a7' : '#e0e0e0',
+                                bgcolor: '#fff',
+                              }}
+                            >
+                              <CardContent sx={{ p: 1.25, '&:last-child': { pb: 1.25 } }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', mb: 1 }}>
+                                  <Typography
+                                    variant="subtitle2"
+                                    sx={{
+                                      fontWeight: 800,
+                                      fontSize: '0.82rem',
+                                      color: studentPassive
+                                        ? '#757575'
+                                        : allFieldsFilledStudent
+                                          ? '#2e7d32'
+                                          : '#c62828',
+                                    }}
+                                  >
+                                    {submissionStudentName(submission)}
+                                  </Typography>
+                                  {studentPassive ? (
+                                    <Chip label="Passiv" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#9e9e9e', color: '#fff' }} />
+                                  ) : null}
+                                </Box>
+                                <Stack spacing={1}>
+                                  {answers.map(({ taskId, answer }) => {
+                                    const fieldCorrectionKey = correctionStorageKey(submission.id, taskId);
+                                    const savedField = submission.corrections?.find(
+                                      (c) => c.taskNumber === taskId,
+                                    );
+                                    const fieldState =
+                                      corrections[fieldCorrectionKey] !== undefined
+                                        ? corrections[fieldCorrectionKey]
+                                        : {
+                                            points: savedField?.manualPoints,
+                                            comment: savedField?.comment || '',
+                                          };
+                                    const fieldFilled =
+                                      fieldState.points !== undefined && fieldState.points !== null;
+
+                                    return (
+                                      <Box
+                                        key={taskId}
                                         sx={{
-                                          fontWeight: 600,
-                                          fontSize: '0.7rem',
-                                          color: studentPassive ? '#757575' : fieldFilled ? '#2e7d32' : '#f57c00',
-                                          bgcolor:
-                                            studentPassive || fieldFilled ? 'transparent' : '#fff3e0',
-                                          px: !fieldFilled && !studentPassive ? 0.5 : 0,
-                                          py: !fieldFilled && !studentPassive ? 0.25 : 0,
-                                          borderRadius: !fieldFilled && !studentPassive ? 0.5 : 0,
+                                          p: 0.75,
+                                          borderRadius: 1,
+                                          bgcolor: '#f8f9fa',
+                                          border: '1px solid #eceff1',
                                         }}
                                       >
-                                        {submissionStudentName(submission)}
-                                      </Typography>
-                                      {studentPassive ? (
-                                        <Chip label="Passiv" size="small" sx={{ height: 16, fontSize: '0.58rem', bgcolor: '#9e9e9e', color: '#fff' }} />
-                                      ) : null}
-                                    </Box>
-                                  ) : null}
-                                </TableCell>
-                                <TableCell>
-                                  <Typography
-                                    variant="caption"
-                                    sx={{
-                                      fontWeight: 700,
-                                      color: '#1976d2',
-                                      fontSize: '0.65rem',
-                                      display: 'block',
-                                    }}
-                                  >
-                                    {formatTaskId(taskId)}
-                                  </Typography>
-                                  <Typography
-                                    variant="caption"
-                                    sx={{
-                                      fontFamily: 'monospace',
-                                      fontWeight: answer ? 500 : 400,
-                                      color: answer ? '#1a1a1a' : '#d32f2f',
-                                      fontSize: '0.7rem',
-                                      display: 'block',
-                                    }}
-                                  >
-                                    {String(answer) || '(leer)'}
-                                  </Typography>
-                                </TableCell>
-                                <TableCell>
-                                  <Box sx={{ position: 'relative', width: '70px' }}>
-                                    <TextField
-                                      type="number"
-                                      value={fieldState.points ?? ''}
-                                      onChange={(e) => {
-                                        const inputValue = e.target.value.trim().toLowerCase();
-                                        let value: number | undefined;
-                                        if (inputValue === 'x' || inputValue === '') {
-                                          value = undefined;
-                                        } else {
-                                          const numValue = parseFloat(e.target.value);
-                                          value = !isNaN(numValue) ? numValue : undefined;
-                                        }
-                                        setCorrections((prev) => ({
-                                          ...prev,
-                                          [fieldCorrectionKey]: { ...prev[fieldCorrectionKey], points: value },
-                                        }));
-                                      }}
-                                      onBlur={(e) =>
-                                        void saveCorrection(
-                                          taskId,
-                                          parsePointsInput((e.target as HTMLInputElement).value),
-                                          fieldState.comment,
-                                          submission.id,
-                                        )
-                                      }
-                                      inputProps={{ min: 0, max: 10, step: 0.25 }}
-                                      size="small"
-                                      sx={{
-                                        width: '70px',
-                                        '& .MuiOutlinedInput-root': {
-                                          bgcolor:
-                                            fieldFilled ? '#e8f5e9' : '#ffebee',
-                                          border: fieldFilled
-                                            ? '2px solid #4caf50'
-                                            : '2px solid #f44336',
-                                          fontSize: '0.7rem',
-                                          pr: fieldFilled ? 3 : 1,
-                                        },
-                                      }}
-                                    />
-                                    {fieldFilled ? (
-                                      <CheckCircle
-                                        sx={{
-                                          position: 'absolute',
-                                          right: 4,
-                                          top: '50%',
-                                          transform: 'translateY(-50%)',
-                                          fontSize: 16,
-                                          color: '#4caf50',
-                                        }}
-                                      />
-                                    ) : null}
-                                  </Box>
-                                </TableCell>
-                                <TableCell>
-                                  <TextField
-                                    multiline
-                                    rows={1}
-                                    value={fieldState.comment ?? ''}
-                                    onChange={(e) => {
-                                      setCorrections((prev) => ({
-                                        ...prev,
-                                        [fieldCorrectionKey]: {
-                                          ...prev[fieldCorrectionKey],
-                                          comment: e.target.value,
-                                        },
-                                      }));
-                                    }}
-                                    onBlur={() =>
-                                      saveCorrection(
-                                        taskId,
-                                        fieldState.points,
-                                        fieldState.comment,
-                                        submission.id,
-                                      )
-                                    }
-                                    size="small"
-                                    fullWidth
-                                    placeholder="..."
-                                    sx={{
-                                      '& .MuiOutlinedInput-root': {
-                                        bgcolor: '#fff',
-                                        fontSize: '0.7rem',
-                                      },
-                                    }}
-                                  />
-                                </TableCell>
-                              </TableRow>
-                            );
-                          });
+                                        <Typography
+                                          variant="caption"
+                                          sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.68rem' }}
+                                        >
+                                          {formatTaskId(taskId)}
+                                        </Typography>
+                                        <Typography
+                                          variant="body2"
+                                          sx={{
+                                            fontFamily: 'monospace',
+                                            fontSize: '0.78rem',
+                                            color: answer ? '#1a1a1a' : '#d32f2f',
+                                            my: 0.5,
+                                            whiteSpace: 'pre-wrap',
+                                          }}
+                                        >
+                                          {String(answer) || '(leer)'}
+                                        </Typography>
+                                        <Box
+                                          sx={{
+                                            display: 'flex',
+                                            flexWrap: 'wrap',
+                                            gap: 1,
+                                            alignItems: 'flex-start',
+                                          }}
+                                        >
+                                          <Box sx={{ position: 'relative', width: 76 }}>
+                                            <TextField
+                                              type="number"
+                                              label="Pkt."
+                                              value={fieldState.points ?? ''}
+                                              onChange={(e) => {
+                                                const inputValue = e.target.value.trim().toLowerCase();
+                                                let value: number | undefined;
+                                                if (inputValue === 'x' || inputValue === '') {
+                                                  value = undefined;
+                                                } else {
+                                                  const numValue = parseFloat(e.target.value);
+                                                  value = !isNaN(numValue) ? numValue : undefined;
+                                                }
+                                                setCorrections((prev) => ({
+                                                  ...prev,
+                                                  [fieldCorrectionKey]: { ...prev[fieldCorrectionKey], points: value },
+                                                }));
+                                              }}
+                                              onBlur={(e) =>
+                                                void saveCorrection(
+                                                  taskId,
+                                                  parsePointsInput((e.target as HTMLInputElement).value),
+                                                  fieldState.comment,
+                                                  submission.id,
+                                                )
+                                              }
+                                              inputProps={{ min: 0, max: 10, step: 0.25 }}
+                                              size="small"
+                                              sx={{
+                                                width: 76,
+                                                '& .MuiOutlinedInput-root': {
+                                                  bgcolor: fieldFilled ? '#e8f5e9' : '#ffebee',
+                                                  fontSize: '0.75rem',
+                                                },
+                                                '& .MuiInputLabel-root': { fontSize: '0.65rem' },
+                                              }}
+                                            />
+                                            {fieldFilled ? (
+                                              <CheckCircle
+                                                sx={{
+                                                  position: 'absolute',
+                                                  right: 4,
+                                                  top: 22,
+                                                  fontSize: 16,
+                                                  color: '#4caf50',
+                                                }}
+                                              />
+                                            ) : null}
+                                          </Box>
+                                          <TextField
+                                            multiline
+                                            minRows={2}
+                                            label="Kommentar"
+                                            value={fieldState.comment ?? ''}
+                                            onChange={(e) => {
+                                              setCorrections((prev) => ({
+                                                ...prev,
+                                                [fieldCorrectionKey]: {
+                                                  ...prev[fieldCorrectionKey],
+                                                  comment: e.target.value,
+                                                },
+                                              }));
+                                            }}
+                                            onBlur={() =>
+                                              saveCorrection(
+                                                taskId,
+                                                fieldState.points,
+                                                fieldState.comment,
+                                                submission.id,
+                                              )
+                                            }
+                                            size="small"
+                                            sx={{
+                                              flex: '1 1 160px',
+                                              minWidth: 140,
+                                              '& .MuiOutlinedInput-root': { fontSize: '0.75rem' },
+                                              '& .MuiInputLabel-root': { fontSize: '0.65rem' },
+                                            }}
+                                          />
+                                        </Box>
+                                      </Box>
+                                    );
+                                  })}
+                                </Stack>
+                              </CardContent>
+                            </Card>
+                          );
                         })}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </CardContent>
-              </Card>
+                </Stack>
+              </Box>
             );
-          })}
+          })()}
+
+          <Paper
+            elevation={2}
+            sx={{
+              flexShrink: 0,
+              p: 1,
+              mt: 0.5,
+              borderTop: '1px solid',
+              borderColor: 'divider',
+              bgcolor: '#fafafa',
+            }}
+          >
+            <Button
+              fullWidth
+              variant="contained"
+              color={
+                isExamTaskCorrectionDone(
+                  kaFilePath,
+                  byTaskSelectedNum || tasksWithRechenweg[0] || '',
+                )
+                  ? 'success'
+                  : 'primary'
+              }
+              sx={{ fontWeight: 800, py: 1.1, textTransform: 'none', fontSize: '0.85rem' }}
+              onClick={() => {
+                const n = byTaskSelectedNum || tasksWithRechenweg[0];
+                if (!n) return;
+                setExamTaskCorrectionDone(kaFilePath, n, true);
+                const idx = tasksWithRechenweg.indexOf(n);
+                if (idx >= 0 && idx < tasksWithRechenweg.length - 1) {
+                  setByTaskSelectedNum(tasksWithRechenweg[idx + 1]);
+                }
+              }}
+            >
+              {isExamTaskCorrectionDone(
+                kaFilePath,
+                byTaskSelectedNum || tasksWithRechenweg[0] || '',
+              )
+                ? `✓ Aufgabe ${byTaskSelectedNum || tasksWithRechenweg[0]} fertig korrigiert`
+                : `Aufgabe ${byTaskSelectedNum || tasksWithRechenweg[0]} fertig korrigiert`}
+            </Button>
+          </Paper>
         </Box>
       )}
 

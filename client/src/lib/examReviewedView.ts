@@ -143,11 +143,24 @@ function applyExamSortAnswerToDoc(doc: Document, answerId: string, rawValue: str
   }
 }
 
+function styleWfStudentChecks(container: Element) {
+  container.querySelectorAll('input[type="checkbox"]:checked').forEach((node) => {
+    const input = node as HTMLInputElement;
+    input.classList.add('jm-student-wf-check');
+    input.closest('label')?.classList.add('jm-student-wf-choice');
+  });
+}
+
+function markWfTableRowTeacher(row: Element) {
+  styleWfStudentChecks(row);
+}
+
 function createInlinePointsControl(
   doc: Document,
   taskId: string,
   achieved: number,
   maxPts: number,
+  minPts = 0,
 ): HTMLElement {
   const wrap = doc.createElement('div');
   wrap.className = 'jm-inline-points-wrap';
@@ -159,9 +172,10 @@ function createInlinePointsControl(
   input.className = 'jm-inline-points-input';
   input.setAttribute('data-task-id', taskId);
   input.setAttribute('data-max', String(maxPts));
-  input.min = '0';
+  input.min = String(minPts);
   input.max = String(maxPts);
-  input.step = maxPts <= 2 ? '0.5' : '0.25';
+  input.step =
+    minPts < 0 ? '1' : maxPts <= 2 ? '0.5' : '0.25';
   const hasSaved = Number.isFinite(achieved);
   if (hasSaved) input.value = String(achieved);
   const maxHint = doc.createElement('span');
@@ -509,6 +523,10 @@ function fillAndMark(
   let task1RowSum = 0;
   const huKi = isHuKiMssExamPath(examFilePath);
   const wfInlinePoints: Record<string, { achieved: number; maxPts: number }> = {};
+  const teacherInlinePoints: Record<
+    string,
+    { achieved: number; maxPts: number; minPts: number }
+  > = {};
 
   fieldIds.forEach((taskId) => {
     const raw = studentAnswers[taskId];
@@ -683,16 +701,24 @@ function fillAndMark(
       );
       if (mcWrap || wfSelect) {
         const wrap = (wfSelect || mcWrap) as HTMLElement;
-        wrap.querySelectorAll('input[type="checkbox"]').forEach((node) => {
-          const input = node as HTMLInputElement;
-          if (input.checked) markEl(input);
-          else if (value && normAnswer(input.value) === value) markEl(input);
-        });
-        if (!value) {
-          wrap.classList.add('answer-incorrect');
+        if (teacherCorrectionMode && wfSelect) {
+          styleWfStudentChecks(wrap);
+        } else {
+          wrap.querySelectorAll('input[type="checkbox"]').forEach((node) => {
+            const input = node as HTMLInputElement;
+            if (input.checked) markEl(input);
+            else if (value && normAnswer(input.value) === value) markEl(input);
+          });
+          if (!value) {
+            wrap.classList.add('answer-incorrect');
+          }
         }
       } else if (wfRow) {
-        markWfTableRow(wfRow, value, markEl);
+        if (teacherCorrectionMode) {
+          markWfTableRowTeacher(wfRow);
+        } else {
+          markWfTableRow(wfRow, value, markEl);
+        }
       }
       const badge = doc.createElement('span');
       badge.className = `points-badge ${
@@ -763,6 +789,18 @@ function fillAndMark(
           );
         }
         if (wfHintAnchor) insertSolutionHint(wfHintAnchor);
+      } else if (
+        teacherCorrectionMode &&
+        huKiPts != null &&
+        !wfSelect &&
+        !wfRow &&
+        !(byId instanceof HTMLTextAreaElement && (manualField || byId.classList.contains('exam-essay-input')))
+      ) {
+        teacherInlinePoints[taskId] = {
+          achieved,
+          maxPts,
+          minPts: isWfTableFieldId(taskId) ? -1 : 0,
+        };
       } else if (
         teacherCorrectionMode &&
         byId instanceof HTMLTextAreaElement &&
@@ -862,7 +900,23 @@ function fillAndMark(
       if (!tdP || tdP.querySelector('.jm-inline-points-input')) return;
       const badge = tdP.querySelector('.jm-wf-inline-points');
       badge?.remove();
-      tdP.insertBefore(createInlinePointsControl(doc, taskId, ap, mp), hidden || null);
+      tdP.insertBefore(
+        createInlinePointsControl(doc, taskId, ap, mp, -1),
+        hidden || null,
+      );
+    });
+    Object.entries(teacherInlinePoints).forEach(([taskId, spec]) => {
+      if (doc.querySelector(`.jm-inline-points-input[data-task-id="${CSS.escape(taskId)}"]`)) {
+        return;
+      }
+      const wrap =
+        doc.querySelector(
+          `.exam-mc-single-select[data-answer-id="${CSS.escape(taskId)}"], .exam-multi-select[data-answer-id="${CSS.escape(taskId)}"]`,
+        ) || doc.getElementById(taskId)?.closest('.item.input-group');
+      if (!wrap) return;
+      wrap.appendChild(
+        createInlinePointsControl(doc, taskId, spec.achieved, spec.maxPts, spec.minPts),
+      );
     });
   }
 
@@ -1227,6 +1281,16 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       margin: 0 auto !important;
       width: 1.05em !important;
       height: 1.05em !important;
+    }
+    html.teacher-correction-mode .jm-student-wf-check {
+      accent-color: #1565c0 !important;
+    }
+    html.teacher-correction-mode label.jm-student-wf-choice {
+      color: #1565c0 !important;
+      font-weight: 700;
+    }
+    html.teacher-correction-mode .exam-mc-wf-inline label.jm-student-wf-choice {
+      font-size: 0.82em !important;
     }
     html.teacher-correction-mode .exam-wf-table-points .jm-inline-points-wrap {
       flex-direction: column;

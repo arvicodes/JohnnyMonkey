@@ -39,6 +39,28 @@ export function highlightStudentAnswerHtml(studentText: string, solutionText: st
   return html;
 }
 
+export function essaySolutionsFromExamHtml(html: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!html?.trim()) return out;
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('[data-exam-spec]').forEach((host) => {
+      const raw = host.getAttribute('data-exam-spec');
+      if (!raw) return;
+      const spec = JSON.parse(decodeURIComponent(raw)) as {
+        answerId?: string;
+        solution?: string;
+      };
+      const id = String(spec.answerId || '').trim();
+      const sol = String(spec.solution || '').trim();
+      if (id && sol) out[id] = sol;
+    });
+  } catch {
+    /* ignore */
+  }
+  return out;
+}
+
 export function sortSolutionStepsFromDoc(doc: Document, answerId: string): string[] {
   const el = doc.getElementById(answerId);
   const host =
