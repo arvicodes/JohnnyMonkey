@@ -33,6 +33,7 @@ import {
   ButtonGroup,
 } from '@mui/material';
 import { epoNotenToolbarOutlinedBtnSx } from './epo-noten/epoNotenUi';
+import { isPassiveStudentId, parsePassiveStudentIds } from '../lib/passiveStudents';
 import { isExamCorrectionDraft, setExamCorrectionDraft } from '../lib/examCorrectionDraft';
 import {
   isExamCorrectionFinished,
@@ -238,6 +239,7 @@ type ExamGroupTab = {
   id: string;
   name: string;
   students: Array<{ id: string; name: string; loginCode: string }>;
+  passiveStudentIds: string[];
 };
 
 function lessonPathFromKaFilePath(kaFilePath: string): string {
@@ -531,6 +533,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
       const allGroups = (await response.json()) as Array<{
         id: string;
         name: string;
+        passiveStudentIds?: string | string[] | null;
         students?: Array<{ id: string; name: string; loginCode: string }>;
       }>;
 
@@ -582,6 +585,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
           id: g.id,
           name: g.name || 'Lerngruppe',
           students: g.students || [],
+          passiveStudentIds: parsePassiveStudentIds(g.passiveStudentIds),
         }))
         .sort((a, b) => a.name.localeCompare(b.name, 'de'));
 
@@ -606,6 +610,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     const active = examGroups.find((g) => g.id === activeGroupId);
     setLearningGroupStudents(active?.students || []);
   }, [examGroups, activeGroupId]);
+
+  const passiveStudentIdsForGroup = useMemo(
+    () => parsePassiveStudentIds(examGroups.find((g) => g.id === activeGroupId)?.passiveStudentIds),
+    [examGroups, activeGroupId],
+  );
 
   const loadSubmissions = async () => {
     try {
@@ -1822,7 +1831,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
   const classAverageLabelForGroup = useMemo(() => {
     const subs = groupSubmissions.filter(
-      (s) => typeof s.totalPoints === 'number' && !s.markedSick,
+      (s) =>
+        typeof s.totalPoints === 'number' &&
+        !s.markedSick &&
+        !isPassiveStudentId(s.student?.id || '', passiveStudentIdsForGroup),
     );
     if (subs.length < 2 || maxTotalPoints <= 0) return undefined;
     const gradeNums = subs.map((s) =>
@@ -1830,7 +1842,16 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     );
     const avgGrade = gradeNums.reduce((a, g) => a + g, 0) / gradeNums.length;
     return formatExamClassAverageDecimal(avgGrade);
-  }, [groupSubmissions, corrections, maxTotalPoints, examMaxPoints, examPoints, useGeometryTask3, kaFilePath]);
+  }, [
+    groupSubmissions,
+    corrections,
+    maxTotalPoints,
+    examMaxPoints,
+    examPoints,
+    useGeometryTask3,
+    kaFilePath,
+    passiveStudentIdsForGroup,
+  ]);
 
   // Punkte-zu-Note-Zuordnung für Tooltip
   const getGradeScale = (total: number, currentPoints?: number): React.ReactNode => {
@@ -2976,9 +2997,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             const hasSubmission = Boolean(submission);
             const isSelected = currentStudentIndex === index;
             const reviewFinished = hasSubmission && isReviewCompleteFlag(submission);
-            const pendingReview = hasSubmission && !reviewFinished && !submission?.markedSick;
+            const isPassive = isPassiveStudentId(student.id, passiveStudentIdsForGroup);
+            const pendingReview =
+              hasSubmission && !reviewFinished && !submission?.markedSick && !isPassive;
             const purpleRing =
-              hasSubmission && !pendingReview && shouldShowPurpleReviewRing(submission);
+              hasSubmission && !pendingReview && !isPassive && shouldShowPurpleReviewRing(submission);
             const isSick = Boolean(submission?.markedSick);
             
             // Prüfe ob alle Korrekturfelder von mir ausgefüllt sind
@@ -3116,18 +3139,34 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                     ) : null}
                     <span
                       style={{
-                        color: !hasSubmission
-                          ? '#b71c1c'
-                          : pendingReview
-                            ? BREADCRUMB_PENDING_COLOR
-                            : reviewFinished || allFieldsFilled
-                              ? PURPLE_REVIEW
-                              : '#f57c00',
+                        color: isPassive
+                          ? '#757575'
+                          : !hasSubmission
+                            ? '#b71c1c'
+                            : pendingReview
+                              ? BREADCRUMB_PENDING_COLOR
+                              : reviewFinished || allFieldsFilled
+                                ? PURPLE_REVIEW
+                                : '#f57c00',
                       }}
                     >
                       {displayName}
                     </span>
-                    {hasSubmission ? (
+                    {isPassive ? (
+                      <Chip
+                        label="Passiv"
+                        size="small"
+                        sx={{
+                          height: 16,
+                          fontSize: '0.58rem',
+                          fontWeight: 700,
+                          bgcolor: '#9e9e9e',
+                          color: '#fff',
+                          '& .MuiChip-label': { px: 0.45 },
+                        }}
+                      />
+                    ) : null}
+                    {hasSubmission && !isPassive ? (
                       <span
                         style={{
                           fontSize: '0.78rem',
@@ -3182,13 +3221,15 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                   void toggleReviewComplete(submission);
                 }}
                 title={
-                  !hasSubmission
-                    ? 'Keine Abgabe'
-                    : isSick
-                      ? 'Krank — zählt nicht im Klassenschnitt'
-                      : reviewFinished
-                        ? 'Bewertung fertig (Checkbox oder Doppelklick zum Zurücknehmen)'
-                        : 'Checkbox oder Doppelklick: Bewertung als fertig markieren'
+                  isPassive
+                    ? 'Passiv (Dashboard) — zählt nicht im Klassenschnitt'
+                    : !hasSubmission
+                      ? 'Keine Abgabe'
+                      : isSick
+                        ? 'Krank — zählt nicht im Klassenschnitt'
+                        : reviewFinished
+                          ? 'Bewertung fertig (Checkbox oder Doppelklick zum Zurücknehmen)'
+                          : 'Checkbox oder Doppelklick: Bewertung als fertig markieren'
                 }
                 tabIndex={-1}
                 sx={{
@@ -3196,32 +3237,37 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                   minHeight: 24,
                   fontSize: '0.7rem',
                   fontWeight: isSelected ? 600 : 400,
-                  bgcolor: isSick
-                    ? SICK_HIGHLIGHT_BG
-                    : !hasSubmission
-                      ? '#ffebee'
-                      : pendingReview
-                        ? BREADCRUMB_PENDING_BG
-                        : reviewFinished
-                          ? '#f3e5f5'
-                          : allFieldsFilled
-                            ? '#e8f5e9'
-                            : '#fff3e0',
+                  bgcolor: isPassive
+                    ? '#f5f5f5'
+                    : isSick
+                      ? SICK_HIGHLIGHT_BG
+                      : !hasSubmission
+                        ? '#ffebee'
+                        : pendingReview
+                          ? BREADCRUMB_PENDING_BG
+                          : reviewFinished
+                            ? '#f3e5f5'
+                            : allFieldsFilled
+                              ? '#e8f5e9'
+                              : '#fff3e0',
                   color: !hasSubmission ? '#b71c1c' : '#1a1a1a',
-                  opacity: hasSubmission ? 1 : 0.85,
-                  border: isSick
-                    ? `2px solid ${SICK_BORDER}`
-                    : isSelected
-                      ? '2px solid #1976d2'
-                      : pendingReview
-                        ? `1px solid ${BREADCRUMB_PENDING_BORDER}`
-                        : purpleRing
-                          ? `2px solid ${PURPLE_REVIEW}`
-                          : hasSubmission
-                            ? allFieldsFilled
-                              ? '1px solid #4caf50'
-                              : '1px solid #ffb74d'
-                            : '1px solid #ef9a9a',
+                  opacity: isPassive ? 0.48 : hasSubmission ? 1 : 0.85,
+                  filter: isPassive ? 'grayscale(0.85)' : 'none',
+                  border: isPassive
+                    ? '1px solid #bdbdbd'
+                    : isSick
+                      ? `2px solid ${SICK_BORDER}`
+                      : isSelected
+                        ? '2px solid #1976d2'
+                        : pendingReview
+                          ? `1px solid ${BREADCRUMB_PENDING_BORDER}`
+                          : purpleRing
+                            ? `2px solid ${PURPLE_REVIEW}`
+                            : hasSubmission
+                              ? allFieldsFilled
+                                ? '1px solid #4caf50'
+                                : '1px solid #ffb74d'
+                              : '1px solid #ef9a9a',
                   cursor: hasSubmission ? 'pointer' : 'default',
                   transition: 'all 0.2s ease',
                   '&:hover': {
@@ -3661,6 +3707,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                       </TableHead>
                       <TableBody>
                         {taskSubmissions.map(({ submission, answers }, idx) => {
+                          const studentPassive = isPassiveStudentId(
+                            submission.student?.id || '',
+                            passiveStudentIdsForGroup,
+                          );
                           // Für Aufgabe 3: Zeige Teilaufgaben (a, b, c, d) separat, aber Kommentar nur einmal
                           if (taskNum === '3' && useGeometryTask3) {
                             const subtasks = groupTask3BySubtask(answers.map(({ taskId, answer }) => {
@@ -4017,25 +4067,43 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                             <TableRow 
                               key={submission.id}
                               sx={{ 
+                                opacity: studentPassive ? 0.48 : 1,
+                                filter: studentPassive ? 'grayscale(0.85)' : 'none',
                                 '&:nth-of-type(even)': { bgcolor: '#fafafa' },
                                 '&:hover': { bgcolor: '#f0f0f0' }
                               }}
                             >
                               <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexWrap: 'wrap' }}>
                                 <Typography 
                                   variant="caption" 
                                   sx={{ 
                                     fontWeight: 600, 
                                     fontSize: '0.7rem',
-                                      color: allFieldsFilled ? '#2e7d32' : (someFieldsFilled ? '#f57c00' : '#d32f2f'),
-                                      bgcolor: allFieldsFilled ? 'transparent' : (someFieldsFilled ? '#fff3e0' : 'transparent'),
-                                      px: someFieldsFilled ? 0.5 : 0,
-                                      py: someFieldsFilled ? 0.25 : 0,
-                                      borderRadius: someFieldsFilled ? 0.5 : 0
+                                      color: studentPassive
+                                        ? '#757575'
+                                        : allFieldsFilled
+                                          ? '#2e7d32'
+                                          : someFieldsFilled
+                                            ? '#f57c00'
+                                            : '#d32f2f',
+                                      bgcolor:
+                                        studentPassive || allFieldsFilled
+                                          ? 'transparent'
+                                          : someFieldsFilled
+                                            ? '#fff3e0'
+                                            : 'transparent',
+                                      px: someFieldsFilled && !studentPassive ? 0.5 : 0,
+                                      py: someFieldsFilled && !studentPassive ? 0.25 : 0,
+                                      borderRadius: someFieldsFilled && !studentPassive ? 0.5 : 0
                                     }}
                                   >
                                     {submissionStudentName(submission)}
                                   </Typography>
+                                  {studentPassive ? (
+                                    <Chip label="Passiv" size="small" sx={{ height: 16, fontSize: '0.58rem', bgcolor: '#9e9e9e', color: '#fff' }} />
+                                  ) : null}
+                                </Box>
                                 </TableCell>
                                 <TableCell>
                                   {renderSubtask('a')}
@@ -4110,25 +4178,35 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                               <TableRow
                                 key={`${submission.id}-${taskId}`}
                                 sx={{
+                                  opacity: studentPassive ? 0.48 : 1,
+                                  filter: studentPassive ? 'grayscale(0.85)' : 'none',
                                   '&:nth-of-type(even)': { bgcolor: '#fafafa' },
                                   '&:hover': { bgcolor: '#f0f0f0' },
                                 }}
                               >
                                 <TableCell>
-                                  <Typography
-                                    variant="caption"
-                                    sx={{
-                                      fontWeight: 600,
-                                      fontSize: '0.7rem',
-                                      color: fieldFilled ? '#2e7d32' : '#f57c00',
-                                      bgcolor: fieldFilled ? 'transparent' : '#fff3e0',
-                                      px: !fieldFilled ? 0.5 : 0,
-                                      py: !fieldFilled ? 0.25 : 0,
-                                      borderRadius: !fieldFilled ? 0.5 : 0,
-                                    }}
-                                  >
-                                    {answerIdx === 0 ? submissionStudentName(submission) : ''}
-                                  </Typography>
+                                  {answerIdx === 0 ? (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35, flexWrap: 'wrap' }}>
+                                      <Typography
+                                        variant="caption"
+                                        sx={{
+                                          fontWeight: 600,
+                                          fontSize: '0.7rem',
+                                          color: studentPassive ? '#757575' : fieldFilled ? '#2e7d32' : '#f57c00',
+                                          bgcolor:
+                                            studentPassive || fieldFilled ? 'transparent' : '#fff3e0',
+                                          px: !fieldFilled && !studentPassive ? 0.5 : 0,
+                                          py: !fieldFilled && !studentPassive ? 0.25 : 0,
+                                          borderRadius: !fieldFilled && !studentPassive ? 0.5 : 0,
+                                        }}
+                                      >
+                                        {submissionStudentName(submission)}
+                                      </Typography>
+                                      {studentPassive ? (
+                                        <Chip label="Passiv" size="small" sx={{ height: 16, fontSize: '0.58rem', bgcolor: '#9e9e9e', color: '#fff' }} />
+                                      ) : null}
+                                    </Box>
+                                  ) : null}
                                 </TableCell>
                                 <TableCell>
                                   <Typography

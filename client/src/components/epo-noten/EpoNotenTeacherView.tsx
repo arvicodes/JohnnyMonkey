@@ -237,6 +237,20 @@ export function EpoNotenTeacherView() {
         ? (prior as Record<string, PriorEpoGradeItem[]>)
         : {},
     );
+    const groupPatches = data.groups;
+    if (Array.isArray(groupPatches) && groupPatches.length > 0) {
+      setGroups((prev) => {
+        const patchById = new Map(
+          groupPatches.map((g: GroupInfo) => [g.id, parsePassiveStudentIds(g.passiveStudentIds)]),
+        );
+        if (prev.length === 0) {
+          return groupPatches as GroupInfo[];
+        }
+        return prev.map((g) =>
+          patchById.has(g.id) ? { ...g, passiveStudentIds: patchById.get(g.id)! } : g,
+        );
+      });
+    }
   }, []);
 
   const refresh = useCallback(async () => {
@@ -1816,8 +1830,8 @@ export function EpoNotenTeacherView() {
                                   px: 0.5,
                                   borderBottom: '1px solid',
                                   borderColor: 'divider',
-                                  opacity: passive ? 0.42 : 1,
-                                  filter: passive ? 'grayscale(0.35)' : undefined,
+                                  opacity: passive ? 0.48 : 1,
+                                  filter: passive ? 'grayscale(0.85)' : undefined,
                                   ...(pendingKind ? epoNotenBitteAusfuellenRowSx : {}),
                                   ...(suFertig ? epoNotenFertigRowSx : {}),
                                   ...((isLastInSection && isLastSection) ? { borderBottom: 0 } : {}),
@@ -1941,7 +1955,7 @@ export function EpoNotenTeacherView() {
                           passiveIdsForGroup(selectedStudent.groupId),
                         ) ? (
                           <Alert severity="info" sx={{ py: 0.35, fontSize: '0.72rem' }}>
-                            Länger abwesend — in der Liste unten, ausgegraut, ohne „Bitte ausfüllen“.
+                            Passiv (Dashboard) — ausgegraut in der Liste, ohne „Bitte ausfüllen“.
                           </Alert>
                         ) : null}
                         {isStudentGroupLive(selectedStudent) &&

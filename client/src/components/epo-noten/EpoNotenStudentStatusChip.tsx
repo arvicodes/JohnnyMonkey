@@ -34,9 +34,16 @@ export function EpoNotenTeacherStudentStatusChip({
     return (
       <Chip
         size="small"
-        variant="outlined"
-        label="Abwesend"
-        sx={{ height: 18, fontSize: '0.52rem', fontWeight: 700, '& .MuiChip-label': { px: 0.35 } }}
+        variant="filled"
+        label="Passiv"
+        sx={{
+          height: 18,
+          fontSize: '0.52rem',
+          fontWeight: 700,
+          bgcolor: '#9e9e9e',
+          color: '#fff',
+          '& .MuiChip-label': { px: 0.4 },
+        }}
       />
     );
   }

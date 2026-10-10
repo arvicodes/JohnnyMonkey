@@ -1098,6 +1098,13 @@ export class EpoNotenController {
         categoryWeightsPercent: categories.categoryWeightsPercent,
         studentCategories: categories.studentCategories,
         teacherCategories: categories.teacherCategories,
+        groups: groups
+          .filter((g) => round.groupIds.includes(g.id))
+          .map((g) => ({
+            id: g.id,
+            name: g.name,
+            passiveStudentIds: parsePassiveStudentIds(g.passiveStudentIds),
+          })),
       });
     } catch (error) {
       console.error('EpoNoten getById error:', error);
