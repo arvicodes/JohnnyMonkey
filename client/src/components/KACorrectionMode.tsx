@@ -1655,6 +1655,47 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     }
   }, [byTaskSubFieldIds.join('|'), byTaskSubFieldId]);
 
+  const examCorrectionScopeIds = useMemo((): string[] => {
+    const ids: string[] = [];
+    for (const taskNum of byTaskTabNumbers) {
+      const fields = fieldIdsForByTask(taskNum);
+      if (fields.length > 1) {
+        for (const fid of fields) {
+          ids.push(examTaskCorrectionDoneId(taskNum, fid));
+        }
+      } else {
+        ids.push(examTaskCorrectionDoneId(taskNum));
+      }
+    }
+    return ids;
+  }, [byTaskTabNumbers, fieldIdsForByTask]);
+
+  const studentsPendingReviewCompleteKey = useMemo(
+    () =>
+      groupSubmissions
+        .filter((s) => !s.markedSick && !isReviewCompleteFlag(s))
+        .map((s) => s.id)
+        .join(','),
+    [groupSubmissions],
+  );
+
+  useEffect(() => {
+    if (!studentsPendingReviewCompleteKey) return;
+    if (!areAllExamTaskScopesDone(kaFilePath, examCorrectionScopeIds)) return;
+
+    const pendingIds = studentsPendingReviewCompleteKey.split(',').filter(Boolean);
+    void (async () => {
+      for (const submissionId of pendingIds) {
+        await saveCorrection(REVIEW_COMPLETE_TASK, 1, '', submissionId);
+      }
+    })();
+  }, [
+    examTaskDoneRevision,
+    kaFilePath,
+    examCorrectionScopeIds.join('|'),
+    studentsPendingReviewCompleteKey,
+  ]);
+
   const openAnswerKeyEditor = () => {
     const draft: Record<string, string> = {};
     Object.entries(examAnswers).forEach(([k, v]) => {
@@ -4064,6 +4105,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                     sx={{ fontWeight: 800, py: 0.85, textTransform: 'none', fontSize: '0.85rem' }}
                     onClick={() => {
                       setExamTaskCorrectionDone(kaFilePath, scopeDoneId, true);
+                      setExamTaskDoneRevision((n) => n + 1);
                       if (hasSubScopes) {
                         const scopeField =
                           activeScopeFieldId ?? byTaskSubFieldIds[0] ?? '';
