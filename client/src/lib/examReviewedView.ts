@@ -232,17 +232,12 @@ function markWfTableRowTeacher(
     .querySelectorAll('.exam-wf-table-wahr input[type="checkbox"], .exam-wf-table-falsch input[type="checkbox"]')
     .forEach((node) => {
       const input = node as HTMLInputElement;
+      input.classList.remove('jm-wf-grade-correct', 'jm-wf-grade-wrong');
       if (!input.checked) return;
       const stud = normWfChoice(input.value);
       const ok = Boolean(exp) && stud === exp;
-      input.classList.add(ok ? 'answer-correct' : 'answer-incorrect');
-      const lab = input.closest('label');
-      lab?.classList.add(ok ? 'answer-correct' : 'answer-incorrect');
-      if (!ok) lab?.classList.add('jm-student-wf-choice');
+      input.classList.add(ok ? 'jm-wf-grade-correct' : 'jm-wf-grade-wrong');
     });
-  if (!normAnswer(rawValue)) {
-    row.classList.add('answer-incorrect');
-  }
 }
 
 function insertWfTeacherSolutionHint(
@@ -1466,15 +1461,18 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
     html.teacher-correction-mode .exam-wf-table th,
     html.teacher-correction-mode .exam-wf-table td {
-      vertical-align: top;
+      vertical-align: middle;
+    }
+    html.teacher-correction-mode .exam-wf-table tbody tr.exam-wf-table-row {
+      height: auto;
     }
     html.teacher-correction-mode .exam-wf-table th:nth-child(1),
     html.teacher-correction-mode .exam-wf-table-num {
-      width: 1.6em !important;
-      min-width: 1.6em !important;
-      max-width: 1.6em !important;
-      padding: 4px 3px !important;
-      font-size: 0.82em !important;
+      width: 1.5em !important;
+      min-width: 1.5em !important;
+      max-width: 1.5em !important;
+      padding: 2px 2px !important;
+      font-size: 0.78em !important;
       text-align: center !important;
       white-space: nowrap !important;
     }
@@ -1482,74 +1480,92 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     html.teacher-correction-mode .exam-wf-table-text {
       width: auto !important;
       max-width: none !important;
-      padding: 4px 8px 4px 4px !important;
-      line-height: 1.35 !important;
+      padding: 3px 6px 3px 4px !important;
+      line-height: 1.28 !important;
+      font-size: 0.92em !important;
     }
     html.teacher-correction-mode .exam-wf-table th:nth-child(3),
-    html.teacher-correction-mode .exam-wf-table-wahr {
-      width: 3.1em !important;
-      min-width: 3.1em !important;
-      max-width: 3.1em !important;
-      padding: 4px 2px !important;
-      text-align: center !important;
-      vertical-align: top !important;
-    }
+    html.teacher-correction-mode .exam-wf-table-wahr,
     html.teacher-correction-mode .exam-wf-table th:nth-child(4),
     html.teacher-correction-mode .exam-wf-table-falsch {
-      width: 3.1em !important;
-      min-width: 3.1em !important;
-      max-width: 3.1em !important;
-      padding: 4px 2px !important;
+      width: 2.35em !important;
+      min-width: 2.35em !important;
+      max-width: 2.35em !important;
+      padding: 2px 1px !important;
       text-align: center !important;
-      vertical-align: middle !important;
+      white-space: nowrap !important;
     }
     html.teacher-correction-mode .exam-wf-table th.jm-wf-points-head,
     html.teacher-correction-mode .exam-wf-table-points {
-      width: 5.75em !important;
-      min-width: 5.75em !important;
-      max-width: 5.75em !important;
-      padding: 4px 3px !important;
+      width: 4.85em !important;
+      min-width: 4.85em !important;
+      max-width: 4.85em !important;
+      padding: 2px 2px !important;
       text-align: center !important;
-      vertical-align: middle !important;
+      white-space: nowrap !important;
+    }
+    html.teacher-correction-mode .exam-wf-table-points input[type="hidden"] {
+      display: none !important;
     }
     html.teacher-correction-mode .exam-wf-table-points .jm-field-points-earned {
       margin-left: 0;
-      padding: 2px 6px;
-      font-size: 0.82rem;
+      padding: 1px 5px;
+      font-size: 0.75rem;
+      border-width: 1.5px;
+      gap: 1px;
+    }
+    html.teacher-correction-mode .exam-wf-table-points .jm-field-points-input {
+      width: 1.65rem;
+      font-size: 0.75rem;
     }
     html.teacher-correction-mode .exam-mc-single-select .jm-field-points-earned {
       margin-left: 6px;
     }
     html.teacher-correction-mode .exam-wf-table-wahr .exam-mc-option,
-    html.teacher-correction-mode .exam-wf-table-falsch .exam-mc-option {
-      display: flex !important;
+    html.teacher-correction-mode .exam-wf-table-falsch .exam-mc-option,
+    html.teacher-correction-mode .exam-wf-table-wahr label,
+    html.teacher-correction-mode .exam-wf-table-falsch label {
+      display: inline-flex !important;
       justify-content: center !important;
       align-items: center !important;
       margin: 0 !important;
       padding: 0 !important;
       font-size: 0 !important;
+      background: transparent !important;
+      outline: none !important;
+      border-radius: 0 !important;
+      line-height: 1 !important;
     }
-    html.teacher-correction-mode .exam-wf-table-wahr input:not(.jm-inline-points-input),
-    html.teacher-correction-mode .exam-wf-table-falsch input:not(.jm-inline-points-input) {
-      margin: 0 auto !important;
-      width: 1.05em !important;
-      height: 1.05em !important;
+    html.teacher-correction-mode .exam-wf-table-wahr input[type="checkbox"],
+    html.teacher-correction-mode .exam-wf-table-falsch input[type="checkbox"] {
+      margin: 0 !important;
+      width: 0.95em !important;
+      height: 0.95em !important;
+      flex-shrink: 0;
+      background: transparent !important;
+      outline: none !important;
+      box-shadow: none !important;
     }
-    html.teacher-correction-mode .jm-student-wf-check {
+    html.teacher-correction-mode .exam-wf-table input.jm-student-wf-check {
       accent-color: #1565c0 !important;
     }
-    html.teacher-correction-mode label.jm-student-wf-choice {
-      color: #1565c0 !important;
-      font-weight: 700;
+    html.teacher-correction-mode .exam-wf-table input.jm-wf-grade-correct {
+      accent-color: #2e7d32 !important;
+      outline: 1.5px solid #2e7d32 !important;
+      outline-offset: 0;
     }
-    html.teacher-correction-mode .exam-mc-wf-inline label.jm-student-wf-choice {
-      font-size: 0.82em !important;
+    html.teacher-correction-mode .exam-wf-table input.jm-wf-grade-wrong {
+      accent-color: #c62828 !important;
+      outline: 1.5px solid #c62828 !important;
+      outline-offset: 0;
     }
-    html.teacher-correction-mode .exam-wf-table .jm-correct-solution {
-      display: block;
-      margin-top: 2px;
-      margin-left: 0;
-      font-size: 0.75rem;
+    html.teacher-correction-mode .exam-wf-table-text .jm-correct-solution {
+      display: inline;
+      margin: 0 0 0 6px;
+      padding: 0 4px;
+      font-size: 0.72rem;
+      vertical-align: baseline;
+      white-space: nowrap;
     }
     .jm-task-points-earned,
     .jm-field-points-earned {
