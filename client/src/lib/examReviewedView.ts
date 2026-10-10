@@ -240,19 +240,21 @@ function markWfTableRowTeacher(
     });
 }
 
-function insertWfTeacherSolutionHint(
-  doc: Document,
-  anchor: Element | null,
-  expected: unknown,
-) {
-  if (!anchor || expected === undefined) return;
-  const solutionText = formatExamCorrect(expected);
-  if (!solutionText) return;
-  if (anchor.querySelector('.jm-correct-solution')) return;
-  const hint = doc.createElement('span');
-  hint.className = 'jm-correct-solution';
-  hint.textContent = `Lösung: ${solutionText}`;
-  anchor.appendChild(hint);
+function insertWfTeacherColumnSolution(doc: Document, row: Element, expected: unknown) {
+  const exp = normWfChoice(Array.isArray(expected) ? expected[0] : expected);
+  if (exp !== 'W' && exp !== 'F') return;
+  const tdW = row.querySelector('.exam-wf-table-wahr');
+  const tdF = row.querySelector('.exam-wf-table-falsch');
+  tdW?.querySelector('.jm-wf-solution-letter')?.remove();
+  tdF?.querySelector('.jm-wf-solution-letter')?.remove();
+  const cell = exp === 'W' ? tdW : tdF;
+  if (!cell) return;
+  const span = doc.createElement('span');
+  span.className = 'jm-wf-solution-letter';
+  span.setAttribute('aria-hidden', 'true');
+  span.textContent = exp;
+  cell.insertBefore(span, cell.firstChild);
+  row.querySelector('.exam-wf-table-text .jm-correct-solution')?.remove();
 }
 
 function createTeacherCommentPointsRow(
@@ -917,8 +919,7 @@ function fillAndMark(
           );
         }
         if (teacherCorrectionMode && wfRow) {
-          const textCell = wfRow.querySelector('.exam-wf-table-text');
-          insertWfTeacherSolutionHint(doc, textCell, expected);
+          insertWfTeacherColumnSolution(doc, wfRow, expected);
         } else if (wfHintAnchor) {
           insertSolutionHint(wfHintAnchor);
         }
@@ -1023,8 +1024,7 @@ function fillAndMark(
       const expected = key.answers[taskId];
       const raw = studentAnswers[taskId];
       markWfTableRowTeacher(tr, normAnswer(raw), expected);
-      const textCell = tr.querySelector('.exam-wf-table-text');
-      insertWfTeacherSolutionHint(doc, textCell, expected);
+      insertWfTeacherColumnSolution(doc, tr, expected);
     });
   }
 
@@ -1455,13 +1455,17 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       accent-color: currentColor;
     }
     html.teacher-correction-mode .exam-wf-table {
-      table-layout: auto !important;
-      width: 100% !important;
+      table-layout: fixed !important;
+      width: calc(100% - 12px) !important;
+      margin-left: 6px !important;
+      margin-right: 6px !important;
       border-collapse: collapse;
     }
     html.teacher-correction-mode .exam-wf-table th,
     html.teacher-correction-mode .exam-wf-table td {
       vertical-align: middle;
+      padding-left: 8px !important;
+      padding-right: 8px !important;
     }
     html.teacher-correction-mode .exam-wf-table tbody tr.exam-wf-table-row {
       height: auto;
@@ -1478,9 +1482,10 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
     html.teacher-correction-mode .exam-wf-table th:nth-child(2),
     html.teacher-correction-mode .exam-wf-table-text {
-      width: auto !important;
-      max-width: none !important;
-      padding: 3px 6px 3px 4px !important;
+      width: 36% !important;
+      max-width: 36% !important;
+      padding-top: 3px !important;
+      padding-bottom: 3px !important;
       line-height: 1.28 !important;
       font-size: 0.92em !important;
     }
@@ -1491,9 +1496,13 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       width: 2.35em !important;
       min-width: 2.35em !important;
       max-width: 2.35em !important;
-      padding: 2px 1px !important;
+      padding-top: 2px !important;
+      padding-bottom: 2px !important;
+      padding-left: 4px !important;
+      padding-right: 4px !important;
       text-align: center !important;
       white-space: nowrap !important;
+      position: relative;
     }
     html.teacher-correction-mode .exam-wf-table th.jm-wf-points-head,
     html.teacher-correction-mode .exam-wf-table-points {
@@ -1559,13 +1568,28 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       outline: 1.5px solid #c62828 !important;
       outline-offset: 0;
     }
-    html.teacher-correction-mode .exam-wf-table-text .jm-correct-solution {
-      display: inline;
-      margin: 0 0 0 6px;
-      padding: 0 4px;
-      font-size: 0.72rem;
-      vertical-align: baseline;
-      white-space: nowrap;
+    html.teacher-correction-mode .exam-wf-table .jm-wf-solution-letter {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 0;
+      font-size: 0.62rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: #6a1b9a;
+      background: #f3e5f5;
+      border: 1px solid #ce93d8;
+      border-radius: 3px;
+      padding: 0 2px;
+      pointer-events: none;
+      user-select: none;
+    }
+    html.teacher-correction-mode .exam-wf-table-wahr label,
+    html.teacher-correction-mode .exam-wf-table-falsch label {
+      position: relative;
+      z-index: 1;
     }
     .jm-task-points-earned,
     .jm-field-points-earned {
