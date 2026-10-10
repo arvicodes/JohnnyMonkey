@@ -60,3 +60,8 @@ export function setExamTaskCorrectionDone(
   else delete map[key];
   writeMap(map);
 }
+
+export function areAllExamTaskScopesDone(filePath: string, scopeIds: string[]): boolean {
+  if (!filePath.trim() || scopeIds.length === 0) return false;
+  return scopeIds.every((id) => id.trim() && isExamTaskCorrectionDone(filePath, id));
+}

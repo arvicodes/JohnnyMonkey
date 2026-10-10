@@ -49,6 +49,7 @@ import {
   setExamCorrectionFinished,
 } from '../lib/examCorrectionFinished';
 import {
+  areAllExamTaskScopesDone,
   examTaskCorrectionDoneId,
   isExamTaskCorrectionDone,
   setExamTaskCorrectionDone,
@@ -1535,6 +1536,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
   const [byTaskSelectedNum, setByTaskSelectedNum] = useState('');
   const [byTaskSubFieldId, setByTaskSubFieldId] = useState('');
+  const [examTaskDoneRevision, setExamTaskDoneRevision] = useState(0);
 
   const gradingMaxPoints = (max: number): number =>
     isHuKiMssExamPath(kaFilePath) ? HU_KI_MSS_EXAM_MAX_POINTS : max;
@@ -4063,7 +4065,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                     onClick={() => {
                       setExamTaskCorrectionDone(kaFilePath, scopeDoneId, true);
                       if (hasSubScopes) {
-                        const subIdx = byTaskSubFieldIds.indexOf(activeScopeFieldId);
+                        const scopeField =
+                          activeScopeFieldId ?? byTaskSubFieldIds[0] ?? '';
+                        if (!scopeField) return;
+                        const subIdx = byTaskSubFieldIds.indexOf(scopeField);
                         if (subIdx >= 0 && subIdx < byTaskSubFieldIds.length - 1) {
                           setByTaskSubFieldId(byTaskSubFieldIds[subIdx + 1]);
                           return;
