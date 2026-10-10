@@ -3508,35 +3508,37 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
           {selectedSubmission.markedSick &&
           !submissionHasFilledAnswers(selectedSubmission.answers) ? (
-            <Alert severity="warning" sx={{ mb: 0.75, py: 0.5, fontSize: '0.75rem' }}>
-              Krank, noch keine (Nachschrift-)Abgabe — Prüfung unten zur manuellen Korrektur /
-              Punkte. Live-Nachschrift: Button <strong>Nachschrift</strong> oben.
+            <Alert severity="info" sx={{ mb: 0.75, py: 1, fontSize: '0.8rem' }}>
+              <strong>Krank</strong> — noch keine Nachschrift-Abgabe. Hier erscheint die Korrektur,
+              sobald der Schüler/die Schülerin nachgeschrieben hat. Nachschrift starten: Button{' '}
+              <strong>Nachschrift</strong> oben.
             </Alert>
-          ) : null}
-          <ExamCorrectionLiveReview
-            refreshKey={correctionReviewRefreshKey}
-            buildHtml={() => buildReviewHtmlForSubmission(selectedSubmission)}
-            getFieldCorrection={getFieldCorrectionForDialog}
-            onSaveGeneralComment={(comment) => {
-              const generalKey = correctionStorageKey(
-                selectedSubmission.id,
-                GENERAL_COMMENT_TASK,
-              );
-              setCorrections((prev) => ({
-                ...prev,
-                [generalKey]: { ...prev[generalKey], comment },
-              }));
-              void saveCorrection(
-                GENERAL_COMMENT_TASK,
-                undefined,
-                comment,
-                selectedSubmission.id,
-              );
-            }}
-            onSaveField={(taskId, points, comment) => {
-              void saveCorrection(taskId, points, comment, selectedSubmission.id);
-            }}
-          />
+          ) : (
+            <ExamCorrectionLiveReview
+              refreshKey={correctionReviewRefreshKey}
+              buildHtml={() => buildReviewHtmlForSubmission(selectedSubmission)}
+              getFieldCorrection={getFieldCorrectionForDialog}
+              onSaveGeneralComment={(comment) => {
+                const generalKey = correctionStorageKey(
+                  selectedSubmission.id,
+                  GENERAL_COMMENT_TASK,
+                );
+                setCorrections((prev) => ({
+                  ...prev,
+                  [generalKey]: { ...prev[generalKey], comment },
+                }));
+                void saveCorrection(
+                  GENERAL_COMMENT_TASK,
+                  undefined,
+                  comment,
+                  selectedSubmission.id,
+                );
+              }}
+              onSaveField={(taskId, points, comment) => {
+                void saveCorrection(taskId, points, comment, selectedSubmission.id);
+              }}
+            />
+          )}
 
           </>
                           )}

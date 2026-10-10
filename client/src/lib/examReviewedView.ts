@@ -723,44 +723,71 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     html.teacher-correction-mode label.answer-incorrect input {
       accent-color: currentColor;
     }
+    html.teacher-correction-mode .exam-wf-table {
+      table-layout: fixed !important;
+    }
     html.teacher-correction-mode .exam-wf-table th:nth-child(1),
     html.teacher-correction-mode .exam-wf-table-num {
-      width: 1.75em !important;
-      min-width: 1.75em !important;
-      padding-left: 2px !important;
-      padding-right: 2px !important;
+      width: 1.35em !important;
+      min-width: 1.35em !important;
+      max-width: 1.35em !important;
+      padding: 4px 1px !important;
+      font-size: 0.8em !important;
+    }
+    html.teacher-correction-mode .exam-wf-table-text {
+      padding-right: 6px !important;
+      line-height: 1.35 !important;
     }
     html.teacher-correction-mode .exam-wf-table-choices {
-      padding-left: 4px !important;
+      padding: 4px 2px 4px 0 !important;
       text-align: left !important;
       white-space: nowrap !important;
+      width: 11em !important;
+      max-width: 11em !important;
     }
     html.teacher-correction-mode .exam-wf-table-choices .exam-mc-wf-inline {
       display: inline-flex !important;
       justify-content: flex-start !important;
       align-items: center !important;
-      gap: 4px 8px !important;
-      margin-left: 0 !important;
+      gap: 2px 6px !important;
+      margin-left: -4px !important;
       flex-wrap: nowrap !important;
       width: auto !important;
     }
     html.teacher-correction-mode .jm-wf-inline-points.points-badge {
-      margin-left: 2px !important;
+      margin-left: 4px !important;
       vertical-align: middle;
       flex-shrink: 0;
+      font-size: 0.82rem !important;
+      font-weight: 800 !important;
+      padding: 2px 7px !important;
+      line-height: 1.2 !important;
     }
     html.teacher-correction-mode .exam-wf-table th:nth-child(3),
     html.teacher-correction-mode .exam-wf-table th:nth-child(4) {
       width: auto !important;
-      padding-left: 4px !important;
-      padding-right: 4px !important;
+      padding-left: 2px !important;
+      padding-right: 2px !important;
+    }
+    html.teacher-correction-mode .exam-wf-table .jm-correct-solution {
+      display: block;
+      margin-top: 2px;
+      margin-left: 0;
+      font-size: 0.75rem;
     }
     .jm-task-points-earned {
-      margin-left: 6px;
-      font-size: 0.92em;
+      display: inline-block;
+      margin-left: 10px;
+      padding: 3px 12px;
+      font-size: 1.02rem;
       font-weight: 800;
-      color: #2e7d32;
+      color: #1b5e20;
+      background: #c8e6c9;
+      border: 2px solid #2e7d32;
+      border-radius: 8px;
       white-space: nowrap;
+      vertical-align: middle;
+      box-shadow: 0 1px 2px rgba(46, 125, 50, 0.25);
     }
     html.teacher-correction-mode .exam-wf-table-choices .exam-mc-option {
       margin: 0 !important;
