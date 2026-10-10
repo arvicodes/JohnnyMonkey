@@ -1306,8 +1306,8 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       padding: 0 !important;
       font-size: 0 !important;
     }
-    html.teacher-correction-mode .exam-wf-table-wahr input,
-    html.teacher-correction-mode .exam-wf-table-falsch input {
+    html.teacher-correction-mode .exam-wf-table-wahr input:not(.jm-inline-points-input),
+    html.teacher-correction-mode .exam-wf-table-falsch input:not(.jm-inline-points-input) {
       margin: 0 auto !important;
       width: 1.05em !important;
       height: 1.05em !important;
