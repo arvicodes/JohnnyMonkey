@@ -177,8 +177,9 @@ function createInlinePointsControl(
   input.max = String(maxPts);
   input.step =
     minPts < 0 ? '1' : maxPts <= 2 ? '0.5' : '0.25';
-  const hasSaved = Number.isFinite(achieved);
-  if (hasSaved) input.value = String(achieved);
+  if (Number.isFinite(achieved)) {
+    input.value = String(achieved);
+  }
   const maxHint = doc.createElement('span');
   maxHint.className = 'jm-inline-points-max';
   maxHint.textContent = `/ ${maxPts} P.`;
@@ -391,20 +392,14 @@ function markWfTableRow(
 function restructureExamWfTableForTeacher(doc: Document) {
   doc.querySelectorAll('table.exam-wf-table').forEach((table) => {
     const headRow = table.querySelector('thead tr');
-    if (headRow && !headRow.querySelector('.jm-wf-points-head')) {
-      const th = doc.createElement('th');
-      th.className = 'jm-wf-points-head';
-      th.textContent = 'Pkt.';
-      headRow.appendChild(th);
-    }
+    headRow?.querySelector('.jm-wf-points-head')?.remove();
     table.querySelectorAll('tbody tr.exam-wf-table-row').forEach((tr) => {
+      tr.querySelector('.exam-wf-table-points')?.remove();
       if (tr.querySelector('.exam-wf-table-wahr')) {
-        if (!tr.querySelector('.exam-wf-table-points')) {
-          const hidden = tr.querySelector('input[type="hidden"][id^="a1"]');
-          const tdP = doc.createElement('td');
-          tdP.className = 'exam-wf-table-points';
-          if (hidden) tdP.appendChild(hidden);
-          tr.appendChild(tdP);
+        const tdF = tr.querySelector('.exam-wf-table-falsch');
+        const hidden = tr.querySelector('input[type="hidden"][id^="a1"]');
+        if (hidden && tdF && !tdF.contains(hidden)) {
+          tdF.appendChild(hidden);
         }
         return;
       }
@@ -421,16 +416,43 @@ function restructureExamWfTableForTeacher(doc: Document) {
       tdF.className = 'exam-wf-table-falsch';
       if (opts[0]) tdW.appendChild(opts[0]);
       if (opts[1]) tdF.appendChild(opts[1]);
+      if (hidden) tdF.appendChild(hidden);
+      inline.querySelector('.jm-wf-inline-points')?.remove();
 
-      const tdP = doc.createElement('td');
-      tdP.className = 'exam-wf-table-points';
-      if (hidden) tdP.appendChild(hidden);
-      const badge = inline.querySelector('.jm-wf-inline-points');
-      if (badge) tdP.appendChild(badge);
-
-      choicesCell.replaceWith(tdW, tdF, tdP);
+      choicesCell.replaceWith(tdW, tdF);
     });
   });
+}
+
+function attachWfRowInlinePoints(
+  doc: Document,
+  taskId: string,
+  achieved: number,
+  maxPts: number,
+) {
+  if (doc.querySelector(`.jm-inline-points-input[data-task-id="${CSS.escape(taskId)}"]`)) {
+    return;
+  }
+  const hidden = doc.getElementById(taskId);
+  const tr = hidden?.closest('tr.exam-wf-table-row');
+  const tdF = tr?.querySelector('.exam-wf-table-falsch');
+  const wfSelect = doc.querySelector(
+    `.exam-mc-single-select[data-answer-id="${CSS.escape(taskId)}"]`,
+  );
+  const control = createInlinePointsControl(doc, taskId, achieved, maxPts, -1);
+  if (tdF) {
+    let line = tdF.querySelector('.jm-wf-row-points-line');
+    if (!line) {
+      line = doc.createElement('div');
+      line.className = 'jm-wf-row-points-line';
+      tdF.appendChild(line);
+    }
+    line.appendChild(control);
+    return;
+  }
+  if (wfSelect) {
+    wfSelect.appendChild(control);
+  }
 }
 
 function syncMcSelectCheckboxes(doc: Document, taskId: string, rawValue: string) {
@@ -895,16 +917,7 @@ function fillAndMark(
   if (teacherCorrectionMode) {
     restructureExamWfTableForTeacher(doc);
     Object.entries(wfInlinePoints).forEach(([taskId, { achieved: ap, maxPts: mp }]) => {
-      const hidden = doc.getElementById(taskId);
-      const tr = hidden?.closest('tr.exam-wf-table-row');
-      const tdP = tr?.querySelector('.exam-wf-table-points');
-      if (!tdP || tdP.querySelector('.jm-inline-points-input')) return;
-      const badge = tdP.querySelector('.jm-wf-inline-points');
-      badge?.remove();
-      tdP.insertBefore(
-        createInlinePointsControl(doc, taskId, ap, mp, -1),
-        hidden || null,
-      );
+      attachWfRowInlinePoints(doc, taskId, ap, mp);
     });
     Object.entries(teacherInlinePoints).forEach(([taskId, spec]) => {
       if (doc.querySelector(`.jm-inline-points-input[data-task-id="${CSS.escape(taskId)}"]`)) {
@@ -1256,24 +1269,33 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       line-height: 1.35 !important;
     }
     html.teacher-correction-mode .exam-wf-table th:nth-child(3),
-    html.teacher-correction-mode .exam-wf-table th:nth-child(4),
-    html.teacher-correction-mode .exam-wf-table-wahr,
-    html.teacher-correction-mode .exam-wf-table-falsch {
+    html.teacher-correction-mode .exam-wf-table-wahr {
       width: 3.1em !important;
       min-width: 3.1em !important;
       max-width: 3.1em !important;
       padding: 4px 2px !important;
       text-align: center !important;
-      vertical-align: middle !important;
+      vertical-align: top !important;
     }
-    html.teacher-correction-mode .exam-wf-table th.jm-wf-points-head,
-    html.teacher-correction-mode .exam-wf-table-points {
-      width: 5.5em !important;
-      min-width: 5.5em !important;
-      max-width: 5.5em !important;
-      padding: 4px 3px !important;
-      text-align: center !important;
-      vertical-align: middle !important;
+    html.teacher-correction-mode .exam-wf-table th:nth-child(4),
+    html.teacher-correction-mode .exam-wf-table-falsch {
+      width: auto !important;
+      min-width: 8.5em !important;
+      max-width: none !important;
+      padding: 4px 6px 4px 2px !important;
+      text-align: left !important;
+      vertical-align: top !important;
+    }
+    html.teacher-correction-mode .exam-wf-table-points,
+    html.teacher-correction-mode .jm-wf-points-head {
+      display: none !important;
+    }
+    html.teacher-correction-mode .jm-wf-row-points-line {
+      margin-top: 4px;
+    }
+    html.teacher-correction-mode .jm-wf-row-points-line .jm-inline-points-wrap {
+      flex-wrap: nowrap;
+      margin-bottom: 0;
     }
     html.teacher-correction-mode .exam-wf-table-wahr .exam-mc-option,
     html.teacher-correction-mode .exam-wf-table-falsch .exam-mc-option {
@@ -1299,23 +1321,6 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
     html.teacher-correction-mode .exam-mc-wf-inline label.jm-student-wf-choice {
       font-size: 0.82em !important;
-    }
-    html.teacher-correction-mode .exam-wf-table-points .jm-inline-points-wrap {
-      flex-direction: column;
-      align-items: center;
-      margin-bottom: 0;
-      gap: 2px;
-    }
-    html.teacher-correction-mode .exam-wf-table-points .jm-essay-teacher-label {
-      margin: 0;
-      font-size: 0.68rem;
-    }
-    html.teacher-correction-mode .exam-wf-table-points .jm-inline-points-input {
-      width: 2.75rem;
-      font-size: 0.85rem;
-    }
-    html.teacher-correction-mode .exam-wf-table-points .jm-inline-points-max {
-      font-size: 0.68rem;
     }
     html.teacher-correction-mode .exam-wf-table .jm-correct-solution {
       display: block;

@@ -1503,12 +1503,6 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
   const [byTaskSelectedNum, setByTaskSelectedNum] = useState('');
 
-  useEffect(() => {
-    if (!tasksWithRechenweg.includes(byTaskSelectedNum)) {
-      setByTaskSelectedNum(tasksWithRechenweg[0] ?? '');
-    }
-  }, [kaFilePath, useGeometryTask3, tasksWithRechenweg.join('|'), byTaskSelectedNum]);
-
   const gradingMaxPoints = (max: number): number =>
     isHuKiMssExamPath(kaFilePath) ? HU_KI_MSS_EXAM_MAX_POINTS : max;
 
@@ -1544,6 +1538,63 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     );
     return groupAnswerFieldIdsByTask(ids);
   }, [answerKeyDraft, examAnswers]);
+
+  const byTaskTabNumbers = useMemo(() => {
+    const manualTask = (taskNum: string): boolean => {
+      if (taskNum === '3' && useGeometryTask3) return true;
+      if (tasksWithRechenweg.includes(taskNum)) return true;
+      const fields = answerKeyFieldsByTask[taskNum] || [];
+      return fields.some(
+        (id) =>
+          isManualExamAnswerKey(correctAnswers[id]) || Boolean(essaySolutionsByFieldId[id]),
+      );
+    };
+    const fromKey = Object.keys(answerKeyFieldsByTask)
+      .filter(manualTask)
+      .sort((a, b) => Number(a) - Number(b));
+    if (fromKey.length > 0) return fromKey;
+    const allInExam = Object.keys(answerKeyFieldsByTask).sort((a, b) => Number(a) - Number(b));
+    if (allInExam.length > 0) return allInExam;
+    const legacy = tasksWithRechenweg.filter((n) => (answerKeyFieldsByTask[n]?.length ?? 0) > 0);
+    if (legacy.length > 0) return legacy;
+    return tasksWithRechenweg;
+  }, [
+    answerKeyFieldsByTask,
+    correctAnswers,
+    essaySolutionsByFieldId,
+    tasksWithRechenweg.join('|'),
+    useGeometryTask3,
+  ]);
+
+  useEffect(() => {
+    if (!byTaskTabNumbers.includes(byTaskSelectedNum)) {
+      setByTaskSelectedNum(byTaskTabNumbers[0] ?? '');
+    }
+  }, [kaFilePath, byTaskTabNumbers.join('|'), byTaskSelectedNum]);
+
+  const fieldIdsForByTask = useCallback(
+    (taskNum: string): string[] => {
+      const fromKey = answerKeyFieldsByTask[taskNum];
+      if (fromKey?.length) return sortExamAnswerFieldIds(fromKey);
+      const fromAnswers = sortExamAnswerFieldIds(
+        Object.keys(correctAnswers).filter((taskId) => {
+          const match = taskId.match(/a(\d+)/);
+          return match && match[1] === taskNum;
+        }),
+      );
+      if (fromAnswers.length > 0) return fromAnswers;
+      const fromSubs = new Set<string>();
+      groupSubmissions.forEach((sub) => {
+        const parsed = answersForCorrectionGrouping(sub.answers) as Record<string, unknown>;
+        Object.keys(parsed).forEach((k) => {
+          const m = k.match(/a(\d+)/);
+          if (m && m[1] === taskNum) fromSubs.add(k);
+        });
+      });
+      return sortExamAnswerFieldIds([...fromSubs]);
+    },
+    [answerKeyFieldsByTask, correctAnswers, groupSubmissions],
+  );
 
   const openAnswerKeyEditor = () => {
     const draft: Record<string, string> = {};
@@ -3738,7 +3789,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
           }}
         >
           <Tabs
-            value={byTaskSelectedNum || tasksWithRechenweg[0] || false}
+            value={byTaskSelectedNum || byTaskTabNumbers[0] || false}
             onChange={(_, v) => setByTaskSelectedNum(String(v))}
             variant="scrollable"
             scrollButtons="auto"
@@ -3757,7 +3808,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
               },
             }}
           >
-            {tasksWithRechenweg.map((n) => {
+            {byTaskTabNumbers.map((n) => {
               const done = isExamTaskCorrectionDone(kaFilePath, n);
               return (
                 <Tab
@@ -3770,29 +3821,42 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             })}
           </Tabs>
 
+          {byTaskTabNumbers.length === 0 ? (
+            <Alert severity="info" sx={{ my: 1, fontSize: '0.8rem' }}>
+              Keine Aufgaben mit manueller Korrektur erkannt — Musterlösung laden oder Schülerweise nutzen.
+            </Alert>
+          ) : null}
+
           {(() => {
-            const taskNum = byTaskSelectedNum || tasksWithRechenweg[0];
+            const taskNum = byTaskSelectedNum || byTaskTabNumbers[0];
             if (!taskNum) return null;
-            const taskFieldIds = sortExamAnswerFieldIds(
-              Object.keys(correctAnswers).filter((taskId) => {
-                const match = taskId.match(/a(\d+)/);
-                return match && match[1] === taskNum;
-              }),
-            );
-            const taskSubmissions = groupSubmissions.map(sub => {
-              const answers = answersForCorrectionGrouping(sub.answers);
-              const taskAnswers = taskFieldIds.map((taskId) => ({
-                taskId,
-                answer: answers[taskId] ?? '',
-              }));
+            const taskFieldIds = fieldIdsForByTask(taskNum);
+            const taskSubmissions = groupSubmissions
+              .map((sub) => {
+                const answers = answersForCorrectionGrouping(sub.answers) as Record<string, unknown>;
+                const taskAnswers = taskFieldIds.map((taskId) => ({
+                  taskId,
+                  answer: answers[taskId] ?? '',
+                }));
+                return {
+                  submission: sub,
+                  answers: taskAnswers,
+                };
+              })
+              .filter(
+                (item) =>
+                  item.answers.length > 0 ||
+                  (taskNum === '3' && useGeometryTask3) ||
+                  submissionHasFilledAnswers(item.submission.answers),
+              );
 
-              return {
-                submission: sub,
-                answers: taskAnswers
-              };
-            }).filter(item => item.answers.length > 0);
-
-            if (taskSubmissions.length === 0) return null;
+            if (taskSubmissions.length === 0) {
+              return (
+                <Alert severity="warning" sx={{ my: 1, fontSize: '0.8rem' }}>
+                  Für Aufgabe {taskNum} liegen noch keine Abgaben in dieser Lerngruppe vor.
+                </Alert>
+              );
+            }
 
             return (
               <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', py: 1 }}>
@@ -4431,28 +4495,29 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
               color={
                 isExamTaskCorrectionDone(
                   kaFilePath,
-                  byTaskSelectedNum || tasksWithRechenweg[0] || '',
+                  byTaskSelectedNum || byTaskTabNumbers[0] || '',
                 )
                   ? 'success'
                   : 'primary'
               }
+              disabled={byTaskTabNumbers.length === 0}
               sx={{ fontWeight: 800, py: 1.1, textTransform: 'none', fontSize: '0.85rem' }}
               onClick={() => {
-                const n = byTaskSelectedNum || tasksWithRechenweg[0];
+                const n = byTaskSelectedNum || byTaskTabNumbers[0];
                 if (!n) return;
                 setExamTaskCorrectionDone(kaFilePath, n, true);
-                const idx = tasksWithRechenweg.indexOf(n);
-                if (idx >= 0 && idx < tasksWithRechenweg.length - 1) {
-                  setByTaskSelectedNum(tasksWithRechenweg[idx + 1]);
+                const idx = byTaskTabNumbers.indexOf(n);
+                if (idx >= 0 && idx < byTaskTabNumbers.length - 1) {
+                  setByTaskSelectedNum(byTaskTabNumbers[idx + 1]);
                 }
               }}
             >
               {isExamTaskCorrectionDone(
                 kaFilePath,
-                byTaskSelectedNum || tasksWithRechenweg[0] || '',
+                byTaskSelectedNum || byTaskTabNumbers[0] || '',
               )
-                ? `✓ Aufgabe ${byTaskSelectedNum || tasksWithRechenweg[0]} fertig korrigiert`
-                : `Aufgabe ${byTaskSelectedNum || tasksWithRechenweg[0]} fertig korrigiert`}
+                ? `✓ Aufgabe ${byTaskSelectedNum || byTaskTabNumbers[0]} fertig korrigiert`
+                : `Aufgabe ${byTaskSelectedNum || byTaskTabNumbers[0]} fertig korrigiert`}
             </Button>
           </Paper>
         </Box>
