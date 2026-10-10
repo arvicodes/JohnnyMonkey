@@ -49,6 +49,7 @@ import {
   setExamCorrectionFinished,
 } from '../lib/examCorrectionFinished';
 import {
+  examTaskCorrectionDoneId,
   isExamTaskCorrectionDone,
   setExamTaskCorrectionDone,
 } from '../lib/examCorrectionTaskDone';
@@ -1450,8 +1451,19 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
   const fieldSubTabLabel = (taskNum: string, fieldId: string): string => {
     const m = fieldId.match(/^a\d+([a-z])$/i);
-    if (m) return `${taskNum}${m[1].toUpperCase()})`;
+    if (m) return `${taskNum}${m[1].toLowerCase()}`;
     return fieldId;
+  };
+
+  const isByTaskScopeDone = (taskNum: string, fieldId?: string): boolean =>
+    isExamTaskCorrectionDone(kaFilePath, examTaskCorrectionDoneId(taskNum, fieldId));
+
+  const isByTaskFullyDone = (taskNum: string): boolean => {
+    const fields = fieldIdsForByTask(taskNum);
+    if (fields.length > 1) {
+      return fields.every((fid) => isByTaskScopeDone(taskNum, fid));
+    }
+    return isByTaskScopeDone(taskNum);
   };
 
   const getFieldCorrectionForSubmission = useCallback(
@@ -3853,7 +3865,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             }}
           >
             {byTaskTabNumbers.map((n) => {
-              const done = isExamTaskCorrectionDone(kaFilePath, n);
+              const done = isByTaskFullyDone(n);
               return (
                 <Tab
                   key={n}
@@ -3887,13 +3899,19 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                 },
               }}
             >
-              {byTaskSubFieldIds.map((fieldId) => (
-                <Tab
-                  key={fieldId}
-                  value={fieldId}
-                  label={fieldSubTabLabel(byTaskSelectedNum || byTaskTabNumbers[0] || '', fieldId)}
-                />
-              ))}
+              {byTaskSubFieldIds.map((fieldId) => {
+                const tn = byTaskSelectedNum || byTaskTabNumbers[0] || '';
+                const subDone = isByTaskScopeDone(tn, fieldId);
+                const subLabel = fieldSubTabLabel(tn, fieldId);
+                return (
+                  <Tab
+                    key={fieldId}
+                    value={fieldId}
+                    label={subDone ? `${subLabel} ✓` : subLabel}
+                    sx={subDone ? { color: '#2e7d32 !important' } : undefined}
+                  />
+                );
+              })}
             </Tabs>
           ) : null}
 
@@ -3939,9 +3957,22 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
               );
             }
 
+            const hasSubScopes = byTaskSubFieldIds.length > 1;
+            const activeScopeFieldId = hasSubScopes
+              ? byTaskSubFieldId || byTaskSubFieldIds[0]
+              : '';
+            const scopeDoneId = examTaskCorrectionDoneId(
+              taskNum,
+              hasSubScopes ? activeScopeFieldId : undefined,
+            );
+            const scopeDone = isExamTaskCorrectionDone(kaFilePath, scopeDoneId);
+            const scopeButtonLabel = hasSubScopes
+              ? fieldSubTabLabel(taskNum, activeScopeFieldId)
+              : `Aufgabe ${taskNum}`;
+
             return (
-              <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', py: 1 }}>
-                <Stack spacing={2} divider={<Divider flexItem />}>
+              <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', py: 0.5 }}>
+                <Stack spacing={1.25} divider={<Divider flexItem />}>
                   {taskSubmissions.map(({ submission }) => {
                     const studentPassive = isPassiveStudentId(
                       submission.student?.id || '',
@@ -3999,52 +4030,45 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                     );
                   })}
                 </Stack>
+                <Paper
+                  elevation={2}
+                  sx={{
+                    p: 0.75,
+                    mt: 0.75,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: '#fafafa',
+                  }}
+                >
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color={scopeDone ? 'success' : 'primary'}
+                    sx={{ fontWeight: 800, py: 0.85, textTransform: 'none', fontSize: '0.85rem' }}
+                    onClick={() => {
+                      setExamTaskCorrectionDone(kaFilePath, scopeDoneId, true);
+                      if (hasSubScopes) {
+                        const subIdx = byTaskSubFieldIds.indexOf(activeScopeFieldId);
+                        if (subIdx >= 0 && subIdx < byTaskSubFieldIds.length - 1) {
+                          setByTaskSubFieldId(byTaskSubFieldIds[subIdx + 1]);
+                          return;
+                        }
+                      }
+                      const idx = byTaskTabNumbers.indexOf(taskNum);
+                      if (idx >= 0 && idx < byTaskTabNumbers.length - 1) {
+                        setByTaskSelectedNum(byTaskTabNumbers[idx + 1]);
+                        setByTaskSubFieldId('');
+                      }
+                    }}
+                  >
+                    {scopeDone
+                      ? `✓ ${scopeButtonLabel} fertig korrigiert`
+                      : `${scopeButtonLabel} fertig korrigiert`}
+                  </Button>
+                </Paper>
               </Box>
             );
           })()}
-
-          <Paper
-            elevation={2}
-            sx={{
-              flexShrink: 0,
-              p: 1,
-              mt: 0.5,
-              borderTop: '1px solid',
-              borderColor: 'divider',
-              bgcolor: '#fafafa',
-            }}
-          >
-            <Button
-              fullWidth
-              variant="contained"
-              color={
-                isExamTaskCorrectionDone(
-                  kaFilePath,
-                  byTaskSelectedNum || byTaskTabNumbers[0] || '',
-                )
-                  ? 'success'
-                  : 'primary'
-              }
-              disabled={byTaskTabNumbers.length === 0}
-              sx={{ fontWeight: 800, py: 1.1, textTransform: 'none', fontSize: '0.85rem' }}
-              onClick={() => {
-                const n = byTaskSelectedNum || byTaskTabNumbers[0];
-                if (!n) return;
-                setExamTaskCorrectionDone(kaFilePath, n, true);
-                const idx = byTaskTabNumbers.indexOf(n);
-                if (idx >= 0 && idx < byTaskTabNumbers.length - 1) {
-                  setByTaskSelectedNum(byTaskTabNumbers[idx + 1]);
-                }
-              }}
-            >
-              {isExamTaskCorrectionDone(
-                kaFilePath,
-                byTaskSelectedNum || byTaskTabNumbers[0] || '',
-              )
-                ? `✓ Aufgabe ${byTaskSelectedNum || byTaskTabNumbers[0]} fertig korrigiert`
-                : `Aufgabe ${byTaskSelectedNum || byTaskTabNumbers[0]} fertig korrigiert`}
-            </Button>
-          </Paper>
         </Box>
       )}
 

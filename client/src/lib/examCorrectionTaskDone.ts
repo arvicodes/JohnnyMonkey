@@ -32,6 +32,17 @@ function storageKey(filePath: string, taskNum: string): string {
   return `${teacherId}::${normalizeExamPath(filePath)}::${taskNum}`;
 }
 
+/** z. B. Aufgabe 2 + Feld a2b → „2b“ (Teilaufgabe in aufgabenweiser Korrektur). */
+export function examTaskCorrectionDoneId(taskNum: string, fieldId?: string): string {
+  const tn = String(taskNum || '').trim();
+  if (!tn) return '';
+  const fid = String(fieldId || '').trim();
+  if (!fid) return tn;
+  const m = fid.match(/^a\d+([a-z])$/i);
+  if (m) return `${tn}${m[1].toLowerCase()}`;
+  return fid;
+}
+
 export function isExamTaskCorrectionDone(filePath: string, taskNum: string): boolean {
   if (!filePath.trim() || !taskNum.trim()) return false;
   return Boolean(readMap()[storageKey(filePath, taskNum)]);
