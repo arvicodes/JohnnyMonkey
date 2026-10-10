@@ -1003,7 +1003,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   );
   if (!res.ok) throw new Error('Prüfung konnte nicht geladen werden');
   const html = await res.text();
-  const key = parseExamAnswerKey(html);
+  let key = parseExamAnswerKey(html);
 
   let answers: Record<string, unknown> = opts.answers || {};
   if (typeof (opts.answers as unknown) === 'string') {
@@ -1014,10 +1014,24 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
   }
 
+  const usesDollarAuthoring = examHtmlUsesDollarAuthoring(html);
+  if (usesDollarAuthoring) {
+    const dollarKey = buildExamDollarAnswerKeyFromHtml(html);
+    if (
+      Object.keys(key.answers).length === 0 ||
+      isPlaceholderLegacyExamKey(key)
+    ) {
+      key = dollarKey;
+    }
+    answers = remapExamDollarSubmissionToSynthetic(answers, html);
+  }
+
   const doc = new DOMParser().parseFromString(html, 'text/html');
   injectHandwritingFontsIntoDocument(doc);
 
-  const usesDollarAuthoring = examHtmlUsesDollarAuthoring(html);
+  if (usesDollarAuthoring && opts.teacherCorrectionMode) {
+    doc.documentElement.classList.add('teacher-correction-mode');
+  }
   doc
     .querySelectorAll(
       '.exam-chrome, .exam-toolbar, .submit-section, .schema-modal, .header-buttons',
