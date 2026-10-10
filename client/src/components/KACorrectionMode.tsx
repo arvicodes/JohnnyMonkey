@@ -33,7 +33,11 @@ import {
   ButtonGroup,
 } from '@mui/material';
 import { epoNotenToolbarOutlinedBtnSx } from './epo-noten/epoNotenUi';
-import { isPassiveStudentId, parsePassiveStudentIds } from '../lib/passiveStudents';
+import {
+  isPassiveStudentId,
+  parsePassiveStudentIds,
+  passiveStudentMutedSx,
+} from '../lib/passiveStudents';
 import {
   essaySolutionsFromExamHtml,
   isManualExamAnswerKey,
@@ -628,6 +632,11 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     () => parsePassiveStudentIds(examGroups.find((g) => g.id === activeGroupId)?.passiveStudentIds),
     [examGroups, activeGroupId],
   );
+
+  const navStudentPassive = useMemo(() => {
+    const student = learningGroupStudents[currentStudentIndex];
+    return student ? isPassiveStudentId(student.id, passiveStudentIdsForGroup) : false;
+  }, [currentStudentIndex, learningGroupStudents, passiveStudentIdsForGroup]);
 
   const loadSubmissions = async () => {
     try {
@@ -3351,7 +3360,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
       {mode === 'by-student' && learningGroupStudents.length > 0 && (
         <Box>
           {!selectedSubmission ? (
-            <Card sx={{ mb: 0.75, bgcolor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <Card
+              sx={{
+                mb: 0.75,
+                bgcolor: '#fff',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                ...passiveStudentMutedSx(navStudentPassive),
+              }}
+            >
               <CardContent sx={{ py: 0.7, px: 0.85, '&:last-child': { pb: 0.7 } }}>
                 {(() => {
                   const student = learningGroupStudents[currentStudentIndex];
@@ -3392,11 +3408,30 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                       </IconButton>
                       <Typography
                         variant="caption"
-                        sx={{ fontWeight: 700, fontSize: '0.8rem', flex: '1 1 120px', minWidth: 0 }}
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: '0.8rem',
+                          flex: '1 1 120px',
+                          minWidth: 0,
+                          color: navStudentPassive ? '#757575' : undefined,
+                        }}
                         noWrap
                       >
                         {student?.name || 'Schüler/in'}
                       </Typography>
+                      {navStudentPassive ? (
+                        <Chip
+                          label="Passiv"
+                          size="small"
+                          sx={{
+                            height: 18,
+                            fontSize: '0.58rem',
+                            fontWeight: 700,
+                            bgcolor: '#9e9e9e',
+                            color: '#fff',
+                          }}
+                        />
+                      ) : null}
                       <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>
                         {placeholderSub ? 'nur Krank-Eintrag' : 'keine Abgabe'}
                       </Typography>
@@ -3468,7 +3503,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             </Card>
           ) : (
           <>
-          <Card sx={{ mb: 0.75, bgcolor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <Card
+            sx={{
+              mb: 0.75,
+              bgcolor: '#fff',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+              ...passiveStudentMutedSx(navStudentPassive),
+            }}
+          >
             <CardContent sx={{ py: 0.7, px: 0.85, '&:last-child': { pb: 0.7 } }}>
               <Box
                 display="flex"
@@ -3503,11 +3545,30 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                 </IconButton>
                 <Typography
                   variant="caption"
-                  sx={{ fontWeight: 700, fontSize: '0.8rem', flex: '1 1 100px', minWidth: 0 }}
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    flex: '1 1 100px',
+                    minWidth: 0,
+                    color: navStudentPassive ? '#757575' : undefined,
+                  }}
                   noWrap
                 >
                   {submissionStudentName(selectedSubmission)}
                 </Typography>
+                {navStudentPassive ? (
+                  <Chip
+                    label="Passiv"
+                    size="small"
+                    sx={{
+                      height: 18,
+                      fontSize: '0.58rem',
+                      fontWeight: 700,
+                      bgcolor: '#9e9e9e',
+                      color: '#fff',
+                    }}
+                  />
+                ) : null}
                 <Tooltip title="Prüfungsversion (Masterpasswort)">
                   <Chip
                     label={submissionVersionLetter(selectedSubmission, kaFilePath)}

@@ -31,3 +31,13 @@ export function activeStudentsOfGroup<T extends { id: string }>(
   const set = new Set(passiveIds);
   return list.filter((s) => !set.has(s.id));
 }
+
+/** Einheitlich ausgegraut (EPO, Prüfungsstart, Korrektur, Dashboard). */
+export const passiveStudentMutedStyle = {
+  opacity: 0.48,
+  filter: 'grayscale(0.85)',
+} as const;
+
+export function passiveStudentMutedSx(passive: boolean): Record<string, unknown> {
+  return passive ? { ...passiveStudentMutedStyle } : {};
+}

@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Checkbox,
+  Chip,
   Divider,
   FormControl,
   FormControlLabel,
@@ -14,6 +15,12 @@ import {
   Switch,
   Typography,
 } from '@mui/material';
+import {
+  activeStudentsOfGroup,
+  isPassiveStudentId,
+  parsePassiveStudentIds,
+  passiveStudentMutedSx,
+} from '../../lib/passiveStudents';
 import {
   type ExamBeaconGroupConfig,
   type ExamGroupStudent,
@@ -27,6 +34,7 @@ type GroupLite = { id: string; name: string };
 
 export function useExamStartAdvancedState(selectedGroupIds: string[]) {
   const [studentsByGroup, setStudentsByGroup] = useState<Record<string, ExamGroupStudent[]>>({});
+  const [passiveByGroup, setPassiveByGroup] = useState<Record<string, string[]>>({});
   const [groupConfig, setGroupConfig] = useState<Record<string, ExamBeaconGroupConfig>>({});
   const [manualVariants, setManualVariants] = useState(false);
   const [loadingMeta, setLoadingMeta] = useState(false);
@@ -34,6 +42,7 @@ export function useExamStartAdvancedState(selectedGroupIds: string[]) {
   const loadStudents = useCallback(async (groupIds: string[]) => {
     if (!groupIds.length) {
       setStudentsByGroup({});
+      setPassiveByGroup({});
       return;
     }
     setLoadingMeta(true);
@@ -41,22 +50,32 @@ export function useExamStartAdvancedState(selectedGroupIds: string[]) {
       const entries = await Promise.all(
         groupIds.map(async (gid) => {
           const res = await fetch(`/api/learning-groups/${encodeURIComponent(gid)}`);
-          if (!res.ok) return [gid, []] as [string, ExamGroupStudent[]];
-          const data = (await res.json()) as { students?: ExamGroupStudent[] };
+          if (!res.ok) return [gid, [], []] as [string, ExamGroupStudent[], string[]];
+          const data = (await res.json()) as {
+            students?: ExamGroupStudent[];
+            passiveStudentIds?: unknown;
+          };
           const students = (data.students || []).map((s) => ({ id: s.id, name: s.name }));
-          return [gid, students] as [string, ExamGroupStudent[]];
+          const passive = parsePassiveStudentIds(data.passiveStudentIds);
+          return [gid, students, passive] as [string, ExamGroupStudent[], string[]];
         }),
       );
       const next: Record<string, ExamGroupStudent[]> = {};
-      for (const [gid, list] of entries) next[gid] = list;
+      const passiveNext: Record<string, string[]> = {};
+      for (const [gid, list, passive] of entries) {
+        next[gid] = list;
+        passiveNext[gid] = passive;
+      }
       setStudentsByGroup(next);
+      setPassiveByGroup(passiveNext);
       setGroupConfig((prev) => {
         const out = { ...prev };
         for (const gid of groupIds) {
           if (!out[gid]) {
+            const active = activeStudentsOfGroup(next[gid], passiveNext[gid]).map((s) => s.id);
             out[gid] = {
               ...emptyGroupExamConfig(),
-              studentIds: next[gid]?.map((s) => s.id),
+              studentIds: active,
             };
           }
         }
@@ -87,6 +106,8 @@ export function useExamStartAdvancedState(selectedGroupIds: string[]) {
     const out: Record<string, ExamBeaconGroupConfig> = {};
     for (const gid of selectedGroupIds) {
       const students = studentsByGroup[gid] || [];
+      const passive = passiveByGroup[gid] || [];
+      const activeIds = activeStudentsOfGroup(students, passive).map((s) => s.id);
       const cfg = groupConfig[gid] || emptyGroupExamConfig();
       const formulationVariantCount = (cfg.formulationVariantCount || 1) as 1 | 2;
       const formLetters = formulationLettersForCount(formulationVariantCount);
@@ -98,8 +119,7 @@ export function useExamStartAdvancedState(selectedGroupIds: string[]) {
             : [];
       const formAssignments = manualVariants ? cfg.formulationVariantAssignments || {} : undefined;
       const normalizedFormAssignments: Record<string, string> = {};
-      const assignTargets =
-        selectedIds === undefined ? students.map((s) => s.id) : selectedIds;
+      const assignTargets = selectedIds === undefined ? activeIds : selectedIds;
       if (formAssignments && formulationVariantCount === 2) {
         for (const sid of assignTargets) {
           const L = formAssignments[sid];
@@ -117,10 +137,11 @@ export function useExamStartAdvancedState(selectedGroupIds: string[]) {
       };
     }
     return out;
-  }, [selectedGroupIds, studentsByGroup, groupConfig, manualVariants, lettersForCount]);
+  }, [selectedGroupIds, studentsByGroup, passiveByGroup, groupConfig, manualVariants, lettersForCount]);
 
   return {
     studentsByGroup,
+    passiveByGroup,
     groupConfig,
     manualVariants,
     setManualVariants,
@@ -138,6 +159,7 @@ export const ExamStartAdvancedSection: React.FC<{
 }> = ({ groups, selectedGroupIds, advanced }) => {
   const {
     studentsByGroup,
+    passiveByGroup,
     groupConfig,
     manualVariants,
     setManualVariants,
@@ -171,11 +193,13 @@ export const ExamStartAdvancedSection: React.FC<{
       />
       {selectedGroupIds.map((gid) => {
         const students = studentsByGroup[gid] || [];
+        const passiveIds = passiveByGroup[gid] || [];
+        const activeStudents = activeStudentsOfGroup(students, passiveIds);
         const cfg = groupConfig[gid] || emptyGroupExamConfig();
         const formulationVariantCount = (cfg.formulationVariantCount || 1) as 1 | 2;
         const formLetters = formulationLettersForCount(formulationVariantCount);
         const selectedStudentIds = new Set(
-          cfg.studentIds === undefined ? students.map((s) => s.id) : cfg.studentIds,
+          cfg.studentIds === undefined ? activeStudents.map((s) => s.id) : cfg.studentIds,
         );
         return (
           <Box
@@ -200,7 +224,7 @@ export const ExamStartAdvancedSection: React.FC<{
                     size="small"
                     variant="outlined"
                     onClick={() =>
-                      patchGroupConfig(gid, { studentIds: students.map((s) => s.id) })
+                      patchGroupConfig(gid, { studentIds: activeStudents.map((s) => s.id) })
                     }
                   >
                     Alle
@@ -214,7 +238,9 @@ export const ExamStartAdvancedSection: React.FC<{
                   </Button>
                 </Box>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, mb: 1 }}>
-                  {students.map((s) => (
+                  {students.map((s) => {
+                    const passive = isPassiveStudentId(s.id, passiveIds);
+                    return (
                     <Box
                       key={s.id}
                       sx={{
@@ -222,6 +248,10 @@ export const ExamStartAdvancedSection: React.FC<{
                         alignItems: 'center',
                         gap: 0.25,
                         minHeight: 34,
+                        borderRadius: 0.75,
+                        px: 0.25,
+                        ...passiveStudentMutedSx(passive),
+                        ...(passive ? { bgcolor: 'rgba(0,0,0,0.03)' } : {}),
                       }}
                     >
                       <Checkbox
@@ -230,7 +260,7 @@ export const ExamStartAdvancedSection: React.FC<{
                         onChange={(_, checked) => {
                           const base =
                             cfg.studentIds === undefined
-                              ? students.map((x) => x.id)
+                              ? activeStudents.map((x) => x.id)
                               : [...cfg.studentIds];
                           const next = checked
                             ? [...new Set([...base, s.id])]
@@ -245,12 +275,27 @@ export const ExamStartAdvancedSection: React.FC<{
                           fontSize: '0.85rem',
                           flex: 1,
                           minWidth: 0,
-                          opacity: selectedStudentIds.has(s.id) ? 1 : 0.55,
+                          opacity: passive ? 1 : selectedStudentIds.has(s.id) ? 1 : 0.55,
+                          color: passive ? '#757575' : undefined,
                         }}
                         noWrap
                       >
                         {s.name}
                       </Typography>
+                      {passive ? (
+                        <Chip
+                          label="Passiv"
+                          size="small"
+                          sx={{
+                            height: 18,
+                            fontSize: '0.58rem',
+                            fontWeight: 700,
+                            bgcolor: '#9e9e9e',
+                            color: '#fff',
+                            flexShrink: 0,
+                          }}
+                        />
+                      ) : null}
                       {manualVariants && formulationVariantCount === 2 ? (
                         <Select
                           size="small"
@@ -278,7 +323,8 @@ export const ExamStartAdvancedSection: React.FC<{
                         </Select>
                       ) : null}
                     </Box>
-                  ))}
+                    );
+                  })}
                 </Box>
                 <FormControl size="small">
                   <FormLabel sx={{ fontSize: '0.75rem', mb: 0.25 }}>

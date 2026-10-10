@@ -54,7 +54,11 @@ import {
   epoReminderDismissStorageKey,
   shouldShowEpoRound2Reminder,
 } from '../../lib/epoNotenTeacherReminders';
-import { isPassiveStudentId, parsePassiveStudentIds } from '../../lib/passiveStudents';
+import {
+  isPassiveStudentId,
+  parsePassiveStudentIds,
+  passiveStudentMutedSx,
+} from '../../lib/passiveStudents';
 import {
   EPO_NOTEN_TEACHER_CATEGORIES,
   type EpoNotenEntry,
@@ -347,6 +351,14 @@ export function EpoNotenTeacherView() {
     }
     return s;
   }, [passiveIdsForGroup, round?.groupIds]);
+
+  const selectedStudentPassive = useMemo(() => {
+    if (!selectedStudent) return false;
+    const passive = selectedStudent.groupId
+      ? passiveIdsForGroup(selectedStudent.groupId)
+      : [...allPassiveStudentIds];
+    return isPassiveStudentId(selectedStudent.studentId, passive);
+  }, [allPassiveStudentIds, passiveIdsForGroup, selectedStudent]);
 
   const groupJaFlagsFor = useCallback(
     (groupId: string | undefined): EpoJaFlags => {
@@ -1830,8 +1842,7 @@ export function EpoNotenTeacherView() {
                                   px: 0.5,
                                   borderBottom: '1px solid',
                                   borderColor: 'divider',
-                                  opacity: passive ? 0.48 : 1,
-                                  filter: passive ? 'grayscale(0.85)' : undefined,
+                                  ...passiveStudentMutedSx(passive),
                                   ...(pendingKind ? epoNotenBitteAusfuellenRowSx : {}),
                                   ...(suFertig ? epoNotenFertigRowSx : {}),
                                   ...((isLastInSection && isLastSection) ? { borderBottom: 0 } : {}),
@@ -1895,7 +1906,19 @@ export function EpoNotenTeacherView() {
                         Schüler auswählen
                       </Typography>
                     ) : (
-                      <Stack spacing={0.45}>
+                      <Stack
+                        spacing={0.45}
+                        sx={{
+                          ...passiveStudentMutedSx(selectedStudentPassive),
+                          ...(selectedStudentPassive
+                            ? {
+                                borderRadius: 1,
+                                p: 0.75,
+                                bgcolor: 'rgba(0,0,0,0.03)',
+                              }
+                            : {}),
+                        }}
+                      >
                         {selectedPriorEpoNotes ? (
                           <Typography
                             sx={{
@@ -1923,7 +1946,13 @@ export function EpoNotenTeacherView() {
                         ) : null}
                         {selectedStudent.groupId ? (
                           <Stack spacing={0.35} sx={{ mb: 0.25 }}>
-                            <Typography sx={{ fontWeight: 800, fontSize: '0.82rem' }}>
+                            <Typography
+                              sx={{
+                                fontWeight: 800,
+                                fontSize: '0.82rem',
+                                color: selectedStudentPassive ? '#757575' : undefined,
+                              }}
+                            >
                               {selectedStudent.studentName}
                             </Typography>
                             {(() => {
@@ -2056,7 +2085,7 @@ export function EpoNotenTeacherView() {
                                       <IconButton
                                         size="small"
                                         aria-label="Bewertung leeren"
-                                        disabled={saving}
+                                        disabled={saving || selectedStudentPassive}
                                         onClick={() => void clearTeacherAssessment()}
                                         sx={{
                                           p: 0.25,
@@ -2077,7 +2106,9 @@ export function EpoNotenTeacherView() {
                                   label={selectedAssessmentMode === 'mss' ? 'MSS-Punkte' : 'Note'}
                                   value={teacherGrade}
                                   onChange={(e) => handleTeacherGradeManualChange(e.target.value)}
-                                  disabled={Boolean(selectedStudent.teacherReleasedAt)}
+                                  disabled={
+                                    Boolean(selectedStudent.teacherReleasedAt) || selectedStudentPassive
+                                  }
                                   sx={{ '& .MuiInputBase-root': { fontSize: '0.9rem', fontWeight: 700 } }}
                                 />
                                 <TextField
@@ -2086,6 +2117,7 @@ export function EpoNotenTeacherView() {
                                   label="Bemerkung (optional)"
                                   value={teacherJustification}
                                   onChange={(e) => handleTeacherJustificationChange(e.target.value)}
+                                  disabled={selectedStudentPassive}
                                   multiline
                                   minRows={2}
                                   helperText={
@@ -2101,6 +2133,7 @@ export function EpoNotenTeacherView() {
                                 <EpoNotenCategoryGrid
                                   compact
                                   teacherEmphasis
+                                  readOnly={selectedStudentPassive}
                                   label={
                                     selectedStudent.studentSubmittedAt
                                       ? 'Deine Bewertung (lila = SuS)'
@@ -2120,22 +2153,22 @@ export function EpoNotenTeacherView() {
                                         <IconButton
                                           size="small"
                                           aria-label="Raster leeren"
-                                          disabled={saving}
-                                          onClick={() => void clearTeacherAssessment()}
-                                          sx={{
-                                            p: 0.25,
-                                            width: 26,
-                                            height: 26,
-                                            color: '#0d47a1',
-                                            opacity: 0.85,
-                                            '&:hover': { opacity: 1, bgcolor: 'rgba(255,255,255,0.35)' },
-                                          }}
-                                        >
-                                          <PanoramaFishEyeIcon sx={{ fontSize: '1.05rem' }} />
-                                        </IconButton>
-                                      </span>
-                                    </Tooltip>
-                                  }
+                                        disabled={saving || selectedStudentPassive}
+                                        onClick={() => void clearTeacherAssessment()}
+                                        sx={{
+                                          p: 0.25,
+                                          width: 26,
+                                          height: 26,
+                                          color: '#0d47a1',
+                                          opacity: 0.85,
+                                          '&:hover': { opacity: 1, bgcolor: 'rgba(255,255,255,0.35)' },
+                                        }}
+                                      >
+                                        <PanoramaFishEyeIcon sx={{ fontSize: '1.05rem' }} />
+                                      </IconButton>
+                                    </span>
+                                  </Tooltip>
+                                }
                                   categories={teacherCategories}
                                   categoryTitles={categoryTitles}
                                   categoryWeightsPercent={categoryWeightsPercent}
