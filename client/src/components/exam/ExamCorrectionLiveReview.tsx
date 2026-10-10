@@ -75,6 +75,8 @@ export default function ExamCorrectionLiveReview({
 
   useEffect(() => {
     const onMessage = (ev: MessageEvent) => {
+      const frameWin = iframeRef.current?.contentWindow;
+      if (frameWin && ev.source && ev.source !== frameWin) return;
       const data = ev.data as {
         type?: string;
         taskId?: string;

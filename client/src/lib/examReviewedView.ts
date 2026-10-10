@@ -19,7 +19,12 @@ import {
   highlightStudentAnswerHtml,
   isManualExamAnswerKey,
 } from './examStudentAnswerDisplay';
-import { examHtmlUsesDollarAuthoring } from './examDollarCorrection';
+import {
+  buildExamDollarAnswerKeyFromHtml,
+  examHtmlUsesDollarAuthoring,
+  isPlaceholderLegacyExamKey,
+  remapExamDollarSubmissionToSynthetic,
+} from './examDollarCorrection';
 import {
   EXAM_TEACHER_COMMENT_FONT,
   injectHandwritingFontsIntoDocument,
@@ -51,6 +56,8 @@ export type ExamReviewedViewOpts = {
   learningGroupName?: string;
   /** Lehrer-Korrekturmodus: Punkte-Badges klickbar (postMessage an Parent). */
   teacherCorrectionMode?: boolean;
+  /** Nur diese Aufgabennummer anzeigen (z. B. „3“ für Aufgabe 3). */
+  onlyTaskNumber?: string;
   /** z. B. „MSS-Punkte“ statt „Note“ in der grünen Box */
   gradeMetricLabel?: string;
 };
@@ -1678,6 +1685,16 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   );
   injectPerTaskTeacherComments(doc, opts.corrections || []);
 
+  const onlyTask = String(opts.onlyTaskNumber || '').trim();
+  if (onlyTask) {
+    doc.querySelectorAll('.task').forEach((taskEl) => {
+      const numEl = taskEl.querySelector('.task-number');
+      const match = numEl?.textContent?.match(/Aufgabe\s+(\d+)/i);
+      if (match?.[1] !== onlyTask) taskEl.remove();
+    });
+    doc.querySelectorAll('.instructions, .submit-section').forEach((el) => el.remove());
+  }
+
   const rawTotal = Number(opts.totalPoints) || 0;
   const cappedTotal =
     opts.maxPoints > 0 ? Math.min(rawTotal, opts.maxPoints) : rawTotal;
@@ -1721,7 +1738,9 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     <hr class="jm-review-rule" />
   `;
   const paper = doc.querySelector('.exam-paper') || doc.body;
-  paper.appendChild(box);
+  if (!onlyTask) {
+    paper.appendChild(box);
+  }
 
   doc.querySelectorAll('input, textarea, select, button').forEach((el) => {
     if (teacherCorrectionMode && el.id === 'jm-general-comment-field') return;

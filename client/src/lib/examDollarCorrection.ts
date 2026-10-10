@@ -78,13 +78,8 @@ function groupSubmissionKeysByMux(keys: string[]): Map<string, string[]> {
 }
 
 function sortMuxPrefixes(map: Map<string, string[]>): string[] {
-  return [...map.keys()].sort((a, b) => {
-    const la = map.get(a) || [];
-    const lb = map.get(b) || [];
-    const na = parseInt(la[0]?.split('_').pop() || '0', 10);
-    const nb = parseInt(lb[0]?.split('_').pop() || '0', 10);
-    return na - nb;
-  });
+  // Jedes Aufgaben-Mux bekommt beim Rendern einen eigenen Zeitstempel — Reihenfolge ≈ Aufgaben 1…n
+  return [...map.keys()].sort((a, b) => a.localeCompare(b, 'en'));
 }
 
 export function buildExamDollarAnswerKeyFromHtml(html: string): ExamAnswerKey {

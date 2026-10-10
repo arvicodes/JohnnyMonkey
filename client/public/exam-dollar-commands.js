@@ -4310,8 +4310,15 @@
       taskEl.removeAttribute('data-jm-task-shuffle');
     }
     var n = 0;
+    var taskLabel = parsed.aufgabeLabel || '1';
+    var correctionReview =
+      document.documentElement &&
+      document.documentElement.classList.contains('teacher-correction-mode');
     function idGen() {
       n += 1;
+      if (correctionReview) {
+        return 'a' + taskLabel + String.fromCharCode(96 + n);
+      }
       return 'examDollar_' + Date.now().toString(36) + '_' + n;
     }
     var html = renderBlockToHtml(parsed.body, idGen);
@@ -5506,10 +5513,48 @@
         syncExamAltGroupsToGlobal(paper);
       }
       refreshExamAltVariantToolbar();
+      applyExamCorrectionReviewAnswers();
     } finally {
       global.__jmExamTasksBootstrapping = false;
       global.__jmExamTasksBootstrapped = true;
     }
+  }
+
+  function applyExamCorrectionReviewAnswers() {
+    var map = global.__jmExamCorrectionAnswers;
+    if (!map || typeof map !== 'object') return;
+    Object.keys(map).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var raw = map[id];
+      var value = raw == null ? '' : String(raw);
+      if (el instanceof HTMLInputElement && (el.type === 'checkbox' || el.type === 'radio')) {
+        el.checked =
+          value === 'true' ||
+          value === '1' ||
+          (el.type === 'radio' && el.value === value);
+      } else {
+        el.value = value;
+      }
+      try {
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      } catch (eInput) {
+        /* ignore */
+      }
+    });
+    document.querySelectorAll('input[type="radio"]').forEach(function (radio) {
+      if (!(radio instanceof HTMLInputElement) || !radio.name) return;
+      var want = map[radio.name];
+      if (want == null) return;
+      if (String(radio.value) === String(want)) {
+        radio.checked = true;
+        try {
+          radio.dispatchEvent(new Event('change', { bubbles: true }));
+        } catch (eCh) {
+          /* ignore */
+        }
+      }
+    });
   }
 
   function scheduleExamTaskBootstrap(isTeacher) {
@@ -5538,7 +5583,10 @@
     if (rulesForKeys && typeof global.jmWireExamDollarFormatKeys === 'function') {
       global.jmWireExamDollarFormatKeys(rulesForKeys);
     }
-    var isTeacher = localStorage.getItem('teacherId') !== null;
+    var correctionReview =
+      document.documentElement &&
+      document.documentElement.classList.contains('teacher-correction-mode');
+    var isTeacher = localStorage.getItem('teacherId') !== null && !correctionReview;
     if (!isTeacher) {
       document.querySelectorAll('.exam-dollar-compose').forEach(function (el) {
         el.parentNode && el.parentNode.removeChild(el);

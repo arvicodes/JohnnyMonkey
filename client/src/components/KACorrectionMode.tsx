@@ -1416,7 +1416,10 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
   const activeLearningGroupName =
     examGroups.find((g) => g.id === activeGroupId)?.name?.trim() || '';
 
-  const buildReviewHtmlForSubmission = async (submission: KASubmission): Promise<string> => {
+  const buildReviewHtmlForSubmission = async (
+    submission: KASubmission,
+    onlyTaskNumber?: string,
+  ): Promise<string> => {
     const answers = answersForCorrectionGrouping(submission.answers) as Record<string, unknown>;
     const previewCorrections = correctionsForPreview(submission);
     const maxPts = calculateMaxTotalPoints();
@@ -1438,16 +1441,16 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
       studentName: submissionStudentName(submission),
       learningGroupName: activeLearningGroupName,
       teacherCorrectionMode: true,
+      onlyTaskNumber: onlyTaskNumber || undefined,
       gradeMetricLabel: useMssGrading ? 'MSS-Punkte' : 'Note',
     });
   };
 
-  const getFieldCorrectionForDialog = useCallback(
-    (taskId: string) => {
-      if (!selectedSubmission) return {};
-      const key = correctionStorageKey(selectedSubmission.id, taskId);
+  const getFieldCorrectionForSubmission = useCallback(
+    (submission: KASubmission, taskId: string) => {
+      const key = correctionStorageKey(submission.id, taskId);
       const fromState = corrections[key];
-      const saved = selectedSubmission.corrections?.find((c) => c.taskNumber === taskId);
+      const saved = submission.corrections?.find((c) => c.taskNumber === taskId);
       if (/^3[a-d]$/.test(taskId)) {
         return {
           points: fromState?.constructionPoints ?? saved?.manualPoints ?? undefined,
@@ -1459,7 +1462,15 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
         comment: fromState?.comment ?? saved?.comment ?? '',
       };
     },
-    [selectedSubmission, corrections],
+    [corrections],
+  );
+
+  const getFieldCorrectionForDialog = useCallback(
+    (taskId: string) => {
+      if (!selectedSubmission) return {};
+      return getFieldCorrectionForSubmission(selectedSubmission, taskId);
+    },
+    [selectedSubmission, getFieldCorrectionForSubmission],
   );
 
   const openStudentPreview = async () => {
@@ -3860,619 +3871,67 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
             return (
               <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', py: 1 }}>
-                <Stack spacing={1.25} divider={<Divider flexItem />}>
-                        {taskSubmissions.map(({ submission, answers }, idx) => {
-                          const studentPassive = isPassiveStudentId(
-                            submission.student?.id || '',
-                            passiveStudentIdsForGroup,
-                          );
-                          // Für Aufgabe 3: Zeige Teilaufgaben (a, b, c, d) separat, aber Kommentar nur einmal
-                          if (taskNum === '3' && useGeometryTask3) {
-                            const subtasks = groupTask3BySubtask(answers.map(({ taskId, answer }) => {
-                              const parsedAnswers = parseAnswers(submission.answers);
-                              const isCorrect = parsedAnswers[taskId]?.isCorrect;
-                              return { taskId, answer, isCorrect };
-                            }));
-                            
-                            // Kommentar für die ganze Aufgabe 3 (nur einmal pro Schüler)
-                            const task3CommentKey = '3_comment';
-                            const task3CommentCorrectionKey = `${submission.id}_${task3CommentKey}`;
-                            // Lade Kommentar aus State oder aus submission.corrections
-                            // Wichtig: Nur Fallback verwenden, wenn Key nicht im State existiert (nicht wenn Wert undefined ist)
-                            const savedTask3Comment = submission.corrections?.find(c => c.taskNumber === task3CommentKey);
-                            const task3Comment = corrections[task3CommentCorrectionKey] !== undefined
-                              ? corrections[task3CommentCorrectionKey]
-                              : {
-                                  comment: savedTask3Comment?.comment || ''
-                                };
-                            
-                            // Formatiere korrekte Koordinaten
-                            const formatCorrectCoordinates = (subtaskAnswers: Array<{ taskId: string; answer: any; isCorrect?: boolean }>) => {
-                              const points: Record<string, { x?: any; y?: any }> = {};
-                              subtaskAnswers.forEach(({ taskId }) => {
-                                const correctAnswer = correctAnswers[taskId];
-                                if (correctAnswer !== undefined) {
-                                  const pointMatch = taskId.match(/a3([a-l])/);
-                                  if (pointMatch) {
-                                    const pointLetter = pointMatch[1];
-                                    const pointName = String.fromCharCode(65 + (pointLetter.charCodeAt(0) - 97));
-                                    if (!points[pointName]) points[pointName] = {};
-                                    if (taskId.includes('_x')) {
-                                      points[pointName].x = correctAnswer;
-                                    } else if (taskId.includes('_y')) {
-                                      points[pointName].y = correctAnswer;
-                                    }
-                                  }
-                                }
-                              });
-                              return Object.entries(points)
-                                .map(([pointName, coords]) => {
-                                  const x = coords.x !== undefined ? coords.x : '?';
-                                  const y = coords.y !== undefined ? coords.y : '?';
-                                  return `${pointName}(${x}|${y})`;
-                                })
-                                .join(', ');
-                            };
-                            
-                            // Prüfe ob alle Felder für diese Aufgabe ausgefüllt sind
-                            const subtaskKeys = ['3a', '3b', '3c', '3d'];
-                            const filledFields = subtaskKeys.filter(subtask => {
-                              const subtaskKey = `${submission.id}_${subtask}`;
-                              const subtaskCorrection = corrections[subtaskKey] || {};
-                              return subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null;
-                            });
-                            const allFieldsFilled = filledFields.length === subtaskKeys.length;
-                            const someFieldsFilled = filledFields.length > 0 && filledFields.length < subtaskKeys.length;
-                            
-                            // Render-Funktion für eine Teilaufgabe
-                            const renderSubtask = (subtask: string) => {
-                              const subtaskAnswers = subtasks[subtask] || [];
-                              if (subtaskAnswers.length === 0) return null;
-                              
-                              const subtaskKey = `3${subtask}`;
-                              const subtaskCorrectionKey = `${submission.id}_${subtaskKey}`;
-                              // Lade Korrektur aus State oder aus submission.corrections
-                              // Wichtig: Nur Fallback verwenden, wenn Key nicht im State existiert (nicht wenn Wert undefined ist)
-                              const savedCorrection = submission.corrections?.find(c => c.taskNumber === subtaskKey);
-                              const subtaskCorrection = corrections[subtaskCorrectionKey] !== undefined
-                                ? corrections[subtaskCorrectionKey]
-                                : {
-                                    constructionPoints: savedCorrection?.manualPoints,
-                                    comment: savedCorrection?.comment || ''
-                                  };
-                              
-                              // Berechne Koordinatenpunkte (automatisch)
-                              const coordinateAchieved = subtaskAnswers.reduce((sum, item) => {
-                                const maxPoints = pointsDistribution[item.taskId] || 0;
-                                if (item.isCorrect === true) {
-                                  return sum + maxPoints;
-                                }
-                                return sum;
-                              }, 0);
-                              
-                              // Konstruktionspunkte (manuell)
-                              let constructionAchieved = subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null 
-                                ? subtaskCorrection.constructionPoints 
-                                : 0;
-                              // Validiere: nur Werte zwischen 0 und 2 erlauben
-                              if (constructionAchieved < 0) constructionAchieved = 0;
-                              if (constructionAchieved > 2) constructionAchieved = 2;
-                              
-                              const achievedPoints = coordinateAchieved + constructionAchieved;
-                              const coordinatePoints = subtaskAnswers.reduce((sum, item) => {
-                                return sum + (pointsDistribution[item.taskId] || 0);
-                              }, 0);
-                              const totalPoints = coordinatePoints + 2; // 1.5 + 2 = 3.5
-                              
-                              // Bestimme Hintergrundfarbe basierend auf Bewertung
-                              const allCorrect = subtaskAnswers.every(item => item.isCorrect === true);
-                              const someCorrect = subtaskAnswers.some(item => item.isCorrect === true);
-                              
-                              return (
-                                <Box>
-                                  {/* Header: Teilaufgabe + Punkte + Status */}
-                                  <Box display="flex" alignItems="center" gap={0.5} flexWrap="wrap" mb={0.25}>
-                                    <Typography 
-                                      variant="caption" 
-                                      sx={{ 
-                                        fontWeight: 700, 
-                                        color: '#1976d2', 
-                                        fontSize: '0.7rem'
-                                      }}
-                                    >
-                                      A3 {subtask}
-                                    </Typography>
-                                    <Typography variant="caption" sx={{ color: '#666', fontSize: '0.65rem' }}>
-                                      {formatExamPointsDisplay(achievedPoints)} /{' '}
-                                      {formatExamPointsDisplay(totalPoints)}
-                                    </Typography>
-                                    <Box display="flex" gap={0.25} alignItems="center">
-                                      {allCorrect && (
-                                        <Chip
-                                          label="✓"
-                                          size="small"
-                                          sx={{ 
-                                            bgcolor: '#4caf50', 
-                                            color: '#fff',
-                                            height: 18,
-                                            fontSize: '0.6rem',
-                                            fontWeight: 700,
-                                            '& .MuiChip-label': { px: 0.5 }
-                                          }}
-                                        />
-                                      )}
-                                      {!allCorrect && someCorrect && (
-                                        <Chip
-                                          label="~"
-                                          size="small"
-                                          sx={{ 
-                                            bgcolor: '#ff9800', 
-                                            color: '#fff',
-                                            height: 18,
-                                            fontSize: '0.6rem',
-                                            fontWeight: 700,
-                                            '& .MuiChip-label': { px: 0.5 }
-                                          }}
-                                        />
-                                      )}
-                                      {!someCorrect && subtaskAnswers.length > 0 && (
-                                        <Chip
-                                          label="✗"
-                                          size="small"
-                                          sx={{ 
-                                            bgcolor: '#f44336', 
-                                            color: '#fff', 
-                                            height: 18,
-                                            fontSize: '0.6rem',
-                                            fontWeight: 700,
-                                            '& .MuiChip-label': { px: 0.5 }
-                                          }}
-                                        />
-                                      )}
-                                    </Box>
-                                  </Box>
-                                  
-                                  {/* Koordinaten Anzeige */}
-                                  <Box sx={{ 
-                                    bgcolor: 'rgba(255,255,255,0.5)',
-                                    p: 0.25,
-                                    borderRadius: 0.25,
-                                    mb: 0.5,
-                                    border: '1px solid rgba(0,0,0,0.1)',
-                                    minHeight: 24
-                                  }}>
-                                    <Typography variant="caption" sx={{ 
-                                      fontFamily: 'monospace',
-                                      fontSize: '0.7rem',
-                                      lineHeight: 1.2
-                                    }}>
-                                      {(() => {
-                                        // Gruppiere x und y Koordinaten nach Punkt
-                                        const points: Record<string, { x?: any; y?: any; xCorrect?: boolean; yCorrect?: boolean }> = {};
-                                        subtaskAnswers.forEach(({ taskId, answer, isCorrect }) => {
-                                          const pointMatch = taskId.match(/a3([a-l])/);
-                                          if (pointMatch) {
-                                            const pointLetter = pointMatch[1];
-                                            const pointName = String.fromCharCode(65 + (pointLetter.charCodeAt(0) - 97));
-                                            if (!points[pointName]) points[pointName] = {};
-                                            if (taskId.includes('_x')) {
-                                              points[pointName].x = answer;
-                                              points[pointName].xCorrect = isCorrect;
-                                            } else if (taskId.includes('_y')) {
-                                              points[pointName].y = answer;
-                                              points[pointName].yCorrect = isCorrect;
-                                            }
-                                          }
-                                        });
-                                        
-                                        // Formatiere als P(x|y) mit Farben
-                                        return Object.entries(points).map(([pointName, coords], idx) => {
-                                          const x = coords.x !== undefined && coords.x !== null && coords.x !== '' ? coords.x : '?';
-                                          const y = coords.y !== undefined && coords.y !== null && coords.y !== '' ? coords.y : '?';
-                                          const xColor = coords.xCorrect === true ? '#2e7d32' : coords.xCorrect === false ? '#c62828' : '#1a1a1a';
-                                          const yColor = coords.yCorrect === true ? '#2e7d32' : coords.yCorrect === false ? '#c62828' : '#1a1a1a';
-                                          
-                                          return (
-                                            <span key={pointName}>
-                                              {idx > 0 && ', '}
-                                              {pointName}(
-                                              <span style={{ color: xColor }}>{x}</span>|
-                                              <span style={{ color: yColor }}>{y}</span>)
-                                            </span>
-                                          );
-                                        });
-                                      })()}
-                                    </Typography>
-                                    <Typography variant="caption" sx={{ 
-                                      fontFamily: 'monospace',
-                                      fontSize: '0.6rem',
-                                      fontStyle: 'italic',
-                                      lineHeight: 1.2,
-                                      color: '#2e7d32',
-                                      display: 'block',
-                                      mt: 0.25
-                                    }}>
-                                      {formatCorrectCoordinates(subtaskAnswers)}
-                                    </Typography>
-                                  </Box>
-                                  
-                                  {/* Eingabefeld: Konstruktionspunkte */}
-                                  <Box sx={{ mt: 0.5 }}>
-                                    <Box display="flex" alignItems="center" gap={0.5}>
-                                      <Box sx={{ position: 'relative', width: 100 }}>
-                                        <TextField
-                                          label="Konstruktion"
-                                          type="number"
-                                          value={subtaskCorrection.constructionPoints ?? ''}
-                                          onChange={(e) => {
-                                            const inputValue = e.target.value.trim().toLowerCase();
-                                            let value: number | undefined = undefined;
-                                            
-                                            // Wenn "x" eingegeben wird, leere das Feld
-                                            if (inputValue === 'x') {
-                                              value = undefined;
-                                            } else if (inputValue === '') {
-                                              value = undefined;
-                          } else {
-                                              const numValue = parseFloat(e.target.value);
-                                              if (!isNaN(numValue)) {
-                                                // Validiere: nur Werte zwischen 0 und 2 erlauben
-                                                if (numValue >= 0 && numValue <= 2) {
-                                                  value = numValue;
-                                                }
-                                                // Wenn Wert außerhalb des Bereichs: ignorieren (nicht setzen)
-                                              }
-                                            }
-                                            
-                                            // Nur setzen, wenn Wert gültig ist, leer oder "x"
-                                            if (value !== undefined || e.target.value === '' || inputValue === 'x') {
-                                              setCorrections(prev => ({
-                                                ...prev,
-                                                [subtaskCorrectionKey]: { ...prev[subtaskCorrectionKey], constructionPoints: value }
-                                              }));
-                                            }
-                                          }}
-                                          onBlur={(e) => {
-                                            const currentCorrection = corrections[subtaskCorrectionKey] || {};
-                                            let constructionPoints = currentCorrection.constructionPoints;
-                                            
-                                            // Prüfe den aktuellen Wert im TextField
-                                            const inputValue = e.target.value.trim().toLowerCase();
-                                            
-                                            // Wenn "x" eingegeben wurde, leere das Feld
-                                            if (inputValue === 'x') {
-                                              constructionPoints = undefined;
-                                              // Aktualisiere den State
-                                              setCorrections(prev => ({
-                                                ...prev,
-                                                [subtaskCorrectionKey]: { ...prev[subtaskCorrectionKey], constructionPoints: undefined }
-                                              }));
-                                              // Leere das TextField
-                                              e.target.value = '';
-                                            } else if (inputValue !== '') {
-                                              const numValue = parseFloat(inputValue);
-                                              if (!isNaN(numValue)) {
-                                                // Validiere: nur Werte zwischen 0 und 2 erlauben
-                                                if (numValue >= 0 && numValue <= 2) {
-                                                  constructionPoints = numValue;
-                                                  // Aktualisiere den State mit dem neuen Wert
-                                                  setCorrections(prev => ({
-                                                    ...prev,
-                                                    [subtaskCorrectionKey]: { ...prev[subtaskCorrectionKey], constructionPoints }
-                                                  }));
-                                                } else {
-                                                  // Ungültiger Wert: auf vorherigen Wert zurücksetzen oder undefined
-                                                  constructionPoints = currentCorrection.constructionPoints;
-                                                  // Setze das TextField auf den gültigen Wert zurück
-                                                  e.target.value = constructionPoints !== undefined ? String(constructionPoints) : '';
-                                                }
-                                              }
-                                            }
-                                            
-                                            // Speichere nur, wenn ein gültiger Wert vorhanden ist (oder undefined für "x")
-                                            if (constructionPoints === undefined || (constructionPoints !== null && constructionPoints >= 0 && constructionPoints <= 2)) {
-                                              saveCorrection(subtaskKey, constructionPoints, currentCorrection.comment, submission.id);
-                                            }
-                                          }}
-                                          inputProps={{ min: 0, max: 2, step: 0.5 }}
-                                          tabIndex={idx * 5 + (subtask === 'a' ? 1 : subtask === 'b' ? 2 : subtask === 'c' ? 3 : 4)}
-                                          size="small"
-                                          sx={{ 
-                                            width: 100,
-                                            '& .MuiOutlinedInput-root': {
-                                              bgcolor: (subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null && !isNaN(subtaskCorrection.constructionPoints) && subtaskCorrection.constructionPoints >= 0 && subtaskCorrection.constructionPoints <= 2) ? '#e8f5e9' : '#ffebee',
-                                              border: (subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null && !isNaN(subtaskCorrection.constructionPoints) && subtaskCorrection.constructionPoints >= 0 && subtaskCorrection.constructionPoints <= 2) ? '2px solid #4caf50' : '2px solid #f44336',
-                                              fontSize: '0.7rem',
-                                              height: 32,
-                                              '&:hover': {
-                                                border: (subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null && !isNaN(subtaskCorrection.constructionPoints) && subtaskCorrection.constructionPoints >= 0 && subtaskCorrection.constructionPoints <= 2) ? '2px solid #4caf50' : '2px solid #f44336'
-                                              },
-                                              '&.Mui-focused': {
-                                                border: (subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null && !isNaN(subtaskCorrection.constructionPoints) && subtaskCorrection.constructionPoints >= 0 && subtaskCorrection.constructionPoints <= 2) ? '2px solid #4caf50' : '2px solid #f44336'
-                                              }
-                                            },
-                                            '& .MuiInputLabel-root': {
-                                              fontSize: '0.65rem'
-                                            }
-                                          }}
-                                        />
-                                        {(subtaskCorrection.constructionPoints !== undefined && subtaskCorrection.constructionPoints !== null && !isNaN(subtaskCorrection.constructionPoints) && subtaskCorrection.constructionPoints >= 0 && subtaskCorrection.constructionPoints <= 2) && (
-                                          <CheckCircle 
-                                            sx={{ 
-                                              position: 'absolute',
-                                              right: 4,
-                                              top: '50%',
-                                              transform: 'translateY(-50%)',
-                                              fontSize: 18,
-                                              color: '#4caf50'
-                                            }}
-                                          />
-                                        )}
-                                      </Box>
-                                      <Typography variant="caption" sx={{ color: '#9c27b0', fontSize: '0.7rem', fontWeight: 500 }}>
-                                        max: 2
-                                      </Typography>
-                                    </Box>
-                                  </Box>
-                                </Box>
-                              );
-                            };
-
-                          return (
-                            <Card
-                              key={submission.id}
-                              variant="outlined"
-                              sx={{
-                                opacity: studentPassive ? 0.48 : 1,
-                                filter: studentPassive ? 'grayscale(0.85)' : 'none',
-                                borderColor: allFieldsFilled ? '#a5d6a7' : '#e0e0e0',
-                                bgcolor: '#fff',
-                              }}
-                            >
-                              <CardContent sx={{ p: 1.25, '&:last-child': { pb: 1.25 } }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', mb: 1 }}>
-                                  <Typography
-                                    variant="subtitle2"
-                                    sx={{
-                                      fontWeight: 800,
-                                      fontSize: '0.82rem',
-                                      color: studentPassive
-                                        ? '#757575'
-                                        : allFieldsFilled
-                                          ? '#2e7d32'
-                                          : someFieldsFilled
-                                            ? '#f57c00'
-                                            : '#c62828',
-                                    }}
-                                  >
-                                    {submissionStudentName(submission)}
-                                  </Typography>
-                                  {studentPassive ? (
-                                    <Chip label="Passiv" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#9e9e9e', color: '#fff' }} />
-                                  ) : null}
-                                </Box>
-                                <Grid container spacing={1}>
-                                  <Grid item xs={12} sm={6} md={3}>{renderSubtask('a')}</Grid>
-                                  <Grid item xs={12} sm={6} md={3}>{renderSubtask('b')}</Grid>
-                                  <Grid item xs={12} sm={6} md={3}>{renderSubtask('c')}</Grid>
-                                  <Grid item xs={12} sm={6} md={3}>{renderSubtask('d')}</Grid>
-                                </Grid>
-                                <Box sx={{ mt: 1 }}>
-                                  <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.35 }}>
-                                    Kommentar (gesamte Aufgabe 3)
-                                  </Typography>
-                                  <TextField
-                                    multiline
-                                    rows={3}
-                                    value={task3Comment.comment ?? ''}
-                                    onChange={(e) => {
-                                      setCorrections(prev => ({
-                                        ...prev,
-                                        [task3CommentCorrectionKey]: { ...prev[task3CommentCorrectionKey], comment: e.target.value }
-                                      }));
-                                    }}
-                                    onBlur={() => {
-                                      const correction = corrections[task3CommentCorrectionKey] || {};
-                                      saveCorrection(task3CommentKey, undefined, correction.comment, submission.id);
-                                    }}
-                                    tabIndex={idx * 5 + 5}
-                                    size="small"
-                                    fullWidth
-                                    placeholder="Kommentar …"
-                                    sx={{
-                                      '& .MuiOutlinedInput-root': {
-                                        bgcolor: '#e3f2fd',
-                                        border: '2px solid #9c27b0',
-                                        fontSize: '0.7rem',
-                                      },
-                                    }}
-                                  />
-                                </Box>
-                              </CardContent>
-                            </Card>
-                            );
-                          }
-                          
-                          const allFieldsFilledStudent = answers.every(({ taskId }) => {
-                            const k = correctionStorageKey(submission.id, taskId);
-                            const st = corrections[k];
-                            const saved = submission.corrections?.find((c) => c.taskNumber === taskId);
-                            const pts = st?.points !== undefined ? st.points : saved?.manualPoints;
-                            return pts !== undefined && pts !== null;
-                          });
-
-                          return (
-                            <Card
-                              key={submission.id}
-                              variant="outlined"
-                              sx={{
-                                opacity: studentPassive ? 0.48 : 1,
-                                filter: studentPassive ? 'grayscale(0.85)' : 'none',
-                                borderColor: allFieldsFilledStudent ? '#a5d6a7' : '#e0e0e0',
-                                bgcolor: '#fff',
-                              }}
-                            >
-                              <CardContent sx={{ p: 1.25, '&:last-child': { pb: 1.25 } }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', mb: 1 }}>
-                                  <Typography
-                                    variant="subtitle2"
-                                    sx={{
-                                      fontWeight: 800,
-                                      fontSize: '0.82rem',
-                                      color: studentPassive
-                                        ? '#757575'
-                                        : allFieldsFilledStudent
-                                          ? '#2e7d32'
-                                          : '#c62828',
-                                    }}
-                                  >
-                                    {submissionStudentName(submission)}
-                                  </Typography>
-                                  {studentPassive ? (
-                                    <Chip label="Passiv" size="small" sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#9e9e9e', color: '#fff' }} />
-                                  ) : null}
-                                </Box>
-                                <Stack spacing={1}>
-                                  {answers.map(({ taskId, answer }) => {
-                                    const fieldCorrectionKey = correctionStorageKey(submission.id, taskId);
-                                    const savedField = submission.corrections?.find(
-                                      (c) => c.taskNumber === taskId,
-                                    );
-                                    const fieldState =
-                                      corrections[fieldCorrectionKey] !== undefined
-                                        ? corrections[fieldCorrectionKey]
-                                        : {
-                                            points: savedField?.manualPoints,
-                                            comment: savedField?.comment || '',
-                                          };
-                                    const fieldFilled =
-                                      fieldState.points !== undefined && fieldState.points !== null;
-
-                                    return (
-                                      <Box
-                                        key={taskId}
-                                        sx={{
-                                          p: 0.75,
-                                          borderRadius: 1,
-                                          bgcolor: '#f8f9fa',
-                                          border: '1px solid #eceff1',
-                                        }}
-                                      >
-                                        <Typography
-                                          variant="caption"
-                                          sx={{ fontWeight: 700, color: '#1976d2', fontSize: '0.68rem' }}
-                                        >
-                                          {formatTaskId(taskId)}
-                                        </Typography>
-                                        <Typography
-                                          variant="body2"
-                                          sx={{
-                                            fontFamily: 'monospace',
-                                            fontSize: '0.78rem',
-                                            color: answer ? '#1a1a1a' : '#d32f2f',
-                                            my: 0.5,
-                                            whiteSpace: 'pre-wrap',
-                                          }}
-                                        >
-                                          {String(answer) || '(leer)'}
-                                        </Typography>
-                                        <Box
-                                          sx={{
-                                            display: 'flex',
-                                            flexWrap: 'wrap',
-                                            gap: 1,
-                                            alignItems: 'flex-start',
-                                          }}
-                                        >
-                                          <Box sx={{ position: 'relative', width: 76 }}>
-                                            <TextField
-                                              type="number"
-                                              label="Pkt."
-                                              value={fieldState.points ?? ''}
-                                              onChange={(e) => {
-                                                const inputValue = e.target.value.trim().toLowerCase();
-                                                let value: number | undefined;
-                                                if (inputValue === 'x' || inputValue === '') {
-                                                  value = undefined;
-                                                } else {
-                                                  const numValue = parseFloat(e.target.value);
-                                                  value = !isNaN(numValue) ? numValue : undefined;
-                                                }
-                                                setCorrections((prev) => ({
-                                                  ...prev,
-                                                  [fieldCorrectionKey]: { ...prev[fieldCorrectionKey], points: value },
-                                                }));
-                                              }}
-                                              onBlur={(e) =>
-                                                void saveCorrection(
-                                                  taskId,
-                                                  parsePointsInput((e.target as HTMLInputElement).value),
-                                                  fieldState.comment,
-                                                  submission.id,
-                                                )
-                                              }
-                                              inputProps={{ min: 0, max: 10, step: 0.25 }}
-                                              size="small"
-                                              sx={{
-                                                width: 76,
-                                                '& .MuiOutlinedInput-root': {
-                                                  bgcolor: fieldFilled ? '#e8f5e9' : '#ffebee',
-                                                  fontSize: '0.75rem',
-                                                },
-                                                '& .MuiInputLabel-root': { fontSize: '0.65rem' },
-                                              }}
-                                            />
-                                            {fieldFilled ? (
-                                              <CheckCircle
-                                                sx={{
-                                                  position: 'absolute',
-                                                  right: 4,
-                                                  top: 22,
-                                                  fontSize: 16,
-                                                  color: '#4caf50',
-                                                }}
-                                              />
-                                            ) : null}
-                                          </Box>
-                                          <TextField
-                                            multiline
-                                            minRows={2}
-                                            label="Kommentar"
-                                            value={fieldState.comment ?? ''}
-                                            onChange={(e) => {
-                                              setCorrections((prev) => ({
-                                                ...prev,
-                                                [fieldCorrectionKey]: {
-                                                  ...prev[fieldCorrectionKey],
-                                                  comment: e.target.value,
-                                                },
-                                              }));
-                                            }}
-                                            onBlur={() =>
-                                              saveCorrection(
-                                                taskId,
-                                                fieldState.points,
-                                                fieldState.comment,
-                                                submission.id,
-                                              )
-                                            }
-                                            size="small"
-                                            sx={{
-                                              flex: '1 1 160px',
-                                              minWidth: 140,
-                                              '& .MuiOutlinedInput-root': { fontSize: '0.75rem' },
-                                              '& .MuiInputLabel-root': { fontSize: '0.65rem' },
-                                            }}
-                                          />
-                                        </Box>
-                                      </Box>
-                                    );
-                                  })}
-                                </Stack>
-                              </CardContent>
-                            </Card>
-                          );
-                        })}
+                <Stack spacing={2} divider={<Divider flexItem />}>
+                  {taskSubmissions.map(({ submission }) => {
+                    const studentPassive = isPassiveStudentId(
+                      submission.student?.id || '',
+                      passiveStudentIdsForGroup,
+                    );
+                    const reviewKey = `${submission.id}:${taskNum}:${submission.answers}:${JSON.stringify(corrections)}:${maxTotalPoints}`;
+                    return (
+                      <Box
+                        key={submission.id}
+                        sx={{
+                          opacity: studentPassive ? 0.48 : 1,
+                          filter: studentPassive ? 'grayscale(0.85)' : 'none',
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          borderRadius: 1,
+                          overflow: 'hidden',
+                          bgcolor: '#fff',
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            px: 1,
+                            py: 0.6,
+                            bgcolor: '#f5f5f5',
+                            borderBottom: '1px solid',
+                            borderColor: 'divider',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            flexWrap: 'wrap',
+                          }}
+                        >
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800, fontSize: '0.85rem' }}>
+                            {submissionStudentName(submission)}
+                          </Typography>
+                          {studentPassive ? (
+                            <Chip
+                              label="Passiv"
+                              size="small"
+                              sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#9e9e9e', color: '#fff' }}
+                            />
+                          ) : null}
+                        </Box>
+                        {submission.markedSick && !submissionHasFilledAnswers(submission.answers) ? (
+                          <Alert severity="info" sx={{ m: 1, fontSize: '0.78rem' }}>
+                            Krank — noch keine Abgabe.
+                          </Alert>
+                        ) : (
+                          <ExamCorrectionLiveReview
+                            refreshKey={reviewKey}
+                            buildHtml={() => buildReviewHtmlForSubmission(submission, taskNum)}
+                            getFieldCorrection={(taskId) => getFieldCorrectionForSubmission(submission, taskId)}
+                            onSaveField={(taskId, points, comment) => {
+                              void saveCorrection(taskId, points, comment, submission.id);
+                            }}
+                          />
+                        )}
+                      </Box>
+                    );
+                  })}
                 </Stack>
               </Box>
             );
