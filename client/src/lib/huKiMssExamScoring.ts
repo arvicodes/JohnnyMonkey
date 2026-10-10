@@ -7,6 +7,9 @@ export function isHuKiMssExamPath(filePath: string): boolean {
   return HU_KI_MSS_RE.test(base);
 }
 
+/** Anzeige & MSS-Umrechnung (13 + 2+2+2+2 Aufgabenpunkte). */
+export const HU_KI_MSS_EXAM_MAX_POINTS = 20;
+
 const TASK1_FIELDS = new Set(
   'abcdefghijklm'.split('').map((c) => `a1${c}`),
 );

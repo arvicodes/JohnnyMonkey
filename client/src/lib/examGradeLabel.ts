@@ -1,4 +1,5 @@
 import {
+  percentageToMSSPoints,
   scoreToGradeNumeric,
   scoreToGradeTendency,
   tendencyToAsciiLabel,
@@ -7,6 +8,13 @@ import {
 /** Note aus erreichten Punkten — app-weite Prozentregel (alle Skalen). */
 export function examGradeLabelForCorrection(achieved: number, maxPoints: number): string {
   return tendencyToAsciiLabel(scoreToGradeTendency(achieved, maxPoints));
+}
+
+/** MSS-Punkte 0–15 für Korrekturmodus (Checkbox „MSS-Punkte“). */
+export function examMssPointsLabelForCorrection(achieved: number, maxPoints: number): string {
+  if (!maxPoints || maxPoints <= 0) return '–';
+  const pct = (Number(achieved) / maxPoints) * 100;
+  return String(percentageToMSSPoints(pct));
 }
 
 export function examGradeNumericForCorrection(achieved: number, maxPoints: number): number {

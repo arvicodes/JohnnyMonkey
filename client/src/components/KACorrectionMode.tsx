@@ -82,10 +82,19 @@ import {
   remapExamDollarSubmissionToSynthetic,
 } from '../lib/examDollarCorrection';
 import { examAnswerScoreFraction } from '../lib/examMcPartialScore';
-import { huKiFieldAutoPoints, isHuKiMssExamPath } from '../lib/huKiMssExamScoring';
+import {
+  HU_KI_MSS_EXAM_MAX_POINTS,
+  huKiFieldAutoPoints,
+  isHuKiMssExamPath,
+} from '../lib/huKiMssExamScoring';
+import {
+  readMssGradingPreference,
+  writeMssGradingPreference,
+} from '../lib/examCorrectionGradingMode';
 import {
   examGradeLabelForCorrection,
   examGradeNumericForCorrection,
+  examMssPointsLabelForCorrection,
   formatExamClassAverageDecimal,
 } from '../lib/examGradeLabel';
 import { gradePercentDisplayRanges, scoreToGradeTendency, tendencyToAsciiLabel } from '../lib/gradeScale';
@@ -351,6 +360,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
   const [versionChangeError, setVersionChangeError] = useState<string | null>(null);
   const [versionChangeBusy, setVersionChangeBusy] = useState(false);
   const [makeupDialogOpen, setMakeupDialogOpen] = useState(false);
+  const [useMssGrading, setUseMssGrading] = useState(false);
   const [makeupBeaconBusy, setMakeupBeaconBusy] = useState(false);
   const [groupExamBeacon, setGroupExamBeacon] = useState({
     active: false,
@@ -476,6 +486,16 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     const t = window.setInterval(refreshGroupExamBeacon, 8000);
     return () => window.clearInterval(t);
   }, [refreshGroupExamBeacon]);
+
+  const activeLearningGroupNameForPrefs =
+    examGroups.find((g) => g.id === activeGroupId)?.name?.trim() || '';
+
+  useEffect(() => {
+    if (!activeGroupId) return;
+    setUseMssGrading(
+      readMssGradingPreference(activeGroupId, activeLearningGroupNameForPrefs),
+    );
+  }, [activeGroupId, activeLearningGroupNameForPrefs]);
 
   const stopMakeupExam = async () => {
     if (!activeGroupId || makeupBeaconBusy) return;
@@ -1371,6 +1391,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
       studentName: submissionStudentName(submission),
       learningGroupName: activeLearningGroupName,
       teacherCorrectionMode: true,
+      gradeMetricLabel: useMssGrading ? 'MSS-Punkte' : 'Note',
     });
   };
 
@@ -1433,8 +1454,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     ? ['3', '4', '5', '6', '7', '8', '9']
     : ['4', '5', '6', '7', '8', '9'];
 
-  const calculateGrade = (achieved: number, total: number): string =>
-    examGradeLabelForCorrection(achieved, total);
+  const gradingMaxPoints = (max: number): number =>
+    isHuKiMssExamPath(kaFilePath) ? HU_KI_MSS_EXAM_MAX_POINTS : max;
 
   const gradeForSubmission = (
     submission: KASubmission | null | undefined,
@@ -1442,7 +1463,12 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     max: number,
   ): string => {
     if (submission?.markedSick && !submissionHasFilledAnswers(submission.answers)) return 'K';
-    return calculateGrade(achieved, max);
+    const cap = gradingMaxPoints(max);
+    const eff = cap > 0 ? Math.min(Number(achieved) || 0, cap) : 0;
+    if (useMssGrading && cap > 0) {
+      return examMssPointsLabelForCorrection(eff, cap);
+    }
+    return examGradeLabelForCorrection(eff, cap);
   };
 
   const groupAnswerFieldIdsByTask = (answerIds: string[]) => {
@@ -1590,6 +1616,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
   };
 
   const calculateMaxTotalPoints = (): number => {
+    if (isHuKiMssExamPath(kaFilePath)) return HU_KI_MSS_EXAM_MAX_POINTS;
     if (examMaxPoints > 0) return examMaxPoints;
     const fromDist = Object.values(pointsDistribution).reduce((sum, n) => sum + (Number(n) || 0), 0);
     return fromDist > 0 ? fromDist : 0;
@@ -1600,8 +1627,8 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
   const correctionReviewRefreshKey = useMemo(() => {
     if (!selectedSubmission) return '';
-    return `${selectedSubmission.id}:${selectedSubmission.answers}:${JSON.stringify(corrections)}:${maxTotalPoints}`;
-  }, [selectedSubmission?.id, selectedSubmission?.answers, corrections, maxTotalPoints]);
+    return `${selectedSubmission.id}:${selectedSubmission.answers}:${JSON.stringify(corrections)}:${maxTotalPoints}:${useMssGrading}`;
+  }, [selectedSubmission?.id, selectedSubmission?.answers, corrections, maxTotalPoints, useMssGrading]);
 
   const mergeSubmissionIntoState = (updated: KASubmission, studentId?: string) => {
     const student =
@@ -2724,6 +2751,25 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                   </Button>
                 )
               ) : null}
+              <FormControlLabel
+                control={
+                  <Switch
+                    size="small"
+                    checked={useMssGrading}
+                    disabled={!activeGroupId}
+                    onChange={(_, on) => {
+                      setUseMssGrading(on);
+                      if (activeGroupId) writeMssGradingPreference(activeGroupId, on);
+                    }}
+                  />
+                }
+                label={
+                  <Typography component="span" sx={{ fontSize: '0.68rem', fontWeight: 700 }}>
+                    MSS-Punkte (0–15)
+                  </Typography>
+                }
+                sx={{ m: 0, mr: 0.5 }}
+              />
               <ButtonGroup size="small" variant="outlined" sx={kaCorrectionToolbarGroupSx}>
                 <Button
                   onClick={handleOpenKA}

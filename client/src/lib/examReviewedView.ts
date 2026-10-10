@@ -7,6 +7,11 @@ import {
 import { examAnswerScoreFraction } from './examMcPartialScore';
 import { huKiFieldAutoPoints } from './huKiMssExamScoring';
 import {
+  essaySolutionFromDoc,
+  highlightStudentAnswerHtml,
+  isManualExamAnswerKey,
+} from './examStudentAnswerDisplay';
+import {
   EXAM_TEACHER_COMMENT_FONT,
   injectHandwritingFontsIntoDocument,
 } from './handwritingFonts';
@@ -37,6 +42,8 @@ export type ExamReviewedViewOpts = {
   learningGroupName?: string;
   /** Lehrer-Korrekturmodus: Punkte-Badges klickbar (postMessage an Parent). */
   teacherCorrectionMode?: boolean;
+  /** z. B. „MSS-Punkte“ statt „Note“ in der grünen Box */
+  gradeMetricLabel?: string;
 };
 
 function formatPointsBadge(achieved: number, maxPts: number): string {
@@ -125,6 +132,34 @@ function applyExamSortAnswerToDoc(doc: Document, answerId: string, rawValue: str
   }
 }
 
+function decorateEssayStudentAnswer(
+  doc: Document,
+  fieldId: string,
+  rawValue: string,
+  teacherCorrectionMode: boolean,
+) {
+  const el = doc.getElementById(fieldId);
+  if (!(el instanceof HTMLTextAreaElement)) return;
+  el.classList.add('jm-student-input');
+  if (!teacherCorrectionMode) return;
+  const solution = essaySolutionFromDoc(doc, fieldId);
+  const text = normAnswer(rawValue);
+  const existing = el.parentElement?.querySelector(
+    `.jm-student-answer-body[data-for="${CSS.escape(fieldId)}"]`,
+  );
+  if (existing) existing.remove();
+  const box = doc.createElement('div');
+  box.className = 'jm-student-answer-body exam-essay-input';
+  box.setAttribute('data-for', fieldId);
+  if (text.trim()) {
+    box.innerHTML = highlightStudentAnswerHtml(text, solution);
+  } else {
+    box.innerHTML = '<span class="jm-student-empty">—</span>';
+  }
+  el.style.display = 'none';
+  el.parentElement?.insertBefore(box, el.nextSibling);
+}
+
 function syncMcSelectCheckboxes(doc: Document, taskId: string, rawValue: string) {
   const wrap = doc.querySelector(
     `.exam-multi-select[data-answer-id="${CSS.escape(taskId)}"], .exam-mc-single-select[data-answer-id="${CSS.escape(taskId)}"]`,
@@ -189,6 +224,7 @@ function fillAndMark(
     const value = normAnswer(raw);
     const expected = key.answers[taskId];
     const maxPts = key.points[taskId] ?? 1;
+    const manualField = isManualExamAnswerKey(expected);
     const huKiPts =
       expected !== undefined
         ? huKiFieldAutoPoints(examFilePath, taskId, expected, raw, maxPts)
@@ -197,6 +233,10 @@ function fillAndMark(
       expected !== undefined ? examAnswerScoreFraction(expected, raw) : 0;
     let isCorrect = scoreFrac >= 1 - 1e-9;
     let achieved = huKiPts != null ? huKiPts : maxPts * scoreFrac;
+    if (manualField) {
+      achieved = corrByTask[taskId] ?? 0;
+      isCorrect = achieved >= maxPts - 1e-9;
+    }
     if (huKiPts != null) {
       isCorrect = achieved >= maxPts - 1e-9;
     }
@@ -292,6 +332,10 @@ function fillAndMark(
           (byId.type === 'checkbox' && Boolean(value)) ||
           (byId.type === 'radio' && normAnswer(byId.value) === value);
         persistInputValue(byId, value, on);
+      } else if (byId instanceof HTMLTextAreaElement) {
+        persistInputValue(byId, value);
+        byId.classList.add('jm-student-input');
+        decorateEssayStudentAnswer(doc, taskId, value, teacherCorrectionMode);
       } else {
         persistInputValue(byId, value);
         if (
@@ -302,6 +346,9 @@ function fillAndMark(
           if (taskId === 'a2a') {
             applyExamSortAnswerToDoc(doc, taskId, value);
           }
+        }
+        if (byId instanceof HTMLInputElement && (byId.type === 'text' || byId.type === 'number')) {
+          byId.classList.add('jm-student-input');
         }
       }
       if (taskId === 'a2a' && value) {
@@ -637,6 +684,32 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     html.teacher-correction-mode .exam-sort-drag--steps .exam-sort-chip {
       font-size: 12px !important;
     }
+    .jm-student-input,
+    html.teacher-correction-mode textarea.jm-student-input,
+    html.teacher-correction-mode input.jm-student-input,
+    html.teacher-correction-mode .jm-student-answer-body {
+      color: #1565c0 !important;
+      -webkit-text-fill-color: #1565c0;
+    }
+    .jm-student-keyword {
+      color: #0d47a1 !important;
+      font-weight: 700;
+      -webkit-text-fill-color: #0d47a1;
+    }
+    .jm-student-empty {
+      color: #9e9e9e !important;
+      font-style: italic;
+    }
+    html.teacher-correction-mode .jm-student-answer-body {
+      white-space: pre-wrap;
+      min-height: 4em;
+      padding: 8px 10px;
+      border: 1px solid #bdbdbd;
+      border-radius: 6px;
+      background: #fff;
+      box-sizing: border-box;
+      width: 100%;
+    }
     .jm-points-badge-editable {
       pointer-events: auto !important;
       cursor: pointer !important;
@@ -898,7 +971,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     <div class="jm-review-head">
       <div class="jm-grade-block">
         <div class="jm-grade-note-wrap">
-          <div class="grade"><span class="jm-grade-label">Note:</span> <span class="jm-grade-value">${escapeHtmlText(opts.gradeLabel || '–')}</span></div>
+          <div class="grade"><span class="jm-grade-label">${escapeHtmlText(opts.gradeMetricLabel || 'Note')}:</span> <span class="jm-grade-value">${escapeHtmlText(opts.gradeLabel || '–')}</span></div>
         </div>
         <img class="jm-grade-signature" src="${sigUrl}" alt="" />
       </div>
