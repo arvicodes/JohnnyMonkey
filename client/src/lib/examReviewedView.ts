@@ -304,17 +304,13 @@ function createTeacherCommentPointsRow(
 ): HTMLElement {
   const row = doc.createElement('div');
   row.className = 'jm-teacher-comment-points-row';
-  const label = doc.createElement('span');
-  label.className = 'jm-essay-teacher-label';
-  label.textContent = 'Kommentar:';
-  const commentTa = doc.createElement('textarea');
-  commentTa.className = 'jm-essay-teacher-comment-input';
-  commentTa.setAttribute('data-task-id', taskId);
-  commentTa.rows = 1;
-  commentTa.placeholder = 'Sichtbar in der Freigabe …';
-  commentTa.value = savedComment;
-  row.appendChild(label);
-  row.appendChild(commentTa);
+  const commentText = (savedComment || '').trim();
+  if (commentText) {
+    const commentEl = doc.createElement('div');
+    commentEl.className = 'jm-teacher-comment-inline';
+    commentEl.innerHTML = `<div class="jm-teacher-handwriting">${escapeHtmlText(commentText)}</div>`;
+    row.appendChild(commentEl);
+  }
   row.appendChild(
     createFieldPointsBadge(doc, taskId, achieved, maxPts, isPartial, true, minPts),
   );
@@ -417,6 +413,14 @@ function buildSortReviewPanel(
   grid.className = 'jm-sort-review-grid';
   grid.appendChild(colStudent);
   grid.appendChild(colCorrect);
+
+  const commentText = (savedComment || '').trim();
+  if (!teacherCorrectionMode && commentText) {
+    const commentEl = doc.createElement('div');
+    commentEl.className = 'jm-teacher-comment-inline';
+    commentEl.innerHTML = `<div class="jm-teacher-handwriting">${escapeHtmlText(commentText)}</div>`;
+    panel.appendChild(commentEl);
+  }
 
   if (teacherCorrectionMode) {
     panel.appendChild(
@@ -1191,6 +1195,21 @@ function findTaskCommentAnchor(doc: Document, taskNumber: string): HTMLElement |
   return doc.getElementById(`a${tn}`);
 }
 
+function correctionToolbarShowsComment(doc: Document, taskNumber: string): boolean {
+  const tn = String(taskNumber || '').trim();
+  const ids = new Set<string>();
+  if (/^a\d/i.test(tn)) ids.add(tn.toLowerCase());
+  const num = tn.match(/^(\d+)([a-z])?$/i);
+  if (num) ids.add(`a${num[1]}${(num[2] || '').toLowerCase()}`.toLowerCase());
+  for (const id of ids) {
+    const row = doc.querySelector(
+      `.jm-teacher-comment-points-row[data-for="${CSS.escape(id)}"]`,
+    );
+    if (row?.querySelector('.jm-teacher-comment-inline')) return true;
+  }
+  return false;
+}
+
 function insertTaskTeacherComment(doc: Document, anchor: HTMLElement, text: string): void {
   const wrap = doc.createElement('div');
   wrap.className = 'jm-task-teacher-comment';
@@ -1209,6 +1228,7 @@ function injectPerTaskTeacherComments(doc: Document, corrections: ExamReviewCorr
     const tn = String(c.taskNumber || '').trim();
     if (!tn || tn === '__general_comment__') return;
     if (seen.has(tn)) return;
+    if (correctionToolbarShowsComment(doc, tn)) return;
     const anchor = findTaskCommentAnchor(doc, tn);
     if (!anchor) return;
     seen.add(tn);
@@ -1524,11 +1544,14 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     input, textarea, select, button { pointer-events: none !important; }
     html.teacher-correction-mode #jm-general-comment-field,
     html.teacher-correction-mode .jm-general-comment-input,
-    html.teacher-correction-mode .jm-essay-teacher-comment-input,
+    html.teacher-correction-mode .jm-general-comment-add-btn,
     html.teacher-correction-mode .jm-inline-points-input,
     html.teacher-correction-mode .jm-field-points-input {
       pointer-events: auto !important;
       cursor: text !important;
+    }
+    html.teacher-correction-mode .jm-general-comment-add-btn {
+      cursor: pointer !important;
     }
     .jm-essay-teacher-layout {
       display: grid;
@@ -1551,29 +1574,25 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       width: 100%;
       box-sizing: border-box;
     }
-    .jm-teacher-comment-points-row .jm-essay-teacher-label {
-      flex-shrink: 0;
-      margin: 0;
-    }
-    .jm-teacher-comment-points-row .jm-essay-teacher-comment-input {
+    .jm-teacher-comment-points-row .jm-teacher-comment-inline {
       flex: 1 1 auto;
-      min-width: 8rem;
-      max-width: none;
-      width: auto;
-      height: 2.15rem;
-      min-height: 2.15rem;
-      max-height: 2.15rem;
-      resize: none;
-      overflow: hidden;
-      line-height: 1.35;
-      padding: 4px 8px;
-      border: 1px solid #90caf9;
-      border-radius: 6px;
-      box-sizing: border-box;
+      min-width: 0;
+      text-align: left;
+    }
+    .jm-teacher-comment-points-row .jm-teacher-comment-inline .jm-teacher-handwriting {
+      font-family: ${EXAM_TEACHER_COMMENT_FONT};
+      font-size: 1.15rem;
+      font-weight: 500;
+      color: #616161;
+      line-height: 1.4;
+      white-space: pre-wrap;
     }
     .jm-teacher-comment-points-row .jm-field-points-earned {
-      margin-left: 0;
+      margin-left: auto;
       flex-shrink: 0;
+    }
+    .jm-teacher-comment-points-row:not(:has(.jm-teacher-comment-inline)) {
+      justify-content: flex-end;
     }
     .jm-sort-review-panel > .jm-teacher-comment-points-row {
       margin-top: 0;
@@ -2166,6 +2185,34 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       margin-bottom: 12px;
       text-align: left;
     }
+    .jm-general-comment-display {
+      margin-bottom: 12px;
+      text-align: left;
+    }
+    .jm-general-comment-display .jm-teacher-handwriting {
+      font-family: ${EXAM_TEACHER_COMMENT_FONT};
+      font-size: 1.35rem;
+      font-weight: 500;
+      color: #757575;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+    .jm-general-comment-add-btn {
+      display: block;
+      margin: 0 0 12px;
+      padding: 0;
+      border: 0;
+      background: none;
+      font: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1565c0;
+      cursor: pointer;
+      text-align: left;
+    }
+    .jm-general-comment-add-btn:hover {
+      text-decoration: underline;
+    }
     .jm-general-comment-input {
       display: block;
       width: 100%;
@@ -2181,6 +2228,18 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       box-sizing: border-box;
       resize: vertical;
       min-height: 2.8em;
+    }
+    .jm-general-comment-input--plain {
+      margin-top: 0;
+      margin-bottom: 12px;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      min-height: 0;
+      resize: none;
+      font-size: 1.35rem;
+      color: #757575;
     }
     .jm-review-result .teacher-comment {
       margin-top: 0;
@@ -2315,12 +2374,14 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
   const generalComment = (generalCommentRaw || '').trim();
   const sigUrl = teacherSignatureImgUrl(origin);
   const generalCommentBlock = teacherCorrectionMode
-    ? `<div class="jm-general-comment-wrap">
-        <span class="jm-comment-label">Allgemeiner Kommentar:</span>
-        <textarea id="jm-general-comment-field" class="jm-general-comment-input" rows="2" placeholder="Sichtbar in der Freigabe …">${escapeHtmlText(generalComment)}</textarea>
-      </div>`
+    ? generalComment
+      ? `<textarea id="jm-general-comment-field" class="jm-general-comment-input jm-general-comment-input--plain" rows="2">${escapeHtmlText(generalComment)}</textarea>`
+      : `<button type="button" class="jm-general-comment-add-btn" id="jm-general-comment-add">Allgemeinen Kommentar hinzufügen</button>
+         <div class="jm-general-comment-wrap" hidden>
+           <textarea id="jm-general-comment-field" class="jm-general-comment-input" rows="2" placeholder="Sichtbar in der Freigabe …"></textarea>
+         </div>`
     : generalComment
-      ? `<div class="teacher-comment"><span class="jm-comment-label">Kommentar:</span> <span class="jm-teacher-handwriting">${escapeHtmlText(generalComment)}</span></div>`
+      ? `<div class="jm-general-comment-display"><div class="jm-teacher-handwriting">${escapeHtmlText(generalComment)}</div></div>`
       : '';
   const box = reviewDoc.createElement('div');
   box.className = 'jm-review-result';
@@ -2351,7 +2412,6 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
 
   reviewDoc.querySelectorAll('input, textarea, select, button').forEach((el) => {
     if (teacherCorrectionMode && el.id === 'jm-general-comment-field') return;
-    if (teacherCorrectionMode && el.classList.contains('jm-essay-teacher-comment-input')) return;
     if (teacherCorrectionMode && el.classList.contains('jm-inline-points-input')) return;
     if (
       teacherCorrectionMode &&
@@ -2372,14 +2432,6 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       generalTa.removeAttribute('disabled');
       generalTa.removeAttribute('readonly');
     }
-    reviewDoc.querySelectorAll('.jm-essay-teacher-comment-input').forEach((node) => {
-      if (node instanceof HTMLTextAreaElement) {
-        node.disabled = false;
-        node.readOnly = false;
-        node.removeAttribute('disabled');
-        node.removeAttribute('readonly');
-      }
-    });
     reviewDoc.querySelectorAll('.jm-inline-points-input').forEach((node) => {
       if (node instanceof HTMLInputElement) {
         node.disabled = false;
@@ -2401,6 +2453,19 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       parent.postMessage({ type: 'jm-exam-correction-resize', height: h }, '*');
     } catch(e) {}
   }
+  var addGeneral = document.getElementById('jm-general-comment-add');
+  if (addGeneral) {
+    addGeneral.addEventListener('click', function(){
+      var wrap = document.querySelector('.jm-general-comment-wrap');
+      var ta = document.getElementById('jm-general-comment-field');
+      if (addGeneral.parentNode) addGeneral.parentNode.removeChild(addGeneral);
+      if (wrap) wrap.removeAttribute('hidden');
+      if (ta instanceof HTMLTextAreaElement) {
+        ta.focus();
+        notifyHeight();
+      }
+    });
+  }
   var ta = document.getElementById('jm-general-comment-field');
   if (ta) {
     ta.addEventListener('blur', function(){
@@ -2409,19 +2474,6 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     });
     ta.addEventListener('input', function(){ notifyHeight(); });
   }
-  document.querySelectorAll('.jm-essay-teacher-comment-input[data-task-id]').forEach(function(eta){
-    eta.addEventListener('blur', function(){
-      try {
-        parent.postMessage({
-          type: 'jm-exam-correction-essay-comment',
-          taskId: eta.getAttribute('data-task-id'),
-          value: eta.value
-        }, '*');
-      } catch(e) {}
-      notifyHeight();
-    });
-    eta.addEventListener('input', function(){ notifyHeight(); });
-  });
   var toneClasses = ['jm-field-points-earned--pos','jm-field-points-earned--zero','jm-field-points-earned--neg','jm-field-points-earned--partial','jm-field-points-earned--fail'];
   function applyFieldPointsTone(inp){
     var badge = inp.closest('.jm-field-points-earned');
