@@ -83,6 +83,34 @@ function pointsBadgeToneClass(
   return 'points-incorrect';
 }
 
+const FIELD_POINTS_TONE_CLASSES = [
+  'jm-field-points-earned--pos',
+  'jm-field-points-earned--zero',
+  'jm-field-points-earned--neg',
+  'jm-field-points-earned--partial',
+  'jm-field-points-earned--fail',
+] as const;
+
+/** HU Aufgabe 1: +1 grün, 0 orange, −1 rot; sonst 0 = rot. */
+function fieldPointsEarnedToneClass(
+  taskId: string,
+  achieved: number,
+  maxPts: number,
+  isPartial: boolean,
+  minPts: number,
+): string {
+  const a = Number.isFinite(achieved) ? achieved : 0;
+  if (minPts < 0 || isWfTableFieldId(taskId)) {
+    if (a > 0) return 'jm-field-points-earned--pos';
+    if (a < 0) return 'jm-field-points-earned--neg';
+    return 'jm-field-points-earned--zero';
+  }
+  if (a < 0) return 'jm-field-points-earned--neg';
+  if (isPartial || (a > 0 && a < maxPts - 1e-9)) return 'jm-field-points-earned--partial';
+  if (a > 0) return 'jm-field-points-earned--pos';
+  return 'jm-field-points-earned--fail';
+}
+
 function subsectionTitleAnchor(doc: Document, el: Element | null): Element | null {
   const sub = el?.closest('.exam-subsection');
   return sub?.querySelector('.exam-subsection-title') || null;
@@ -99,8 +127,15 @@ function createFieldPointsBadge(
 ): HTMLSpanElement {
   const badge = doc.createElement('span');
   if (teacherCorrectionMode) {
-    badge.className = 'jm-field-points-earned';
+    badge.className = `jm-field-points-earned ${fieldPointsEarnedToneClass(
+      taskId,
+      achieved,
+      maxPts,
+      isPartial,
+      minPts,
+    )}`;
     badge.setAttribute('data-jm-task-id', taskId);
+    badge.setAttribute('data-min', String(minPts));
     const input = doc.createElement('input');
     input.type = 'number';
     input.className = 'jm-field-points-input jm-inline-points-input';
@@ -1600,13 +1635,36 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       padding: 3px 10px;
       font-size: 0.92rem;
       font-weight: 800;
-      color: #1b5e20;
-      background: #c8e6c9;
-      border: 2px solid #2e7d32;
       border-radius: 8px;
       white-space: nowrap;
       vertical-align: middle;
+      border: 2px solid transparent;
+    }
+    .jm-field-points-earned--pos,
+    .jm-task-points-earned {
+      color: #1b5e20;
+      background: #c8e6c9;
+      border-color: #2e7d32;
       box-shadow: 0 1px 2px rgba(46, 125, 50, 0.25);
+    }
+    .jm-field-points-earned--zero {
+      color: #e65100;
+      background: #ffe0b2;
+      border-color: #ef6c00;
+      box-shadow: 0 1px 2px rgba(230, 81, 0, 0.2);
+    }
+    .jm-field-points-earned--partial {
+      color: #5d4037;
+      background: #fff176;
+      border-color: #f9a825;
+      box-shadow: 0 1px 2px rgba(249, 168, 37, 0.2);
+    }
+    .jm-field-points-earned--neg,
+    .jm-field-points-earned--fail {
+      color: #b71c1c;
+      background: #ffcdd2;
+      border-color: #c62828;
+      box-shadow: 0 1px 2px rgba(198, 40, 40, 0.2);
     }
     .jm-field-points-input {
       width: 2.1rem;
@@ -2132,8 +2190,31 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     });
     eta.addEventListener('input', function(){ notifyHeight(); });
   });
+  var toneClasses = ['jm-field-points-earned--pos','jm-field-points-earned--zero','jm-field-points-earned--neg','jm-field-points-earned--partial','jm-field-points-earned--fail'];
+  function applyFieldPointsTone(inp){
+    var badge = inp.closest('.jm-field-points-earned');
+    if (!badge) return;
+    var min = parseFloat(inp.min);
+    if (isNaN(min)) min = parseFloat(badge.getAttribute('data-min') || '0');
+    var max = parseFloat(inp.getAttribute('data-max') || inp.max || '1');
+    var v = parseFloat(String(inp.value).replace(',', '.'));
+    if (isNaN(v)) v = 0;
+    toneClasses.forEach(function(c){ badge.classList.remove(c); });
+    if (min < 0) {
+      if (v > 0) badge.classList.add('jm-field-points-earned--pos');
+      else if (v < 0) badge.classList.add('jm-field-points-earned--neg');
+      else badge.classList.add('jm-field-points-earned--zero');
+    } else {
+      if (v < 0) badge.classList.add('jm-field-points-earned--neg');
+      else if (v > 0 && v < max - 0.001) badge.classList.add('jm-field-points-earned--partial');
+      else if (v > 0) badge.classList.add('jm-field-points-earned--pos');
+      else badge.classList.add('jm-field-points-earned--fail');
+    }
+  }
   document.querySelectorAll('.jm-inline-points-input[data-task-id]').forEach(function(inp){
+    applyFieldPointsTone(inp);
     function sendPts(){
+      applyFieldPointsTone(inp);
       try {
         parent.postMessage({
           type: 'jm-exam-correction-inline-points',
@@ -2144,6 +2225,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
     inp.addEventListener('change', sendPts);
     inp.addEventListener('blur', sendPts);
+    inp.addEventListener('input', function(){ applyFieldPointsTone(inp); });
   });
   notifyHeight();
   window.addEventListener('load', notifyHeight);
