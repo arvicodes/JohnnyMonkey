@@ -49,7 +49,6 @@ import {
   setExamCorrectionFinished,
 } from '../lib/examCorrectionFinished';
 import {
-  areAllExamTaskScopesDone,
   examTaskCorrectionDoneId,
   isExamTaskCorrectionDone,
   setExamTaskCorrectionDone,
@@ -178,6 +177,12 @@ const correctionStorageKey = (submissionId: string, fieldKey: string): string =>
 
 const REVIEW_COMPLETE_TASK = '__review_complete__';
 const GENERAL_COMMENT_TASK = '__general_comment__';
+
+/** Aufgabenweise: Aufgabe 1 (WF-Tabelle) immer als Ganzes, keine Zeilen-Tabs 1a–1m. */
+function byTaskCorrectionUsesSubScopes(taskNum: string, fieldIds: string[]): boolean {
+  if (String(taskNum).trim() === '1') return false;
+  return fieldIds.length > 1;
+}
 const PURPLE_REVIEW = '#7b1fa2';
 const BREADCRUMB_PENDING_COLOR = '#1565c0';
 const BREADCRUMB_PENDING_BG = '#e3f2fd';
@@ -1462,10 +1467,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
   const isByTaskFullyDone = (taskNum: string): boolean => {
     const fields = fieldIdsForByTask(taskNum);
-    if (fields.length > 1) {
-      return fields.every((fid) => isByTaskScopeDone(taskNum, fid));
+    if (!byTaskCorrectionUsesSubScopes(taskNum, fields)) {
+      if (isByTaskScopeDone(taskNum)) return true;
+      if (taskNum === '1' && fields.length > 1) {
+        return fields.every((fid) => isByTaskScopeDone(taskNum, fid));
+      }
+      return false;
     }
-    return isByTaskScopeDone(taskNum);
+    return fields.every((fid) => isByTaskScopeDone(taskNum, fid));
   };
 
   const getFieldCorrectionForSubmission = useCallback(
@@ -1642,7 +1651,9 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
   const byTaskSubFieldIds = useMemo(() => {
     const taskNum = byTaskSelectedNum || byTaskTabNumbers[0] || '';
     if (!taskNum) return [];
-    return fieldIdsForByTask(taskNum);
+    const fields = fieldIdsForByTask(taskNum);
+    if (!byTaskCorrectionUsesSubScopes(taskNum, fields)) return [];
+    return fields;
   }, [byTaskSelectedNum, byTaskTabNumbers, fieldIdsForByTask]);
 
   useEffect(() => {
@@ -1655,21 +1666,6 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     }
   }, [byTaskSubFieldIds.join('|'), byTaskSubFieldId]);
 
-  const examCorrectionScopeIds = useMemo((): string[] => {
-    const ids: string[] = [];
-    for (const taskNum of byTaskTabNumbers) {
-      const fields = fieldIdsForByTask(taskNum);
-      if (fields.length > 1) {
-        for (const fid of fields) {
-          ids.push(examTaskCorrectionDoneId(taskNum, fid));
-        }
-      } else {
-        ids.push(examTaskCorrectionDoneId(taskNum));
-      }
-    }
-    return ids;
-  }, [byTaskTabNumbers, fieldIdsForByTask]);
-
   const studentsPendingReviewCompleteKey = useMemo(
     () =>
       groupSubmissions
@@ -1681,7 +1677,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
 
   useEffect(() => {
     if (!studentsPendingReviewCompleteKey) return;
-    if (!areAllExamTaskScopesDone(kaFilePath, examCorrectionScopeIds)) return;
+    if (!byTaskTabNumbers.length || !byTaskTabNumbers.every((n) => isByTaskFullyDone(n))) return;
 
     const pendingIds = studentsPendingReviewCompleteKey.split(',').filter(Boolean);
     void (async () => {
@@ -1692,7 +1688,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
   }, [
     examTaskDoneRevision,
     kaFilePath,
-    examCorrectionScopeIds.join('|'),
+    byTaskTabNumbers.join('|'),
     studentsPendingReviewCompleteKey,
   ]);
 
@@ -3924,7 +3920,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             })}
           </Tabs>
 
-          {byTaskSubFieldIds.length > 1 ? (
+          {byTaskSubFieldIds.length > 0 ? (
             <Tabs
               value={
                 byTaskSubFieldIds.includes(byTaskSubFieldId)
@@ -3976,7 +3972,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             const taskNum = byTaskSelectedNum || byTaskTabNumbers[0];
             if (!taskNum) return null;
             const taskFieldIds = fieldIdsForByTask(taskNum);
-            const hasSubScopes = byTaskSubFieldIds.length > 1;
+            const hasSubScopes = byTaskCorrectionUsesSubScopes(taskNum, taskFieldIds);
             const activeScopeFieldId = hasSubScopes
               ? byTaskSubFieldIds.includes(byTaskSubFieldId)
                 ? byTaskSubFieldId
