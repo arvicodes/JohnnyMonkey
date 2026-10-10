@@ -109,7 +109,9 @@ function createFieldPointsBadge(
     input.min = String(minPts);
     input.max = String(maxPts);
     input.step = minPts < 0 ? '1' : maxPts <= 2 ? '0.5' : '0.25';
-    input.value = Number.isFinite(achieved) ? String(achieved) : '0';
+    const ptsVal = Number.isFinite(achieved) ? achieved : 0;
+    input.value = String(ptsVal);
+    input.setAttribute('value', String(ptsVal));
     const suffix = doc.createElement('span');
     suffix.className = 'jm-field-points-suffix';
     suffix.textContent = ` / ${fmtExamPoints(maxPts)} P.`;
@@ -258,6 +260,34 @@ function insertWfTeacherSolutionHint(
   anchor.appendChild(hint);
 }
 
+function createTeacherCommentPointsRow(
+  doc: Document,
+  taskId: string,
+  achieved: number,
+  maxPts: number,
+  isPartial: boolean,
+  savedComment: string,
+  minPts = 0,
+): HTMLElement {
+  const row = doc.createElement('div');
+  row.className = 'jm-teacher-comment-points-row';
+  const label = doc.createElement('span');
+  label.className = 'jm-essay-teacher-label';
+  label.textContent = 'Kommentar:';
+  const commentTa = doc.createElement('textarea');
+  commentTa.className = 'jm-essay-teacher-comment-input';
+  commentTa.setAttribute('data-task-id', taskId);
+  commentTa.rows = 1;
+  commentTa.placeholder = 'Sichtbar in der Freigabe …';
+  commentTa.value = savedComment;
+  row.appendChild(label);
+  row.appendChild(commentTa);
+  row.appendChild(
+    createFieldPointsBadge(doc, taskId, achieved, maxPts, isPartial, true, minPts),
+  );
+  return row;
+}
+
 function buildSortReviewPanel(
   doc: Document,
   answerId: string,
@@ -267,6 +297,7 @@ function buildSortReviewPanel(
   achieved: number,
   maxPts: number,
   savedComment: string,
+  isPartial: boolean,
 ): HTMLElement {
   const existing = doc.querySelector(`.jm-sort-review-panel[data-for="${CSS.escape(answerId)}"]`);
   existing?.remove();
@@ -321,21 +352,16 @@ function buildSortReviewPanel(
   grid.appendChild(colCorrect);
 
   if (teacherCorrectionMode) {
-    const colSide = doc.createElement('div');
-    colSide.className = 'jm-sort-review-col jm-sort-review-side jm-correction-side-panel';
-    const commentLabel = doc.createElement('span');
-    commentLabel.className = 'jm-essay-teacher-label';
-    commentLabel.textContent = 'Kommentar:';
-    const commentTa = doc.createElement('textarea');
-    commentTa.className = 'jm-essay-teacher-comment-input';
-    commentTa.setAttribute('data-task-id', answerId);
-    commentTa.rows = 2;
-    commentTa.placeholder = 'Sichtbar in der Freigabe …';
-    commentTa.value = savedComment;
-    colSide.appendChild(commentLabel);
-    colSide.appendChild(commentTa);
-    grid.classList.add('jm-sort-review-grid--with-side');
-    grid.appendChild(colSide);
+    panel.appendChild(
+      createTeacherCommentPointsRow(
+        doc,
+        answerId,
+        achieved,
+        maxPts,
+        isPartial,
+        savedComment,
+      ),
+    );
   }
 
   panel.appendChild(grid);
@@ -383,30 +409,18 @@ function attachEssayTeacherCorrectionBar(
     left.appendChild(sol);
   }
 
-  const right = doc.createElement('div');
-  right.className = 'jm-essay-teacher-right jm-correction-side-panel';
-  const commentLabel = doc.createElement('span');
-  commentLabel.className = 'jm-essay-teacher-label';
-  commentLabel.textContent = 'Kommentar:';
-  const commentTa = doc.createElement('textarea');
-  commentTa.className = 'jm-essay-teacher-comment-input';
-  commentTa.setAttribute('data-task-id', taskId);
-  commentTa.rows = 2;
-  commentTa.placeholder = 'Sichtbar in der Freigabe …';
-  commentTa.value = commentText;
-  right.appendChild(commentLabel);
-  right.appendChild(commentTa);
-
+  layout.classList.add('jm-essay-teacher-layout--stacked');
   layout.appendChild(left);
-  layout.appendChild(right);
+  const toolbar = createTeacherCommentPointsRow(
+    doc,
+    taskId,
+    achieved,
+    maxPts,
+    achieved > 0 && achieved < maxPts - 1e-9,
+    commentText,
+  );
+  block.appendChild(toolbar);
   block.appendChild(layout);
-
-  const title = subsectionTitleAnchor(doc, textarea);
-  if (title && !title.querySelector('.jm-field-points-earned')) {
-    title.appendChild(
-      createFieldPointsBadge(doc, taskId, achieved, maxPts, achieved > 0 && achieved < maxPts, true),
-    );
-  }
 }
 
 function decorateEssayStudentAnswer(
@@ -862,6 +876,7 @@ function fillAndMark(
           achieved,
           maxPts,
           savedTaskComment,
+          isPartial,
         );
         sortRoot.parentElement?.insertBefore(panel, sortRoot.nextSibling);
         if (!teacherCorrectionMode) {
@@ -884,11 +899,6 @@ function fillAndMark(
           attachPointsBadge(badge, taskId, teacherCorrectionMode, pointsRow, (a, n) =>
             a.appendChild(n),
           );
-        } else {
-          const title = subsectionTitleAnchor(doc, sortRoot);
-          if (title) {
-            attachPointsBadge(badge, taskId, true, title, (a, n) => a.appendChild(n));
-          }
         }
         return;
       } else if (wfSelect || wfRow) {
@@ -1315,6 +1325,48 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       gap: 10px 12px;
       margin-top: 10px;
       align-items: start;
+    }
+    .jm-essay-teacher-layout.jm-essay-teacher-layout--stacked {
+      grid-template-columns: 1fr;
+      margin-top: 6px;
+    }
+    .jm-teacher-comment-points-row {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0 6px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .jm-teacher-comment-points-row .jm-essay-teacher-label {
+      flex-shrink: 0;
+      margin: 0;
+    }
+    .jm-teacher-comment-points-row .jm-essay-teacher-comment-input {
+      flex: 1 1 auto;
+      min-width: 8rem;
+      max-width: none;
+      width: auto;
+      height: 2.15rem;
+      min-height: 2.15rem;
+      max-height: 2.15rem;
+      resize: none;
+      overflow: hidden;
+      line-height: 1.35;
+      padding: 4px 8px;
+      border: 1px solid #90caf9;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    .jm-teacher-comment-points-row .jm-field-points-earned {
+      margin-left: 0;
+      flex-shrink: 0;
+    }
+    .jm-sort-review-panel > .jm-teacher-comment-points-row {
+      margin-top: 0;
+      margin-bottom: 10px;
     }
     @media (max-width: 720px) {
       .jm-essay-teacher-layout { grid-template-columns: 1fr; }
