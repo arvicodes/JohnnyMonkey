@@ -532,7 +532,7 @@ function injectTaskPointsSummaries(
     existing?.remove();
     const span = doc.createElement('span');
     span.className = 'jm-task-points-earned';
-    span.textContent = ` — ${fmt(achieved)} / ${fmt(max)} P.`;
+    span.textContent = `${fmt(achieved)} / ${fmt(max)} P.`;
     span.setAttribute('title', `Erreichte Punkte Aufgabe ${n}`);
     numEl?.appendChild(span);
   });
@@ -545,10 +545,8 @@ function attachPointsBadge(
   anchor: Element,
   insertAfterFn: (anchor: Element, node: HTMLElement) => void,
 ) {
-  badge.setAttribute('data-jm-task-id', taskId);
-  if (teacherCorrectionMode) {
-    badge.classList.add('jm-points-badge-editable');
-    badge.setAttribute('title', 'Klicken: Punkte und Kommentar bearbeiten');
+  if (!teacherCorrectionMode) {
+    badge.setAttribute('data-jm-task-id', taskId);
   }
   insertAfterFn(anchor, badge);
 }
@@ -579,10 +577,9 @@ function fillAndMark(
   const taskMax: Record<string, number> = {};
   let task1RowSum = 0;
   const huKi = isHuKiMssExamPath(examFilePath);
-  const wfInlinePoints: Record<string, { achieved: number; maxPts: number }> = {};
-  const teacherInlinePoints: Record<
+  const deferredFieldBadges: Record<
     string,
-    { achieved: number; maxPts: number; minPts: number }
+    { achieved: number; maxPts: number; isPartial: boolean; minPts: number }
   > = {};
 
   fieldIds.forEach((taskId) => {
@@ -777,17 +774,15 @@ function fillAndMark(
           markWfTableRow(wfRow, value, markEl);
         }
       }
-      const badge = doc.createElement('span');
-      badge.className = `points-badge ${
-        achieved < 0
-          ? 'points-incorrect'
-          : isPartial
-            ? 'points-partial'
-            : achieved > 0
-              ? 'points-correct'
-              : 'points-incorrect'
-      }`;
-      badge.textContent = formatPointsBadge(achieved, maxPts);
+      const badge = createFieldPointsBadge(
+        doc,
+        taskId,
+        achieved,
+        maxPts,
+        isPartial,
+        teacherCorrectionMode,
+        isWfTableFieldId(taskId) ? -1 : 0,
+      );
       if (manualField && achieved <= 0 && corrByTask[taskId] == null) {
         badge.classList.remove('points-incorrect');
         badge.classList.add('points-partial');
@@ -828,6 +823,11 @@ function fillAndMark(
           attachPointsBadge(badge, taskId, teacherCorrectionMode, pointsRow, (a, n) =>
             a.appendChild(n),
           );
+        } else {
+          const title = subsectionTitleAnchor(doc, sortRoot);
+          if (title) {
+            attachPointsBadge(badge, taskId, true, title, (a, n) => a.appendChild(n));
+          }
         }
         return;
       } else if (wfSelect || wfRow) {
@@ -836,7 +836,12 @@ function fillAndMark(
           wfRow?.querySelector('.exam-wf-table-text') ||
           wfRow;
         if (teacherCorrectionMode) {
-          wfInlinePoints[taskId] = { achieved, maxPts };
+          deferredFieldBadges[taskId] = {
+            achieved,
+            maxPts,
+            isPartial,
+            minPts: -1,
+          };
         } else {
           badge.classList.add('jm-wf-inline-points');
           const ptsAnchor =
@@ -846,18 +851,6 @@ function fillAndMark(
           );
         }
         if (wfHintAnchor) insertSolutionHint(wfHintAnchor);
-      } else if (
-        teacherCorrectionMode &&
-        huKiPts != null &&
-        !wfSelect &&
-        !wfRow &&
-        !(byId instanceof HTMLTextAreaElement && (manualField || byId.classList.contains('exam-essay-input')))
-      ) {
-        teacherInlinePoints[taskId] = {
-          achieved,
-          maxPts,
-          minPts: isWfTableFieldId(taskId) ? -1 : 0,
-        };
       } else if (
         teacherCorrectionMode &&
         byId instanceof HTMLTextAreaElement &&
@@ -918,17 +911,14 @@ function fillAndMark(
         if (!value) {
           (wrap as HTMLElement).classList.add('answer-incorrect');
         }
-        const badge = doc.createElement('span');
-        badge.className = `points-badge ${
-          achieved < 0
-            ? 'points-incorrect'
-            : isPartial
-              ? 'points-partial'
-              : achieved > 0
-                ? 'points-correct'
-                : 'points-incorrect'
-        }`;
-        badge.textContent = formatPointsBadge(achieved, maxPts);
+        const badge = createFieldPointsBadge(
+          doc,
+          taskId,
+          achieved,
+          maxPts,
+          isPartial,
+          teacherCorrectionMode,
+        );
         attachPointsBadge(badge, taskId, teacherCorrectionMode, wrap, (a, n) => a.appendChild(n));
         insertSolutionHint(badge);
       }
@@ -950,22 +940,11 @@ function fillAndMark(
 
   if (teacherCorrectionMode) {
     restructureExamWfTableForTeacher(doc);
-    Object.entries(wfInlinePoints).forEach(([taskId, { achieved: ap, maxPts: mp }]) => {
-      attachWfRowInlinePoints(doc, taskId, ap, mp);
-    });
-    Object.entries(teacherInlinePoints).forEach(([taskId, spec]) => {
-      if (doc.querySelector(`.jm-inline-points-input[data-task-id="${CSS.escape(taskId)}"]`)) {
-        return;
-      }
-      const wrap =
-        doc.querySelector(
-          `.exam-mc-single-select[data-answer-id="${CSS.escape(taskId)}"], .exam-multi-select[data-answer-id="${CSS.escape(taskId)}"]`,
-        ) || doc.getElementById(taskId)?.closest('.item.input-group');
-      if (!wrap) return;
-      wrap.appendChild(
-        createInlinePointsControl(doc, taskId, spec.achieved, spec.maxPts, spec.minPts),
-      );
-    });
+    Object.entries(deferredFieldBadges).forEach(
+      ([taskId, { achieved: ap, maxPts: mp, isPartial: part, minPts }]) => {
+        attachDeferredFieldPointsBadge(doc, taskId, ap, mp, part, minPts);
+      },
+    );
   }
 
   injectTaskPointsSummaries(doc, taskAchieved, taskMax);
@@ -1249,7 +1228,8 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     html.teacher-correction-mode #jm-general-comment-field,
     html.teacher-correction-mode .jm-general-comment-input,
     html.teacher-correction-mode .jm-essay-teacher-comment-input,
-    html.teacher-correction-mode .jm-inline-points-input {
+    html.teacher-correction-mode .jm-inline-points-input,
+    html.teacher-correction-mode .jm-field-points-input {
       pointer-events: auto !important;
       cursor: text !important;
     }
@@ -1389,22 +1369,27 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     html.teacher-correction-mode .exam-wf-table th:nth-child(4),
     html.teacher-correction-mode .exam-wf-table-falsch {
       width: auto !important;
-      min-width: 8.5em !important;
+      min-width: 6.5em !important;
       max-width: none !important;
       padding: 4px 6px 4px 2px !important;
       text-align: left !important;
-      vertical-align: top !important;
+      vertical-align: middle !important;
+    }
+    html.teacher-correction-mode .exam-wf-table-falsch {
+      display: flex !important;
+      flex-direction: row !important;
+      flex-wrap: nowrap !important;
+      align-items: center !important;
+      gap: 6px !important;
     }
     html.teacher-correction-mode .exam-wf-table-points,
     html.teacher-correction-mode .jm-wf-points-head {
       display: none !important;
     }
-    html.teacher-correction-mode .jm-wf-row-points-line {
-      margin-top: 4px;
-    }
-    html.teacher-correction-mode .jm-wf-row-points-line .jm-inline-points-wrap {
-      flex-wrap: nowrap;
-      margin-bottom: 0;
+    html.teacher-correction-mode .exam-mc-single-select .jm-field-points-earned,
+    html.teacher-correction-mode .exam-wf-table-falsch .jm-field-points-earned {
+      margin-left: 2px;
+      flex-shrink: 0;
     }
     html.teacher-correction-mode .exam-wf-table-wahr .exam-mc-option,
     html.teacher-correction-mode .exam-wf-table-falsch .exam-mc-option {
@@ -1437,11 +1422,14 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       margin-left: 0;
       font-size: 0.75rem;
     }
-    .jm-task-points-earned {
-      display: inline-block;
+    .jm-task-points-earned,
+    .jm-field-points-earned {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
       margin-left: 10px;
-      padding: 3px 12px;
-      font-size: 1.02rem;
+      padding: 3px 10px;
+      font-size: 0.92rem;
       font-weight: 800;
       color: #1b5e20;
       background: #c8e6c9;
@@ -1450,6 +1438,33 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
       white-space: nowrap;
       vertical-align: middle;
       box-shadow: 0 1px 2px rgba(46, 125, 50, 0.25);
+    }
+    .jm-field-points-input {
+      width: 2.1rem;
+      padding: 0 2px;
+      margin: 0;
+      font: inherit;
+      font-weight: 800;
+      color: inherit;
+      text-align: center;
+      border: none;
+      background: transparent;
+      outline: none;
+      -moz-appearance: textfield;
+    }
+    .jm-field-points-input::-webkit-outer-spin-button,
+    .jm-field-points-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .jm-field-points-suffix {
+      font: inherit;
+      font-weight: 800;
+      color: inherit;
+    }
+    .exam-subsection-title .jm-field-points-earned {
+      margin-left: 8px;
+      font-size: 0.88rem;
     }
     html.teacher-correction-mode .exam-subsection:has(.jm-sort-review-panel) .exam-sort-drag,
     html.teacher-correction-mode .exam-subsection:has(.jm-sort-review-panel) .exam-sort-hint {
@@ -1899,6 +1914,7 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     boot.textContent = `(function(){
   function send(taskId){ try { parent.postMessage({ type: 'jm-exam-correction-field', taskId: taskId }, '*'); } catch(e) {} }
   document.querySelectorAll('.jm-points-badge-editable[data-jm-task-id]').forEach(function(b){
+    if (b.querySelector('.jm-field-points-input')) return;
     b.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); send(b.getAttribute('data-jm-task-id')); });
   });
   function notifyHeight(){
