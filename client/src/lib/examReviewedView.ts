@@ -321,6 +321,40 @@ function createTeacherCommentPointsRow(
   return row;
 }
 
+/** Aufgabe 2 Teilaufgaben: Kommentar + Punkte oben unter der Überschrift (wie Sortieraufgabe A)). */
+function attachSubsectionTeacherToolbar(
+  doc: Document,
+  taskId: string,
+  anchorEl: Element | null,
+  achieved: number,
+  maxPts: number,
+  isPartial: boolean,
+  savedComment: string,
+): boolean {
+  if (!/^a2[a-z]/i.test(taskId) || !anchorEl) return false;
+  const sub = anchorEl.closest('.exam-subsection');
+  if (!sub) return false;
+  if (sub.querySelector(`.jm-teacher-comment-points-row[data-for="${CSS.escape(taskId)}"]`)) {
+    return true;
+  }
+  const row = createTeacherCommentPointsRow(
+    doc,
+    taskId,
+    achieved,
+    maxPts,
+    isPartial,
+    savedComment,
+  );
+  row.setAttribute('data-for', taskId);
+  const title = sub.querySelector('.exam-subsection-title');
+  if (title) {
+    title.insertAdjacentElement('afterend', row);
+  } else {
+    sub.insertBefore(row, sub.firstChild);
+  }
+  return true;
+}
+
 function buildSortReviewPanel(
   doc: Document,
   answerId: string,
@@ -444,15 +478,28 @@ function attachEssayTeacherCorrectionBar(
 
   layout.classList.add('jm-essay-teacher-layout--stacked');
   layout.appendChild(left);
-  const toolbar = createTeacherCommentPointsRow(
-    doc,
-    taskId,
-    achieved,
-    maxPts,
-    achieved > 0 && achieved < maxPts - 1e-9,
-    commentText,
-  );
-  block.appendChild(toolbar);
+  const isPartial = achieved > 0 && achieved < maxPts - 1e-9;
+  if (
+    !attachSubsectionTeacherToolbar(
+      doc,
+      taskId,
+      textarea,
+      achieved,
+      maxPts,
+      isPartial,
+      commentText,
+    )
+  ) {
+    const toolbar = createTeacherCommentPointsRow(
+      doc,
+      taskId,
+      achieved,
+      maxPts,
+      isPartial,
+      commentText,
+    );
+    block.appendChild(toolbar);
+  }
   block.appendChild(layout);
 }
 
@@ -569,6 +616,7 @@ function attachDeferredFieldPointsBadge(
   maxPts: number,
   isPartial: boolean,
   minPts: number,
+  savedComment = '',
 ) {
   if (doc.querySelector(`.jm-field-points-earned[data-jm-task-id="${CSS.escape(taskId)}"]`)) {
     return;
@@ -579,6 +627,20 @@ function attachDeferredFieldPointsBadge(
   const wfSelect = doc.querySelector(
     `.exam-mc-single-select[data-answer-id="${CSS.escape(taskId)}"]`,
   );
+  const host = (hidden as Element | null) || wfSelect;
+  if (
+    attachSubsectionTeacherToolbar(
+      doc,
+      taskId,
+      host,
+      achieved,
+      maxPts,
+      isPartial,
+      savedComment,
+    )
+  ) {
+    return;
+  }
   const badge = createFieldPointsBadge(
     doc,
     taskId,
@@ -687,7 +749,13 @@ function fillAndMark(
   const huKi = isHuKiMssExamPath(examFilePath);
   const deferredFieldBadges: Record<
     string,
-    { achieved: number; maxPts: number; isPartial: boolean; minPts: number }
+    {
+      achieved: number;
+      maxPts: number;
+      isPartial: boolean;
+      minPts: number;
+      savedComment: string;
+    }
   > = {};
 
   fieldIds.forEach((taskId) => {
@@ -945,6 +1013,7 @@ function fillAndMark(
             maxPts,
             isPartial,
             minPts: -1,
+            savedComment: savedTaskComment,
           };
         } else {
           badge.classList.add('jm-wf-inline-points');
@@ -973,6 +1042,19 @@ function fillAndMark(
           byId,
         );
         return;
+      } else if (
+        teacherCorrectionMode &&
+        attachSubsectionTeacherToolbar(
+          doc,
+          taskId,
+          byId,
+          achieved,
+          maxPts,
+          isPartial,
+          savedTaskComment,
+        )
+      ) {
+        insertSolutionHint(sortRoot || byId);
       } else if (teacherCorrectionMode && manualField) {
         const anchor = sortRoot || anchorAfterField(byId);
         attachPointsBadge(badge, taskId, teacherCorrectionMode, anchor, insertAfter);
@@ -1019,16 +1101,31 @@ function fillAndMark(
         if (!value) {
           (wrap as HTMLElement).classList.add('answer-incorrect');
         }
-        const badge = createFieldPointsBadge(
-          doc,
-          taskId,
-          achieved,
-          maxPts,
-          isPartial,
-          teacherCorrectionMode,
-        );
-        attachPointsBadge(badge, taskId, teacherCorrectionMode, wrap, (a, n) => a.appendChild(n));
-        insertSolutionHint(badge);
+        if (
+          teacherCorrectionMode &&
+          attachSubsectionTeacherToolbar(
+            doc,
+            taskId,
+            wrap,
+            achieved,
+            maxPts,
+            isPartial,
+            savedTaskComment,
+          )
+        ) {
+          insertSolutionHint(wrap);
+        } else {
+          const badge = createFieldPointsBadge(
+            doc,
+            taskId,
+            achieved,
+            maxPts,
+            isPartial,
+            teacherCorrectionMode,
+          );
+          attachPointsBadge(badge, taskId, teacherCorrectionMode, wrap, (a, n) => a.appendChild(n));
+          insertSolutionHint(badge);
+        }
       }
       return;
     }
@@ -1049,8 +1146,8 @@ function fillAndMark(
   if (teacherCorrectionMode) {
     restructureExamWfTableForTeacher(doc);
     Object.entries(deferredFieldBadges).forEach(
-      ([taskId, { achieved: ap, maxPts: mp, isPartial: part, minPts }]) => {
-        attachDeferredFieldPointsBadge(doc, taskId, ap, mp, part, minPts);
+      ([taskId, { achieved: ap, maxPts: mp, isPartial: part, minPts, savedComment }]) => {
+        attachDeferredFieldPointsBadge(doc, taskId, ap, mp, part, minPts, savedComment);
       },
     );
     doc.querySelectorAll('tr.exam-wf-table-row').forEach((tr) => {
@@ -1470,6 +1567,14 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     .jm-sort-review-panel > .jm-teacher-comment-points-row {
       margin-top: 0;
       margin-bottom: 10px;
+    }
+    html.teacher-correction-mode .exam-subsection > .jm-teacher-comment-points-row {
+      margin-top: 4px;
+      margin-bottom: 10px;
+    }
+    html.teacher-correction-mode .exam-subsection > .exam-subsection-title {
+      display: block;
+      padding-right: 0;
     }
     @media (max-width: 720px) {
       .jm-essay-teacher-layout { grid-template-columns: 1fr; }
