@@ -1560,9 +1560,16 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
           isManualExamAnswerKey(correctAnswers[id]) || Boolean(essaySolutionsByFieldId[id]),
       );
     };
-    const fromKey = Object.keys(answerKeyFieldsByTask)
-      .filter(manualTask)
-      .sort((a, b) => Number(a) - Number(b));
+    const allTaskNums = Object.keys(answerKeyFieldsByTask).sort(
+      (a, b) => Number(a) - Number(b),
+    );
+    const fromKey = allTaskNums
+      .filter((taskNum) => {
+        if (isHuKiMssExamPath(kaFilePath)) {
+          return (answerKeyFieldsByTask[taskNum]?.length ?? 0) > 0;
+        }
+        return manualTask(taskNum);
+      })
     if (fromKey.length > 0) return fromKey;
     const allInExam = Object.keys(answerKeyFieldsByTask).sort((a, b) => Number(a) - Number(b));
     if (allInExam.length > 0) return allInExam;
@@ -1575,6 +1582,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
     essaySolutionsByFieldId,
     tasksWithRechenweg.join('|'),
     useGeometryTask3,
+    kaFilePath,
   ]);
 
   useEffect(() => {
@@ -3843,6 +3851,7 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
             if (!taskNum) return null;
             const taskFieldIds = fieldIdsForByTask(taskNum);
             const taskSubmissions = groupSubmissions
+              .filter((sub) => !sub.markedSick)
               .map((sub) => {
                 const answers = answersForCorrectionGrouping(sub.answers) as Record<string, unknown>;
                 const taskAnswers = taskFieldIds.map((taskId) => ({
@@ -3915,20 +3924,14 @@ const KACorrectionMode: React.FC<KACorrectionModeProps> = ({
                             />
                           ) : null}
                         </Box>
-                        {submission.markedSick && !submissionHasFilledAnswers(submission.answers) ? (
-                          <Alert severity="info" sx={{ m: 1, fontSize: '0.78rem' }}>
-                            Krank — noch keine Abgabe.
-                          </Alert>
-                        ) : (
-                          <ExamCorrectionLiveReview
-                            refreshKey={reviewKey}
-                            buildHtml={() => buildReviewHtmlForSubmission(submission, taskNum)}
-                            getFieldCorrection={(taskId) => getFieldCorrectionForSubmission(submission, taskId)}
-                            onSaveField={(taskId, points, comment) => {
-                              void saveCorrection(taskId, points, comment, submission.id);
-                            }}
-                          />
-                        )}
+                        <ExamCorrectionLiveReview
+                          refreshKey={reviewKey}
+                          buildHtml={() => buildReviewHtmlForSubmission(submission, taskNum)}
+                          getFieldCorrection={(taskId) => getFieldCorrectionForSubmission(submission, taskId)}
+                          onSaveField={(taskId, points, comment) => {
+                            void saveCorrection(taskId, points, comment, submission.id);
+                          }}
+                        />
                       </Box>
                     );
                   })}
