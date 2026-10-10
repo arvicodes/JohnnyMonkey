@@ -5,7 +5,13 @@ import {
   sortExamAnswerFieldIds,
 } from './examAnswerKey';
 import { examAnswerScoreFraction } from './examMcPartialScore';
-import { huKiFieldAutoPoints, isHuKiMssExamPath } from './huKiMssExamScoring';
+import {
+  huKiFieldAutoPoints,
+  isHuKiMssExamPath,
+  normSortStep,
+  primarySortSolutionSteps,
+  splitSortPipe,
+} from './huKiMssExamScoring';
 import {
   essaySolutionFromDoc,
   highlightStudentAnswerHtml,
@@ -95,41 +101,109 @@ function persistInputValue(
   el.setAttribute('value', value);
 }
 
+function findSortChip(pool: Element | null, stepText: string): HTMLElement | null {
+  if (!pool) return null;
+  const want = normSortStep(stepText);
+  const found = Array.from(pool.querySelectorAll('.exam-sort-chip')).find((c) => {
+    const v = c.getAttribute('data-value') || c.textContent || '';
+    return normSortStep(v) === want;
+  });
+  return (found as HTMLElement) || null;
+}
+
 function applyExamSortAnswerToDoc(doc: Document, answerId: string, rawValue: string) {
   const root = doc.querySelector(
     `.exam-sort-drag[data-answer-id="${CSS.escape(answerId)}"]`,
   );
-  if (!root || !String(rawValue || '').trim()) return;
-  const steps = String(rawValue)
-    .split('|')
-    .map((p) => p.trim())
-    .filter(Boolean);
+  if (!root) return;
+  const steps = splitSortPipe(rawValue);
   const pool = root.querySelector('.exam-sort-pool');
   const slots = root.querySelectorAll('.exam-sort-slot');
+  slots.forEach((slot) => {
+    slot.querySelectorAll('.exam-sort-chip').forEach((c) => c.remove());
+  });
   steps.forEach((text, i) => {
     const slot = slots[i];
     if (!slot) return;
-    let chip: Element | null = null;
-    if (pool) {
-      chip =
-        Array.from(pool.querySelectorAll('.exam-sort-chip')).find(
-          (c) => (c.getAttribute('data-value') || '').trim() === text,
-        ) || null;
-    }
-    if (!chip && pool) {
+    let chip = findSortChip(pool, text);
+    if (!chip) {
       chip = doc.createElement('span');
-      chip.className = 'exam-sort-chip';
+      chip.className = 'exam-sort-chip jm-sort-chip-synthetic';
       chip.setAttribute('data-value', text);
       chip.textContent = text;
-      pool.appendChild(chip);
     }
-    if (chip) slot.appendChild(chip);
+    slot.appendChild(chip);
   });
   const hidden = doc.getElementById(answerId);
   if (hidden instanceof HTMLInputElement) {
-    hidden.value = String(rawValue);
-    hidden.setAttribute('value', String(rawValue));
+    hidden.value = String(rawValue || '');
+    hidden.setAttribute('value', String(rawValue || ''));
   }
+}
+
+function buildSortReviewPanel(
+  doc: Document,
+  answerId: string,
+  rawValue: string,
+  expected: unknown,
+): HTMLElement {
+  const existing = doc.querySelector(`.jm-sort-review-panel[data-for="${CSS.escape(answerId)}"]`);
+  existing?.remove();
+  const studentSteps = splitSortPipe(rawValue);
+  const correctSteps = primarySortSolutionSteps(expected);
+  const panel = doc.createElement('div');
+  panel.className = 'jm-sort-review-panel';
+  panel.setAttribute('data-for', answerId);
+
+  const studentOl = doc.createElement('ol');
+  studentOl.className = 'jm-sort-review-list jm-sort-review-student';
+  if (!studentSteps.length) {
+    const li = doc.createElement('li');
+    li.className = 'jm-student-empty';
+    li.textContent = '— keine Angabe —';
+    studentOl.appendChild(li);
+  } else {
+    studentSteps.forEach((step, i) => {
+      const li = doc.createElement('li');
+      li.className = 'jm-student-input';
+      const ok = correctSteps[i] && normSortStep(correctSteps[i]) === normSortStep(step);
+      if (correctSteps.length) {
+        li.classList.add(ok ? 'answer-correct' : 'answer-incorrect');
+      }
+      li.textContent = step;
+      studentOl.appendChild(li);
+    });
+  }
+
+  const correctOl = doc.createElement('ol');
+  correctOl.className = 'jm-sort-review-list jm-sort-review-correct';
+  correctSteps.forEach((step) => {
+    const li = doc.createElement('li');
+    li.textContent = step;
+    correctOl.appendChild(li);
+  });
+
+  const colStudent = doc.createElement('div');
+  colStudent.className = 'jm-sort-review-col';
+  colStudent.innerHTML = '<div class="jm-sort-review-heading">Reihenfolge Schüler/in</div>';
+  colStudent.appendChild(studentOl);
+
+  const colCorrect = doc.createElement('div');
+  colCorrect.className = 'jm-sort-review-col';
+  colCorrect.innerHTML = '<div class="jm-sort-review-heading">Richtige Reihenfolge</div>';
+  colCorrect.appendChild(correctOl);
+
+  const grid = doc.createElement('div');
+  grid.className = 'jm-sort-review-grid';
+  grid.appendChild(colStudent);
+  grid.appendChild(colCorrect);
+
+  const pointsRow = doc.createElement('div');
+  pointsRow.className = 'jm-sort-points-row';
+
+  panel.appendChild(grid);
+  panel.appendChild(pointsRow);
+  return panel;
 }
 
 function decorateEssayStudentAnswer(
@@ -386,15 +460,12 @@ function fillAndMark(
           (byId.type === 'hidden' || byId.type === 'text')
         ) {
           syncMcSelectCheckboxes(doc, taskId, value);
-          if (taskId === 'a2a') {
-            applyExamSortAnswerToDoc(doc, taskId, value);
-          }
         }
         if (byId instanceof HTMLInputElement && (byId.type === 'text' || byId.type === 'number')) {
           byId.classList.add('jm-student-input');
         }
       }
-      if (taskId === 'a2a' && value) {
+      if (taskId === 'a2a') {
         applyExamSortAnswerToDoc(doc, taskId, value);
       }
       const wfSelect = doc.querySelector(
@@ -435,16 +506,38 @@ function fillAndMark(
         taskId === 'a2a'
           ? doc.querySelector(`.exam-sort-drag[data-answer-id="${CSS.escape(taskId)}"]`)
           : null;
-      if (wfSelect) {
+      if (taskId === 'a2a' && sortRoot) {
+        const panel = buildSortReviewPanel(doc, taskId, value, expected);
+        sortRoot.parentElement?.insertBefore(panel, sortRoot.nextSibling);
+        const slots = sortRoot.querySelectorAll('.exam-sort-slot');
+        const correctSteps = primarySortSolutionSteps(expected);
+        const studentSteps = splitSortPipe(value);
+        slots.forEach((slot, i) => {
+          const chip = slot.querySelector('.exam-sort-chip');
+          if (!chip) return;
+          const ok =
+            correctSteps[i] &&
+            studentSteps[i] &&
+            normSortStep(correctSteps[i]) === normSortStep(studentSteps[i]);
+          chip.classList.add(ok ? 'answer-correct' : 'answer-incorrect');
+        });
+        const pointsRow = panel.querySelector('.jm-sort-points-row');
+        if (pointsRow) {
+          attachPointsBadge(badge, taskId, teacherCorrectionMode, pointsRow, (a, n) =>
+            a.appendChild(n),
+          );
+        }
+      } else if (wfSelect) {
         badge.classList.add('jm-wf-inline-points');
         attachPointsBadge(badge, taskId, teacherCorrectionMode, wfSelect, (a, n) =>
           a.appendChild(n),
         );
+        insertSolutionHint(wfSelect);
       } else {
         const anchor = sortRoot || anchorAfterField(byId);
         attachPointsBadge(badge, taskId, teacherCorrectionMode, anchor, insertAfter);
+        insertSolutionHint(sortRoot || byId);
       }
-      insertSolutionHint(wfSelect || sortRoot || byId);
       return;
     }
 
@@ -728,46 +821,57 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     }
     html.teacher-correction-mode .exam-wf-table th:nth-child(1),
     html.teacher-correction-mode .exam-wf-table-num {
-      width: 1.35em !important;
-      min-width: 1.35em !important;
-      max-width: 1.35em !important;
-      padding: 4px 1px !important;
-      font-size: 0.8em !important;
+      width: 1.85em !important;
+      min-width: 1.85em !important;
+      max-width: 1.85em !important;
+      padding: 4px 2px !important;
+      font-size: 0.85em !important;
     }
     html.teacher-correction-mode .exam-wf-table-text {
       padding-right: 6px !important;
       line-height: 1.35 !important;
     }
     html.teacher-correction-mode .exam-wf-table-choices {
-      padding: 4px 2px 4px 0 !important;
-      text-align: left !important;
+      padding: 4px 4px !important;
+      text-align: center !important;
       white-space: nowrap !important;
-      width: 11em !important;
-      max-width: 11em !important;
     }
     html.teacher-correction-mode .exam-wf-table-choices .exam-mc-wf-inline {
-      display: inline-flex !important;
-      justify-content: flex-start !important;
-      align-items: center !important;
-      gap: 2px 6px !important;
-      margin-left: -4px !important;
-      flex-wrap: nowrap !important;
-      width: auto !important;
+      display: grid !important;
+      grid-template-columns: 3.4em 3.4em auto;
+      column-gap: 6px;
+      row-gap: 2px;
+      align-items: center;
+      justify-items: center;
+      margin: 0 auto !important;
+      width: max-content !important;
+      max-width: 100%;
+    }
+    html.teacher-correction-mode .exam-wf-table-choices .exam-mc-option:nth-child(1) {
+      grid-column: 1;
+      justify-self: center;
+    }
+    html.teacher-correction-mode .exam-wf-table-choices .exam-mc-option:nth-child(2) {
+      grid-column: 2;
+      justify-self: center;
     }
     html.teacher-correction-mode .jm-wf-inline-points.points-badge {
-      margin-left: 4px !important;
+      grid-column: 3;
+      margin-left: 0 !important;
       vertical-align: middle;
       flex-shrink: 0;
       font-size: 0.82rem !important;
       font-weight: 800 !important;
       padding: 2px 7px !important;
       line-height: 1.2 !important;
+      justify-self: start;
     }
     html.teacher-correction-mode .exam-wf-table th:nth-child(3),
     html.teacher-correction-mode .exam-wf-table th:nth-child(4) {
-      width: auto !important;
-      padding-left: 2px !important;
-      padding-right: 2px !important;
+      width: 3.4em !important;
+      padding-left: 4px !important;
+      padding-right: 4px !important;
+      text-align: center !important;
     }
     html.teacher-correction-mode .exam-wf-table .jm-correct-solution {
       display: block;
@@ -797,8 +901,58 @@ export async function buildExamReviewedHtml(opts: ExamReviewedViewOpts): Promise
     html.teacher-correction-mode .exam-sort-drag--steps {
       max-width: 100% !important;
     }
-    html.teacher-correction-mode .exam-sort-drag--steps .exam-sort-chip {
+    html.teacher-correction-mode .exam-sort-drag--steps .exam-sort-pool {
+      opacity: 0.55;
+      font-size: 11px;
+    }
+    html.teacher-correction-mode .exam-sort-slot .exam-sort-chip {
       font-size: 12px !important;
+      color: #0d47a1 !important;
+      border-color: #1565c0 !important;
+      background: #e3f2fd !important;
+    }
+    html.teacher-correction-mode .exam-sort-slot .exam-sort-chip.answer-correct {
+      outline: 2px solid #2e7d32;
+      background: #e8f5e9 !important;
+    }
+    html.teacher-correction-mode .exam-sort-slot .exam-sort-chip.answer-incorrect {
+      outline: 2px solid #c62828;
+      background: #ffebee !important;
+    }
+    .jm-sort-review-panel {
+      margin: 8px 0 12px;
+      padding: 10px 12px;
+      border: 1px solid #90caf9;
+      border-radius: 8px;
+      background: #f5f9ff;
+    }
+    .jm-sort-review-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 16px;
+    }
+    @media (max-width: 640px) {
+      .jm-sort-review-grid { grid-template-columns: 1fr; }
+    }
+    .jm-sort-review-heading {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: #37474f;
+      margin-bottom: 4px;
+    }
+    .jm-sort-review-list {
+      margin: 0;
+      padding-left: 1.25rem;
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+    .jm-sort-review-student li.answer-correct { color: #2e7d32; font-weight: 700; }
+    .jm-sort-review-student li.answer-incorrect { color: #c62828; font-weight: 700; }
+    .jm-sort-review-correct li { color: #6a1b9a; }
+    .jm-sort-points-row {
+      margin-top: 8px;
+      display: flex;
+      justify-content: flex-end;
     }
     .jm-student-input,
     html.teacher-correction-mode textarea.jm-student-input,

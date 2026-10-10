@@ -28,7 +28,7 @@ export function huKiWfRowPoints(expected: unknown, student: unknown): number {
   return stud === exp ? 1 : -1;
 }
 
-function normSortStep(raw: string): string {
+export function normSortStep(raw: string): string {
   return String(raw || '')
     .trim()
     .toLowerCase()
@@ -36,7 +36,7 @@ function normSortStep(raw: string): string {
     .replace(/[.;]+$/g, '');
 }
 
-function splitSortPipe(raw: unknown): string[] {
+export function splitSortPipe(raw: unknown): string[] {
   const s = String(raw ?? '').trim();
   if (!s) return [];
   return s
